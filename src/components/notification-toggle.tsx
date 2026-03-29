@@ -24,8 +24,10 @@ export function NotificationToggle() {
   const [pushState, setPushState] = useState<PushState>("disabled");
   const [loading, setLoading] = useState(false);
 
-  // Determine initial state from browser permission + subscription + localStorage pref
-  useEffect(() => {
+  // Sync push state from browser permission + subscription + localStorage pref.
+  // Extracted so we can call it both on mount and when the page regains visibility
+  // (iOS suspends the web view during the system permission dialog).
+  const syncPushState = useCallback(() => {
     if (!appUser) return;
 
     if (!isPushSupported()) {
@@ -47,15 +49,64 @@ export function NotificationToggle() {
       return;
     }
 
-    // Check if we have an active subscription and permission
-    getExistingSubscription().then((sub) => {
-      if (sub && permission === "granted" && pref !== "false") {
+    getExistingSubscription().then(async (sub) => {
+      if (sub && permission === "granted") {
         setPushState("enabled");
+        // Ensure localStorage is consistent (covers interrupted first-time setup)
+        if (pref !== "true") {
+          localStorage.setItem(getPrefKey(appUser.PublicKeyBase58Check), "true");
+        }
+      } else if (permission === "granted" && pref === "pending") {
+        // Permission was granted but the enable flow was interrupted before
+        // the subscription was created. Auto-complete the setup.
+        try {
+          const newSub = await subscribeToPush();
+          if (newSub) {
+            if (RELAY_URL) {
+              await fetch(`${RELAY_URL}/push/subscribe`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  publicKey: appUser.PublicKeyBase58Check,
+                  subscription: newSub.toJSON(),
+                }),
+              });
+            }
+            localStorage.setItem(getPrefKey(appUser.PublicKeyBase58Check), "true");
+            setPushState("enabled");
+            return;
+          }
+        } catch {
+          // Fall through to disabled
+        }
+        // Cleanup pending flag so we don't retry forever
+        localStorage.removeItem(getPrefKey(appUser.PublicKeyBase58Check));
+        setPushState("disabled");
       } else {
+        // Clean up stale pending flag (e.g., PWA killed during permission dialog)
+        if (pref === "pending") {
+          localStorage.removeItem(getPrefKey(appUser.PublicKeyBase58Check));
+        }
         setPushState("disabled");
       }
     });
   }, [appUser]);
+
+  // Run on mount and whenever appUser changes
+  useEffect(() => {
+    syncPushState();
+  }, [syncPushState]);
+
+  // Re-sync when page becomes visible again (handles iOS resuming after permission dialog)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        syncPushState();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [syncPushState]);
 
   const enable = useCallback(async () => {
     if (!appUser || loading) return;
@@ -73,9 +124,14 @@ export function NotificationToggle() {
 
       // Request permission if not yet granted
       if (permission !== "granted") {
+        // Mark as pending before the iOS system dialog — if the dialog interrupts
+        // our flow (component unmount, page suspend), syncPushState will auto-complete.
+        localStorage.setItem(getPrefKey(appUser.PublicKeyBase58Check), "pending");
+
         const granted = await requestPushPermission();
         if (!granted) {
           // User clicked "Block" — now permanently denied
+          localStorage.removeItem(getPrefKey(appUser.PublicKeyBase58Check));
           const updated = getNotificationPermission();
           if (updated === "denied") {
             setPushState("denied");
@@ -88,6 +144,7 @@ export function NotificationToggle() {
       // Subscribe at the browser level
       const subscription = await subscribeToPush();
       if (!subscription) {
+        localStorage.removeItem(getPrefKey(appUser.PublicKeyBase58Check));
         toast.error("Failed to enable notifications.");
         return;
       }
@@ -108,6 +165,7 @@ export function NotificationToggle() {
       setPushState("enabled");
       toast.success("Notifications enabled");
     } catch {
+      localStorage.removeItem(getPrefKey(appUser.PublicKeyBase58Check));
       toast.error("Failed to enable notifications.");
     } finally {
       setLoading(false);
