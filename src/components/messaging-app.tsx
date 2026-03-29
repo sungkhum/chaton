@@ -739,7 +739,7 @@ export const MessagingApp: FC = () => {
                         <a
                           target="_blank"
                           className="underline text-blue-300/40 hover:text-blue-300"
-                          href="https://github.com/deso-protocol/deso-chat-protocol"
+                          href="https://github.com/sungkhum/chaton"
                           rel="noreferrer"
                         >
                           Github Repository &rarr;
@@ -747,7 +747,7 @@ export const MessagingApp: FC = () => {
                         <a
                           target="_blank"
                           className="underline text-blue-300/40 hover:text-blue-300"
-                          href="https://github.com/deso-protocol/deso-chat-protocol"
+                          href="https://github.com/sungkhum/chaton"
                           rel="noreferrer"
                         >
                           Developer Docs &rarr;

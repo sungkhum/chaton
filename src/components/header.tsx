@@ -125,7 +125,7 @@ export const Header = () => {
                 </a>
 
                 <a
-                  href="https://github.com/deso-protocol/deso-chat-protocol"
+                  href="https://github.com/sungkhum/chaton"
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center pt-[9px] pb-2 px-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-md cursor-pointer transition-colors"

@@ -536,7 +536,7 @@ export const LandingPage = () => {
             <div className="flex flex-wrap justify-center gap-10 md:gap-16 text-xs font-black uppercase tracking-[0.4em] text-gray-500">
               <a href="#" className="hover:text-[#34F080] transition-colors">Protocol</a>
               <a
-                href="https://github.com/deso-protocol/deso-chat-protocol"
+                href="https://github.com/sungkhum/chaton"
                 target="_blank"
                 rel="noreferrer"
                 className="hover:text-[#34F080] transition-colors"
@@ -549,6 +549,17 @@ export const LandingPage = () => {
           <div className="mt-12 md:mt-32 text-center">
             <p className="text-[10px] text-gray-600 font-bold tracking-[0.4em] uppercase leading-loose">
               &copy; {new Date().getFullYear()} CHATON. END-TO-END ENCRYPTED MESSAGING ON DESO BLOCKCHAIN.
+            </p>
+            <p className="text-[10px] text-gray-600 font-bold tracking-[0.3em] uppercase mt-3">
+              Built by{" "}
+              <a
+                href="https://focus.xyz/nathanwells"
+                target="_blank"
+                rel="noreferrer"
+                className="text-gray-500 hover:text-[#34F080] transition-colors"
+              >
+                @nathanwells
+              </a>
             </p>
           </div>
         </div>
