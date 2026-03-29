@@ -40,19 +40,39 @@ const serwist = new Serwist({
 // Handle push notifications
 self.addEventListener("push", (event) => {
   const data = event.data?.json() ?? {};
-  const title = data.title || "ChatOn";
-  const options: NotificationOptions = {
-    body: data.body || "You have a new message",
-    icon: "/favicon.png",
-    badge: "/favicon.png",
-    tag: data.tag || "chaton-notification",
-    data: {
-      url: data.url || "/",
-      conversationKey: data.conversationKey,
-    },
-  };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then(async (windowClients) => {
+        // If the app is visible in any window, skip — WebSocket handles it
+        const appVisible = (windowClients as WindowClient[]).some(
+          (c) => c.visibilityState === "visible"
+        );
+        if (appVisible) return;
+
+        const title = data.title || "ChatOn";
+        const options: NotificationOptions = {
+          body: data.body || "You have a new message",
+          icon: "/favicon.png",
+          badge: "/favicon.png",
+          tag: data.tag || "chaton-notification",
+          data: {
+            url: data.url || "/",
+            conversationKey: data.conversationKey,
+          },
+        };
+
+        // Set app badge indicator for backgrounded/closed PWA
+        try {
+          await (self.navigator as Navigator & { setAppBadge: () => Promise<void> }).setAppBadge();
+        } catch {
+          // Badge API not supported or failed
+        }
+
+        return self.registration.showNotification(title, options);
+      })
+  );
 });
 
 // Handle notification click

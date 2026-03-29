@@ -177,20 +177,21 @@ export class ChatRelay extends DurableObject {
     if (!recipients || !threadId) return;
 
     for (const recipientKey of recipients) {
-      const clients = this.clients.get(recipientKey) || [];
-      let delivered = false;
+      // Don't notify the sender about their own message
+      if (recipientKey === from) continue;
 
+      // Always try WebSocket delivery for real-time UI update
+      const clients = this.clients.get(recipientKey) || [];
       for (const client of clients) {
         try {
           client.ws.send(JSON.stringify({ type: "new-message", threadId, from }));
-          delivered = true;
         } catch {
           // Client disconnected
         }
       }
 
-      // If no active WebSocket connections, send a push notification
-      if (!delivered && this.env.VAPID_PRIVATE_KEY) {
+      // Always send push — the service worker suppresses if the app is visible
+      if (this.env.VAPID_PRIVATE_KEY) {
         this.sendPushToUser(recipientKey, fromUsername || from || "Someone", threadId);
       }
     }
