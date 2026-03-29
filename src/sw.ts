@@ -37,41 +37,43 @@ const serwist = new Serwist({
   ],
 });
 
-// Handle push notifications
+// Handle push notifications.
+// IMPORTANT: Always call showNotification() — iOS Safari revokes the push
+// subscription after 3 push events that don't produce a visible notification.
 self.addEventListener("push", (event) => {
-  const data = event.data?.json() ?? {};
+  // Wrap json() in try/catch — malformed payload must not prevent
+  // showNotification(), or iOS will count it as a silent push violation.
+  let data: Record<string, unknown> = {};
+  try {
+    data = event.data?.json() ?? {};
+  } catch {
+    // Malformed payload — show generic notification below
+  }
 
   event.waitUntil(
-    self.clients
-      .matchAll({ type: "window", includeUncontrolled: true })
-      .then(async (windowClients) => {
-        // If the app is visible in any window, skip — WebSocket handles it
-        const appVisible = (windowClients as WindowClient[]).some(
-          (c) => c.visibilityState === "visible"
-        );
-        if (appVisible) return;
+    (async () => {
+      const title = (data.title as string) || "ChatOn";
+      const options: NotificationOptions = {
+        body: data.body || "You have a new message",
+        icon: "/favicon.png",
+        badge: "/favicon.png",
+        tag: data.tag || "chaton-notification",
+        renotify: true,
+        data: {
+          url: data.url || "/",
+          conversationKey: data.conversationKey,
+        },
+      };
 
-        const title = data.title || "ChatOn";
-        const options: NotificationOptions = {
-          body: data.body || "You have a new message",
-          icon: "/favicon.png",
-          badge: "/favicon.png",
-          tag: data.tag || "chaton-notification",
-          data: {
-            url: data.url || "/",
-            conversationKey: data.conversationKey,
-          },
-        };
+      // Set app badge indicator
+      try {
+        await (self.navigator as Navigator & { setAppBadge: () => Promise<void> }).setAppBadge();
+      } catch {
+        // Badge API not supported or failed
+      }
 
-        // Set app badge indicator for backgrounded/closed PWA
-        try {
-          await (self.navigator as Navigator & { setAppBadge: () => Promise<void> }).setAppBadge();
-        } catch {
-          // Badge API not supported or failed
-        }
-
-        return self.registration.showNotification(title, options);
-      })
+      return self.registration.showNotification(title, options);
+    })()
   );
 });
 

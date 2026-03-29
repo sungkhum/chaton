@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useStore } from "../store";
-import { subscribeToPush, requestPushPermission, isPushSupported, getExistingSubscription } from "../utils/push-notifications";
+import { isPushSupported, getExistingSubscription } from "../utils/push-notifications";
 
 const RELAY_URL = import.meta.env.VITE_RELAY_URL || "";
 const RECONNECT_BASE_MS = 1000;
@@ -36,7 +36,7 @@ export function useWebSocket(callbacks: WsCallbacks) {
           })
         );
         // Register push subscription for offline notifications
-        registerPushSubscription(appUser.PublicKeyBase58Check);
+        refreshPushSubscription(appUser.PublicKeyBase58Check);
       };
 
       ws.onmessage = (event) => {
@@ -134,7 +134,7 @@ export function useWebSocket(callbacks: WsCallbacks) {
 
     const handler = (event: MessageEvent) => {
       if (event.data?.type === "push-subscription-changed") {
-        registerPushSubscription(appUser.PublicKeyBase58Check);
+        refreshPushSubscription(appUser.PublicKeyBase58Check);
       }
     };
     navigator.serviceWorker?.addEventListener("message", handler);
@@ -154,29 +154,16 @@ export function useWebSocket(callbacks: WsCallbacks) {
   return { sendNotify, sendTyping, sendRead, isConnected: !!wsRef.current };
 }
 
-// Track whether we've done the initial registration this session.
-// Subsequent calls still refresh the subscription but skip the permission prompt.
-const pushPermissionRequested = new Set<string>();
-
-async function registerPushSubscription(publicKey: string) {
+/**
+ * Silently refresh an existing push subscription with the server.
+ * Does NOT prompt for permission — the NotificationToggle handles that.
+ * This ensures the server has the latest subscription data on each reconnect.
+ */
+async function refreshPushSubscription(publicKey: string) {
   if (!RELAY_URL || !isPushSupported()) return;
 
   try {
-    // On first call per session, request permission (may prompt the user).
-    // On subsequent calls (reconnect, subscription change), just refresh
-    // the existing subscription without prompting.
-    let subscription = await getExistingSubscription();
-
-    if (!subscription) {
-      if (pushPermissionRequested.has(publicKey)) return;
-      pushPermissionRequested.add(publicKey);
-
-      const granted = await requestPushPermission();
-      if (!granted) return;
-
-      subscription = await subscribeToPush();
-    }
-
+    const subscription = await getExistingSubscription();
     if (!subscription) return;
 
     await fetch(`${RELAY_URL}/push/subscribe`, {
@@ -188,6 +175,6 @@ async function registerPushSubscription(publicKey: string) {
       }),
     });
   } catch {
-    // Push registration is best-effort
+    // Push refresh is best-effort
   }
 }

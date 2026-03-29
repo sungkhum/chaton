@@ -9,6 +9,7 @@ import {
   Wallet,
   GitFork,
 } from "lucide-react";
+import { NotificationToggle } from "./notification-toggle";
 import { toast } from "sonner";
 import { formatDisplayName, getProfileURL } from "../utils/helpers";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
@@ -113,6 +114,10 @@ export const Header = () => {
                     </SaveToClipboard>
                   </div>
                 )}
+
+                <NotificationToggle />
+
+                <div className="border-t border-white/10 my-1" />
 
                 <a
                   href="https://wallet.deso.com"

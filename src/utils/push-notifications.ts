@@ -51,3 +51,22 @@ export function isPushSupported(): boolean {
     "PushManager" in window
   );
 }
+
+/** Returns the current notification permission without prompting. */
+export function getNotificationPermission(): NotificationPermission | null {
+  if (!("Notification" in window)) return null;
+  return Notification.permission;
+}
+
+/** Unsubscribe from push at the browser level. */
+export async function unsubscribeFromPush(): Promise<boolean> {
+  try {
+    const subscription = await getExistingSubscription();
+    if (subscription) {
+      return subscription.unsubscribe();
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
