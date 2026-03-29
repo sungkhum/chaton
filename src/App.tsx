@@ -285,9 +285,13 @@ function App() {
     requestAnimationFrame(() => {
       const splash = document.getElementById("splash");
       if (!splash) return;
+      splash.style.pointerEvents = "none";
       splash.style.transition = "opacity 0.3s ease-out";
       splash.style.opacity = "0";
-      splash.addEventListener("transitionend", () => splash.remove());
+      const remove = () => splash.remove();
+      splash.addEventListener("transitionend", remove);
+      // Fallback if transitionend never fires
+      setTimeout(remove, 400);
     });
   }, [contentReady]);
 
@@ -295,7 +299,11 @@ function App() {
   useEffect(() => {
     const timer = setTimeout(() => {
       const splash = document.getElementById("splash");
-      if (splash) splash.remove();
+      if (!splash) return;
+      splash.style.pointerEvents = "none";
+      splash.style.transition = "opacity 0.3s ease-out";
+      splash.style.opacity = "0";
+      setTimeout(() => splash.remove(), 400);
     }, 5000);
     return () => clearTimeout(timer);
   }, []);
@@ -320,8 +328,18 @@ function App() {
   }
 
   if (isLoadingUser && !appUser) {
-    // Splash screen covers this state — render nothing visible
-    return null;
+    return (
+      <div className="App flex items-center justify-center">
+        <img
+          src="/ChatOn-Logo-Small.png"
+          alt="ChatOn"
+          width={80}
+          height={80}
+          className="rounded-[20px]"
+          style={{ animation: "splash-pulse 1.8s ease-in-out infinite" }}
+        />
+      </div>
+    );
   }
 
   return (
