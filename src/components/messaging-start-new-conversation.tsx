@@ -19,7 +19,7 @@ export const MessagingStartNewConversation: FC<{
             );
           }}
           placeholder="Search DeSo & Ethereum Addresses..."
-          className="text-white placeholder:text-blue-100 bg-blue-900/10 placeholder-gray border border-blue-900 hover:border-blue-600"
+          className="text-white placeholder:text-gray-500 bg-white/5 border border-white/8 hover:border-[#34F080]/30 rounded-xl"
         />
       </div>
     </div>

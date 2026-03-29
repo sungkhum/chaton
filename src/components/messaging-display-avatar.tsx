@@ -1,6 +1,5 @@
 import { buildProfilePictureUrl } from "deso-protocol";
-import toMaterialStyle from "material-color-hash";
-import { FC, ReactElement, useEffect, useState } from "react";
+import { FC, useEffect, useState } from "react";
 import { getProfileURL } from "../utils/helpers";
 
 function ConditionalLink({
@@ -12,7 +11,7 @@ function ConditionalLink({
   style,
   onClick,
 }: {
-  children: ReactElement;
+  children: React.ReactElement;
   condition: boolean;
   href: string;
   target: string;
@@ -40,6 +39,15 @@ function ConditionalLink({
 
 const DEFAULT_PROFILE_PIC_URL = "/assets/default-profile-pic.png";
 
+function hashToColor(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = hash % 360;
+  return `hsl(${h}, 60%, 70%)`;
+}
+
 export const MessagingDisplayAvatar: FC<{
   publicKey?: string;
   username?: string;
@@ -58,7 +66,7 @@ export const MessagingDisplayAvatar: FC<{
   const [profilePicUrl, setProfilePicUrl] = useState("");
 
   useEffect(() => {
-    let profilePicUrl = "";
+    let url = "";
 
     if (!publicKey) {
       setProfilePicUrl(DEFAULT_PROFILE_PIC_URL);
@@ -66,33 +74,24 @@ export const MessagingDisplayAvatar: FC<{
     }
 
     if (groupChat) {
-      const keyFirstLast = `${publicKey.charAt(0)}${publicKey.charAt(
-        publicKey.length - 1
-      )}`;
-      const bgColor = toMaterialStyle(keyFirstLast, 200);
       const key = publicKey.replace(/[^a-zA-Z0-9]+/g, "");
-      profilePicUrl = `https://ui-avatars.com/api/?name=${key}&background=${bgColor.backgroundColor.slice(
-        1
-      )}`;
+      const bgColor = hashToColor(publicKey).replace("#", "");
+      url = `https://ui-avatars.com/api/?name=${key}&background=${encodeURIComponent(bgColor)}`;
     } else {
-      profilePicUrl = getProfilePicture();
+      url = getProfilePicture();
     }
 
-    setProfilePicUrl(profilePicUrl);
+    setProfilePicUrl(url);
   }, [publicKey, groupChat]);
 
   const getProfilePicture = () => {
-    if (!publicKey) {
-      return DEFAULT_PROFILE_PIC_URL;
-    }
+    if (!publicKey) return DEFAULT_PROFILE_PIC_URL;
     return buildProfilePictureUrl(publicKey, {
       fallbackImageUrl: `${window.location.href}${DEFAULT_PROFILE_PIC_URL}`,
     });
   };
 
-  if (!profilePicUrl) {
-    return <></>;
-  }
+  if (!profilePicUrl) return <></>;
 
   return (
     <ConditionalLink
@@ -113,9 +112,7 @@ export const MessagingDisplayAvatar: FC<{
         className={`w-12 h-12 bg-white bg-no-repeat bg-center bg-cover rounded-full ${borderColor}`}
         alt={publicKey}
         title={publicKey}
-        onError={() => {
-          setProfilePicUrl(DEFAULT_PROFILE_PIC_URL);
-        }}
+        onError={() => setProfilePicUrl(DEFAULT_PROFILE_PIC_URL)}
       />
     </ConditionalLink>
   );

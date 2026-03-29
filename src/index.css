@@ -1,7 +1,9 @@
-/* Tailwind base styles */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Circular", "Helvetica", "Arial", sans-serif;
+  --breakpoint-md: 768px;
+}
 
 :root {
   --app-height: 100%;
@@ -13,15 +15,17 @@ body {
     "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
     sans-serif;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;  
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
-/*
-* Fixing weird behavior for height: 100vh on Safari Mobile
-* https://stackoverflow.com/questions/37112218/css3-100vh-not-constant-in-mobile-browser
- */
 html,
-body,
+body {
+  min-height: 100vh;
+  min-height: var(--app-height);
+  -webkit-overflow-scrolling: touch !important;
+}
+
 .App {
   height: 100vh;
   height: var(--app-height);
@@ -30,7 +34,9 @@ body,
 
 @media not all and (hover: hover) {
   html,
-  body,
+  body {
+    min-height: var(--app-height);
+  }
   .App {
     height: var(--app-height);
   }
@@ -40,7 +46,10 @@ body,
 .App {
   width: 100vw;
   background-color: #040609;
-  background-image: linear-gradient(0deg,#040609,#040609 10%,#050e1d 40%,#050e1d);
+  background-image: linear-gradient(0deg, #040609, #040609 10%, #050e1d 40%, #050e1d);
+}
+
+.App {
   overflow: hidden;
 }
 
@@ -66,43 +75,8 @@ body,
   border-radius: 4px;
 }
 
-/* React Toastify */
-.Toastify__toast {
-  text-align: left;
-}
-
-.Toastify__toast-container {
-  z-index: 99999 !important;
-}
-
-/* Material Tailwind */
-[role="listbox"] {
-  z-index: 100;
-}
-
-[role="tablist"] {
-  border-radius: 0 !important;
-}
-
-[role="tabpanel"] {
-  padding: 0 !important;
-}
-
-[role="tooltip"] {
-  z-index: 9999;
-}
-
-button:not(:disabled) {
-  opacity: 1 !important;
-}
-
 .break-words {
   word-break: break-word;
-}
-
-textarea:not(:focus) ~ label::before,
-textarea:not(:focus) ~ label::after {
-  border: none;
 }
 
 #message-text > a {
@@ -115,10 +89,10 @@ input::placeholder {
 }
 
 .bg-gradient {
-  background: linear-gradient(27deg,#07081400 30%,#06f 54%,#000c2100);
+  background: linear-gradient(27deg, #07081400 30%, #06f 54%, #000c2100);
   background-repeat: no-repeat;
   height: 416px;
-  opacity: .15;
+  opacity: 0.15;
   position: absolute;
   width: 100vw;
   z-index: 0;
@@ -126,8 +100,135 @@ input::placeholder {
   top: 500px;
 }
 
-.iphone-container {
-  border-radius: 40px;
-  height: 760px;
+/*
+ * Landing Page — ChatOn logo palette (boosted):
+ *   #34F080  Vivid green
+ *   #20E0AA  Bright teal
+ *   #40B8E0  Electric blue
+ *   #3090D0  Deep blue
+ *   Background: #0F1520
+ */
+.landing-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(140px);
+  z-index: -1;
+  mix-blend-mode: screen;
+  animation: landing-orb-float 25s ease-in-out infinite alternate;
 }
 
+@keyframes landing-orb-float {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(80px, -40px) scale(1.15); }
+}
+
+.landing-glass-card {
+  background: rgba(20, 28, 40, 0.7);
+  backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.landing-glass-card:hover {
+  background: rgba(20, 28, 40, 0.85);
+  transform: translateY(-8px);
+  border-color: rgba(52, 240, 128, 0.25);
+  box-shadow:
+    0 20px 60px -20px rgba(0, 0, 0, 0.8),
+    0 0 40px -10px rgba(52, 240, 128, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Boosted green → teal → blue gradient */
+.landing-text-logo-gradient {
+  background: linear-gradient(
+    135deg,
+    #34F080 0%,
+    #20E0AA 40%,
+    #40B8E0 70%,
+    #3090D0 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 24px rgba(32, 224, 170, 0.2));
+}
+
+.landing-btn-vivid {
+  background: linear-gradient(
+    135deg,
+    #34F080 0%,
+    #20E0AA 40%,
+    #40B8E0 75%,
+    #3090D0 100%
+  );
+  box-shadow: 0 12px 40px -8px rgba(32, 224, 170, 0.45);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-btn-vivid::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 50%;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.18), transparent);
+  pointer-events: none;
+}
+
+.landing-btn-vivid:hover {
+  box-shadow:
+    0 0 60px rgba(52, 240, 128, 0.35),
+    0 0 120px rgba(64, 184, 224, 0.2);
+  filter: brightness(1.15);
+  transform: translateY(-4px) scale(1.02);
+}
+
+/* Section divider */
+.landing-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    #34F080 20%,
+    #20E0AA 40%,
+    #40B8E0 60%,
+    #3090D0 80%,
+    transparent 100%
+  );
+  opacity: 0.3;
+}
+
+.landing-mockup-wrap {
+  perspective: 2000px;
+}
+
+.landing-mockup-inner {
+  transform: rotateX(10deg) rotateY(-12deg) rotateZ(2deg);
+  transform-style: preserve-3d;
+  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.landing-mockup-inner:hover {
+  transform: rotateX(5deg) rotateY(-5deg) rotateZ(0deg);
+}
+
+.landing-code-border {
+  background: linear-gradient(
+    135deg,
+    rgba(52, 240, 128, 0.14),
+    rgba(32, 224, 170, 0.08) 50%,
+    rgba(64, 184, 224, 0.14)
+  );
+}
+
+/* Logo gradient bar for DeSo comparison */
+.landing-iridescent-bar {
+  background: linear-gradient(
+    90deg,
+    #34F080 0%,
+    #20E0AA 35%,
+    #40B8E0 65%,
+    #3090D0 100%
+  );
+  box-shadow: 0 0 50px rgba(52, 240, 128, 0.7), 0 0 80px rgba(64, 184, 224, 0.3);
+}

@@ -1,12 +1,4 @@
-import {
-  Button,
-  Dialog,
-  DialogBody,
-  DialogFooter,
-  DialogHeader,
-} from "@material-tailwind/react";
 import { SearchUsers } from "components/search-users";
-import { UserContext } from "contexts/UserContext";
 import {
   addAccessGroupMembers,
   createAccessGroup,
@@ -14,18 +6,14 @@ import {
   getBulkAccessGroups,
   identity,
 } from "deso-protocol";
-import React, {
-  Fragment,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import ClipLoader from "react-spinners/ClipLoader";
-import { toast } from "react-toastify";
+import { Loader2 } from "lucide-react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { useStore } from "../store";
+import { toast } from "sonner";
 import { useMembers } from "../hooks/useMembers";
 import { useMobile } from "../hooks/useMobile";
 import { encryptAndSendNewMessage } from "../services/conversations.service";
+import { withAuth } from "../utils/with-auth";
 import { DEFAULT_KEY_MESSAGING_GROUP_NAME } from "../utils/constants";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { MyInput } from "./form/my-input";
@@ -36,7 +24,7 @@ export interface StartGroupChatProps {
 }
 
 export const StartGroupChat = ({ onSuccess }: StartGroupChatProps) => {
-  const { appUser } = useContext(UserContext);
+  const { appUser } = useStore();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [chatName, setChatName] = useState<string>("");
@@ -51,9 +39,7 @@ export const StartGroupChat = ({ onSuccess }: StartGroupChatProps) => {
   const handleOpen = () => setOpen(!open);
 
   useKeyDown(() => {
-    if (open) {
-      setOpen(false);
-    }
+    if (open) setOpen(false);
   }, ["Escape"]);
 
   useEffect(() => {
@@ -63,38 +49,23 @@ export const StartGroupChat = ({ onSuccess }: StartGroupChatProps) => {
     }
   }, [open]);
 
-  const isNameValid = () => {
-    return chatName && chatName.trim();
-  };
-
-  const areMembersValid = () => {
-    return Array.isArray(members) && members.length > 0;
-  };
+  const isNameValid = () => chatName && chatName.trim();
+  const areMembersValid = () => Array.isArray(members) && members.length > 0;
 
   const formSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-
     setFormTouched(true);
-
-    const formValid = isNameValid() && areMembersValid();
-    if (!formValid) {
-      return;
-    }
+    if (!isNameValid() || !areMembersValid()) return;
 
     const newGroupKey = await startGroupChat(
       chatName.trim(),
       members.map((e) => e.id)
     );
-    if (newGroupKey) {
-      onSuccess(newGroupKey);
-    }
+    if (newGroupKey) onSuccess(newGroupKey);
     handleOpen();
   };
 
-  const startGroupChat = async (
-    groupName: string,
-    memberKeys: Array<string>
-  ) => {
+  const startGroupChat = async (groupName: string, memberKeys: Array<string>) => {
     if (!appUser) {
       toast.error("You must be logged in to start a group chat.");
       return;
@@ -102,19 +73,17 @@ export const StartGroupChat = ({ onSuccess }: StartGroupChatProps) => {
 
     setLoading(true);
 
-    // TODO: maybe we should wrap all this up under a single convenience function in the deso-protocol package.
     try {
-      const accessGroupKeys = await identity.accessGroupStandardDerivation(
-        groupName
-      );
+      const accessGroupKeys = await identity.accessGroupStandardDerivation(groupName);
 
-      await createAccessGroup({
-        AccessGroupKeyName: groupName,
-        AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
-        AccessGroupPublicKeyBase58Check:
-          accessGroupKeys.AccessGroupPublicKeyBase58Check,
-        MinFeeRateNanosPerKB: 1000,
-      });
+      await withAuth(() =>
+        createAccessGroup({
+          AccessGroupKeyName: groupName,
+          AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+          AccessGroupPublicKeyBase58Check: accessGroupKeys.AccessGroupPublicKeyBase58Check,
+          MinFeeRateNanosPerKB: 1000,
+        })
+      );
 
       const groupMembersArray = Array.from(
         new Set([...memberKeys, appUser.PublicKeyBase58Check])
@@ -133,29 +102,26 @@ export const StartGroupChat = ({ onSuccess }: StartGroupChatProps) => {
       }
 
       const groupMemberList = await Promise.all(
-        AccessGroupEntries.map(async (accessGroupEntry) => {
-          return {
-            AccessGroupMemberPublicKeyBase58Check:
-              accessGroupEntry.AccessGroupOwnerPublicKeyBase58Check,
-            AccessGroupMemberKeyName: accessGroupEntry.AccessGroupKeyName,
-            EncryptedKey: await encrypt(
-              accessGroupEntry.AccessGroupPublicKeyBase58Check,
-              accessGroupKeys.AccessGroupPrivateKeyHex
-            ),
-          };
+        AccessGroupEntries.map(async (accessGroupEntry) => ({
+          AccessGroupMemberPublicKeyBase58Check:
+            accessGroupEntry.AccessGroupOwnerPublicKeyBase58Check,
+          AccessGroupMemberKeyName: accessGroupEntry.AccessGroupKeyName,
+          EncryptedKey: await encrypt(
+            accessGroupEntry.AccessGroupPublicKeyBase58Check,
+            accessGroupKeys.AccessGroupPrivateKeyHex
+          ),
+        }))
+      );
+
+      await withAuth(() =>
+        addAccessGroupMembers({
+          AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+          AccessGroupKeyName: groupName,
+          AccessGroupMemberList: groupMemberList,
+          MinFeeRateNanosPerKB: 1000,
         })
       );
 
-      await addAccessGroupMembers({
-        AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
-        AccessGroupKeyName: groupName,
-        AccessGroupMemberList: groupMemberList,
-        MinFeeRateNanosPerKB: 1000,
-      });
-
-      // And we'll send a message just so it pops up for convenience
-      // In this case we'll send it to ourselves. In most cases the
-      // recipient will be a different user.
       await encryptAndSendNewMessage(
         `Hi. This is my first message to "${groupName}"`,
         appUser.PublicKeyBase58Check,
@@ -166,9 +132,7 @@ export const StartGroupChat = ({ onSuccess }: StartGroupChatProps) => {
       return `${appUser.PublicKeyBase58Check}${accessGroupKeys.AccessGroupKeyName}`;
     } catch (e) {
       console.error(e);
-      toast.error(
-        "something went wrong while submitting the add members transaction"
-      );
+      toast.error("something went wrong while submitting the add members transaction");
     } finally {
       setLoading(false);
     }
@@ -179,126 +143,109 @@ export const StartGroupChat = ({ onSuccess }: StartGroupChatProps) => {
       <div className="flex text-lg items-center p-4 py-3 h-[69px] border-b border-t border-blue-800/30 justify-between">
         <h2 className="font-semibold text-xl text-white">My Chat</h2>
 
-        <Button
+        <button
           onClick={handleOpen}
-          className="bg-[#ffda59] text-[#6d4800] rounded-full py-2 hover:shadow-none normal-case text-sm px-4"
-          size="md"
+          className="bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black font-bold rounded-full py-2 hover:brightness-110 text-sm px-4 cursor-pointer"
         >
-          <div className="flex items-center ">
+          <div className="flex items-center">
             <span>Create Chat</span>
           </div>
-        </Button>
+        </button>
       </div>
 
-      <Dialog
-        open={open}
-        handler={handleOpen}
-        dismiss={{
-          enabled: false,
-        }}
-        className="bg-[#050e1d] text-blue-100 border border-blue-900 min-w-none max-w-none w-[90%] md:w-[40%]"
-      >
-        <DialogHeader className="text-blue-100 p-5 border-b border-blue-600/20">
-          Start New Group Chat
-        </DialogHeader>
-
-        <form name="start-group-chat-form" onSubmit={formSubmit}>
-          <DialogBody divider className="border-none p-5">
-            <div className="mb-4 md:mb-8">
-              <MyInput
-                label="Name"
-                error={
-                  formTouched && !isNameValid()
-                    ? "Group name must be defined"
-                    : ""
-                }
-                placeholder="Group name"
-                value={chatName}
-                setValue={setChatName}
-              />
-            </div>
-
-            <div className="mb-4">
-              <div className="text-lg font-semibold mb-2 text-blue-100">
-                Add Users to Your Group Chat
+      {open && (
+        <>
+          {/* Backdrop */}
+          <div className="fixed inset-0 bg-black/60 z-50" onClick={handleOpen} />
+          {/* Dialog */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-[#0a1019] text-white border border-white/10 w-[90%] md:w-[40%] rounded-2xl">
+              <div className="text-white text-xl font-semibold p-5 border-b border-white/10">
+                Start New Group Chat
               </div>
-              <SearchUsers
-                className="text-white placeholder:text-blue-100 bg-blue-900/20 placeholder-gray"
-                onSelected={(member) =>
-                  addMember(member, () => {
-                    setTimeout(() => {
-                      membersAreaRef.current?.scrollTo(
-                        0,
-                        membersAreaRef.current.scrollHeight
-                      );
-                    }, 0);
-                  })
-                }
-                error={
-                  formTouched && !areMembersValid()
-                    ? "At least one memeber must be added"
-                    : ""
-                }
-              />
 
-              <div
-                className="max-h-[400px] mt-1 pr-3 overflow-y-auto custom-scrollbar overflow-hidden"
-                ref={membersAreaRef}
-              >
-                {members.map((member) => (
-                  <div
-                    className="flex p-1.5 md:p-4 items-center cursor-pointer text-white bg-blue-900/20 border border-blue-600/20 rounded-md my-2"
-                    key={member.id}
-                  >
-                    <MessagingDisplayAvatar
-                      username={member.text}
-                      publicKey={member.id}
-                      diameter={isMobile ? 40 : 44}
-                      classNames="mx-0"
+              <form name="start-group-chat-form" onSubmit={formSubmit}>
+                <div className="p-5">
+                  <div className="mb-4 md:mb-8">
+                    <MyInput
+                      label="Name"
+                      error={formTouched && !isNameValid() ? "Group name must be defined" : ""}
+                      placeholder="Group name"
+                      value={chatName}
+                      setValue={setChatName}
                     />
-                    <div className="flex justify-between align-center flex-1 text-blue-100 overflow-auto">
-                      <span className="mx-2 md:ml-4 font-medium truncate my-auto">
-                        {member.text}
-                      </span>
-                      <Button
-                        size="sm"
-                        className="rounded-full mr-1 md:mr-3 px-3 py-2 border text-white bg-red-400/20 hover:bg-red-400/30 border-red-600/60 shadow-none hover:shadow-none normal-case text-sm md:px-4"
-                        onClick={() => removeMember(member.id)}
-                      >
-                        Remove
-                      </Button>
+                  </div>
+
+                  <div className="mb-4">
+                    <div className="text-lg font-semibold mb-2 text-white">
+                      Add Users to Your Group Chat
+                    </div>
+                    <SearchUsers
+                      className="text-white placeholder:text-gray-500 bg-white/5 border-white/10"
+                      onSelected={(member) =>
+                        addMember(member, () => {
+                          setTimeout(() => {
+                            membersAreaRef.current?.scrollTo(0, membersAreaRef.current.scrollHeight);
+                          }, 0);
+                        })
+                      }
+                      error={formTouched && !areMembersValid() ? "At least one member must be added" : ""}
+                    />
+
+                    <div
+                      className="max-h-[400px] mt-1 pr-3 overflow-y-auto custom-scrollbar overflow-hidden"
+                      ref={membersAreaRef}
+                    >
+                      {members.map((member) => (
+                        <div
+                          className="flex p-1.5 md:p-4 items-center cursor-pointer text-white bg-white/5 border border-white/8 rounded-xl my-2"
+                          key={member.id}
+                        >
+                          <MessagingDisplayAvatar
+                            username={member.text}
+                            publicKey={member.id}
+                            diameter={isMobile ? 40 : 44}
+                            classNames="mx-0"
+                          />
+                          <div className="flex justify-between align-center flex-1 text-white overflow-auto">
+                            <span className="mx-2 md:ml-4 font-medium truncate my-auto">
+                              {member.text}
+                            </span>
+                            <button
+                              className="rounded-full mr-1 md:mr-3 px-3 py-2 border text-white bg-red-400/20 hover:bg-red-400/30 border-red-600/60 text-sm md:px-4 cursor-pointer"
+                              onClick={() => removeMember(member.id)}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          </DialogBody>
+                </div>
 
-          <DialogFooter>
-            <Button
-              onClick={handleOpen}
-              className="rounded-full mr-3 py-2 bg-transparent border border-blue-600/60 shadow-none hover:shadow-none normal-case text-sm px-4"
-            >
-              <span>Cancel</span>
-            </Button>
-            <Button
-              type="submit"
-              className="bg-[#ffda59] text-[#6d4800] rounded-full py-2 hover:shadow-none normal-case text-sm px-4 flex items-center"
-              disabled={loading}
-            >
-              {loading && (
-                <ClipLoader
-                  color="white"
-                  loading={true}
-                  size={20}
-                  className="mr-2"
-                />
-              )}
-              <span>Create Chat</span>
-            </Button>
-          </DialogFooter>
-        </form>
-      </Dialog>
+                <div className="flex justify-end p-5 pt-0 gap-3">
+                  <button
+                    onClick={handleOpen}
+                    type="button"
+                    className="rounded-full py-2 bg-transparent border border-white/15 text-sm px-4 text-gray-300 hover:bg-white/5 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black font-bold rounded-full py-2 hover:brightness-110 text-sm px-4 flex items-center cursor-pointer"
+                    disabled={loading}
+                  >
+                    {loading && <Loader2 className="w-5 h-5 mr-2 animate-spin" />}
+                    <span>Create Chat</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </>
+      )}
     </Fragment>
   );
 };

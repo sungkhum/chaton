@@ -1,10 +1,4 @@
-import {
-  Button,
-  Dialog,
-  DialogBody,
-  DialogHeader,
-} from "@material-tailwind/react";
-import { AppUser } from "contexts/UserContext";
+import { AppUser } from "../store";
 import { identity } from "deso-protocol";
 import { Fragment } from "react";
 import { desoNanosToDeso } from "../utils/helpers";
@@ -18,22 +12,21 @@ export interface StartGroupChatProps {
 }
 
 export const SendFundsDialog = ({ appUser, onClose }: StartGroupChatProps) => {
-  const formSubmit = () => {
-    alert("form submitted");
-  };
   return (
     <Fragment>
-      <Dialog
-        open={true}
-        handler={onClose}
-        className="bg-[#050e1d] text-blue-100 border border-blue-900 min-w-none max-w-none w-[90%] md:w-[40%] max-h-[95%] overflow-y-auto custom-scrollbar"
-      >
-        <DialogHeader className="text-blue-100">
-          Get $DESO to get started
-        </DialogHeader>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/60 z-50"
+        onClick={onClose}
+      />
+      {/* Dialog */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="bg-[#050e1d] text-blue-100 border border-blue-900 w-[90%] md:w-[40%] max-h-[95%] overflow-y-auto custom-scrollbar rounded-lg">
+          <div className="text-blue-100 text-xl font-semibold p-5 border-b border-blue-600/20">
+            Get $DESO to get started
+          </div>
 
-        <form name="start-group-chat-form" onSubmit={formSubmit}>
-          <DialogBody divider>
+          <div className="p-5">
             <AlertNotification type="info">
               <div className="break-words text-black text-center">
                 No deso funds found for your address:
@@ -61,18 +54,17 @@ export const SendFundsDialog = ({ appUser, onClose }: StartGroupChatProps) => {
               </div>
 
               <div className="mt-1 md:mt-2">
-                <Button
-                  size="sm"
-                  variant="gradient"
+                <button
+                  className="bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm px-4 py-2 cursor-pointer"
                   onClick={() => identity.verifyPhoneNumber()}
                 >
                   Get $DESO
-                </Button>
+                </button>
               </div>
             </div>
-          </DialogBody>
-        </form>
-      </Dialog>
+          </div>
+        </div>
+      </div>
     </Fragment>
   );
 };

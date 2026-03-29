@@ -12,7 +12,8 @@ import {
   sendGroupChatMessage,
   waitForTransactionFound,
 } from "deso-protocol";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
+import { withAuth } from "../utils/with-auth";
 import {
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
   USER_TO_SEND_MESSAGE_TO,
@@ -190,7 +191,8 @@ export const encryptAndSendNewMessage = async (
   senderPublicKeyBase58Check: string,
   RecipientPublicKeyBase58Check: string,
   RecipientMessagingKeyName = DEFAULT_KEY_MESSAGING_GROUP_NAME,
-  SenderMessagingKeyName = DEFAULT_KEY_MESSAGING_GROUP_NAME
+  SenderMessagingKeyName = DEFAULT_KEY_MESSAGING_GROUP_NAME,
+  additionalExtraData: Record<string, string> = {}
 ): Promise<string> => {
   if (SenderMessagingKeyName !== DEFAULT_KEY_MESSAGING_GROUP_NAME) {
     return Promise.reject("sender must use default key for now");
@@ -209,7 +211,7 @@ export const encryptAndSendNewMessage = async (
 
   let message: string;
   let isUnencrypted = false;
-  const ExtraData: { [k: string]: string } = {};
+  const ExtraData: { [k: string]: string } = { ...additionalExtraData };
   if (response.RecipientAccessGroupKeyName) {
     message = await identity.encryptMessage(
       response.RecipientAccessGroupPublicKeyBase58Check,
@@ -245,9 +247,9 @@ export const encryptAndSendNewMessage = async (
     !RecipientMessagingKeyName ||
     RecipientMessagingKeyName === DEFAULT_KEY_MESSAGING_GROUP_NAME;
 
-  const { submittedTransactionResponse } = await (isDM
-    ? sendDMMessage(requestBody)
-    : sendGroupChatMessage(requestBody));
+  const { submittedTransactionResponse } = await withAuth(() =>
+    isDM ? sendDMMessage(requestBody) : sendGroupChatMessage(requestBody)
+  );
 
   if (!submittedTransactionResponse) {
     throw new Error("Failed to submit transaction for sending message.");

@@ -1,10 +1,10 @@
-import { UserContext } from "contexts/UserContext";
+import { useStore } from "../store";
 import {
   getBulkAccessGroups,
   getPaginatedAccessGroupMembers,
 } from "deso-protocol";
 import { useContext, useEffect, useState } from "react";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import {
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
   MAX_MEMBERS_IN_GROUP_SUMMARY_SHOWN,
@@ -18,7 +18,7 @@ export function useMembers(
   open: boolean,
   conversation?: Conversation
 ) {
-  const { appUser } = useContext(UserContext);
+  const { appUser } = useStore();
   const [members, setMembers] = useState<Array<SearchMenuItem>>([]);
   const [currentMemberKeys, setCurrentMemberKeys] = useState<Array<string>>([]);
 

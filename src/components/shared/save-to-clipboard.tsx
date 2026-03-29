@@ -1,7 +1,6 @@
 import { useState, ReactNode } from "react";
 import { copyTextToClipboard } from "../../utils/helpers";
-import { toast } from "react-toastify";
-import { Tooltip } from "@material-tailwind/react";
+import { toast } from "sonner";
 
 const CHANGE_ICON_TIME_MS = 1500;
 
@@ -51,7 +50,7 @@ export const SaveToClipboard = ({
   );
 
   return (
-    <Tooltip content="Copied" open={isCopied}>
+    <div className="relative inline-block">
       <div
         className={`flex items-center ${className}`}
         onClick={handleCopyClick}
@@ -66,6 +65,11 @@ export const SaveToClipboard = ({
           {children}
         </div>
       </div>
-    </Tooltip>
+      {isCopied && (
+        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-50">
+          Copied
+        </div>
+      )}
+    </div>
   );
 };

@@ -1,6 +1,5 @@
 import { FC, useState } from "react";
-import ClipLoader from "react-spinners/ClipLoader";
-import { Button } from "@material-tailwind/react";
+import { Loader2 } from "lucide-react";
 
 export const MessagingConversationButton: FC<{
   onClick: () => void;
@@ -11,15 +10,14 @@ export const MessagingConversationButton: FC<{
       <h2 className="text-2xl font-bold mb-3 text-white">
         Awesome, we're ready!
       </h2>
-      <p className="text-lg mb-5 text-blue-300/60">
+      <p className="text-lg mb-5 text-gray-400">
         The app will generate a test conversation for you.
         <br />
         Just press the button below to continue.
       </p>
 
-      <Button
-        size="lg"
-        className="bg-[#ffda59] text-[#6d4800] rounded-full hover:shadow-none normal-case text-lg"
+      <button
+        className="bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black font-bold rounded-full hover:brightness-110 text-lg px-6 py-3 cursor-pointer"
         onClick={async () => {
           setIsSending(true);
           try {
@@ -32,17 +30,12 @@ export const MessagingConversationButton: FC<{
       >
         <div className="flex justify-center">
           {isSending ? (
-            <ClipLoader
-              color={"#0d3679"}
-              loading={true}
-              size={28}
-              className="mx-2"
-            />
+            <Loader2 className="w-7 h-7 mx-2 animate-spin" />
           ) : (
             <div className="mx-2">Load Conversations</div>
           )}
         </div>
-      </Button>
+      </button>
     </div>
   );
 };

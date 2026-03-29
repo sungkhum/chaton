@@ -1,103 +1,254 @@
-import { KeyboardEvent, useState } from "react";
-import { Button, Textarea } from "@material-tailwind/react";
-import { toast } from "react-toastify";
+import { KeyboardEvent, useEffect, useRef, useState } from "react";
+import { Send, Image, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { EmojiPickerButton } from "./compose/emoji-picker-button";
+import { GifPicker } from "./compose/gif-picker";
+import { VoiceRecorder } from "./compose/voice-recorder";
+import { GiphyGif } from "../services/giphy.service";
+import { uploadImage, uploadVideoFile } from "../services/media.service";
+import { ReplyBanner } from "./compose/reply-banner";
+import { useDraftMessages } from "../hooks/useDraftMessages";
 
 export interface SendMessageButtonAndInputProps {
-  onClick: (messageToSend: string) => void;
+  onClick: (messageToSend: string, extraData?: Record<string, string>) => void;
+  replyTo?: { text: string; timestamp: string } | null;
+  onCancelReply?: () => void;
+  conversationKey?: string;
 }
 
 export const SendMessageButtonAndInput = ({
   onClick,
+  replyTo,
+  onCancelReply,
+  conversationKey = "",
 }: SendMessageButtonAndInputProps) => {
   const [isSending, setIsSending] = useState(false);
-  const [messageToSend, setMessageToSend] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { getDraft, setDraft, clearDraft } = useDraftMessages();
 
-  const sendMessage = async () => {
-    if (messageToSend === "") {
+  // Draft persistence
+  const [messageToSend, setMessageToSend] = useState(() =>
+    conversationKey ? getDraft(conversationKey) : ""
+  );
+
+  // Load draft when conversation changes
+  useEffect(() => {
+    if (conversationKey) {
+      setMessageToSend(getDraft(conversationKey));
+    }
+  }, [conversationKey]);
+
+  // Save draft on change
+  useEffect(() => {
+    if (conversationKey) {
+      setDraft(conversationKey, messageToSend);
+    }
+  }, [messageToSend, conversationKey]);
+
+  const sendMessage = async (text?: string, extraData?: Record<string, string>) => {
+    const msg = text || messageToSend;
+    if (!msg && !extraData) {
       toast.warning("The provided message is empty");
       return;
     }
     if (isSending) {
-      toast.warning(
-        "Going too fast! Please wait a second before sending another message"
-      );
+      toast.warning("Going too fast! Please wait a second before sending another message");
       return;
     }
     setIsSending(true);
     setMessageToSend("");
+    if (conversationKey) clearDraft(conversationKey);
     try {
-      await onClick(messageToSend);
+      await onClick(msg, extraData);
     } catch (e) {
-      // If the onClick handler failed, reset the messageToSend
-      // so the sender doesn't lose it.
-      setMessageToSend(messageToSend);
+      setMessageToSend(msg);
     }
     setIsSending(false);
+    textareaRef.current?.focus();
   };
 
-  // Pressing the Enter key during Japanese conversion has prevented the message from being sent in the middle of the conversion.
-  // The same phenomenon should occur in Chinese and other languages.
-  // We have also confirmed that it works in English.
   const canSend = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-      return true;
-    }
-    return false;
+    return e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing;
   };
+
+  const insertAtCursor = (text: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      setMessageToSend((prev) => prev + text);
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newValue =
+      messageToSend.slice(0, start) + text + messageToSend.slice(end);
+    setMessageToSend(newValue);
+    requestAnimationFrame(() => {
+      textarea.selectionStart = textarea.selectionEnd = start + text.length;
+      textarea.focus();
+    });
+  };
+
+  const handleGifSelect = (gif: GiphyGif) => {
+    sendMessage(gif.title || "GIF", {
+      "chattra:type": "gif",
+      "chattra:gifUrl": gif.images.fixed_width.url,
+      "chattra:gifTitle": gif.title,
+      "chattra:mediaWidth": gif.images.fixed_width.width,
+      "chattra:mediaHeight": gif.images.fixed_width.height,
+    });
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+
+    setIsUploading(true);
+    try {
+      const result = await uploadImage(file);
+      await sendMessage(file.name, {
+        "chattra:type": "image",
+        "chattra:imageUrl": result.ImageURL,
+      });
+    } catch (err: any) {
+      toast.error(`Image upload failed: ${err.message || err}`);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          const fakeEvent = {
+            target: { files: [file], value: "" },
+          } as unknown as React.ChangeEvent<HTMLInputElement>;
+          handleImageUpload(fakeEvent);
+        }
+        return;
+      }
+    }
+  };
+
+  const handleVoiceNoteSend = async (blob: Blob, duration: number) => {
+    setIsUploading(true);
+    try {
+      const file = new File([blob], "voice-note.webm", { type: blob.type || "audio/webm" });
+      const result = await uploadVideoFile(file);
+      await sendMessage("Voice note", {
+        "chattra:type": "voice-note",
+        "chattra:videoUrl": result.url,
+        "chattra:duration": String(duration),
+      });
+    } catch (err: any) {
+      toast.error(`Voice note upload failed: ${err.message || err}`);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Auto-grow textarea
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMessageToSend(e.target.value);
+    const textarea = e.target;
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 150)}px`;
+  };
+
+  const hasText = messageToSend.trim().length > 0;
 
   return (
-    <div className="relative flex justify-center items-start w-full p-0 pb-2 md:p-4 md:pb-2">
-      <div className="flex-1">
-        <div className="hidden md:block relative">
-          <div className="relative">
-            <p className="text-left text-blue-300/60 mb-3 text-xs">
-              Press <code className="text-blue-300">Shift + Return</code> for paragraph breaks.
-            </p>
-            <Textarea
-              className="p-2 pr-[200px] text-blue-100 bg-black/70 border-blue-gray-100 focus:shadow-none border-none focus:border-solid flex-1"
-              label="What's on your mind?"
-              onChange={(e) => {
-                setMessageToSend(e.target.value);
-              }}
-              onKeyDown={async (e) => {
-                if (canSend(e)) {
-                  await sendMessage();
-                }
-              }}
-              onKeyUp={(e) => {
-                if (canSend(e)) {
-                  setMessageToSend(messageToSend.trim());
-                }
-              }}
-              value={messageToSend}
+    <div className="w-full px-3 pb-3 md:px-6 md:pb-4">
+      {replyTo && (
+        <ReplyBanner replyTo={replyTo.text} onCancel={() => onCancelReply?.()} />
+      )}
+
+      <div className="flex items-center gap-1 bg-[#0a1019] rounded-2xl border border-white/8 px-2 py-1.5">
+        {/* Attachment button */}
+        <label className={`p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors ${isUploading ? "opacity-50 pointer-events-none" : ""}`}>
+          {isUploading ? (
+            <Loader2 className="w-[18px] h-[18px] animate-spin" />
+          ) : (
+            <Image className="w-[18px] h-[18px]" />
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageUpload}
+            disabled={isUploading}
+          />
+        </label>
+
+        {/* GIF button */}
+        <div className="relative shrink-0">
+          <button
+            onClick={() => setShowGifPicker(!showGifPicker)}
+            className="px-1.5 py-2 text-gray-500 hover:text-[#34F080] cursor-pointer font-extrabold text-[11px] tracking-wide transition-colors"
+            type="button"
+          >
+            GIF
+          </button>
+          {showGifPicker && (
+            <GifPicker
+              onSelect={handleGifSelect}
+              onClose={() => setShowGifPicker(false)}
             />
-          </div>
+          )}
         </div>
 
-        <div className="visible md:hidden">
-          <textarea
-            className="w-full h-[92px] p-2 text-base text-blue-100 bg-black/70 border-blue-gray-100 focus:shadow-none border-none focus:border-solid flex-1 rounded-[7px]"
-            onChange={(e) => {
-              setMessageToSend(e.target.value);
-            }}
-            placeholder="What's on your mind?"
-            value={messageToSend}
-          />
+        {/* Emoji button */}
+        <div className="shrink-0">
+          <EmojiPickerButton onEmojiSelect={insertAtCursor} />
         </div>
-      </div>
-      <div className="flex h-[100px] items-center absolute right-[10px] top-[10px] lg:right-[30px] lg:top-[30px]">
-        <Button
-          onClick={sendMessage}
-          className="bg-[#ffda59] ml-4 px-2 py-2 text-[#6d4800] center rounded-full hover:shadow-none normal-case text-lg"
-        >
-          <div className="flex justify-center md:w-[80px]">
-            <div className="hidden md:block mx-2">Send</div>
-            <div className="visible md:hidden mx-2">
-              <img src="/assets/send.png" width={18} alt="send" />
-            </div>
+
+        {/* Auto-growing textarea */}
+        <textarea
+          ref={textareaRef}
+          className="flex-1 bg-transparent text-white text-[15px] outline-none resize-none min-h-[36px] max-h-[150px] py-[7px] placeholder:text-gray-600 leading-snug"
+          placeholder="Message..."
+          value={messageToSend}
+          onChange={handleTextareaChange}
+          onKeyDown={async (e) => {
+            if (canSend(e)) {
+              e.preventDefault();
+              await sendMessage();
+            }
+          }}
+          onPaste={handlePaste}
+          rows={1}
+        />
+
+        {/* Send or Voice note button */}
+        {hasText ? (
+          <button
+            onClick={() => sendMessage()}
+            disabled={isSending}
+            className="p-2 rounded-full shrink-0 bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black hover:brightness-110 cursor-pointer transition-colors"
+            type="button"
+          >
+            {isSending ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Send className="w-5 h-5" />
+            )}
+          </button>
+        ) : (
+          <div className="shrink-0">
+            <VoiceRecorder onSend={handleVoiceNoteSend} />
           </div>
-        </Button>
+        )}
       </div>
+
+      <p className="text-gray-600 text-[10px] mt-1 ml-2 hidden md:block">
+        <kbd className="text-gray-500">Shift+Enter</kbd> for new line
+      </p>
     </div>
   );
 };

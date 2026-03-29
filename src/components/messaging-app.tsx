@@ -1,5 +1,5 @@
-import { Card, CardBody } from "@material-tailwind/react";
-import { UserContext } from "contexts/UserContext";
+import { Loader2, CheckCircle } from "lucide-react";
+import { useStore } from "../store";
 import {
   ChatType,
   DecryptedMessageEntryResponse,
@@ -11,11 +11,8 @@ import {
   PublicKeyToProfileEntryResponseMap,
 } from "deso-protocol";
 import { useInterval } from "hooks/useInterval";
-import difference from "lodash/difference";
 import { FC, useContext, useEffect, useRef, useState } from "react";
-import ClipLoader from "react-spinners/ClipLoader";
-import { toast } from "react-toastify";
-import { RefreshContext } from "../contexts/RefreshContext";
+import { toast } from "sonner";
 import { useMobile } from "../hooks/useMobile";
 import {
   decryptAccessGroupMessagesWithRetry,
@@ -48,7 +45,6 @@ import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { MessagingSetupButton } from "./messaging-setup-button";
 import { shortenLongWord } from "./search-users";
 import { SendMessageButtonAndInput } from "./send-message-button-and-input";
-import { IoCheckmarkCircle } from "react-icons/io5";
 
 export const MockBubble: FC<{
     username: string;
@@ -69,11 +65,11 @@ export const MockBubble: FC<{
         <div className="flex flex-row items-start gap-3">
           <div className="flex flex-col w-[60px] top-2 relative justify-center items-center">
             <img src={avatar} className="w-[38px] rounded-full mb-2"/>
-            <span className="whitespace-nowrap text-xs text-blue-100/30">{timestamp}</span>
+            <span className="whitespace-nowrap text-xs text-gray-500">{timestamp}</span>
           </div>
           <div className="flex flex-col items-start">
-            <div className="mb-2 text-blue-300/80 text-xs">{username}</div>
-            <div className="text-xs w-auto bg-blue-200/20 rounded-2xl rounded-tl-none rounded-bl-xl pl-5 mt-auto mb-2 md:mb-5 py-2 px-2 md:px-4 text-white break-words flex text-left relative items-center">
+            <div className="mb-2 text-[#34F080] text-xs">{username}</div>
+            <div className="text-xs w-auto bg-[#141c2b] border border-white/6 rounded-2xl rounded-bl-sm pl-5 mt-auto mb-2 md:mb-5 py-2 px-2 md:px-4 text-white break-words flex text-left relative items-center">
               <div className="text-white text-sm">{text}</div>
             </div>
           </div>
@@ -83,11 +79,11 @@ export const MockBubble: FC<{
         <div className="flex flex-row-reverse items-start gap-3">
           <div className="flex flex-col w-[60px] justify-center items-center">
             <img src={avatar} className="w-[38px] rounded-full mb-2"/>
-            <span className="whitespace-nowrap text-xs text-blue-100/30">{timestamp}</span>
+            <span className="whitespace-nowrap text-xs text-gray-500">{timestamp}</span>
           </div>
           <div className="flex flex-col items-end">
-            <div className="mb-2 text-blue-300/80 text-xs">{username}</div>
-            <div className="bg-blue-900/70 text-blue-100 rounded-2xl rounded-tr-none rounded-br-xl pl-5 mt-auto mb-2 md:mb-5 py-2 px-2 md:px-4 break-words inline-flex text-left relative items-center">
+            <div className="mb-2 text-[#34F080] text-xs">{username}</div>
+            <div className="bg-[#0d2818] border border-[#34F080]/15 text-white rounded-2xl rounded-br-sm pl-5 mt-auto mb-2 md:mb-5 py-2 px-2 md:px-4 break-words inline-flex text-left relative items-center">
               <div className="text-white text-sm">{text}</div>
             </div>
           </div>
@@ -98,9 +94,8 @@ export const MockBubble: FC<{
 };
 
 export const MessagingApp: FC = () => {
-  const { appUser, isLoadingUser, allAccessGroups, setAllAccessGroups } =
-    useContext(UserContext);
-  const { lockRefresh, setLockRefresh } = useContext(RefreshContext);
+  const { appUser, isLoadingUser, allAccessGroups, setAllAccessGroups, lockRefresh, setLockRefresh } =
+    useStore();
   const [usernameByPublicKeyBase58Check, setUsernameByPublicKeyBase58Check] =
     useState<{ [key: string]: string }>({});
   const [autoFetchConversations, setAutoFetchConversations] = useState(false);
@@ -113,6 +108,10 @@ export const MessagingApp: FC = () => {
   const [membersByGroupKey, setMembersByGroupKey] = useState<{
     [groupKey: string]: PublicKeyToProfileEntryResponseMap;
   }>({});
+  const [replyToMessage, setReplyToMessage] = useState<{
+    text: string;
+    timestamp: string;
+  } | null>(null);
   const { isMobile } = useMobile();
 
   // Dependencies of useInterval must use `useRef` to get the most recent state
@@ -196,43 +195,45 @@ export const MessagingApp: FC = () => {
         initConversationKey === selectedConversationPublicKeyRef.current
       ) {
         // Live updates to the current conversation.
-        // We get the last processed message and inject the unread messages into existing conversation
+        // Merge blockchain-confirmed messages with any remaining optimistic messages.
         setConversations((conversations) => {
           const currentMessages =
             conversations[selectedConversationPublicKey].messages;
-
-          // This takes the last processed message, meaning we filter out mocked messages sent by current user
-          const lastProcessedMessageIdx = currentMessages.findIndex(
-            (e) => e.MessageInfo.TimestampNanosString
-          );
-
           const updatedMessages =
             updatedConversations[selectedConversationPublicKey].messages;
-          const lastProcessedMessageIdxInUpdated = currentMessages[
-            lastProcessedMessageIdx
-          ]
-            ? updatedMessages.findIndex(
-                (e) =>
-                  e.MessageInfo.TimestampNanosString ===
-                  currentMessages[lastProcessedMessageIdx].MessageInfo
-                    .TimestampNanosString
-              )
-            : -1;
 
-          const unreadMessages =
-            lastProcessedMessageIdxInUpdated > 0
-              ? updatedMessages.slice(0, lastProcessedMessageIdxInUpdated)
-              : [];
+          // Separate optimistic (local) messages from confirmed ones
+          const optimisticMessages = currentMessages.filter(
+            (m: any) => m._localId && m._status !== "sent"
+          );
+
+          // Build a set of confirmed timestamps+senders for deduplication
+          const confirmedKeys = new Set(
+            updatedMessages.map(
+              (m) =>
+                m.SenderInfo.OwnerPublicKeyBase58Check +
+                ":" +
+                m.DecryptedMessage?.slice(0, 50)
+            )
+          );
+
+          // Keep only optimistic messages that don't yet have a blockchain counterpart
+          const stillPendingOptimistic = optimisticMessages.filter(
+            (m: any) =>
+              !confirmedKeys.has(
+                m.SenderInfo.OwnerPublicKeyBase58Check +
+                  ":" +
+                  m.DecryptedMessage?.slice(0, 50)
+              )
+          );
 
           return {
             ...updatedConversations,
             [selectedConversationPublicKey]: {
               ...conversations[selectedConversationPublicKey],
               messages: [
-                ...unreadMessages,
-                ...conversations[selectedConversationPublicKey].messages.slice(
-                  lastProcessedMessageIdx
-                ),
+                ...stillPendingOptimistic,
+                ...updatedMessages,
               ],
             },
           };
@@ -246,10 +247,8 @@ export const MessagingApp: FC = () => {
   );
 
   const fetchUsersStateless = async (newPublicKeysToGet: Array<string>) => {
-    const diff = difference(
-      newPublicKeysToGet,
-      Object.keys(usernameByPublicKeyBase58Check)
-    );
+    const existingKeys = Object.keys(usernameByPublicKeyBase58Check);
+    const diff = newPublicKeysToGet.filter((k) => !existingKeys.includes(k));
 
     if (diff.length === 0) {
       return Promise.resolve(usernameByPublicKeyBase58Check);
@@ -554,20 +553,15 @@ export const MessagingApp: FC = () => {
         loading) && (
         <div className="m-auto relative top-8 overflow-hidden pt-[30px] pb-[50px]">
           <div className="bg-gradient"></div>
-          <Card className="w-full lg:max-w-[1200px] m-auto bg-transparent p-0 shadow-none">
-            <CardBody>
+          <div className="w-full lg:max-w-[1200px] m-auto bg-transparent p-0 shadow-none">
+            <div>
               {(autoFetchConversations || isLoadingUser || loading) && (
                 <div className="text-center">
                   <span className="font-bold text-white text-xl">
                     Loading Your Chat Experience
                   </span>
                   <br />
-                  <ClipLoader
-                    color={"#0d3679"}
-                    loading={true}
-                    size={44}
-                    className="mt-4"
-                  />
+                  <Loader2 className="w-11 h-11 mt-4 animate-spin text-[#34F080] mx-auto" />
                 </div>
               )}
               {!autoFetchConversations &&
@@ -582,7 +576,7 @@ export const MessagingApp: FC = () => {
                             <h2 className="text-2xl font-bold mb-3 text-white">
                               Set up your account
                             </h2>
-                            <p className="text-lg mb-6 text-blue-300/60">
+                            <p className="text-lg mb-6 text-gray-400">
                               It seems like your account needs more configuration
                               to be able to send messages. Press the button below
                               to set it up automatically
@@ -593,27 +587,27 @@ export const MessagingApp: FC = () => {
                             <h2 className="text-3xl lg:text-3xl font-semibold mb-6 text-white">
                               Chat with anyone, on DeSo or Ethereum. Without the risk of being censored.
                             </h2>
-                            <p className="text-sm mb-5 text-blue-300/60">
+                            <p className="text-sm mb-5 text-gray-400">
                               DeSo Chat Protocol is a censorship-resistant messaging
                               protocol built on top of the DeSo blockchain. It enables fully decentralized cross-chain 
                               messaging between DeSo and Ethereum wallets (and soon, Solana). 
                             </p>
-                            <p className="text-sm mb-5 text-blue-300/60">
+                            <p className="text-sm mb-5 text-gray-400">
                               This is possible due to DeSo's infinite-state blockchain & derived keys cryptography.
                             </p>
-                            <p className="text-sm mb-5 text-blue-300/60">
+                            <p className="text-sm mb-5 text-gray-400">
                               Messages are stored directly on-chain, at an average cost of ~$0.000002 (<em>basically free</em>), with end-to-end encryption, and support for DMs & group chats — including fully on-chain social, identity, creator coins, tokens & NFTs.
                             </p>                            
                           </div>
                         )}
                       </div>
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 mb-6 text-green-500">
-                          <div className="flex items-center gap-2"><IoCheckmarkCircle className="text-xl"/> E2EE messages & group chats</div>
-                          <div className="flex items-center gap-2"><IoCheckmarkCircle className="text-xl"/> 100% on-chain (fully synced)</div>
-                          <div className="flex items-center gap-2"><IoCheckmarkCircle className="text-xl"/> Sign in with DeSo & MetaMask</div>
-                          <div className="flex items-center gap-2"><IoCheckmarkCircle className="text-xl"/> Message DeSo & Ethereum wallets</div>
-                          <div className="flex items-center gap-2"><IoCheckmarkCircle className="text-xl"/> Open-source & built on DeSo</div>
-                          <div className="flex items-center gap-2"><IoCheckmarkCircle className="text-xl"/> On-chain social, identity & assets</div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 mb-6 text-[#34F080]">
+                          <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5"/> E2EE messages & group chats</div>
+                          <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5"/> 100% on-chain (fully synced)</div>
+                          <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5"/> Sign in with DeSo & MetaMask</div>
+                          <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5"/> Message DeSo & Ethereum wallets</div>
+                          <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5"/> Open-source & built on DeSo</div>
+                          <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5"/> On-chain social, identity & assets</div>
                       </div>
                       <MessagingSetupButton />
                       <p className="mt-5 text-sm mb-5 text-blue-300/40">
@@ -706,8 +700,8 @@ export const MessagingApp: FC = () => {
                     onClick={rehydrateConversation}
                   />
                 )}
-            </CardBody>
-          </Card>
+            </div>
+          </div>
         </div>
       )}
       {hasSetupMessaging(appUser) &&
@@ -715,8 +709,8 @@ export const MessagingApp: FC = () => {
         appUser &&
         !isLoadingUser &&
         !loading && (
-          <div className="flex h-full border-t border-blue-300/20">
-            <Card className="w-full md:w-[400px] border-r border-blue-800/30 bg-black/40 rounded-none border-solid shrink-0">
+          <div className="flex h-full">
+            <div className="w-full md:w-[340px] border-r border-white/5 bg-[#080d16] shrink-0">
               <MessagingConversationAccount
                 rehydrateConversation={rehydrateConversation}
                 onClick={async (key: string) => {
@@ -745,17 +739,17 @@ export const MessagingApp: FC = () => {
                 }
                 selectedConversationPublicKey={selectedConversationPublicKey}
               />
-            </Card>
+            </div>
 
             <div
-              className={`w-full md:w-[calc(100vw-400px)] bg-[#050e1d] md:ml-0 md:z-auto ${
+              className={`w-full md:w-[calc(100vw-340px)] bg-[#0a1019] md:ml-0 md:z-auto ${
                 selectedConversationPublicKey ? "ml-[-100%] z-50" : ""
               }`}
             >
               <header
                 className={`flex justify-between ${
                   !isGroupChat ? "md:hidden" : ""
-                } items-center border-b border-t border-blue-200/20 relative px-5 md:px-4 h-[69px]`}
+                } items-center border-b border-white/5 relative px-4 md:px-5 h-14`}
               >
                 <div
                   className="cursor-pointer py-4 pl-0 pr-6 md:hidden"
@@ -769,7 +763,7 @@ export const MessagingApp: FC = () => {
                   (selectedConversation.messages[0] ||
                     (!isGroupChat &&
                       selectedConversation.firstMessagePublicKey)) && (
-                    <div className="text-white font-bold text-lg truncate px-2 md:hidden">
+                    <div className="text-white font-bold text-base truncate px-2 md:hidden">
                       {!isGroupChat &&
                       !getCurrentChatName().startsWith(PUBLIC_KEY_PREFIX)
                         ? "@"
@@ -778,7 +772,7 @@ export const MessagingApp: FC = () => {
                     </div>
                   )}
                 <div
-                  className={`text-blue-300/70 items-center hidden ${
+                  className={`text-gray-400 items-center hidden ${
                     isGroupOwner ? "md:block" : "md:hidden"
                   }`}
                 >
@@ -812,20 +806,15 @@ export const MessagingApp: FC = () => {
                 </div>
               </header>
 
-              <Card
-                className={`pr-2 rounded-none w-[100%] bg-transparent ml-[calc-400px] pb-0 h-[calc(100%-69px)] ${
+              <div
+                className={`pr-2 rounded-none w-[100%] bg-transparent ml-[calc-340px] pb-0 h-[calc(100%-56px)] ${
                   isGroupChat ? "" : "md:h-full"
                 }`}
               >
                 <div className="border-none flex flex-col justify-between h-full">
                   <div className="max-h-[calc(100%-130px)] overflow-hidden">
                     {loadingConversation ? (
-                      <ClipLoader
-                        color={"#0d3679"}
-                        loading={true}
-                        size={44}
-                        className="mt-4"
-                      />
+                      <Loader2 className="w-11 h-11 mt-4 animate-spin text-[#34F080] mx-auto" />
                     ) : (
                       <MessagingBubblesAndAvatar
                         conversationPublicKey={pubKeyPlusGroupName}
@@ -843,13 +832,117 @@ export const MessagingApp: FC = () => {
                             },
                           }));
                         }}
+                        onReply={(msg) =>
+                          setReplyToMessage({
+                            text: msg.DecryptedMessage || "",
+                            timestamp: msg.MessageInfo.TimestampNanosString,
+                          })
+                        }
+                        onReact={async (timestampNanosString, emoji) => {
+                          if (!appUser) return;
+                          const recipientPublicKey =
+                            selectedConversation.ChatType === ChatType.DM
+                              ? selectedConversation.firstMessagePublicKey
+                              : selectedConversation.messages[0].RecipientInfo
+                                  .OwnerPublicKeyBase58Check;
+                          const recipientKeyName =
+                            selectedConversation.ChatType === ChatType.DM
+                              ? DEFAULT_KEY_MESSAGING_GROUP_NAME
+                              : selectedConversation.messages[0].RecipientInfo
+                                  .AccessGroupKeyName;
+
+                          // Optimistic: insert a mock reaction message immediately
+                          const convKey = selectedConversationPublicKey;
+                          const localId = `local-reaction-${Date.now()}-${Math.random()}`;
+                          const TimestampNanos = new Date().getTime() * 1e6;
+                          const mockReaction = {
+                            DecryptedMessage: emoji,
+                            IsSender: true,
+                            _status: "sending" as const,
+                            _localId: localId,
+                            SenderInfo: {
+                              OwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+                              AccessGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                            },
+                            RecipientInfo: {
+                              OwnerPublicKeyBase58Check: recipientPublicKey,
+                              AccessGroupKeyName: recipientKeyName,
+                            },
+                            MessageInfo: {
+                              TimestampNanos,
+                              TimestampNanosString: String(TimestampNanos),
+                              ExtraData: {
+                                "chattra:type": "reaction",
+                                "chattra:replyTo": timestampNanosString,
+                                "chattra:emoji": emoji,
+                              },
+                            },
+                          } as DecryptedMessageEntryResponse & { _status: string; _localId: string };
+
+                          setConversations((prev) => ({
+                            ...prev,
+                            [convKey]: {
+                              ...prev[convKey],
+                              messages: [mockReaction, ...prev[convKey].messages],
+                            },
+                          }));
+
+                          try {
+                            await encryptAndSendNewMessage(
+                              emoji,
+                              appUser.PublicKeyBase58Check,
+                              recipientPublicKey,
+                              recipientKeyName,
+                              DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                              {
+                                "chattra:type": "reaction",
+                                "chattra:replyTo": timestampNanosString,
+                                "chattra:emoji": emoji,
+                              }
+                            );
+                            // Mark as sent
+                            setConversations((prev) => ({
+                              ...prev,
+                              [convKey]: {
+                                ...prev[convKey],
+                                messages: prev[convKey].messages.map((m: any) =>
+                                  m._localId === localId ? { ...m, _status: "sent" } : m
+                                ),
+                              },
+                            }));
+                          } catch (e) {
+                            // Remove failed optimistic reaction
+                            setConversations((prev) => ({
+                              ...prev,
+                              [convKey]: {
+                                ...prev[convKey],
+                                messages: prev[convKey].messages.filter(
+                                  (m: any) => m._localId !== localId
+                                ),
+                              },
+                            }));
+                            toast.error("Failed to send reaction");
+                          }
+                        }}
                       />
                     )}
                   </div>
 
                   <SendMessageButtonAndInput
                     key={selectedConversationPublicKey}
-                    onClick={async (messageToSend: string) => {
+                    conversationKey={selectedConversationPublicKey}
+                    replyTo={replyToMessage}
+                    onCancelReply={() => setReplyToMessage(null)}
+                    onClick={async (messageToSend: string, extraData?: Record<string, string>) => {
+                      // Merge reply data into extraData if replying
+                      if (replyToMessage) {
+                        extraData = {
+                          ...extraData,
+                          "chattra:replyTo": replyToMessage.timestamp,
+                          "chattra:replyPreview": replyToMessage.text.slice(0, 100),
+                        };
+                        setReplyToMessage(null);
+                      }
                       // Generate a mock message to display in the UI to give
                       // the user immediate feedback.
                       const TimestampNanos = new Date().getTime() * 1e6;
@@ -863,9 +956,12 @@ export const MessagingApp: FC = () => {
                           ? DEFAULT_KEY_MESSAGING_GROUP_NAME
                           : selectedConversation.messages[0].RecipientInfo
                               .AccessGroupKeyName;
+                      const localId = `local-${Date.now()}-${Math.random()}`;
                       const mockMessage = {
                         DecryptedMessage: messageToSend,
                         IsSender: true,
+                        _status: "sending" as const,
+                        _localId: localId,
                         SenderInfo: {
                           OwnerPublicKeyBase58Check:
                             appUser.PublicKeyBase58Check,
@@ -877,46 +973,55 @@ export const MessagingApp: FC = () => {
                         },
                         MessageInfo: {
                           TimestampNanos,
+                          TimestampNanosString: String(TimestampNanos),
+                          ExtraData: extraData || {},
                         },
-                      } as DecryptedMessageEntryResponse;
-                      // Put this new message into the conversations object.
-                      const oldMessages =
-                        conversations[selectedConversationPublicKey].messages;
-                      const newMessages = [mockMessage, ...oldMessages];
-                      setConversations((prevConversations) => ({
-                        ...prevConversations,
-                        [selectedConversationPublicKey]: {
-                          ...prevConversations[selectedConversationPublicKey],
-                          messages: newMessages,
+                      } as DecryptedMessageEntryResponse & { _status: string; _localId: string };
+
+                      // Optimistic: insert immediately with "sending" status
+                      const convKey = selectedConversationPublicKey;
+                      setConversations((prev) => ({
+                        ...prev,
+                        [convKey]: {
+                          ...prev[convKey],
+                          messages: [mockMessage, ...prev[convKey].messages],
                         },
                       }));
                       setLockRefresh(true);
 
                       try {
-                        // Try sending the message
                         await encryptAndSendNewMessage(
                           messageToSend,
                           appUser.PublicKeyBase58Check,
                           recipientPublicKey,
                           recipientAccessGroupKeyName,
-                          DEFAULT_KEY_MESSAGING_GROUP_NAME
+                          DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                          extraData
                         );
+                        // Update status to "sent" (blockchain accepted)
+                        setConversations((prev) => ({
+                          ...prev,
+                          [convKey]: {
+                            ...prev[convKey],
+                            messages: prev[convKey].messages.map((m: any) =>
+                              m._localId === localId ? { ...m, _status: "sent" } : m
+                            ),
+                          },
+                        }));
                       } catch (e: any) {
-                        // If we fail to send the message for any reason, remove the mock message
-                        // by shifting the newMessages array and then updating the conversations
-                        // object.
-                        newMessages.shift();
-                        setConversations((prevConversations) => ({
-                          ...prevConversations,
-                          [selectedConversationPublicKey]: {
-                            ...prevConversations[selectedConversationPublicKey],
-                            messages: newMessages,
+                        // Update status to "failed"
+                        setConversations((prev) => ({
+                          ...prev,
+                          [convKey]: {
+                            ...prev[convKey],
+                            messages: prev[convKey].messages.map((m: any) =>
+                              m._localId === localId ? { ...m, _status: "failed" } : m
+                            ),
                           },
                         }));
                         toast.error(
                           `An error occurred while sending your message. Error: ${e.toString()}`
                         );
-                        // Rethrow the error so that the caller can handle it.
                         return Promise.reject(e);
                       } finally {
                         setLockRefresh(false);
@@ -924,7 +1029,7 @@ export const MessagingApp: FC = () => {
                     }}
                   />
                 </div>
-              </Card>
+              </div>
             </div>
           </div>
         )}

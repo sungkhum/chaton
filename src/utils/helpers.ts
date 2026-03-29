@@ -1,5 +1,5 @@
 import { shortenLongWord } from "components/search-users";
-import { AppUser } from "contexts/UserContext";
+import { AppUser } from "../store";
 import { ChatType, User } from "deso-protocol";
 import {
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
@@ -13,7 +13,7 @@ export const copyTextToClipboard = async (text: string) => {
 };
 
 export const getProfileURL = (username: string | undefined): string => {
-  return username ? `${process.env.REACT_APP_PROFILE_URL}/u/${username}` : "";
+  return username ? `${import.meta.env.VITE_PROFILE_URL}/u/${username}` : "";
 };
 
 export const desoNanosToDeso = (nanos: number | string | bigint) => {

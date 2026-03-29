@@ -1,0 +1,12 @@
+name = "chattra-relay"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+
+[durable_objects]
+bindings = [
+  { name = "CHAT_RELAY", class_name = "ChatRelay" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ChatRelay"]

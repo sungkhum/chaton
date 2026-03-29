@@ -23,3 +23,13 @@ yarn-debug.log*
 yarn-error.log*
 
 .idea
+
+# build output
+/dist
+
+# local tool configs
+.claude/
+.agents/
+.superdesign/
+.mcp.json
+skills-lock.json
