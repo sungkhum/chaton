@@ -286,6 +286,21 @@ function App() {
     );
   }
 
+  if (isLoadingUser && !appUser) {
+    return (
+      <div className="App flex items-center justify-center">
+        <img
+          src="/ChatOn-Logo-Small.png"
+          alt="ChatOn"
+          width={80}
+          height={80}
+          className="rounded-[20px]"
+          style={{ animation: "splash-pulse 1.8s ease-in-out infinite" }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="App">
       <Header />
