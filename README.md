@@ -132,8 +132,8 @@ npm install
 npx wrangler d1 create chaton-push
 # Copy the database_id into wrangler.toml
 
-# Run the D1 migration
-npx wrangler d1 migrations apply chaton-push
+# Run the D1 migration (remote)
+npx wrangler d1 migrations apply chaton-push --remote
 
 # Create the push queue (first time only)
 npx wrangler queues create chaton-push-events
