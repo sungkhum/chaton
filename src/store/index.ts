@@ -257,5 +257,6 @@ export const useStore = create<ChatOnState>((set) => ({
       approvedAssociationIds: EMPTY_MAP,
       blockedAssociationIds: EMPTY_MAP,
       chatRequestsLoaded: false,
+      mutedConversations: EMPTY_SET,
     }),
 }));

@@ -290,8 +290,12 @@ export function cacheMutedConversations(
 ): void {
   const arr = Array.from(muted);
   lsSet(publicKey, "mutedConversations", arr);
-  // Also persist to IndexedDB so the service worker can read it
-  idbSet("mutedConversations", arr);
+  // Also persist to IndexedDB so the service worker can read it.
+  // Use a user-scoped key so multi-account doesn't collide, plus a
+  // global "active" key the service worker can read without knowing
+  // which user is logged in.
+  idbSet(`${publicKey}:mutedConversations`, arr);
+  idbSet("mutedConversations:active", arr);
 }
 
 export function getCachedMutedConversations(
@@ -312,7 +316,7 @@ export async function clearCacheForUser(publicKey: string): Promise<void> {
     lsDel(publicKey, t);
   }
 
-  // IndexedDB — remove all keys starting with publicKey
+  // IndexedDB — remove all keys starting with publicKey + global active mute key
   if (!idbStore) return;
   try {
     const allKeys = await keys(idbStore);
@@ -322,6 +326,7 @@ export async function clearCacheForUser(publicKey: string): Promise<void> {
     for (const k of userKeys) {
       await del(k as string, idbStore);
     }
+    await del("mutedConversations:active", idbStore);
   } catch {
     // ignore
   }

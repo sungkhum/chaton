@@ -58,7 +58,7 @@ self.addEventListener("push", (event) => {
       if (data.conversationKey) {
         try {
           const store = createStore("chattra-cache", "cache-store");
-          const mutedList = await get<string[]>("mutedConversations", store);
+          const mutedList = await get<string[]>("mutedConversations:active", store);
           if (mutedList?.includes(data.conversationKey as string)) {
             isMuted = true;
           }
