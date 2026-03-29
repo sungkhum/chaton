@@ -40,6 +40,7 @@ export interface MessagingBubblesProps {
 }
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
+const GROUP_TIME_GAP_NS = 5 * 60 * 1e9; // 5 minutes in nanoseconds
 
 function convertTstampToDateTime(tstampNanos: number) {
   const date = new Date(tstampNanos / 1e6);
@@ -458,6 +459,21 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
           const isHovered = hoveredMessage === messageKey;
           const reactions = reactionsByTimestamp[message.MessageInfo.TimestampNanosString];
 
+          // Message grouping: collapse consecutive messages from the same sender within 5 min
+          const prevMessage = displayMessages[i + 1]; // older message (above on screen)
+          const nextMessage = displayMessages[i - 1]; // newer message (below on screen)
+          const senderKey = message.SenderInfo.OwnerPublicKeyBase58Check;
+
+          const isFirstInGroup =
+            !prevMessage ||
+            prevMessage.SenderInfo.OwnerPublicKeyBase58Check !== senderKey ||
+            Math.abs(message.MessageInfo.TimestampNanos - prevMessage.MessageInfo.TimestampNanos) > GROUP_TIME_GAP_NS;
+
+          const isLastInGroup =
+            !nextMessage ||
+            nextMessage.SenderInfo.OwnerPublicKeyBase58Check !== senderKey ||
+            Math.abs(nextMessage.MessageInfo.TimestampNanos - message.MessageInfo.TimestampNanos) > GROUP_TIME_GAP_NS;
+
           const timestamp = (
             <div
               className={`whitespace-nowrap text-xs text-gray-500 mt-2 ${
@@ -482,6 +498,11 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
             </div>
           );
 
+          // Invisible spacer matching avatar column width for continuation messages
+          const avatarSpacer = (
+            <div className={`w-[36px] shrink-0 ${IsSender ? "ml-3" : "mr-3"}`} />
+          );
+
           const showActionBar = isMobile
             ? mobileActionFor === messageKey
             : isHovered || reactionPickerFor === messageKey;
@@ -490,9 +511,14 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
             <div
               className={`mx-0 last:pt-4 ${
                 IsSender ? "ml-auto justify-end" : "mr-auto justify-start"
-              } max-w-[80%] md:max-w-[65%] mb-3 inline-flex items-start top-[20px] text-left group ${
+              } max-w-[80%] md:max-w-[65%] ${
+                isLastInGroup ? "mb-3" : "mb-0.5"
+              } inline-flex items-start ${
+                isFirstInGroup ? "top-[20px]" : ""
+              } text-left group ${
                 mobileActionFor === messageKey ? "relative z-50" : ""
-              }`}
+              } ${isMobile ? "select-none" : ""}`}
+              style={isMobile ? { WebkitTouchCallout: "none" } : undefined}
               key={messageKey}
               onMouseEnter={() => setHoveredMessage(messageKey)}
               onMouseLeave={() => setHoveredMessage(null)}
@@ -503,24 +529,26 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
               onTouchEnd={isMobile ? handleTouchEnd : undefined}
               onContextMenu={isMobile ? (e) => e.preventDefault() : undefined}
             >
-              {!IsSender && messagingDisplayAvatarAndTimestamp}
+              {!IsSender && (isLastInGroup ? messagingDisplayAvatarAndTimestamp : avatarSpacer)}
               <div className={`w-full ${IsSender ? "text-right" : "text-left"}`}>
-                <header
-                  className={`flex items-center justify-end mb-[3px] ${
-                    IsSender ? "flex-row" : "flex-row-reverse"
-                  }`}
-                >
-                  <span className="mx-1"> </span>
-                  <div className="text-sm mb-1">
-                    <p className="text-[#34F080] text-xs font-semibold">
-                      {getUsernameByPublicKey[
-                        message.SenderInfo.OwnerPublicKeyBase58Check
-                      ]
-                        ? `@${getUsernameByPublicKey[message.SenderInfo.OwnerPublicKeyBase58Check]}`
-                        : shortenLongWord(message.SenderInfo.OwnerPublicKeyBase58Check)}
-                    </p>
-                  </div>
-                </header>
+                {isFirstInGroup && (
+                  <header
+                    className={`flex items-center justify-end mb-[3px] ${
+                      IsSender ? "flex-row" : "flex-row-reverse"
+                    }`}
+                  >
+                    <span className="mx-1"> </span>
+                    <div className="text-sm mb-1">
+                      <p className="text-[#34F080] text-xs font-semibold">
+                        {getUsernameByPublicKey[
+                          message.SenderInfo.OwnerPublicKeyBase58Check
+                        ]
+                          ? `@${getUsernameByPublicKey[message.SenderInfo.OwnerPublicKeyBase58Check]}`
+                          : shortenLongWord(message.SenderInfo.OwnerPublicKeyBase58Check)}
+                      </p>
+                    </div>
+                  </header>
+                )}
 
                 {/* Reply preview if this message is a reply */}
                 {parsed.replyTo && parsed.replyPreview && (
@@ -685,7 +713,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                   </div>
                 )}
               </div>
-              {IsSender && messagingDisplayAvatarAndTimestamp}
+              {IsSender && (isLastInGroup ? messagingDisplayAvatarAndTimestamp : avatarSpacer)}
             </div>
           );
         })}

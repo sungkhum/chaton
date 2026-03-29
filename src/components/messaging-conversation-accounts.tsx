@@ -137,7 +137,11 @@ export const MessagingConversationAccount: FC<{
                   <div key={`message-thread-${key}`}>
                     <div
                       onClick={() => onClick(key)}
-                      className={`px-4 py-3 ${selectedConversationStyle} hover:bg-white/5 cursor-pointer flex items-center gap-3 transition-colors`}
+                      className={`px-4 py-3 ${selectedConversationStyle} hover:bg-white/5 cursor-pointer flex items-center gap-3 transition-colors ${
+                        hasUnread
+                          ? "border-l-2 border-l-[#34F080] bg-[#34F080]/[0.04]"
+                          : "border-l-2 border-l-transparent"
+                      }`}
                     >
                       <MessagingDisplayAvatar
                         username={isDM ? chatName : undefined}
