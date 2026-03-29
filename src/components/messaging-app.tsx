@@ -55,6 +55,7 @@ import {
   scrollContainerToElement,
 } from "../utils/helpers";
 import { Conversation, ConversationMap } from "../utils/types";
+import { buildExtraData, MSG_REPLY_TO, MSG_REPLY_PREVIEW } from "../utils/extra-data";
 import { ManageMembersDialog } from "./manage-members-dialog";
 import { MessagingBubblesAndAvatar } from "./messaging-bubbles";
 import { MessagingConversationAccount } from "./messaging-conversation-accounts";
@@ -1152,11 +1153,11 @@ export const MessagingApp: FC = () => {
                             MessageInfo: {
                               TimestampNanos,
                               TimestampNanosString: String(TimestampNanos),
-                              ExtraData: {
-                                "chaton:type": "reaction",
-                                "chaton:replyTo": timestampNanosString,
-                                "chaton:emoji": emoji,
-                              },
+                              ExtraData: buildExtraData({
+                                type: "reaction",
+                                replyTo: timestampNanosString,
+                                emoji,
+                              }),
                             },
                           } as DecryptedMessageEntryResponse & { _status: string; _localId: string };
 
@@ -1175,11 +1176,11 @@ export const MessagingApp: FC = () => {
                               recipientPublicKey,
                               recipientKeyName,
                               DEFAULT_KEY_MESSAGING_GROUP_NAME,
-                              {
-                                "chaton:type": "reaction",
-                                "chaton:replyTo": timestampNanosString,
-                                "chaton:emoji": emoji,
-                              }
+                              buildExtraData({
+                                type: "reaction",
+                                replyTo: timestampNanosString,
+                                emoji,
+                              })
                             );
                             // Notify via WebSocket relay
                             sendNotify(convKey, [recipientPublicKey]);
@@ -1225,8 +1226,8 @@ export const MessagingApp: FC = () => {
                       if (replyToMessage) {
                         extraData = {
                           ...extraData,
-                          "chaton:replyTo": replyToMessage.timestamp,
-                          "chaton:replyPreview": replyToMessage.text.slice(0, 100),
+                          [MSG_REPLY_TO]: replyToMessage.timestamp,
+                          [MSG_REPLY_PREVIEW]: replyToMessage.text.slice(0, 100),
                         };
                         setReplyToMessage(null);
                       }

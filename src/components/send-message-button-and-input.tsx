@@ -7,6 +7,7 @@ import { GiphyGif } from "../services/giphy.service";
 import { uploadImage } from "../services/media.service";
 import { ReplyBanner } from "./compose/reply-banner";
 import { useDraftMessages } from "../hooks/useDraftMessages";
+import { buildExtraData } from "../utils/extra-data";
 
 export interface SendMessageButtonAndInputProps {
   onClick: (messageToSend: string, extraData?: Record<string, string>) => void;
@@ -94,13 +95,13 @@ export const SendMessageButtonAndInput = ({
   };
 
   const handleGifSelect = (gif: GiphyGif) => {
-    sendMessage(gif.title || "GIF", {
-      "chaton:type": "gif",
-      "chaton:gifUrl": gif.images.fixed_width.url,
-      "chaton:gifTitle": gif.title,
-      "chaton:mediaWidth": gif.images.fixed_width.width,
-      "chaton:mediaHeight": gif.images.fixed_width.height,
-    });
+    sendMessage(gif.title || "GIF", buildExtraData({
+      type: "gif",
+      gifUrl: gif.images.fixed_width.url,
+      gifTitle: gif.title,
+      mediaWidth: parseInt(gif.images.fixed_width.width),
+      mediaHeight: parseInt(gif.images.fixed_width.height),
+    }));
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,10 +112,10 @@ export const SendMessageButtonAndInput = ({
     setIsUploading(true);
     try {
       const result = await uploadImage(file);
-      await sendMessage(file.name, {
-        "chaton:type": "image",
-        "chaton:imageUrl": result.ImageURL,
-      });
+      await sendMessage(file.name, buildExtraData({
+        type: "image",
+        imageUrl: result.ImageURL,
+      }));
     } catch (err: any) {
       toast.error(`Image upload failed: ${err.message || err}`);
     } finally {

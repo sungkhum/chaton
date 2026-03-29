@@ -71,17 +71,18 @@ on-chain follows and User Associations (no backend needed).
 
 ## ExtraData conventions
 
-All rich message metadata uses namespaced keys in DeSo's `ExtraData` field:
+All rich message metadata uses generic `msg:` namespaced keys in DeSo's `ExtraData`
+field. This is a shared convention any DeSo messaging app can adopt:
 
-- `chaton:type` — message type: `text`, `image`, `gif`, `video`, `file`, `reaction`
-- `chaton:replyTo` — `TimestampNanosString` of the message being replied to or reacted to
-- `chaton:emoji` — emoji character for reactions
-- `chaton:action` — `"add"` or `"remove"` for reaction toggling
-- `chaton:imageUrl`, `chaton:gifUrl`, `chaton:videoUrl` — media URLs
-- `chaton:duration`, `chaton:mediaWidth`, `chaton:mediaHeight` — media dimensions
-- `chaton:fileName`, `chaton:fileSize`, `chaton:fileType` — file attachments
-- `chaton:replyPreview` — truncated preview text of the replied-to message
-- `chaton:gifTitle` — title of a GIF from Giphy
+- `msg:type` — message type: `text`, `image`, `gif`, `video`, `file`, `reaction`
+- `msg:replyTo` — `TimestampNanosString` of the message being replied to or reacted to
+- `msg:emoji` — emoji character for reactions
+- `msg:action` — `"add"` or `"remove"` for reaction toggling
+- `msg:imageUrl`, `msg:gifUrl`, `msg:videoUrl` — media URLs
+- `msg:duration`, `msg:mediaWidth`, `msg:mediaHeight` — media dimensions
+- `msg:fileName`, `msg:fileSize`, `msg:fileType` — file attachments
+- `msg:replyPreview` — truncated preview text of the replied-to message
+- `msg:gifTitle` — title of a GIF from Giphy
 
 ## Tech stack
 

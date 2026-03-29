@@ -1,21 +1,21 @@
 import { DecryptedMessageEntryResponse } from "deso-protocol";
 
-// ExtraData keys for Chaton rich messages
-export const CHATTRA_TYPE = "chaton:type";
-export const CHATTRA_REPLY_TO = "chaton:replyTo";
-export const CHATTRA_REPLY_PREVIEW = "chaton:replyPreview";
-export const CHATTRA_IMAGE_URL = "chaton:imageUrl";
-export const CHATTRA_GIF_URL = "chaton:gifUrl";
-export const CHATTRA_GIF_TITLE = "chaton:gifTitle";
-export const CHATTRA_MEDIA_WIDTH = "chaton:mediaWidth";
-export const CHATTRA_MEDIA_HEIGHT = "chaton:mediaHeight";
-export const CHATTRA_VIDEO_URL = "chaton:videoUrl";
-export const CHATTRA_DURATION = "chaton:duration";
-export const CHATTRA_FILE_NAME = "chaton:fileName";
-export const CHATTRA_FILE_SIZE = "chaton:fileSize";
-export const CHATTRA_FILE_TYPE = "chaton:fileType";
-export const CHATTRA_EMOJI = "chaton:emoji";
-export const CHATTRA_ACTION = "chaton:action";
+// Generic DeSo message ExtraData keys — any messaging app can adopt these
+export const MSG_TYPE = "msg:type";
+export const MSG_REPLY_TO = "msg:replyTo";
+export const MSG_REPLY_PREVIEW = "msg:replyPreview";
+export const MSG_IMAGE_URL = "msg:imageUrl";
+export const MSG_GIF_URL = "msg:gifUrl";
+export const MSG_GIF_TITLE = "msg:gifTitle";
+export const MSG_MEDIA_WIDTH = "msg:mediaWidth";
+export const MSG_MEDIA_HEIGHT = "msg:mediaHeight";
+export const MSG_VIDEO_URL = "msg:videoUrl";
+export const MSG_DURATION = "msg:duration";
+export const MSG_FILE_NAME = "msg:fileName";
+export const MSG_FILE_SIZE = "msg:fileSize";
+export const MSG_FILE_TYPE = "msg:fileType";
+export const MSG_EMOJI = "msg:emoji";
+export const MSG_ACTION = "msg:action";
 
 export type RichMessageType =
   | "text"
@@ -48,33 +48,33 @@ export function parseMessageType(
   message: DecryptedMessageEntryResponse
 ): ParsedMessage {
   const extra = message.MessageInfo?.ExtraData || {};
-  const type = (extra[CHATTRA_TYPE] as RichMessageType) || "text";
+  const type = (extra[MSG_TYPE] as RichMessageType) || "text";
 
   return {
     type,
     text: message.DecryptedMessage || "",
-    imageUrl: extra[CHATTRA_IMAGE_URL],
-    gifUrl: extra[CHATTRA_GIF_URL],
-    gifTitle: extra[CHATTRA_GIF_TITLE],
-    videoUrl: extra[CHATTRA_VIDEO_URL],
-    duration: extra[CHATTRA_DURATION]
-      ? parseFloat(extra[CHATTRA_DURATION])
+    imageUrl: extra[MSG_IMAGE_URL],
+    gifUrl: extra[MSG_GIF_URL],
+    gifTitle: extra[MSG_GIF_TITLE],
+    videoUrl: extra[MSG_VIDEO_URL],
+    duration: extra[MSG_DURATION]
+      ? parseFloat(extra[MSG_DURATION])
       : undefined,
-    mediaWidth: extra[CHATTRA_MEDIA_WIDTH]
-      ? parseInt(extra[CHATTRA_MEDIA_WIDTH])
+    mediaWidth: extra[MSG_MEDIA_WIDTH]
+      ? parseInt(extra[MSG_MEDIA_WIDTH])
       : undefined,
-    mediaHeight: extra[CHATTRA_MEDIA_HEIGHT]
-      ? parseInt(extra[CHATTRA_MEDIA_HEIGHT])
+    mediaHeight: extra[MSG_MEDIA_HEIGHT]
+      ? parseInt(extra[MSG_MEDIA_HEIGHT])
       : undefined,
-    fileName: extra[CHATTRA_FILE_NAME],
-    fileSize: extra[CHATTRA_FILE_SIZE]
-      ? parseInt(extra[CHATTRA_FILE_SIZE])
+    fileName: extra[MSG_FILE_NAME],
+    fileSize: extra[MSG_FILE_SIZE]
+      ? parseInt(extra[MSG_FILE_SIZE])
       : undefined,
-    fileType: extra[CHATTRA_FILE_TYPE],
-    replyTo: extra[CHATTRA_REPLY_TO],
-    replyPreview: extra[CHATTRA_REPLY_PREVIEW],
-    emoji: extra[CHATTRA_EMOJI],
-    action: extra[CHATTRA_ACTION] as "add" | "remove" | undefined,
+    fileType: extra[MSG_FILE_TYPE],
+    replyTo: extra[MSG_REPLY_TO],
+    replyPreview: extra[MSG_REPLY_PREVIEW],
+    emoji: extra[MSG_EMOJI],
+    action: extra[MSG_ACTION] as "add" | "remove" | undefined,
   };
 }
 
@@ -83,25 +83,25 @@ export function buildExtraData(
 ): Record<string, string> {
   const extra: Record<string, string> = {};
 
-  if (parsed.type && parsed.type !== "text") extra[CHATTRA_TYPE] = parsed.type;
-  if (parsed.imageUrl) extra[CHATTRA_IMAGE_URL] = parsed.imageUrl;
-  if (parsed.gifUrl) extra[CHATTRA_GIF_URL] = parsed.gifUrl;
-  if (parsed.gifTitle) extra[CHATTRA_GIF_TITLE] = parsed.gifTitle;
-  if (parsed.videoUrl) extra[CHATTRA_VIDEO_URL] = parsed.videoUrl;
+  if (parsed.type && parsed.type !== "text") extra[MSG_TYPE] = parsed.type;
+  if (parsed.imageUrl) extra[MSG_IMAGE_URL] = parsed.imageUrl;
+  if (parsed.gifUrl) extra[MSG_GIF_URL] = parsed.gifUrl;
+  if (parsed.gifTitle) extra[MSG_GIF_TITLE] = parsed.gifTitle;
+  if (parsed.videoUrl) extra[MSG_VIDEO_URL] = parsed.videoUrl;
   if (parsed.duration !== undefined)
-    extra[CHATTRA_DURATION] = String(parsed.duration);
+    extra[MSG_DURATION] = String(parsed.duration);
   if (parsed.mediaWidth !== undefined)
-    extra[CHATTRA_MEDIA_WIDTH] = String(parsed.mediaWidth);
+    extra[MSG_MEDIA_WIDTH] = String(parsed.mediaWidth);
   if (parsed.mediaHeight !== undefined)
-    extra[CHATTRA_MEDIA_HEIGHT] = String(parsed.mediaHeight);
-  if (parsed.fileName) extra[CHATTRA_FILE_NAME] = parsed.fileName;
+    extra[MSG_MEDIA_HEIGHT] = String(parsed.mediaHeight);
+  if (parsed.fileName) extra[MSG_FILE_NAME] = parsed.fileName;
   if (parsed.fileSize !== undefined)
-    extra[CHATTRA_FILE_SIZE] = String(parsed.fileSize);
-  if (parsed.fileType) extra[CHATTRA_FILE_TYPE] = parsed.fileType;
-  if (parsed.replyTo) extra[CHATTRA_REPLY_TO] = parsed.replyTo;
-  if (parsed.replyPreview) extra[CHATTRA_REPLY_PREVIEW] = parsed.replyPreview;
-  if (parsed.emoji) extra[CHATTRA_EMOJI] = parsed.emoji;
-  if (parsed.action) extra[CHATTRA_ACTION] = parsed.action;
+    extra[MSG_FILE_SIZE] = String(parsed.fileSize);
+  if (parsed.fileType) extra[MSG_FILE_TYPE] = parsed.fileType;
+  if (parsed.replyTo) extra[MSG_REPLY_TO] = parsed.replyTo;
+  if (parsed.replyPreview) extra[MSG_REPLY_PREVIEW] = parsed.replyPreview;
+  if (parsed.emoji) extra[MSG_EMOJI] = parsed.emoji;
+  if (parsed.action) extra[MSG_ACTION] = parsed.action;
 
   return extra;
 }
