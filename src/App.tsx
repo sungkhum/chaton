@@ -10,6 +10,7 @@ import {
 import { useEffect } from "react";
 import { Toaster } from "sonner";
 import { Header } from "./components/header";
+import { InstallPrompt } from "./components/install-prompt";
 import { LandingPage } from "./components/landing-page";
 import { MessagingApp } from "./components/messaging-app";
 import { AppUser, useStore } from "./store";
@@ -20,12 +21,27 @@ import {
   getTransactionSpendingLimits,
 } from "./utils/constants";
 
+// Safari iOS PWA standalone mode can't use popups for identity login —
+// window.open() either opens in Safari (breaking postMessage) or gets blocked.
+// Use the redirect flow instead: navigate to identity, then back with query params.
+const isStandalone =
+  window.matchMedia("(display-mode: standalone)").matches ||
+  (navigator as any).standalone === true;
+
 configure({
   identityURI: import.meta.env.VITE_IDENTITY_URL,
   nodeURI: import.meta.env.VITE_NODE_URL,
   network: DESO_NETWORK,
   spendingLimitOptions: getTransactionSpendingLimits(""),
+  ...(isStandalone && {
+    redirectURI: window.location.origin + window.location.pathname,
+  }),
 });
+
+// Handle returning redirect from identity in PWA mode
+if (isStandalone) {
+  identity.handleRedirectURI(window.location.href);
+}
 
 function App() {
   const { setAppUser, setIsLoadingUser, setAllAccessGroups } = useStore();
@@ -182,6 +198,7 @@ function App() {
       <section className="h-[calc(100%-56px)] mt-[56px] overflow-scroll">
         <MessagingApp />
       </section>
+      <InstallPrompt />
       <Toaster position="top-right" theme="dark" />
     </div>
   );
