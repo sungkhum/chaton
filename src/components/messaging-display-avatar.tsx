@@ -1,5 +1,5 @@
 import { buildProfilePictureUrl } from "deso-protocol";
-import { FC, useEffect, useMemo, useState } from "react";
+import { FC, useCallback, useEffect, useMemo, useState } from "react";
 import { getProfileURL } from "../utils/helpers";
 
 function ConditionalLink({
@@ -114,11 +114,20 @@ export const MessagingDisplayAvatar: FC<{
     });
   };
 
-  const showInitials = groupChat || !profilePicUrl || imgFailed;
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const showImage = !groupChat && !!profilePicUrl && !imgFailed;
   const initials = getInitials(
     groupChat ? (publicKey || "") : (username || publicKey || "")
   );
   const fontSize = Math.round(diameter * 0.38);
+
+  const handleImgLoad = useCallback(() => setImgLoaded(true), []);
+  const handleImgError = useCallback(() => setImgFailed(true), []);
+
+  // Reset loaded state when the URL changes
+  useEffect(() => {
+    setImgLoaded(false);
+  }, [profilePicUrl]);
 
   return (
     <ConditionalLink
@@ -133,31 +142,40 @@ export const MessagingDisplayAvatar: FC<{
       target="_blank"
       onClick={(e) => e.stopPropagation()}
     >
-      {showInitials ? (
-        <div
-          style={{
-            height: `${diameter}px`,
-            width: `${diameter}px`,
-            backgroundColor: avatarColor.bg,
-            fontSize: `${fontSize}px`,
-          }}
-          className={`rounded-full flex items-center justify-center font-semibold select-none ${borderColor}`}
-          title={publicKey}
-        >
-          <span style={{ color: avatarColor.text, lineHeight: 1 }}>
-            {initials}
-          </span>
-        </div>
-      ) : (
-        <img
-          src={profilePicUrl}
-          style={{ height: `${diameter}px`, width: `${diameter}px` }}
-          className={`bg-no-repeat bg-center bg-cover rounded-full ${borderColor}`}
-          alt={publicKey}
-          title={publicKey}
-          onError={() => setImgFailed(true)}
-        />
-      )}
+      {/* Always render initials as the base layer — zero layout shift */}
+      <div
+        style={{
+          height: `${diameter}px`,
+          width: `${diameter}px`,
+          backgroundColor: avatarColor.bg,
+          fontSize: `${fontSize}px`,
+          position: "relative",
+        }}
+        className={`rounded-full flex items-center justify-center font-semibold select-none ${borderColor}`}
+        title={publicKey}
+      >
+        <span style={{ color: avatarColor.text, lineHeight: 1 }}>
+          {initials}
+        </span>
+        {showImage && (
+          <img
+            src={profilePicUrl}
+            style={{
+              height: `${diameter}px`,
+              width: `${diameter}px`,
+              opacity: imgLoaded ? 1 : 0,
+              transition: "opacity 0.2s ease-in",
+              position: "absolute",
+              inset: 0,
+            }}
+            className={`bg-no-repeat bg-center bg-cover rounded-full ${borderColor}`}
+            alt={publicKey}
+            title={publicKey}
+            onLoad={handleImgLoad}
+            onError={handleImgError}
+          />
+        )}
+      </div>
     </ConditionalLink>
   );
 };

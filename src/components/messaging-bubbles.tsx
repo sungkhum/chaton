@@ -165,7 +165,6 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   const { appUser, allAccessGroups, setAllAccessGroups } = useStore();
   const conversation = conversations[conversationPublicKey] ?? { messages: [] };
   const [allowScrolling, setAllowScrolling] = useState<boolean>(true);
-  const [visibleMessages, setVisibleMessages] = useState(conversation.messages);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hoveredMessage, setHoveredMessage] = useState<string | null>(null);
   const [reactionPickerFor, setReactionPickerFor] = useState<string | null>(null);
@@ -216,11 +215,12 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     };
   }, []);
 
-  // Clear action state on conversation switch
+  // Clear action state and reset scroll on conversation switch
   useEffect(() => {
     setMobileActionFor(null);
     setReactionPickerFor(null);
     setDeleteMenuFor(null);
+    setAllowScrolling(true);
     clearLongPressTimer();
   }, [conversationPublicKey, clearLongPressTimer]);
 
@@ -263,6 +263,10 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
 
   const sentinelRef = useRef<HTMLDivElement>(null);
 
+  // Use conversation messages directly — no intermediate state copy.
+  // This eliminates the stale-render frame caused by syncing via useEffect.
+  const visibleMessages = conversation.messages;
+
   // Aggregate reactions from reaction-type messages
   const reactionsByTimestamp = useMemo(() => {
     const map: Record<string, Record<string, string[]>> = {};
@@ -280,31 +284,33 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     return map;
   }, [visibleMessages]);
 
+  // Track the previous newest message to detect new arrivals
+  const prevNewestRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (conversation.messages.length === 0) setAllowScrolling(false);
-    setVisibleMessages(conversation.messages);
-
-    const scrollableArea = messageAreaRef.current;
-    if (!scrollableArea) return;
-
-    const hasUnreadMessages =
-      visibleMessages.length &&
-      visibleMessages[0].MessageInfo.TimestampNanosString !==
-        conversation.messages[0].MessageInfo.TimestampNanosString;
-    const isLastMessageFromMe =
-      conversation.messages.length && conversation.messages[0].IsSender;
-
-    if (
-      hasUnreadMessages &&
-      isLastMessageFromMe &&
-      (isMobile || scrollableArea.scrollTop !== 0)
-    ) {
-      setTimeout(() => {
-        const scrollerStub = scrollableArea.querySelector(".scroller-end-stub");
-        scrollerStub?.scrollIntoView({ behavior: "smooth" });
-      }, 500);
+    if (visibleMessages.length === 0) {
+      setAllowScrolling(false);
+      prevNewestRef.current = null;
+      return;
     }
-  }, [conversations, conversationPublicKey, isMobile]);
+
+    const newestKey = visibleMessages[0].MessageInfo.TimestampNanosString;
+    const hadPrevious = prevNewestRef.current !== null;
+    const isNewArrival = hadPrevious && newestKey !== prevNewestRef.current;
+    prevNewestRef.current = newestKey;
+
+    if (!isNewArrival) return;
+
+    const isLastMessageFromMe = visibleMessages[0].IsSender;
+    const scrollableArea = messageAreaRef.current;
+    if (!scrollableArea || !isLastMessageFromMe) return;
+
+    // Scroll immediately on next frame — no 500ms delay
+    requestAnimationFrame(() => {
+      const scrollerStub = scrollableArea.querySelector(".scroller-end-stub");
+      scrollerStub?.scrollIntoView({ behavior: "smooth" });
+    });
+  }, [visibleMessages]);
 
   const loadMore = useCallback(async () => {
     if (!appUser || isLoadingMore) return;
@@ -401,7 +407,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
 
   return (
     <div
-      className="h-full flex flex-col-reverse custom-scrollbar px-3 md:px-6 overflow-y-auto"
+      className="h-full flex flex-col-reverse custom-scrollbar px-3 md:px-6 overflow-y-auto [contain:layout_style]"
       ref={messageAreaRef}
       id="scrollableArea"
     >

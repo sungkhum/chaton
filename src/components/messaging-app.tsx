@@ -1358,10 +1358,12 @@ export const MessagingApp: FC = () => {
                 className="pr-2 rounded-none w-[100%] bg-transparent ml-[calc-340px] pb-0 h-[calc(100%-56px)]"
               >
                 <div className="border-none flex flex-col justify-between h-full">
-                  <div className="max-h-[calc(100%-130px)] overflow-hidden">
-                    {loadingConversation ? (
-                      <Loader2 className="w-11 h-11 mt-4 animate-spin text-[#34F080] mx-auto" />
-                    ) : (
+                  <div className="max-h-[calc(100%-130px)] overflow-hidden relative">
+                    {loadingConversation && (
+                      <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#0a1019]/80">
+                        <Loader2 className="w-11 h-11 animate-spin text-[#34F080]" />
+                      </div>
+                    )}
                       <MessagingBubblesAndAvatar
                         conversationPublicKey={pubKeyPlusGroupName}
                         conversations={conversations}
@@ -1580,7 +1582,6 @@ export const MessagingApp: FC = () => {
                           }
                         }}
                       />
-                    )}
                   </div>
 
                   <SendMessageButtonAndInput
