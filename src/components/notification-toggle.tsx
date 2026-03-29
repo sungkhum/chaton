@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell, BellOff, BellRing } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "../store";
@@ -19,14 +19,74 @@ function getPrefKey(publicKey: string) {
   return `chaton:push-enabled:${publicKey}`;
 }
 
+/** Register a push subscription with the relay server. Best-effort, no throw. */
+async function registerWithServer(publicKey: string, subscription: PushSubscription) {
+  if (!RELAY_URL) {
+    console.warn("[push] No RELAY_URL configured, skipping server registration");
+    return;
+  }
+  try {
+    console.log("[push] Registering subscription with server...");
+    const res = await fetch(`${RELAY_URL}/push/subscribe`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ publicKey, subscription: subscription.toJSON() }),
+    });
+    console.log("[push] Server registration response:", res.status);
+  } catch (err) {
+    console.error("[push] Server registration failed:", err);
+  }
+}
+
+/** Unregister a push subscription from the relay server. Best-effort, no throw. */
+async function unregisterFromServer(publicKey: string, endpoint: string) {
+  if (!RELAY_URL) return;
+  try {
+    await fetch(`${RELAY_URL}/push/unsubscribe`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ publicKey, endpoint }),
+    });
+  } catch {
+    // Best-effort
+  }
+}
+
+/**
+ * Ensure a push subscription exists and is registered with the server.
+ * Runs silently in the background — never surfaces errors to the user.
+ */
+async function ensureSubscription(publicKey: string) {
+  try {
+    console.log("[push] ensureSubscription: checking existing...");
+    let sub = await getExistingSubscription();
+    if (!sub) {
+      console.log("[push] ensureSubscription: no existing, creating...");
+      sub = await subscribeToPush();
+    }
+    if (sub) {
+      await registerWithServer(publicKey, sub);
+    } else {
+      console.warn("[push] ensureSubscription: no subscription obtained");
+    }
+  } catch (err) {
+    console.error("[push] ensureSubscription failed:", err);
+  }
+}
+
 export function NotificationToggle() {
   const { appUser } = useStore();
   const [pushState, setPushState] = useState<PushState>("disabled");
   const [loading, setLoading] = useState(false);
+  const mountedRef = useRef(true);
 
-  // Sync push state from browser permission + subscription + localStorage pref.
-  // Extracted so we can call it both on mount and when the page regains visibility
-  // (iOS suspends the web view during the system permission dialog).
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  // Derive toggle state synchronously from permission + localStorage preference.
+  // Subscription is an implementation detail managed in the background.
   const syncPushState = useCallback(() => {
     if (!appUser) return;
 
@@ -43,61 +103,21 @@ export function NotificationToggle() {
 
     const pref = localStorage.getItem(getPrefKey(appUser.PublicKeyBase58Check));
 
-    // If user explicitly disabled for this account, respect it
-    if (pref === "false") {
+    if (permission === "granted" && pref !== "false") {
+      setPushState("enabled");
+      // Ensure subscription exists in the background (no UI impact)
+      ensureSubscription(appUser.PublicKeyBase58Check);
+    } else {
       setPushState("disabled");
-      return;
     }
-
-    getExistingSubscription().then(async (sub) => {
-      if (sub && permission === "granted") {
-        setPushState("enabled");
-        // Ensure localStorage is consistent (covers interrupted first-time setup)
-        if (pref !== "true") {
-          localStorage.setItem(getPrefKey(appUser.PublicKeyBase58Check), "true");
-        }
-      } else if (permission === "granted" && pref === "pending") {
-        // Permission was granted but the enable flow was interrupted before
-        // the subscription was created. Auto-complete the setup.
-        try {
-          const newSub = await subscribeToPush();
-          if (newSub) {
-            if (RELAY_URL) {
-              await fetch(`${RELAY_URL}/push/subscribe`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  publicKey: appUser.PublicKeyBase58Check,
-                  subscription: newSub.toJSON(),
-                }),
-              });
-            }
-            localStorage.setItem(getPrefKey(appUser.PublicKeyBase58Check), "true");
-            setPushState("enabled");
-            return;
-          }
-        } catch {
-          // Fall through to disabled
-        }
-        // Cleanup pending flag so we don't retry forever
-        localStorage.removeItem(getPrefKey(appUser.PublicKeyBase58Check));
-        setPushState("disabled");
-      } else {
-        // Clean up stale pending flag (e.g., PWA killed during permission dialog)
-        if (pref === "pending") {
-          localStorage.removeItem(getPrefKey(appUser.PublicKeyBase58Check));
-        }
-        setPushState("disabled");
-      }
-    });
   }, [appUser]);
 
-  // Run on mount and whenever appUser changes
+  // Run on mount
   useEffect(() => {
     syncPushState();
   }, [syncPushState]);
 
-  // Re-sync when page becomes visible again (handles iOS resuming after permission dialog)
+  // Re-sync when page becomes visible (handles iOS resuming after permission dialog)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -115,7 +135,6 @@ export function NotificationToggle() {
     try {
       const permission = getNotificationPermission();
 
-      // If denied, guide user to settings
       if (permission === "denied") {
         setPushState("denied");
         toast.error("Notifications are blocked. Enable them in your browser or device settings.");
@@ -124,14 +143,10 @@ export function NotificationToggle() {
 
       // Request permission if not yet granted
       if (permission !== "granted") {
-        // Mark as pending before the iOS system dialog — if the dialog interrupts
-        // our flow (component unmount, page suspend), syncPushState will auto-complete.
-        localStorage.setItem(getPrefKey(appUser.PublicKeyBase58Check), "pending");
-
         const granted = await requestPushPermission();
+        if (!mountedRef.current) return;
+
         if (!granted) {
-          // User clicked "Block" — now permanently denied
-          localStorage.removeItem(getPrefKey(appUser.PublicKeyBase58Check));
           const updated = getNotificationPermission();
           if (updated === "denied") {
             setPushState("denied");
@@ -141,34 +156,27 @@ export function NotificationToggle() {
         }
       }
 
-      // Subscribe at the browser level
-      const subscription = await subscribeToPush();
-      if (!subscription) {
-        localStorage.removeItem(getPrefKey(appUser.PublicKeyBase58Check));
-        toast.error("Failed to enable notifications.");
-        return;
-      }
-
-      // Register with the server
-      if (RELAY_URL) {
-        await fetch(`${RELAY_URL}/push/subscribe`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            publicKey: appUser.PublicKeyBase58Check,
-            subscription: subscription.toJSON(),
-          }),
-        });
-      }
-
-      localStorage.setItem(getPrefKey(appUser.PublicKeyBase58Check), "true");
+      // Optimistically show enabled — permission is granted at this point
       setPushState("enabled");
+      localStorage.setItem(getPrefKey(appUser.PublicKeyBase58Check), "true");
+
+      // Subscribe + register in the background
+      const subscription = await subscribeToPush();
+      if (!mountedRef.current) return;
+
+      if (subscription) {
+        await registerWithServer(appUser.PublicKeyBase58Check, subscription);
+      }
+
       toast.success("Notifications enabled");
     } catch {
-      localStorage.removeItem(getPrefKey(appUser.PublicKeyBase58Check));
-      toast.error("Failed to enable notifications.");
+      if (mountedRef.current) {
+        toast.error("Failed to enable notifications.");
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   }, [appUser, loading]);
 
@@ -176,34 +184,37 @@ export function NotificationToggle() {
     if (!appUser || loading) return;
     setLoading(true);
 
+    // Optimistically show disabled
+    const prevState = pushState;
+    setPushState("disabled");
+    localStorage.setItem(getPrefKey(appUser.PublicKeyBase58Check), "false");
+
     try {
-      // Get endpoint before unsubscribing (needed for server-side cleanup)
       const subscription = await getExistingSubscription();
       const endpoint = subscription?.endpoint;
 
       await unsubscribeFromPush();
 
-      // Tell the server to remove subscription
-      if (RELAY_URL && endpoint) {
-        await fetch(`${RELAY_URL}/push/unsubscribe`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            publicKey: appUser.PublicKeyBase58Check,
-            endpoint,
-          }),
-        });
+      if (endpoint) {
+        await unregisterFromServer(appUser.PublicKeyBase58Check, endpoint);
       }
 
-      localStorage.setItem(getPrefKey(appUser.PublicKeyBase58Check), "false");
-      setPushState("disabled");
-      toast.success("Notifications disabled");
+      if (mountedRef.current) {
+        toast.success("Notifications disabled");
+      }
     } catch {
-      toast.error("Failed to disable notifications.");
+      if (mountedRef.current) {
+        // Rollback
+        setPushState(prevState);
+        localStorage.setItem(getPrefKey(appUser.PublicKeyBase58Check), "true");
+        toast.error("Failed to disable notifications.");
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
-  }, [appUser, loading]);
+  }, [appUser, loading, pushState]);
 
   if (!appUser || pushState === "unsupported") return null;
 

@@ -20,9 +20,13 @@ export async function requestPushPermission(): Promise<boolean> {
 }
 
 export async function subscribeToPush(): Promise<PushSubscription | null> {
-  if (!VAPID_PUBLIC_KEY) return null;
+  if (!VAPID_PUBLIC_KEY) {
+    console.warn("[push] No VAPID_PUBLIC_KEY configured");
+    return null;
+  }
 
   try {
+    console.log("[push] Waiting for service worker ready...");
     // On iOS, navigator.serviceWorker.ready can hang after the permission dialog.
     // Use a timeout to avoid blocking the UI indefinitely.
     const registration = await Promise.race([
@@ -31,17 +35,24 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
         setTimeout(() => reject(new Error("Service worker ready timeout")), 10_000)
       ),
     ]);
+    console.log("[push] Service worker ready, checking existing subscription...");
+
     // Check for an existing subscription first — avoids creating a duplicate
     const existing = await registration.pushManager.getSubscription();
-    if (existing) return existing;
+    if (existing) {
+      console.log("[push] Found existing subscription");
+      return existing;
+    }
 
+    console.log("[push] No existing subscription, creating new one...");
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
     });
+    console.log("[push] Subscription created:", subscription.endpoint.slice(0, 60));
     return subscription;
   } catch (error) {
-    console.error("Failed to subscribe to push:", error);
+    console.error("[push] Failed to subscribe:", error);
     return null;
   }
 }
