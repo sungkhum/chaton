@@ -75,6 +75,35 @@ self.addEventListener("push", (event) => {
   );
 });
 
+// Handle subscription changes (browser rotated keys, subscription expired, etc.)
+// Re-subscribes to keep the browser subscription alive. The app will sync
+// the new subscription to the server on the next visit.
+self.addEventListener("pushsubscriptionchange", ((event: Event & {
+  oldSubscription?: PushSubscription;
+  newSubscription?: PushSubscription;
+  waitUntil: (p: Promise<unknown>) => void;
+}) => {
+  event.waitUntil(
+    (async () => {
+      try {
+        if (!event.newSubscription && event.oldSubscription?.options?.applicationServerKey) {
+          await self.registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: event.oldSubscription.options.applicationServerKey,
+          });
+        }
+        // Notify any open app windows to re-register
+        const clients = await self.clients.matchAll({ type: "window" });
+        for (const client of clients) {
+          client.postMessage({ type: "push-subscription-changed" });
+        }
+      } catch {
+        // Best-effort — client will re-register on next visit
+      }
+    })()
+  );
+}) as EventListener);
+
 // Handle notification click
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();

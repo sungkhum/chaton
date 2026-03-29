@@ -92,3 +92,7 @@ field. This is a shared convention any DeSo messaging app can adopt:
 - deso-protocol SDK for all blockchain interaction
 - Sonner for toasts
 - Cloudflare Workers + Durable Objects for WebSocket relay
+
+<!-- VITE-AGENTS-MD-START -->
+[Vite Docs Index]|root: ./.vite-docs|version: ^6.3.5 (package.json:vite)|STOP. What you remember about Vite is WRONG for this project. Always search docs and read before any task.|If docs missing, run this command first: npx github:sungkhum/vite-agent-index agents-md --output CLAUDE.md|sections:{root(5),blog(10),changes(5),config(7),guide(23)}|full_index: ./.vite-docs-index/full.index.txt
+<!-- VITE-AGENTS-MD-END -->

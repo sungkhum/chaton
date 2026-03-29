@@ -1,10 +1,25 @@
 export { ChatRelay } from "./chat-relay";
 
+import { handleScheduled, type PushJob } from "./poll";
+import {
+  upsertUser,
+  upsertSubscription,
+  removeSubscription,
+  getSubscriptionsForUser,
+  deactivateSubscription,
+  incrementFailureCount,
+  resetFailureCount,
+} from "./db";
+import { sendPushNotification, type PushSubscriptionData } from "./web-push";
+
 export interface Env {
   CHAT_RELAY: DurableObjectNamespace;
   VAPID_PRIVATE_KEY: string;
   VAPID_SUBJECT: string;
-  ALLOWED_ORIGINS: string; // comma-separated, e.g. "https://chaton.app,https://chaton.pages.dev"
+  ALLOWED_ORIGINS: string;
+  DESO_NODE_URL: string;
+  DB: D1Database;
+  PUSH_QUEUE: Queue<PushJob>;
 }
 
 // Origins that are always allowed (localhost for dev)
@@ -38,11 +53,13 @@ function forbidden(): Response {
 
 function withCors(response: Response, origin: string): Response {
   const res = new Response(response.body, response);
-  for (const [k, v] of Object.entries(corsHeaders(origin))) res.headers.set(k, v);
+  for (const [k, v] of Object.entries(corsHeaders(origin)))
+    res.headers.set(k, v);
   return res;
 }
 
 export default {
+  // ── HTTP fetch handler ──
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin");
@@ -70,18 +87,182 @@ export default {
       return stub.fetch(request);
     }
 
-    // Push endpoints — strict origin check
-    if (
-      url.pathname === "/push/subscribe" ||
-      url.pathname === "/push/unsubscribe"
-    ) {
+    // Push endpoints — strict origin check, write to D1
+    if (url.pathname === "/push/subscribe" && request.method === "POST") {
       if (!isOriginAllowed(origin, allowed)) return forbidden();
-      const id = env.CHAT_RELAY.idFromName("global-relay");
-      const stub = env.CHAT_RELAY.get(id);
-      const res = await stub.fetch(request);
+      const res = await handlePushSubscribe(request, env);
+      return withCors(res, origin!);
+    }
+
+    if (url.pathname === "/push/unsubscribe" && request.method === "POST") {
+      if (!isOriginAllowed(origin, allowed)) return forbidden();
+      const res = await handlePushUnsubscribe(request, env);
       return withCors(res, origin!);
     }
 
     return new Response("ChatOn Relay", { status: 200 });
   },
+
+  // ── Cron trigger: poll DeSo for new messages ──
+  async scheduled(_event: ScheduledEvent, env: Env): Promise<void> {
+    await handleScheduled(env);
+  },
+
+  // ── Queue consumer: send push notifications ──
+  async queue(
+    batch: MessageBatch<PushJob>,
+    env: Env
+  ): Promise<void> {
+    for (const msg of batch.messages) {
+      try {
+        await deliverPush(env, msg.body);
+        msg.ack();
+      } catch (err) {
+        console.error("Push delivery failed:", err);
+        msg.retry();
+      }
+    }
+  },
 };
+
+// ── Push subscription endpoints (D1-backed) ──
+
+async function handlePushSubscribe(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  try {
+    const { publicKey, subscription } = await request.json<{
+      publicKey: string;
+      subscription: { endpoint: string; keys: { p256dh: string; auth: string } };
+    }>();
+
+    if (!publicKey || !subscription?.endpoint || !subscription?.keys) {
+      return new Response("Missing fields", { status: 400 });
+    }
+
+    // Write to D1 (primary store for cron-based push)
+    const userId = await upsertUser(env.DB, publicKey);
+    await upsertSubscription(
+      env.DB,
+      userId,
+      subscription.endpoint,
+      subscription.keys.p256dh,
+      subscription.keys.auth
+    );
+
+    // Also forward to the Durable Object so real-time relay push still works.
+    // Best-effort — don't fail the response if only the DO forward errors.
+    try {
+      const id = env.CHAT_RELAY.idFromName("global-relay");
+      const stub = env.CHAT_RELAY.get(id);
+      await stub.fetch(
+        new Request(new URL("/push/subscribe", request.url).toString(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ publicKey, subscription }),
+        })
+      );
+    } catch {
+      console.error("DO push subscribe forward failed (best-effort)");
+    }
+
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch {
+    return new Response("Bad request", { status: 400 });
+  }
+}
+
+async function handlePushUnsubscribe(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  try {
+    const { publicKey, endpoint } = await request.json<{
+      publicKey: string;
+      endpoint: string;
+    }>();
+
+    // Remove from D1
+    await removeSubscription(env.DB, publicKey, endpoint);
+
+    // Also forward to Durable Object (best-effort)
+    try {
+      const id = env.CHAT_RELAY.idFromName("global-relay");
+      const stub = env.CHAT_RELAY.get(id);
+      await stub.fetch(
+        new Request(new URL("/push/unsubscribe", request.url).toString(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ publicKey, endpoint }),
+        })
+      );
+    } catch {
+      console.error("DO push unsubscribe forward failed (best-effort)");
+    }
+
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch {
+    return new Response("Bad request", { status: 400 });
+  }
+}
+
+// ── Queue consumer: deliver push to all user subscriptions ──
+
+/** Deactivate after this many consecutive non-5xx failures. */
+const MAX_CONSECUTIVE_FAILURES = 5;
+
+async function deliverPush(env: Env, job: PushJob): Promise<void> {
+  const subs = await getSubscriptionsForUser(env.DB, job.userId);
+  if (subs.length === 0) return;
+
+  const vapidKey = env.VAPID_PRIVATE_KEY;
+  const vapidSubject = env.VAPID_SUBJECT || "mailto:hello@chaton.app";
+
+  for (const sub of subs) {
+    const subscription: PushSubscriptionData = {
+      endpoint: sub.endpoint,
+      keys: { p256dh: sub.p256dh, auth: sub.auth },
+    };
+
+    const result = await sendPushNotification(
+      subscription,
+      {
+        title: "ChatOn",
+        body: `${job.senderName} sent you a message`,
+        tag: `thread-${job.conversationKey}`,
+        conversationKey: job.conversationKey,
+      },
+      vapidKey,
+      vapidSubject
+    );
+
+    switch (result) {
+      case "sent":
+        // Reset failure counter on success
+        await resetFailureCount(env.DB, sub.endpoint);
+        break;
+
+      case "expired":
+        // 410/404 — subscription is definitively dead
+        await deactivateSubscription(env.DB, sub.endpoint);
+        break;
+
+      case "error":
+        // Non-retriable error (not 5xx) — increment failure counter
+        // and deactivate if threshold exceeded
+        const count = await incrementFailureCount(env.DB, sub.endpoint);
+        if (count >= MAX_CONSECUTIVE_FAILURES) {
+          console.warn(
+            `Deactivating subscription after ${count} consecutive failures: ${sub.endpoint.slice(0, 60)}...`
+          );
+          await deactivateSubscription(env.DB, sub.endpoint);
+        }
+        break;
+    }
+  }
+}

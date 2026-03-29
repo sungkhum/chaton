@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useStore } from "../store";
-import { subscribeToPush, requestPushPermission, isPushSupported } from "../utils/push-notifications";
+import { subscribeToPush, requestPushPermission, isPushSupported, getExistingSubscription } from "../utils/push-notifications";
 
 const RELAY_URL = import.meta.env.VITE_RELAY_URL || "";
 const RECONNECT_BASE_MS = 1000;
@@ -128,6 +128,21 @@ export function useWebSocket(callbacks: WsCallbacks) {
     []
   );
 
+  // Listen for service worker subscription change messages
+  useEffect(() => {
+    if (!appUser) return;
+
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === "push-subscription-changed") {
+        registerPushSubscription(appUser.PublicKeyBase58Check);
+      }
+    };
+    navigator.serviceWorker?.addEventListener("message", handler);
+    return () => {
+      navigator.serviceWorker?.removeEventListener("message", handler);
+    };
+  }, [appUser]);
+
   useEffect(() => {
     connect();
     return () => {
@@ -139,19 +154,32 @@ export function useWebSocket(callbacks: WsCallbacks) {
   return { sendNotify, sendTyping, sendRead, isConnected: !!wsRef.current };
 }
 
-const pushRegistered = new Set<string>();
+// Track whether we've done the initial registration this session.
+// Subsequent calls still refresh the subscription but skip the permission prompt.
+const pushPermissionRequested = new Set<string>();
 
 async function registerPushSubscription(publicKey: string) {
-  if (!RELAY_URL || !isPushSupported() || pushRegistered.has(publicKey)) return;
+  if (!RELAY_URL || !isPushSupported()) return;
 
   try {
-    const granted = await requestPushPermission();
-    if (!granted) return;
+    // On first call per session, request permission (may prompt the user).
+    // On subsequent calls (reconnect, subscription change), just refresh
+    // the existing subscription without prompting.
+    let subscription = await getExistingSubscription();
 
-    const subscription = await subscribeToPush();
+    if (!subscription) {
+      if (pushPermissionRequested.has(publicKey)) return;
+      pushPermissionRequested.add(publicKey);
+
+      const granted = await requestPushPermission();
+      if (!granted) return;
+
+      subscription = await subscribeToPush();
+    }
+
     if (!subscription) return;
 
-    const res = await fetch(`${RELAY_URL}/push/subscribe`, {
+    await fetch(`${RELAY_URL}/push/subscribe`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -159,8 +187,6 @@ async function registerPushSubscription(publicKey: string) {
         subscription: subscription.toJSON(),
       }),
     });
-
-    if (res.ok) pushRegistered.add(publicKey);
   } catch {
     // Push registration is best-effort
   }

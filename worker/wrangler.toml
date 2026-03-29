@@ -4,6 +4,7 @@ compatibility_date = "2024-09-23"
 
 [vars]
 ALLOWED_ORIGINS = "https://getchaton.com,https://www.getchaton.com"
+DESO_NODE_URL = "https://node.deso.org"
 
 [durable_objects]
 bindings = [
@@ -13,3 +14,24 @@ bindings = [
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["ChatRelay"]
+
+# D1 database for push notification state
+[[d1_databases]]
+binding = "DB"
+database_name = "chaton-push"
+database_id = "fcc7664a-f115-4a44-b359-2e12989c7520"
+migrations_dir = "migrations"
+
+# Queue for push notification delivery
+[[queues.producers]]
+binding = "PUSH_QUEUE"
+queue = "chaton-push-events"
+
+[[queues.consumers]]
+queue = "chaton-push-events"
+max_batch_size = 50
+max_batch_timeout = 10
+
+# Poll DeSo for new messages every minute
+[triggers]
+crons = ["* * * * *"]
