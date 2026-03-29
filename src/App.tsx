@@ -53,6 +53,14 @@ if (isStandalone) {
 // Check cache version — clears stale data on schema changes
 checkCacheVersion();
 
+// If opened from a push notification, stash the conversation key so
+// messaging-app can navigate to it after conversations load.
+const conversationParam = new URLSearchParams(window.location.search).get("conversation");
+if (conversationParam) {
+  useStore.getState().setPendingConversationKey(conversationParam);
+  window.history.replaceState({}, "", window.location.pathname);
+}
+
 function App() {
   const { setAppUser, setIsLoadingUser, setAllAccessGroups } = useStore();
 

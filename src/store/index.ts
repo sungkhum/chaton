@@ -28,6 +28,8 @@ interface ChatOnState {
   // UI
   lockRefresh: boolean;
   setLockRefresh: (lock: boolean) => void;
+  pendingConversationKey: string | null;
+  setPendingConversationKey: (key: string | null) => void;
 
   // Unread badges
   unreadByConversation: Map<string, number>;
@@ -108,6 +110,8 @@ export const useStore = create<ChatOnState>((set) => ({
   // UI
   lockRefresh: false,
   setLockRefresh: (lockRefresh) => set({ lockRefresh }),
+  pendingConversationKey: null,
+  setPendingConversationKey: (pendingConversationKey) => set({ pendingConversationKey }),
 
   // Unread badges
   unreadByConversation: new Map(),

@@ -126,8 +126,10 @@ self.addEventListener("notificationclick", (event) => {
             return;
           }
         }
-        // Otherwise open new window
-        return self.clients.openWindow(url);
+        // Otherwise open new window — pass conversationKey so the app can navigate
+        const conversationKey = event.notification.data?.conversationKey;
+        const openUrl = conversationKey ? `/?conversation=${conversationKey}` : url;
+        return self.clients.openWindow(openUrl);
       })
   );
 });

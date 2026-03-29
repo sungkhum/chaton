@@ -154,125 +154,8 @@ export const MessagingApp: FC = () => {
   const [hiddenMessageIds, setHiddenMessageIds] = useState<Set<string>>(new Set());
   const { isMobile } = useMobile();
 
-  // Real-time WebSocket relay
-  const handleWsNewMessage = useCallback(
-    (threadId: string, _from: string) => {
-      if (!appUser) return;
-
-      getConversations(appUser.PublicKeyBase58Check, allAccessGroups).then(
-        async ({ conversations: updated, updatedAllAccessGroups }) => {
-          setAllAccessGroups(updatedAllAccessGroups);
-
-          const currentSelectedKey = selectedConversationPublicKeyRef.current;
-
-          if (threadId && threadId === currentSelectedKey) {
-            // Notification is for the conversation we're looking at —
-            // fetch the full thread so new messages appear immediately.
-            try {
-              const { updatedConversations, pubKeyPlusGroupName: newPubKey } =
-                await getConversation(currentSelectedKey, {
-                  ...updated,
-                  [currentSelectedKey]: updated[currentSelectedKey],
-                });
-
-              const updatedMessages =
-                updatedConversations[currentSelectedKey]?.messages;
-              if (updatedMessages) {
-                mergeConversationUpdate(
-                  updatedConversations,
-                  currentSelectedKey,
-                  updatedMessages
-                );
-                setPubKeyPlusGroupName(newPubKey);
-              }
-            } catch {
-              // Fall back to the simple conversation-list merge
-              simpleConversationMerge(updated);
-            }
-          } else {
-            // Different conversation — just merge the conversation list
-            simpleConversationMerge(updated);
-
-            if (threadId) {
-              useStore.getState().incrementUnread(threadId);
-            }
-          }
-        }
-      ).catch(() => {});
-    },
-    [appUser, allAccessGroups, mergeConversationUpdate]
-  );
-
-  // Lightweight merge for conversations we're not currently viewing:
-  // keeps optimistic messages, layers in fresh blockchain data.
-  const simpleConversationMerge = useCallback(
-    (updated: ConversationMap) => {
-      setConversations((prev) => {
-        const merged = { ...prev };
-        for (const [key, convo] of Object.entries(updated)) {
-          if (!merged[key]) merged[key] = convo;
-          else {
-            const optimistic = merged[key].messages.filter((m: any) => m._localId);
-            merged[key] = { ...convo, messages: [...optimistic, ...convo.messages] };
-          }
-        }
-        if (appUser) cacheConversations(appUser.PublicKeyBase58Check, merged);
-        return merged;
-      });
-    },
-    [appUser]
-  );
-
-  const { onTypingReceived, getTypingUsersForConversation } = useTypingDisplay();
-
-  const { sendNotify, sendTyping, sendRead } = useWebSocket({
-    onNewMessage: handleWsNewMessage,
-    onTyping: onTypingReceived,
-  });
-
-  const { onKeystroke } = useTypingIndicator(sendTyping);
-
-  // Derive classified conversation maps from the single conversations state + store Sets
-  const { chatConversations, requestConversations } = useMemo(() => {
-    if (!appUser) return { chatConversations: {} as ConversationMap, requestConversations: {} as ConversationMap };
-    const chats: ConversationMap = {};
-    const requests: ConversationMap = {};
-    for (const [key, convo] of Object.entries(conversations)) {
-      const cls = classifyConversation(
-        convo, appUser.PublicKeyBase58Check,
-        mutualFollows, approvedUsers, blockedUsers, initiatedChats
-      );
-      if (cls === "chat") chats[key] = convo;
-      else if (cls === "request") requests[key] = convo;
-      // "blocked" → omitted
-    }
-    return { chatConversations: chats, requestConversations: requests };
-  }, [conversations, mutualFollows, approvedUsers, blockedUsers, initiatedChats, appUser]);
-
-  const handleAcceptRequest = async (conversationKey: string, publicKey: string) => {
-    if (!appUser) return;
-    approveUser(publicKey);
-    try {
-      await createApprovalAssociation(appUser.PublicKeyBase58Check, publicKey);
-    } catch (e) {
-      rollbackApproval(publicKey);
-      toast.error("Failed to accept chat request");
-    }
-  };
-
-  const handleBlockRequest = async (conversationKey: string, publicKey: string) => {
-    if (!appUser) return;
-    blockUser(publicKey);
-    try {
-      await createBlockAssociation(appUser.PublicKeyBase58Check, publicKey);
-    } catch (e) {
-      rollbackBlock(publicKey);
-      toast.error("Failed to block user");
-    }
-  };
-
-  // Dependencies of useInterval must use `useRef` to get the most recent state
-  const lockRefreshRef = useRef(lockRefresh); // reference to lockRefresh that keeps current state in setInterval
+  // Refs for accessing latest state inside callbacks without causing re-renders
+  const lockRefreshRef = useRef(lockRefresh);
   const selectedConversationPublicKeyRef = useRef(
     selectedConversationPublicKey
   );
@@ -337,6 +220,127 @@ export const MessagingApp: FC = () => {
     },
     [appUser]
   );
+
+  // Lightweight merge for conversations we're not currently viewing:
+  // keeps optimistic messages, layers in fresh blockchain data.
+  const simpleConversationMerge = useCallback(
+    (updated: ConversationMap) => {
+      setConversations((prev) => {
+        const merged = { ...prev };
+        for (const [key, convo] of Object.entries(updated)) {
+          if (!merged[key]) merged[key] = convo;
+          else {
+            const optimistic = merged[key].messages.filter((m: any) => m._localId);
+            merged[key] = { ...convo, messages: [...optimistic, ...convo.messages] };
+          }
+        }
+        if (appUser) cacheConversations(appUser.PublicKeyBase58Check, merged);
+        return merged;
+      });
+    },
+    [appUser]
+  );
+
+  // Guard against concurrent WS-triggered fetches (e.g. rapid-fire notifications)
+  const wsFetchingRef = useRef(false);
+
+  // Real-time WebSocket relay
+  const handleWsNewMessage = useCallback(
+    (threadId: string, _from: string) => {
+      if (!appUser || wsFetchingRef.current) return;
+      wsFetchingRef.current = true;
+
+      getConversations(appUser.PublicKeyBase58Check, allAccessGroups).then(
+        async ({ conversations: updated, updatedAllAccessGroups }) => {
+          setAllAccessGroups(updatedAllAccessGroups);
+
+          const currentSelectedKey = selectedConversationPublicKeyRef.current;
+
+          if (threadId && threadId === currentSelectedKey) {
+            // Notification is for the conversation we're looking at —
+            // fetch the full thread so new messages appear immediately.
+            try {
+              const { updatedConversations, pubKeyPlusGroupName: newPubKey } =
+                await getConversation(currentSelectedKey, {
+                  ...updated,
+                  [currentSelectedKey]: updated[currentSelectedKey],
+                });
+
+              const updatedMessages =
+                updatedConversations[currentSelectedKey]?.messages;
+              if (updatedMessages) {
+                mergeConversationUpdate(
+                  updatedConversations,
+                  currentSelectedKey,
+                  updatedMessages
+                );
+                setPubKeyPlusGroupName(newPubKey);
+              }
+            } catch {
+              // Fall back to the simple conversation-list merge
+              simpleConversationMerge(updated);
+            }
+          } else {
+            // Different conversation — just merge the conversation list
+            simpleConversationMerge(updated);
+
+            if (threadId) {
+              useStore.getState().incrementUnread(threadId);
+            }
+          }
+        }
+      ).catch(() => {}).finally(() => { wsFetchingRef.current = false; });
+    },
+    [appUser, allAccessGroups, mergeConversationUpdate, simpleConversationMerge]
+  );
+
+  const { onTypingReceived, getTypingUsersForConversation } = useTypingDisplay();
+
+  const { sendNotify, sendTyping, sendRead } = useWebSocket({
+    onNewMessage: handleWsNewMessage,
+    onTyping: onTypingReceived,
+  });
+
+  const { onKeystroke } = useTypingIndicator(sendTyping);
+
+  // Derive classified conversation maps from the single conversations state + store Sets
+  const { chatConversations, requestConversations } = useMemo(() => {
+    if (!appUser) return { chatConversations: {} as ConversationMap, requestConversations: {} as ConversationMap };
+    const chats: ConversationMap = {};
+    const requests: ConversationMap = {};
+    for (const [key, convo] of Object.entries(conversations)) {
+      const cls = classifyConversation(
+        convo, appUser.PublicKeyBase58Check,
+        mutualFollows, approvedUsers, blockedUsers, initiatedChats
+      );
+      if (cls === "chat") chats[key] = convo;
+      else if (cls === "request") requests[key] = convo;
+      // "blocked" → omitted
+    }
+    return { chatConversations: chats, requestConversations: requests };
+  }, [conversations, mutualFollows, approvedUsers, blockedUsers, initiatedChats, appUser]);
+
+  const handleAcceptRequest = async (conversationKey: string, publicKey: string) => {
+    if (!appUser) return;
+    approveUser(publicKey);
+    try {
+      await createApprovalAssociation(appUser.PublicKeyBase58Check, publicKey);
+    } catch (e) {
+      rollbackApproval(publicKey);
+      toast.error("Failed to accept chat request");
+    }
+  };
+
+  const handleBlockRequest = async (conversationKey: string, publicKey: string) => {
+    if (!appUser) return;
+    blockUser(publicKey);
+    try {
+      await createBlockAssociation(appUser.PublicKeyBase58Check, publicKey);
+    } catch (e) {
+      rollbackBlock(publicKey);
+      toast.error("Failed to block user");
+    }
+  };
 
   // Retry a single pending message (used by startup retry and the retry button)
   const retryingIds = useRef(new Set<string>());
@@ -507,9 +511,13 @@ export const MessagingApp: FC = () => {
   useEffect(() => {
     if (!appUser) return;
     if (hasSetupMessaging(appUser)) {
+      // If the app was opened from a push notification, navigate to that conversation
+      const pending = useStore.getState().pendingConversationKey;
+      if (pending) useStore.getState().setPendingConversationKey(null);
+
       setLoading(true);
       setAutoFetchConversations(true);
-      rehydrateConversation("", false, !isMobile, isLoadingUser);
+      rehydrateConversation(pending || "", false, !isMobile, isLoadingUser);
     } else {
       setLoading(false);
     }
