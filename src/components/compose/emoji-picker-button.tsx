@@ -1,8 +1,6 @@
 import { Smile } from "lucide-react";
-import { lazy, Suspense, useState, useRef, useEffect } from "react";
-
-const Picker = lazy(() => import("@emoji-mart/react"));
-import data from "@emoji-mart/data";
+import { useState, useRef, useEffect } from "react";
+import { EmojiPicker } from "frimousse";
 
 interface EmojiPickerButtonProps {
   onEmojiSelect: (emoji: string) => void;
@@ -35,25 +33,36 @@ export const EmojiPickerButton = ({ onEmojiSelect }: EmojiPickerButtonProps) => 
 
       {open && (
         <div className="absolute bottom-full mb-2 right-0 z-50">
-          <Suspense
-            fallback={
-              <div className="w-[352px] h-[435px] bg-[#0a1628] rounded-xl border border-blue-800/40 flex items-center justify-center">
-                <div className="text-blue-400/40 text-sm">Loading...</div>
-              </div>
-            }
+          <EmojiPicker
+            onEmojiSelect={(emoji) => {
+              onEmojiSelect(emoji.emoji);
+              setOpen(false);
+            }}
+            className="w-[352px] h-[435px] bg-[#0a1628] rounded-xl border border-blue-800/40 [--frimousse-bg:transparent] [--frimousse-border-color:theme(colors.blue.800/40%)]"
           >
-            <Picker
-              data={data}
-              onEmojiSelect={(emoji: any) => {
-                onEmojiSelect(emoji.native);
-                setOpen(false);
-              }}
-              theme="dark"
-              set="native"
-              previewPosition="none"
-              skinTonePosition="search"
+            <EmojiPicker.Search
+              className="mx-2 mt-2 mb-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-white/30 outline-none focus:border-[#34F080]/50"
+              placeholder="Search emoji..."
             />
-          </Suspense>
+            <EmojiPicker.Viewport
+              className="flex-1 overflow-y-auto px-1"
+            >
+              <EmojiPicker.Loading className="flex items-center justify-center h-full text-blue-400/40 text-sm">
+                Loading...
+              </EmojiPicker.Loading>
+              <EmojiPicker.Empty className="flex items-center justify-center h-full text-white/40 text-sm">
+                No emoji found
+              </EmojiPicker.Empty>
+              <EmojiPicker.Row className="flex gap-0.5 px-1">
+                {({ emoji }) => (
+                  <EmojiPicker.Emoji
+                    emoji={emoji}
+                    className="flex items-center justify-center w-9 h-9 rounded-md text-xl hover:bg-white/10 cursor-pointer transition-colors"
+                  />
+                )}
+              </EmojiPicker.Row>
+            </EmojiPicker.Viewport>
+          </EmojiPicker>
         </div>
       )}
     </div>

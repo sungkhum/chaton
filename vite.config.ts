@@ -27,7 +27,6 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          "emoji-mart": ["@emoji-mart/data", "@emoji-mart/react", "emoji-mart"],
           "deso": ["deso-protocol"],
         },
       },
