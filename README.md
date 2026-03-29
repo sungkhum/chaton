@@ -1,60 +1,183 @@
-![DeSo Logo](public/assets/logo-white.svg)
+<p align="center">
+  <img src="public/ChatOn-Logo-Small.png" width="80" height="80" alt="ChatOn" style="border-radius: 16px;" />
+</p>
 
-# DeSo Chat Protocol
+<h1 align="center">ChatOn</h1>
 
-This repo is a react app that demonstrates how to use access groups to create an end-to-end encrypted chat application
-on the DeSo blockchain.
+<p align="center">
+  <strong>Encrypted messaging that no one can shut down.</strong><br/>
+  DMs and group chats on the DeSo blockchain — cross-chain, open source, zero infrastructure cost.
+</p>
 
-In the DeSo Chat Protocol app, [DeSo Identity](https://github.com/deso-protocol/identity) is used to generate a [derived
-key](https://docs.deso.org/deso-identity/identity/mobile-integration#derived-keys). Once a user has generated a derived key,
-all message encryption/decryption and transaction signing is handled without the help of identity.
+<p align="center">
+  <a href="https://chaton.social">Live App</a> &nbsp;·&nbsp;
+  <a href="https://github.com/sungkhum/chaton">GitHub</a> &nbsp;·&nbsp;
+  <a href="https://focus.xyz/nathanwells">Built by @nathanwells</a>
+</p>
 
-You can create group chats or direct message conversations with users based on their DeSo username, DeSo public key,
-ETH address, or ENS name!
+---
 
-# Auto-generated React App README
+## What is ChatOn?
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+ChatOn is a fully decentralized messaging app built on the [DeSo blockchain](https://deso.com). Every message is stored on-chain with end-to-end encryption, at a cost of ~$0.000002 per message. No backend servers. No database. No monthly infrastructure bill.
 
-## Available Scripts
+Sign in with a DeSo identity or an Ethereum wallet (MetaMask), and message anyone across both chains.
 
-In the project directory, you can run:
+## Features
 
-### `npm start`
+### Messaging
+- **End-to-end encrypted DMs** — private conversations between any two DeSo or Ethereum users
+- **Encrypted group chats** — create named groups, add members, manage access
+- **Cross-chain messaging** — message DeSo usernames, public keys, ETH addresses, or ENS names
+- **Optimistic UI** — messages appear instantly; blockchain confirmation happens in the background
+- **Message replies** — reply to specific messages with quoted preview
+- **Emoji reactions** — react to any message with the full emoji set
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+### Rich Media
+- **Image sharing** — upload and send images with lightbox preview
+- **GIF picker** — search and send GIFs via Giphy integration
+- **Voice notes** — record, preview, and send audio messages with waveform visualization
+- **Video messages** — send video with inline playback
+- **File attachments** — share files of any type with download links
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+### Real-Time
+- **WebSocket relay** — instant message delivery via Cloudflare Durable Objects
+- **Typing indicators** — see when someone is typing in real-time
+- **Push notifications** — browser push notifications for new messages (with VAPID)
+- **Unread badges** — per-conversation unread counts with visual indicators
 
-### `npm test`
+### Chat Requests
+- **Request inbox** — messages from strangers go to a separate "Requests" tab
+- **Smart classification** — mutual DeSo follows, approved contacts, and self-initiated chats go straight to your inbox
+- **Accept / Block** — on-chain associations for permanent, portable decisions
+- **No spam** — blocked users are filtered out completely
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Design
+- **Telegram-style mobile UX** — two-line conversation rows with timestamps, unread pills, and compact layout
+- **Speed-dial FAB** — floating action button for new messages and group creation
+- **Dark theme** — purpose-built dark interface with green accent system
+- **PWA support** — installable as a native app on mobile and desktop
+- **Responsive** — full-width mobile view with slide transitions, sidebar + chat pane on desktop
 
-### `npm run build`
+## Tech Stack
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+| Layer | Technology |
+|-------|-----------|
+| Framework | React 19 + TypeScript + Vite |
+| Styling | Tailwind CSS v4 |
+| State | Zustand |
+| Blockchain | [deso-protocol](https://www.npmjs.com/package/deso-protocol) SDK |
+| Real-time | Cloudflare Workers + Durable Objects (WebSocket relay) |
+| Emoji | [frimousse](https://github.com/liveblocks/frimousse) (React 19 native) |
+| Icons | Lucide React |
+| Toasts | Sonner |
+| PWA | Serwist (service worker + caching) |
+| Animations | GSAP (landing page) |
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Getting Started
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Prerequisites
 
-### `npm run eject`
+- Node.js 18+
+- npm or yarn
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+### Installation
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```bash
+git clone https://github.com/sungkhum/chaton.git
+cd chaton
+npm install
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+### Environment Variables
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+Create a `.env` file in the project root:
 
-## Learn More
+```env
+VITE_NODE_URL=https://node.deso.org
+VITE_IDENTITY_URL=https://identity.deso.org
+VITE_PROFILE_URL=https://focus.xyz
+VITE_IS_TESTNET=false
+VITE_GIPHY_API_KEY=your_giphy_api_key
+VITE_RELAY_URL=wss://your-relay-worker.workers.dev
+VITE_VAPID_PUBLIC_KEY=your_vapid_public_key
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+| Variable | Description |
+|----------|-------------|
+| `VITE_NODE_URL` | DeSo node endpoint |
+| `VITE_IDENTITY_URL` | DeSo Identity service URL |
+| `VITE_PROFILE_URL` | Base URL for user profile links |
+| `VITE_IS_TESTNET` | Set to `true` for testnet |
+| `VITE_GIPHY_API_KEY` | Giphy API key for GIF search |
+| `VITE_RELAY_URL` | WebSocket relay URL (Cloudflare Worker) |
+| `VITE_VAPID_PUBLIC_KEY` | VAPID key for push notifications |
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Development
+
+```bash
+npm run dev
+```
+
+Opens at [http://localhost:3000](http://localhost:3000).
+
+### Production Build
+
+```bash
+npm run build
+npm run preview
+```
+
+## Architecture
+
+ChatOn follows a **DeSo-first** architecture. There is no custom backend or database.
+
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────────┐
+│  React App  │────▶│  DeSo Node   │────▶│  DeSo Blockchain│
+│  (Frontend) │     │  (API layer) │     │  (Data layer)   │
+└─────┬───────┘     └──────────────┘     └─────────────────┘
+      │
+      │  WebSocket
+      ▼
+┌─────────────────────┐
+│  Cloudflare Worker   │
+│  (Durable Object)    │
+│  Real-time relay only│
+└─────────────────────┘
+```
+
+- **All messages** are encrypted and stored on the DeSo blockchain
+- **All identity** (usernames, keys, follows) comes from DeSo
+- **The relay** only forwards real-time notifications — it stores nothing
+- **Target cost**: $0/month infrastructure
+
+## Project Structure
+
+```
+src/
+├── components/          # React components
+│   ├── compose/         # Message composer (emoji, GIF, voice, reply)
+│   ├── messages/        # Message type renderers (image, video, file, etc.)
+│   ├── shared/          # Reusable UI primitives
+│   └── form/            # Form components
+├── hooks/               # Custom hooks (mobile, intervals, WebSocket, typing)
+├── services/            # Business logic (conversations, media, Giphy)
+├── store/               # Zustand store (auth, access groups, classification)
+└── utils/               # Helpers, constants, types, ExtraData conventions
+```
+
+## Contributing
+
+Contributions are welcome. Fork the repo, create a branch, and open a PR.
+
+```bash
+git checkout -b feature/your-feature
+npm run lint:fix
+git commit -m "Add your feature"
+git push origin feature/your-feature
+```
+
+## License
+
+Open source. Built by [@nathanwells](https://focus.xyz/nathanwells).
