@@ -19,7 +19,7 @@
 
 ## What is ChatOn?
 
-ChatOn is a fully decentralized messaging app built on the [DeSo blockchain](https://deso.com). Every message is stored on-chain with end-to-end encryption, at a cost of ~$0.000002 per message. No backend servers. No database. No monthly infrastructure bill.
+ChatOn is a fully decentralized messaging app forked from the DeSo core team's [deso-chat-protocol](https://github.com/deso-protocol/deso-chat-protocol) and extended with AI-assisted development using [Claude](https://claude.ai). Every message is stored on-chain with end-to-end encryption. No backend servers. No database. No monthly infrastructure bill.
 
 Sign in with a DeSo identity or an Ethereum wallet (MetaMask), and message anyone across both chains.
 
