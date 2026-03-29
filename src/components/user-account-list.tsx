@@ -86,15 +86,15 @@ const UserAccountList = () => {
     : allAccounts.slice(0, COLLAPSED_ACCOUNTS_NUM);
 
   return (
-    <div className={`mb-0 ${loading || visibleAccounts.length > 0 ? "border-b" : ""}`}>
+    <div className={`mb-0 ${loading || visibleAccounts.length > 0 ? "border-b border-white/10" : ""}`}>
       {loading ? (
         <div className="flex justify-center my-2 h-[29px]">
-          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+          <Loader2 className="w-6 h-6 animate-spin text-[#34F080]" />
         </div>
       ) : (
         <>
           <section
-            className="text-gray-700 custom-scrollbar"
+            className="custom-scrollbar"
             aria-labelledby="dropdownInformationButton"
             style={
               showMore
@@ -109,9 +109,9 @@ const UserAccountList = () => {
               <div
                 key={option.key}
                 onClick={() => option.onclick(option.key)}
-                className="cursor-pointer text-md pl-2 py-1 hover:bg-gray-100 rounded-md"
+                className="cursor-pointer text-md pl-2 py-1 hover:bg-white/5 rounded-md transition-colors"
               >
-                <div className={`flex items-center ${option.isActive ? "font-bold" : ""}`}>
+                <div className={`flex items-center ${option.isActive ? "font-bold text-white" : "text-gray-300"}`}>
                   <MessagingDisplayAvatar
                     publicKey={option.key}
                     username={option.name}
@@ -126,7 +126,7 @@ const UserAccountList = () => {
 
           {!showMore && allAccounts.length > COLLAPSED_ACCOUNTS_NUM && (
             <span
-              className="text-blue-600 text-sm text-left mx-3 mt-2 mb-3 block cursor-pointer"
+              className="text-[#34F080] text-sm text-left mx-3 mt-2 mb-3 block cursor-pointer hover:text-[#34F080]/80 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowMore(true);
