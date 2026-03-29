@@ -64,6 +64,12 @@ import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { MessagingSetupButton } from "./messaging-setup-button";
 import { shortenLongWord } from "./search-users";
 import { SendMessageButtonAndInput } from "./send-message-button-and-input";
+import {
+  addPendingMessage,
+  removePendingMessage,
+  getPendingMessages,
+  type PendingMessage,
+} from "../services/pending-messages.service";
 
 export const MockBubble: FC<{
     username: string;
@@ -229,6 +235,166 @@ export const MessagingApp: FC = () => {
     lockRefreshRef.current = lockRefresh;
     selectedConversationPublicKeyRef.current = selectedConversationPublicKey;
   });
+
+  // Retry a single pending message (used by startup retry and the retry button)
+  const retryingIds = useRef(new Set<string>());
+  const conversationsRef = useRef(conversations);
+  conversationsRef.current = conversations;
+  const retryPendingMessage = useCallback(
+    async (pending: PendingMessage) => {
+      if (!appUser) return;
+      const { localId, conversationKey, messageText, recipientPublicKey, recipientAccessGroupKeyName, extraData } = pending;
+
+      // Guard against concurrent retries for the same message
+      if (retryingIds.current.has(localId)) return;
+      retryingIds.current.add(localId);
+
+      // Insert optimistic message into conversations if not already present
+      const TimestampNanos = pending.createdAt * 1e6;
+      const mockMessage = {
+        DecryptedMessage: messageText,
+        IsSender: true,
+        _status: "sending" as const,
+        _localId: localId,
+        SenderInfo: {
+          OwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+          AccessGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
+        },
+        RecipientInfo: {
+          OwnerPublicKeyBase58Check: recipientPublicKey,
+          AccessGroupKeyName: recipientAccessGroupKeyName,
+        },
+        MessageInfo: {
+          TimestampNanos,
+          TimestampNanosString: String(TimestampNanos),
+          ExtraData: extraData || {},
+        },
+      } as DecryptedMessageEntryResponse & { _status: string; _localId: string };
+
+      // Check if this message already landed on-chain (app closed after
+      // blockchain accepted but before we could remove from IndexedDB).
+      // Uses the same dedup key as the poll reconciliation: sender + first 50 chars.
+      const dedupeKey = appUser.PublicKeyBase58Check + ":" + messageText.slice(0, 50);
+      const convo = conversationsRef.current[conversationKey];
+      if (convo) {
+        const alreadyOnChain = convo.messages.some(
+          (m: any) =>
+            !m._localId &&
+            m.SenderInfo.OwnerPublicKeyBase58Check + ":" + m.DecryptedMessage?.slice(0, 50) === dedupeKey
+        );
+        if (alreadyOnChain) {
+          // Message already confirmed — just clean up
+          removePendingMessage(appUser.PublicKeyBase58Check, localId);
+          // Remove the optimistic entry if it's lingering in state
+          setConversations((prev) => {
+            if (!prev[conversationKey]) return prev;
+            return {
+              ...prev,
+              [conversationKey]: {
+                ...prev[conversationKey],
+                messages: prev[conversationKey].messages.filter(
+                  (m: any) => m._localId !== localId
+                ),
+              },
+            };
+          });
+          retryingIds.current.delete(localId);
+          return;
+        }
+      }
+
+      // Upsert: update existing failed message or insert fresh.
+      // If the conversation hasn't loaded yet, create a minimal placeholder so
+      // the retry still fires the blockchain call.
+      setConversations((prev) => {
+        const c = prev[conversationKey];
+        if (!c) {
+          return {
+            ...prev,
+            [conversationKey]: {
+              ChatType: ChatType.DM,
+              firstMessagePublicKey: recipientPublicKey,
+              messages: [mockMessage],
+            },
+          };
+        }
+        const exists = c.messages.some((m: any) => m._localId === localId);
+        return {
+          ...prev,
+          [conversationKey]: {
+            ...c,
+            messages: exists
+              ? c.messages.map((m: any) =>
+                  m._localId === localId ? { ...m, _status: "sending" } : m
+                )
+              : [mockMessage, ...c.messages],
+          },
+        };
+      });
+
+      try {
+        await encryptAndSendNewMessage(
+          messageText,
+          appUser.PublicKeyBase58Check,
+          recipientPublicKey,
+          recipientAccessGroupKeyName,
+          DEFAULT_KEY_MESSAGING_GROUP_NAME,
+          extraData
+        );
+        removePendingMessage(appUser.PublicKeyBase58Check, localId);
+        sendNotify(
+          conversationKey,
+          [recipientPublicKey],
+          usernameByPublicKeyBase58Check[appUser.PublicKeyBase58Check] || appUser.PublicKeyBase58Check
+        );
+        setConversations((prev) => {
+          if (!prev[conversationKey]) return prev;
+          return {
+            ...prev,
+            [conversationKey]: {
+              ...prev[conversationKey],
+              messages: prev[conversationKey].messages.map((m: any) =>
+                m._localId === localId ? { ...m, _status: "sent" } : m
+              ),
+            },
+          };
+        });
+      } catch (e: any) {
+        setConversations((prev) => {
+          if (!prev[conversationKey]) return prev;
+          return {
+            ...prev,
+            [conversationKey]: {
+              ...prev[conversationKey],
+              messages: prev[conversationKey].messages.map((m: any) =>
+                m._localId === localId ? { ...m, _status: "failed" } : m
+              ),
+            },
+          };
+        });
+        toast.error(`Failed to send message: ${e?.toString() || "Unknown error"}`);
+      } finally {
+        retryingIds.current.delete(localId);
+      }
+    },
+    [appUser, sendNotify, usernameByPublicKeyBase58Check]
+  );
+
+  // Retry any pending messages from IndexedDB on startup (or user switch)
+  const pendingRetryRanForUser = useRef<string | null>(null);
+  useEffect(() => {
+    if (!appUser || loading) return;
+    if (pendingRetryRanForUser.current === appUser.PublicKeyBase58Check) return;
+    pendingRetryRanForUser.current = appUser.PublicKeyBase58Check;
+
+    getPendingMessages(appUser.PublicKeyBase58Check).then((pendingMsgs) => {
+      if (pendingMsgs.length === 0) return;
+      toast.info(`Retrying ${pendingMsgs.length} unsent message${pendingMsgs.length > 1 ? "s" : ""}…`);
+      for (const pending of pendingMsgs) {
+        retryPendingMessage(pending);
+      }
+    });
+  }, [appUser, loading, retryPendingMessage]);
 
   useEffect(() => {
     if (!appUser) return;
@@ -1120,6 +1286,14 @@ export const MessagingApp: FC = () => {
                             timestamp: msg.MessageInfo.TimestampNanosString,
                           })
                         }
+                        onRetry={async (localId) => {
+                          if (!appUser) return;
+                          const pendingMsgs = await getPendingMessages(appUser.PublicKeyBase58Check);
+                          const pending = pendingMsgs.find((m) => m.localId === localId);
+                          if (pending) {
+                            retryPendingMessage(pending);
+                          }
+                        }}
                         onReact={async (timestampNanosString, emoji) => {
                           if (!appUser) return;
                           const recipientPublicKey =
@@ -1277,6 +1451,20 @@ export const MessagingApp: FC = () => {
                       }));
                       setLockRefresh(true);
 
+                      // Persist to IndexedDB so the message survives app close.
+                      // Awaited so the write lands before the blockchain call starts.
+                      const pending: PendingMessage = {
+                        localId,
+                        conversationKey: convKey,
+                        messageText: messageToSend,
+                        senderPublicKey: appUser.PublicKeyBase58Check,
+                        recipientPublicKey,
+                        recipientAccessGroupKeyName,
+                        extraData,
+                        createdAt: Date.now(),
+                      };
+                      await addPendingMessage(pending);
+
                       try {
                         await encryptAndSendNewMessage(
                           messageToSend,
@@ -1286,6 +1474,8 @@ export const MessagingApp: FC = () => {
                           DEFAULT_KEY_MESSAGING_GROUP_NAME,
                           extraData
                         );
+                        // Sent successfully — remove from IndexedDB
+                        removePendingMessage(appUser.PublicKeyBase58Check, localId);
                         // Notify via WebSocket relay
                         sendNotify(
                           convKey,
@@ -1303,7 +1493,7 @@ export const MessagingApp: FC = () => {
                           },
                         }));
                       } catch (e: any) {
-                        // Update status to "failed"
+                        // Update status to "failed" — pending message stays in IndexedDB for retry
                         setConversations((prev) => ({
                           ...prev,
                           [convKey]: {
