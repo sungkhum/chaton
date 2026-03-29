@@ -88,7 +88,7 @@ export const Header = () => {
                   </button>
                 </div>
 
-                <UserAccountList />
+                <UserAccountList onSwitch={() => setMenuOpen(false)} />
 
                 {appUser?.ProfileEntryResponse && (
                   <a

@@ -20,7 +20,7 @@ type Account = {
   isActive: boolean;
 };
 
-const UserAccountList = () => {
+const UserAccountList = ({ onSwitch }: { onSwitch?: () => void }) => {
   const { appUser } = useStore();
   const [showMore, setShowMore] = useState<boolean>(false);
   const [users, setUsers] = useState<User[]>([]);
@@ -66,7 +66,11 @@ const UserAccountList = () => {
       const hasProfile = !!profile;
       return {
         name: formatDisplayName(user, ""),
-        onclick: async (key: string) => identity.setActiveUser(key),
+        onclick: (key: string) => {
+          if (key === appUser?.PublicKeyBase58Check) return;
+          identity.setActiveUser(key);
+          onSwitch?.();
+        },
         key,
         profile,
         hasProfile,
