@@ -7,7 +7,7 @@ import {
   NOTIFICATION_EVENTS,
   User,
 } from "deso-protocol";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Toaster } from "sonner";
 import { Header } from "./components/header";
 import { InstallPrompt } from "./components/install-prompt";
@@ -274,6 +274,31 @@ function App() {
 
   const { appUser, isLoadingUser } = useStore();
   const path = window.location.pathname;
+  const splashRemovedRef = useRef(false);
+
+  // Remove splash once content is ready (not during loading)
+  const contentReady = !isLoadingUser || !!appUser || path === "/privacy" || path === "/terms";
+  useEffect(() => {
+    if (!contentReady || splashRemovedRef.current) return;
+    splashRemovedRef.current = true;
+    // Wait one frame so the DOM is painted before fading
+    requestAnimationFrame(() => {
+      const splash = document.getElementById("splash");
+      if (!splash) return;
+      splash.style.transition = "opacity 0.3s ease-out";
+      splash.style.opacity = "0";
+      splash.addEventListener("transitionend", () => splash.remove());
+    });
+  }, [contentReady]);
+
+  // Safety: remove splash after 5s no matter what (prevents permanent splash on error)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const splash = document.getElementById("splash");
+      if (splash) splash.remove();
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Legal pages are always accessible regardless of auth state
   if (path === "/privacy") {
@@ -295,18 +320,8 @@ function App() {
   }
 
   if (isLoadingUser && !appUser) {
-    return (
-      <div className="App flex items-center justify-center">
-        <img
-          src="/ChatOn-Logo-Small.png"
-          alt="ChatOn"
-          width={80}
-          height={80}
-          className="rounded-[20px]"
-          style={{ animation: "splash-pulse 1.8s ease-in-out infinite" }}
-        />
-      </div>
-    );
+    // Splash screen covers this state — render nothing visible
+    return null;
   }
 
   return (

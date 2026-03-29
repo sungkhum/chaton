@@ -7,14 +7,6 @@ const root = ReactDOM.createRoot(
 );
 root.render(<App />);
 
-// Remove the HTML splash screen once React has mounted
-const splash = document.getElementById("splash");
-if (splash) {
-  splash.style.transition = "opacity 0.3s ease-out";
-  splash.style.opacity = "0";
-  splash.addEventListener("transitionend", () => splash.remove());
-}
-
 // Register service worker (built by @serwist/vite from src/sw.ts)
 async function registerSW() {
   const { getSerwist } = await import("virtual:serwist");
