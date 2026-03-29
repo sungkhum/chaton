@@ -139,7 +139,9 @@ export const SendMessageButtonAndInput = ({
   const handleVoiceNoteSend = async (blob: Blob, duration: number) => {
     setIsUploading(true);
     try {
-      const file = new File([blob], "voice-note.webm", { type: blob.type || "audio/webm" });
+      // DeSo's video endpoint rejects audio/* types, but webm is a valid video
+      // container — re-labeling as video/webm lets it through without re-encoding.
+      const file = new File([blob], "voice-note.webm", { type: "video/webm" });
       const result = await uploadVideoFile(file);
       await sendMessage("Voice note", {
         "chattra:type": "voice-note",
