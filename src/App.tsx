@@ -20,6 +20,12 @@ import {
   DESO_NETWORK,
   getTransactionSpendingLimits,
 } from "./utils/constants";
+import {
+  getCachedUserProfile,
+  cacheUserProfile,
+  clearCacheForUser,
+  checkCacheVersion,
+} from "./services/cache.service";
 
 // Safari iOS PWA standalone mode can't use popups for identity login —
 // window.open() either opens in Safari (breaking postMessage) or gets blocked.
@@ -42,6 +48,9 @@ configure({
 if (isStandalone) {
   identity.handleRedirectURI(window.location.href);
 }
+
+// Check cache version — clears stale data on schema changes
+checkCacheVersion();
 
 function App() {
   const { setAppUser, setIsLoadingUser, setAllAccessGroups } = useStore();
@@ -80,93 +89,167 @@ function App() {
             currentUser.primaryDerivedKey;
 
           useStore.getState().resetChatRequestState();
-          setIsLoadingUser(true);
-          Promise.all([
-            getUser(currentUser.publicKey),
-            getAllAccessGroups({
-              PublicKeyBase58Check: currentUser.publicKey,
-            }),
-          ])
-            .then(([userRes, { AccessGroupsOwned, AccessGroupsMember }]) => {
-              if (
-                !AccessGroupsOwned?.find(
-                  ({ AccessGroupKeyName }) =>
-                    AccessGroupKeyName === DEFAULT_KEY_MESSAGING_GROUP_NAME
-                )
-              ) {
-                return withAuth(() =>
-                  createAccessGroup({
-                    AccessGroupOwnerPublicKeyBase58Check: currentUser.publicKey,
-                    AccessGroupPublicKeyBase58Check:
-                      messagingPublicKeyBase58Check,
-                    AccessGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
-                    MinFeeRateNanosPerKB: 1000,
-                  })
-                ).then(() => {
-                  return getAllAccessGroups({
-                    PublicKeyBase58Check: currentUser.publicKey,
-                  }).then((groups) => {
-                    const user: User | null = userRes.UserList?.[0] ?? null;
-                    const appUser: AppUser | null = user
-                      ? {
-                          ...user,
-                          messagingPublicKeyBase58Check,
-                          accessGroupsOwned: groups.AccessGroupsOwned,
-                        }
-                      : null;
-                    const allGroups = (AccessGroupsOwned || []).concat(
-                      AccessGroupsMember || []
-                    );
 
-                    setAppUser(appUser);
-                    useStore.setState({ allAccessGroups: allGroups });
-                    return user;
-                  });
-                });
-              } else {
+          // Try cache-first: show cached profile instantly, refresh in background
+          const cached = getCachedUserProfile(currentUser.publicKey);
+          const hasDefaultGroup = cached?.allAccessGroups.some(
+            (g) => g.AccessGroupKeyName === DEFAULT_KEY_MESSAGING_GROUP_NAME
+          );
+
+          if (cached && hasDefaultGroup) {
+            // Cache hit — render immediately, refresh in background
+            setAppUser(cached.appUser);
+            useStore.setState({ allAccessGroups: cached.allAccessGroups });
+            setIsLoadingUser(false);
+
+            // Background revalidation
+            Promise.all([
+              getUser(currentUser.publicKey),
+              getAllAccessGroups({
+                PublicKeyBase58Check: currentUser.publicKey,
+              }),
+            ])
+              .then(([userRes, { AccessGroupsOwned, AccessGroupsMember }]) => {
                 const user: User | null = userRes.UserList?.[0] ?? null;
-                const appUser: AppUser | null = user
-                  ? {
-                      ...user,
-                      messagingPublicKeyBase58Check,
-                      accessGroupsOwned: AccessGroupsOwned,
-                    }
-                  : null;
+                if (!user) return;
+                const freshAppUser: AppUser = {
+                  ...user,
+                  messagingPublicKeyBase58Check,
+                  accessGroupsOwned: AccessGroupsOwned,
+                };
                 const allGroups = (AccessGroupsOwned || []).concat(
                   AccessGroupsMember || []
                 );
-
-                setAppUser(appUser);
+                setAppUser(freshAppUser);
                 useStore.setState({ allAccessGroups: allGroups });
-                return user;
-              }
-            })
-            .then((user) => {
-              if (!user) return;
-              window.clearInterval(pollingIntervalId);
-              if (user.BalanceNanos === 0) {
-                pollingIntervalId = window.setInterval(async () => {
-                  getUser(currentUser.publicKey).then((res) => {
-                    const user = res.UserList?.[0];
-                    if (user && user.BalanceNanos > 0) {
-                      setAppUser({
+                cacheUserProfile(currentUser.publicKey, freshAppUser, allGroups);
+
+                window.clearInterval(pollingIntervalId);
+                if (user.BalanceNanos === 0) {
+                  pollingIntervalId = window.setInterval(async () => {
+                    getUser(currentUser.publicKey).then((res) => {
+                      const u = res.UserList?.[0];
+                      if (u && u.BalanceNanos > 0) {
+                        setAppUser({ ...u, messagingPublicKeyBase58Check });
+                        window.clearInterval(pollingIntervalId);
+                      }
+                    });
+                  }, 3000);
+                }
+              })
+              .catch(() => {
+                // Background refresh failed — cached data is still showing
+              });
+          } else {
+            // Cache miss or first-time setup — blocking flow
+            setIsLoadingUser(true);
+            Promise.all([
+              getUser(currentUser.publicKey),
+              getAllAccessGroups({
+                PublicKeyBase58Check: currentUser.publicKey,
+              }),
+            ])
+              .then(([userRes, { AccessGroupsOwned, AccessGroupsMember }]) => {
+                if (
+                  !AccessGroupsOwned?.find(
+                    ({ AccessGroupKeyName }) =>
+                      AccessGroupKeyName === DEFAULT_KEY_MESSAGING_GROUP_NAME
+                  )
+                ) {
+                  return withAuth(() =>
+                    createAccessGroup({
+                      AccessGroupOwnerPublicKeyBase58Check:
+                        currentUser.publicKey,
+                      AccessGroupPublicKeyBase58Check:
+                        messagingPublicKeyBase58Check,
+                      AccessGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                      MinFeeRateNanosPerKB: 1000,
+                    })
+                  ).then(() => {
+                    return getAllAccessGroups({
+                      PublicKeyBase58Check: currentUser.publicKey,
+                    }).then((groups) => {
+                      const user: User | null =
+                        userRes.UserList?.[0] ?? null;
+                      const appUser: AppUser | null = user
+                        ? {
+                            ...user,
+                            messagingPublicKeyBase58Check,
+                            accessGroupsOwned: groups.AccessGroupsOwned,
+                          }
+                        : null;
+                      const allGroups = (AccessGroupsOwned || []).concat(
+                        AccessGroupsMember || []
+                      );
+
+                      setAppUser(appUser);
+                      useStore.setState({ allAccessGroups: allGroups });
+                      if (appUser) {
+                        cacheUserProfile(
+                          currentUser.publicKey,
+                          appUser,
+                          allGroups
+                        );
+                      }
+                      return user;
+                    });
+                  });
+                } else {
+                  const user: User | null = userRes.UserList?.[0] ?? null;
+                  const appUser: AppUser | null = user
+                    ? {
                         ...user,
                         messagingPublicKeyBase58Check,
-                      });
-                      window.clearInterval(pollingIntervalId);
-                    }
-                  });
-                }, 3000);
-              }
-            })
-            .finally(() => {
-              setIsLoadingUser(false);
-            });
+                        accessGroupsOwned: AccessGroupsOwned,
+                      }
+                    : null;
+                  const allGroups = (AccessGroupsOwned || []).concat(
+                    AccessGroupsMember || []
+                  );
+
+                  setAppUser(appUser);
+                  useStore.setState({ allAccessGroups: allGroups });
+                  if (appUser) {
+                    cacheUserProfile(
+                      currentUser.publicKey,
+                      appUser,
+                      allGroups
+                    );
+                  }
+                  return user;
+                }
+              })
+              .then((user) => {
+                if (!user) return;
+                window.clearInterval(pollingIntervalId);
+                if (user.BalanceNanos === 0) {
+                  pollingIntervalId = window.setInterval(async () => {
+                    getUser(currentUser.publicKey).then((res) => {
+                      const user = res.UserList?.[0];
+                      if (user && user.BalanceNanos > 0) {
+                        setAppUser({
+                          ...user,
+                          messagingPublicKeyBase58Check,
+                        });
+                        window.clearInterval(pollingIntervalId);
+                      }
+                    });
+                  }, 3000);
+                }
+              })
+              .finally(() => {
+                setIsLoadingUser(false);
+              });
+          }
           return;
         }
 
         if (event === NOTIFICATION_EVENTS.LOGOUT_END) {
           useStore.getState().resetChatRequestState();
+          const loggedOutKey = store.appUser?.PublicKeyBase58Check;
+          if (loggedOutKey) {
+            clearCacheForUser(loggedOutKey);
+          }
           if (alternateUsers) {
             const fallbackUser = Object.values(alternateUsers)[0];
             identity.setActiveUser(fallbackUser.publicKey);

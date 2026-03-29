@@ -3,6 +3,10 @@ import {
   AccessGroupEntryResponse,
   User,
 } from "deso-protocol";
+import {
+  cacheClassificationData,
+  cacheUserProfile,
+} from "../services/cache.service";
 
 export type AppUser = User & {
   messagingPublicKeyBase58Check: string;
@@ -65,7 +69,17 @@ export const useStore = create<ChatOnState>((set) => ({
   isLoadingUser: true,
   allAccessGroups: [],
 
-  setAppUser: (user) => set({ appUser: user }),
+  setAppUser: (user) =>
+    set((state) => {
+      if (user) {
+        cacheUserProfile(
+          user.PublicKeyBase58Check,
+          user,
+          state.allAccessGroups
+        );
+      }
+      return { appUser: user };
+    }),
 
   setIsLoadingUser: (loading) => set({ isLoadingUser: loading }),
 
@@ -134,13 +148,25 @@ export const useStore = create<ChatOnState>((set) => ({
   chatRequestsLoaded: false,
 
   setClassificationData: (mutualFollows, approved, blocked, approvedIds, blockedIds) =>
-    set({
-      mutualFollows,
-      approvedUsers: approved,
-      blockedUsers: blocked,
-      approvedAssociationIds: approvedIds,
-      blockedAssociationIds: blockedIds,
-      chatRequestsLoaded: true,
+    set((state) => {
+      const publicKey = state.appUser?.PublicKeyBase58Check;
+      if (publicKey) {
+        cacheClassificationData(publicKey, {
+          mutualFollows,
+          approvedUsers: approved,
+          blockedUsers: blocked,
+          approvedAssociationIds: approvedIds,
+          blockedAssociationIds: blockedIds,
+        });
+      }
+      return {
+        mutualFollows,
+        approvedUsers: approved,
+        blockedUsers: blocked,
+        approvedAssociationIds: approvedIds,
+        blockedAssociationIds: blockedIds,
+        chatRequestsLoaded: true,
+      };
     }),
 
   addInitiatedChat: (publicKey) =>
@@ -149,14 +175,36 @@ export const useStore = create<ChatOnState>((set) => ({
     })),
 
   approveUser: (publicKey) =>
-    set((state) => ({
-      approvedUsers: new Set([...state.approvedUsers, publicKey]),
-    })),
+    set((state) => {
+      const next = new Set([...state.approvedUsers, publicKey]);
+      const myKey = state.appUser?.PublicKeyBase58Check;
+      if (myKey) {
+        cacheClassificationData(myKey, {
+          mutualFollows: state.mutualFollows,
+          approvedUsers: next,
+          blockedUsers: state.blockedUsers,
+          approvedAssociationIds: state.approvedAssociationIds,
+          blockedAssociationIds: state.blockedAssociationIds,
+        });
+      }
+      return { approvedUsers: next };
+    }),
 
   blockUser: (publicKey) =>
-    set((state) => ({
-      blockedUsers: new Set([...state.blockedUsers, publicKey]),
-    })),
+    set((state) => {
+      const next = new Set([...state.blockedUsers, publicKey]);
+      const myKey = state.appUser?.PublicKeyBase58Check;
+      if (myKey) {
+        cacheClassificationData(myKey, {
+          mutualFollows: state.mutualFollows,
+          approvedUsers: state.approvedUsers,
+          blockedUsers: next,
+          approvedAssociationIds: state.approvedAssociationIds,
+          blockedAssociationIds: state.blockedAssociationIds,
+        });
+      }
+      return { blockedUsers: next };
+    }),
 
   rollbackApproval: (publicKey) =>
     set((state) => {

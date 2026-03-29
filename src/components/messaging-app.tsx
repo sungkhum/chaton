@@ -27,6 +27,17 @@ import {
   getConversations,
 } from "../services/conversations.service";
 import {
+  cacheConversations,
+  cacheConversationMessages,
+  cacheLastConversationKey,
+  cacheUsernameMap,
+  getCachedClassificationData,
+  getCachedConversationMessages,
+  getCachedConversations,
+  getCachedLastConversationKey,
+  getCachedUsernameMap,
+} from "../services/cache.service";
+import {
   BASE_TITLE,
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
   MAX_MEMBERS_IN_GROUP_SUMMARY_SHOWN,
@@ -144,6 +155,8 @@ export const MessagingApp: FC = () => {
                   merged[key] = { ...convo, messages: [...optimistic, ...convo.messages] };
                 }
               }
+              // Fire-and-forget cache write
+              cacheConversations(appUser.PublicKeyBase58Check, merged);
               return merged;
             });
             // Increment unread for the thread that received a new message
@@ -330,7 +343,7 @@ export const MessagingApp: FC = () => {
               )
           );
 
-          return {
+          const merged = {
             ...updatedConversations,
             [selectedConversationPublicKey]: {
               ...conversations[selectedConversationPublicKey],
@@ -340,6 +353,18 @@ export const MessagingApp: FC = () => {
               ],
             },
           };
+
+          // Fire-and-forget cache writes
+          if (appUser) {
+            cacheConversations(appUser.PublicKeyBase58Check, merged);
+            cacheConversationMessages(
+              appUser.PublicKeyBase58Check,
+              selectedConversationPublicKey,
+              updatedMessages
+            );
+          }
+
+          return merged;
         });
         setPubKeyPlusGroupName(pubKeyPlusGroupName);
       }
@@ -420,17 +445,74 @@ export const MessagingApp: FC = () => {
       return;
     }
 
+    const publicKey = appUser.PublicKeyBase58Check;
+
     // Mark user-initiated conversations (from search) so they go to Chats
     if (selectedKey) {
       addInitiatedChat(selectedKey.slice(0, PUBLIC_KEY_LENGTH));
     }
 
-    // Fetch conversations + classification data in parallel on first load
-    const conversationPromise = getConversations(appUser.PublicKeyBase58Check, allAccessGroups);
+    // --- Cache-first: try to show cached data immediately ---
+    const cachedConvos = await getCachedConversations(publicKey);
+    const cachedClassification = getCachedClassificationData(publicKey);
+    const cachedUsernames = getCachedUsernameMap(publicKey);
+    const cachedLastKey = getCachedLastConversationKey(publicKey);
+    let renderedFromCache = false;
+
+    if (cachedConvos && Object.keys(cachedConvos).length > 0) {
+      // Hydrate classification from cache if not yet loaded
+      if (cachedClassification && !chatRequestsLoaded) {
+        setClassificationData(
+          cachedClassification.mutualFollows,
+          cachedClassification.approvedUsers,
+          cachedClassification.blockedUsers,
+          cachedClassification.approvedAssociationIds,
+          cachedClassification.blockedAssociationIds
+        );
+      }
+
+      if (cachedUsernames) {
+        setUsernameByPublicKeyBase58Check((state) => ({ ...state, ...cachedUsernames }));
+      }
+
+      const cachedKeyToUse =
+        selectedKey ||
+        (!userChange && selectedConversationPublicKey) ||
+        cachedLastKey ||
+        Object.keys(cachedConvos)[0];
+
+      setConversations(cachedConvos);
+      setLoading(false);
+      setAutoFetchConversations(false);
+      renderedFromCache = true;
+
+      if (selectConversation && cachedKeyToUse) {
+        setSelectedConversationPublicKey(cachedKeyToUse);
+      }
+
+      // Try to show cached messages for the selected conversation
+      if (cachedKeyToUse && cachedConvos[cachedKeyToUse]) {
+        const cachedMsgs = await getCachedConversationMessages(publicKey, cachedKeyToUse);
+        if (cachedMsgs && cachedMsgs.length > 0) {
+          setConversations((prev) => ({
+            ...prev,
+            [cachedKeyToUse]: {
+              ...prev[cachedKeyToUse],
+              messages: cachedMsgs as DecryptedMessageEntryResponse[],
+            },
+          }));
+          setPubKeyPlusGroupName(cachedKeyToUse);
+          setLoadingConversation(false);
+        }
+      }
+    }
+
+    // --- Background revalidation (or blocking if no cache) ---
+    const conversationPromise = getConversations(publicKey, allAccessGroups);
     const classificationPromise = !chatRequestsLoaded
       ? Promise.all([
-          fetchMutualFollows(appUser.PublicKeyBase58Check),
-          fetchChatAssociations(appUser.PublicKeyBase58Check),
+          fetchMutualFollows(publicKey),
+          fetchChatAssociations(publicKey),
         ]).then(([mutual, assoc]) => {
           const approvedSet = new Set(assoc.approved.keys());
           const blockedSet = new Set(assoc.blocked.keys());
@@ -443,19 +525,18 @@ export const MessagingApp: FC = () => {
     const [conversationResult] = await Promise.all([conversationPromise, classificationPromise]);
 
     const {
-      conversations,
+      conversations: freshConversations,
       publicKeyToProfileEntryResponseMap,
       updatedAllAccessGroups,
     } = conversationResult;
     setAllAccessGroups(updatedAllAccessGroups);
-    let conversationsResponse = conversations || {};
+    let conversationsResponse = freshConversations || {};
     const keyToUse =
       selectedKey ||
       (!userChange && selectedConversationPublicKey) ||
       Object.keys(conversationsResponse)[0];
 
     if (!conversationsResponse[keyToUse]) {
-      // This is just to make the search bar work. we have 0 messages in this thread originally.
       conversationsResponse = {
         [keyToUse]: {
           ChatType: ChatType.DM,
@@ -475,8 +556,8 @@ export const MessagingApp: FC = () => {
 
     const publicKeyToUsername: { [k: string]: string } = {};
     Object.entries(publicKeyToProfileEntryResponseMap).forEach(
-      ([publicKey, profileEntryResponse]) =>
-        (publicKeyToUsername[publicKey] = profileEntryResponse?.Username || "")
+      ([pk, profileEntryResponse]) =>
+        (publicKeyToUsername[pk] = profileEntryResponse?.Username || "")
     );
     setUsernameByPublicKeyBase58Check((state) => ({
       ...state,
@@ -485,20 +566,55 @@ export const MessagingApp: FC = () => {
     await updateUsernameToPublicKeyMapFromConversations(DMChats);
     await Promise.all(GroupChats.map((e) => fetchGroupMembers(e)));
 
+    // Cache the username map
+    cacheUsernameMap(publicKey, { ...usernameByPublicKeyBase58Check, ...publicKeyToUsername });
+
     if (selectConversation) {
-      // This is mostly used to control "chats view" vs "messages view" on mobile
       setSelectedConversationPublicKey(keyToUse);
     }
-    setLoadingConversation(true);
+
+    if (!renderedFromCache) {
+      setLoadingConversation(true);
+    }
 
     try {
       const { updatedConversations, pubKeyPlusGroupName } =
         await getConversation(keyToUse, conversationsResponse);
-      setConversations(updatedConversations);
+
+      // Merge: preserve any optimistic messages from the rendered state
+      setConversations((prev) => {
+        const merged = { ...updatedConversations };
+        for (const [k, convo] of Object.entries(prev)) {
+          if (!merged[k]) continue;
+          const optimistic = convo.messages.filter((m: any) => m._localId);
+          if (optimistic.length > 0) {
+            merged[k] = { ...merged[k], messages: [...optimistic, ...merged[k].messages] };
+          }
+        }
+        // Fire-and-forget cache writes
+        cacheConversations(publicKey, merged);
+        return merged;
+      });
       setPubKeyPlusGroupName(pubKeyPlusGroupName);
+
+      // Cache messages for the selected conversation
+      if (updatedConversations[keyToUse]) {
+        cacheConversationMessages(
+          publicKey,
+          keyToUse,
+          updatedConversations[keyToUse].messages
+        );
+      }
+
+      // Cache the last selected conversation
+      if (keyToUse) {
+        cacheLastConversationKey(publicKey, keyToUse);
+      }
     } catch (e) {
-      toast.error(`Error fetching current conversation: ${e}`);
-      console.error(e);
+      if (!renderedFromCache) {
+        toast.error(`Error fetching current conversation: ${e}`);
+        console.error(e);
+      }
     } finally {
       setLoadingConversation(false);
       setLoading(false);
@@ -843,14 +959,51 @@ export const MessagingApp: FC = () => {
                   clearUnread(key);
                   sendRead(key);
 
-                  setLoadingConversation(true);
+                  // Cache the last selected conversation
+                  if (appUser) {
+                    cacheLastConversationKey(appUser.PublicKeyBase58Check, key);
+                  }
+
                   setLockRefresh(true);
+
+                  // Try cache-first for messages
+                  let showedCached = false;
+                  if (appUser) {
+                    const cached = await getCachedConversationMessages(
+                      appUser.PublicKeyBase58Check,
+                      key
+                    );
+                    if (cached && cached.length > 0) {
+                      setConversations((prev) => ({
+                        ...prev,
+                        [key]: {
+                          ...prev[key],
+                          messages: cached as DecryptedMessageEntryResponse[],
+                        },
+                      }));
+                      setPubKeyPlusGroupName(key);
+                      showedCached = true;
+                    }
+                  }
+
+                  if (!showedCached) {
+                    setLoadingConversation(true);
+                  }
 
                   try {
                     const { updatedConversations, pubKeyPlusGroupName } =
                       await getConversation(key);
                     setConversations(updatedConversations);
                     setPubKeyPlusGroupName(pubKeyPlusGroupName);
+
+                    // Cache the fetched messages
+                    if (appUser && updatedConversations[key]) {
+                      cacheConversationMessages(
+                        appUser.PublicKeyBase58Check,
+                        key,
+                        updatedConversations[key].messages
+                      );
+                    }
                   } finally {
                     setLoadingConversation(false);
                     setLockRefresh(false);

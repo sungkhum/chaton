@@ -1,6 +1,6 @@
 import { defaultCache } from "@serwist/vite/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { Serwist } from "serwist";
+import { Serwist, StaleWhileRevalidate, ExpirationPlugin } from "serwist";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -15,7 +15,26 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: defaultCache,
+  runtimeCaching: [
+    ...defaultCache,
+    {
+      // Cache profile avatar images and other DeSo CDN images
+      matcher: ({ url }) =>
+        url.hostname.includes("images.deso.org") ||
+        url.hostname.includes("images.bitclout.com") ||
+        url.hostname.includes("cloudflare-ipfs.com") ||
+        url.hostname.includes("arweave.net"),
+      handler: new StaleWhileRevalidate({
+        cacheName: "profile-images",
+        plugins: [
+          new ExpirationPlugin({
+            maxEntries: 200,
+            maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+          }),
+        ],
+      }),
+    },
+  ],
 });
 
 // Handle push notifications
