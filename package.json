@@ -44,6 +44,11 @@
     "vite": "^6.3.5",
     "vite-tsconfig-paths": "^5.1.4"
   },
+  "overrides": {
+    "@emoji-mart/react": {
+      "react": "$react"
+    }
+  },
   "lint-staged": {
     "src/**/*.{js,jsx,ts,tsx}": [
       "eslint --fix",
