@@ -42,7 +42,8 @@ Sign in with a DeSo identity or an Ethereum wallet (MetaMask), and message anyon
 ### Real-Time
 - **WebSocket relay** — instant message delivery via Cloudflare Durable Objects
 - **Typing indicators** — see when someone is typing in real-time
-- **Push notifications** — browser push notifications for new messages (with VAPID)
+- **Push notifications** — two-layer system: instant relay push when sender is online, plus 60-second blockchain polling that catches messages from any DeSo app
+- **Subscription hygiene** — expired endpoints auto-deactivated on 410/404, failure counter removes broken subscriptions after 5 consecutive errors
 - **Unread badges** — per-conversation unread counts with visual indicators
 
 ### Chat Requests
@@ -67,6 +68,7 @@ Sign in with a DeSo identity or an Ethereum wallet (MetaMask), and message anyon
 | State | Zustand |
 | Blockchain | [deso-protocol](https://www.npmjs.com/package/deso-protocol) SDK |
 | Real-time | Cloudflare Workers + Durable Objects (WebSocket relay) |
+| Push | Cloudflare Cron Triggers + D1 + Queues (blockchain polling) |
 | Emoji | [frimousse](https://github.com/liveblocks/frimousse) (React 19 native) |
 | Icons | Lucide React |
 | Toasts | Sonner |
@@ -118,7 +120,31 @@ VITE_VAPID_PUBLIC_KEY=your_vapid_public_key
 npm run dev
 ```
 
-Opens at [http://localhost:3000](http://localhost:3000).
+Opens at [http://localhost:5173](http://localhost:5173).
+
+### Worker (Push Notifications + Relay)
+
+```bash
+cd worker
+npm install
+
+# Create the D1 database (first time only)
+npx wrangler d1 create chaton-push
+# Copy the database_id into wrangler.toml
+
+# Run the D1 migration
+npx wrangler d1 migrations apply chaton-push
+
+# Create the push queue (first time only)
+npx wrangler queues create chaton-push-events
+
+# Set secrets
+npx wrangler secret put VAPID_PRIVATE_KEY
+npx wrangler secret put VAPID_SUBJECT
+
+# Deploy
+npx wrangler deploy
+```
 
 ### Production Build
 
@@ -129,27 +155,41 @@ npm run preview
 
 ## Architecture
 
-ChatOn follows a **DeSo-first** architecture. There is no custom backend or database.
+ChatOn follows a **DeSo-first** architecture. The blockchain is the database.
 
 ```
 ┌─────────────┐     ┌──────────────┐     ┌─────────────────┐
-│  React App  │────▶│  DeSo Node   │────▶│  DeSo Blockchain│
+│  React PWA  │────▶│  DeSo Node   │────▶│  DeSo Blockchain│
 │  (Frontend) │     │  (API layer) │     │  (Data layer)   │
-└─────┬───────┘     └──────────────┘     └─────────────────┘
-      │
-      │  WebSocket
-      ▼
-┌─────────────────────┐
-│  Cloudflare Worker   │
-│  (Durable Object)    │
-│  Real-time relay only│
-└─────────────────────┘
+└──────┬──────┘     └──────┬───────┘     └─────────────────┘
+       │                   │
+       │ WebSocket         │ Cron poll (every 60s)
+       ▼                   ▼
+┌──────────────────────────────────────┐
+│  Cloudflare Worker                   │
+│  ├─ Durable Object (WebSocket relay) │
+│  ├─ D1 (subscriptions + thread state)│
+│  ├─ Cron Trigger (DeSo poller)       │
+│  └─ Queue (push delivery)            │
+└──────────────────────────────────────┘
 ```
 
 - **All messages** are encrypted and stored on the DeSo blockchain
 - **All identity** (usernames, keys, follows) comes from DeSo
-- **The relay** only forwards real-time notifications — it stores nothing
-- **Target cost**: $0/month infrastructure
+- **The relay** forwards real-time WebSocket events and sends push notifications
+- **D1** stores push subscriptions and per-user thread timestamps for polling
+- **Cron + Queue** detect new messages from any DeSo app and deliver Web Push
+- **Target cost**: near-$0/month infrastructure (Cloudflare paid plan for Queues)
+
+### Push Notification Architecture
+
+Push notifications work in two layers:
+
+1. **Instant (relay)** — when a ChatOn user sends a message, the WebSocket relay pushes to recipients immediately. Sub-second delivery, but only works for messages sent from ChatOn.
+
+2. **Polling (cron)** — every 60 seconds, a Cloudflare Cron Trigger polls the DeSo `get-all-user-message-threads` endpoint for each opted-in user. It compares nanosecond-precision timestamps against stored state in D1. New messages are enqueued to a Cloudflare Queue, which delivers Web Push notifications to all active subscriptions.
+
+The service worker deduplicates: if the app is visible, push notifications are suppressed (the WebSocket already updated the UI). Both layers use matching notification tags so the browser collapses duplicate notifications for the same conversation.
 
 ## Project Structure
 
@@ -164,6 +204,16 @@ src/
 ├── services/            # Business logic (conversations, media, Giphy)
 ├── store/               # Zustand store (auth, access groups, classification)
 └── utils/               # Helpers, constants, types, ExtraData conventions
+
+worker/
+├── src/
+│   ├── index.ts         # Fetch handler, cron scheduler, queue consumer
+│   ├── chat-relay.ts    # Durable Object: WebSocket relay + real-time push
+│   ├── web-push.ts      # RFC 8291/8292 VAPID encryption (Web Crypto only)
+│   ├── poll.ts          # DeSo thread polling + new message detection
+│   └── db.ts            # D1 helpers (users, subscriptions, thread state)
+├── migrations/          # D1 schema migrations
+└── wrangler.toml        # Worker config (D1, Queue, Cron, Durable Object)
 ```
 
 ## Contributing
