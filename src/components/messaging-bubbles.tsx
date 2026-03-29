@@ -28,6 +28,10 @@ import { FileMessage } from "./messages/file-message";
 import { ReplyPreview } from "./messages/reply-preview";
 import { ReactionPills } from "./messages/reaction-pills";
 import { FormattedMessage } from "./messages/formatted-message";
+import {
+  AnimatedEmoji,
+  parseEmojiOnlyMessage,
+} from "./messages/animated-emoji";
 import { shortenLongWord } from "./search-users";
 
 export interface MessagingBubblesProps {
@@ -37,6 +41,7 @@ export interface MessagingBubblesProps {
   onScroll: (e: Array<DecryptedMessageEntryResponse>) => void;
   onReply?: (message: DecryptedMessageEntryResponse) => void;
   onReact?: (timestampNanosString: string, emoji: string) => void;
+  onRetry?: (localId: string) => void;
 }
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
@@ -114,8 +119,19 @@ function MessageContent({ message }: { message: DecryptedMessageEntryResponse })
       return null;
 
     case "text":
-    default:
+    default: {
+      const emojiOnly = messageToShow ? parseEmojiOnlyMessage(messageToShow) : null;
+      if (emojiOnly) {
+        return (
+          <span className="flex gap-1 items-center">
+            {emojiOnly.map((e, i) => (
+              <AnimatedEmoji key={i} emoji={e} size={48} />
+            ))}
+          </span>
+        );
+      }
       return <FormattedMessage>{messageToShow}</FormattedMessage>;
+    }
   }
 }
 
@@ -126,6 +142,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   onScroll,
   onReply,
   onReact,
+  onRetry,
 }: MessagingBubblesProps) => {
   const messageAreaRef = useRef<HTMLDivElement>(null);
   const { appUser, allAccessGroups, setAllAccessGroups } = useStore();
@@ -455,6 +472,14 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
               : "rounded-2xl rounded-bl-sm overflow-hidden";
           }
 
+          // Emoji-only messages float without a bubble
+          const messageText = message.DecryptedMessage || message.error || "";
+          const isEmojiOnly =
+            parsed.type === "text" && !!parseEmojiOnlyMessage(messageText);
+          if (isEmojiOnly) {
+            senderStyles = "";
+          }
+
           const messageKey = message.MessageInfo.TimestampNanosString || `msg-${i}`;
           const isHovered = hoveredMessage === messageKey;
           const reactions = reactionsByTimestamp[message.MessageInfo.TimestampNanosString];
@@ -609,11 +634,15 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                               }}
                               className={`${
                                 isMobile
-                                  ? "w-11 h-11 flex items-center justify-center text-xl"
-                                  : "p-1 text-sm"
+                                  ? "w-11 h-11 flex items-center justify-center"
+                                  : "p-1"
                               } hover:bg-white/10 rounded cursor-pointer leading-none`}
                             >
-                              {emoji}
+                              <AnimatedEmoji
+                                emoji={emoji}
+                                size={isMobile ? 28 : 20}
+                                eager
+                              />
                             </button>
                           ))}
                           <button
@@ -709,7 +738,12 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                 {/* Message status indicator */}
                 {IsSender && (message as any)._status && (
                   <div className="flex justify-end -mt-0.5 mb-1">
-                    <MessageStatusIndicator status={(message as any)._status} />
+                    <MessageStatusIndicator
+                      status={(message as any)._status}
+                      onRetry={(message as any)._localId && (message as any)._status === "failed"
+                        ? () => onRetry?.((message as any)._localId)
+                        : undefined}
+                    />
                   </div>
                 )}
               </div>

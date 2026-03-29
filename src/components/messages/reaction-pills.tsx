@@ -1,3 +1,5 @@
+import { AnimatedEmoji } from "./animated-emoji";
+
 interface ReactionPillsProps {
   reactions: Record<string, string[]>; // emoji -> list of public keys
   currentUserKey?: string;
@@ -26,7 +28,7 @@ export const ReactionPills = ({
                 : "bg-[#141c2b]/90 backdrop-blur-sm border border-white/10 hover:bg-white/10"
             }`}
           >
-            <span>{emoji}</span>
+            <AnimatedEmoji emoji={emoji} size={18} />
             {keys.length > 1 && (
               <span className="text-gray-400">{keys.length}</span>
             )}
