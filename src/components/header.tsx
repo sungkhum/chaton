@@ -22,14 +22,21 @@ export const Header = () => {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    if (!menuOpen) return;
+    const handleClickOutside = (e: Event) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        e.preventDefault();
+        e.stopPropagation();
         setMenuOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    document.addEventListener("mousedown", handleClickOutside, true);
+    document.addEventListener("touchstart", handleClickOutside, true);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside, true);
+      document.removeEventListener("touchstart", handleClickOutside, true);
+    };
+  }, [menuOpen]);
 
   return (
     <header className="flex justify-between items-center px-4 h-14 fixed top-0 z-50 w-full bg-[#080d16]/95 backdrop-blur-xl border-b border-white/5">

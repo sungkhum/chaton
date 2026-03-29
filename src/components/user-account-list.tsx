@@ -1,11 +1,15 @@
 import { getUsersStateless, identity, User } from "deso-protocol";
 import { Identity } from "deso-protocol/src/identity/identity";
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "../store";
 import { formatDisplayName } from "../utils/helpers";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
+import {
+  cacheAccountProfiles,
+  getCachedAccountProfiles,
+} from "../services/cache.service";
 
 const COLLAPSED_ACCOUNTS_NUM = 3;
 const EXPANDED_ACCOUNTS_NUM = 10;
@@ -28,15 +32,56 @@ const UserAccountList = ({ onSwitch }: { onSwitch?: () => void }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchLoggedInUsers = async (loggedInUserKeys: Array<string>) => {
+    const snapshot = (identity as Identity<Storage>).snapshot();
+    const activeUser = snapshot.currentUser;
+    const alternateUsers = Object.keys(snapshot.alternateUsers || {});
+    const loggedInUserKeys = [
+      ...(activeUser ? [activeUser.publicKey] : []),
+      ...alternateUsers,
+    ];
+
+    // Try to restore from cache first
+    const cached = getCachedAccountProfiles();
+    if (cached) {
+      const cachedUsers = loggedInUserKeys
+        .map((key) => cached[key] as User | undefined)
+        .filter(Boolean) as User[];
+      if (cachedUsers.length > 0) {
+        setUsers(cachedUsers);
+      }
+    }
+
+    // Show placeholder keys for any not in cache
+    if (!cached || loggedInUserKeys.some((key) => !cached[key])) {
+      setUsers((prev) =>
+        prev.length > 0
+          ? prev
+          : (loggedInUserKeys.map((key) => ({
+              PublicKeyBase58Check: key,
+            })) as User[])
+      );
+    }
+
+    // Refresh in background (no loading spinner if we have cached data)
+    const hasCachedData = cached && loggedInUserKeys.every((key) => cached[key]);
+    if (!hasCachedData) setLoading(true);
+
+    const fetchLoggedInUsers = async () => {
       if (loggedInUserKeys.length === 0) return;
-      setLoading(true);
       try {
         const res = await getUsersStateless({
           PublicKeysBase58Check: loggedInUserKeys,
           SkipForLeaderboard: true,
         });
-        if (res.UserList) setUsers(res.UserList);
+        if (res.UserList) {
+          setUsers(res.UserList);
+          // Update cache
+          const profileMap: Record<string, unknown> = {};
+          for (const user of res.UserList) {
+            profileMap[user.PublicKeyBase58Check] = user;
+          }
+          cacheAccountProfiles(profileMap);
+        }
       } catch (e) {
         toast.error(`Error fetching user profiles: ${e}`);
         console.error(e);
@@ -45,17 +90,7 @@ const UserAccountList = ({ onSwitch }: { onSwitch?: () => void }) => {
       }
     };
 
-    const snapshot = (identity as Identity<Storage>).snapshot();
-    const activeUser = snapshot.currentUser;
-    const alternateUsers = Object.keys(snapshot.alternateUsers || {});
-    const loggedInUserKeys = [
-      ...(activeUser ? [activeUser.publicKey] : []),
-      ...alternateUsers,
-    ];
-    setUsers(
-      loggedInUserKeys.map((key) => ({ PublicKeyBase58Check: key })) as User[]
-    );
-    fetchLoggedInUsers(loggedInUserKeys);
+    fetchLoggedInUsers();
   }, [appUser]);
 
   useEffect(() => {

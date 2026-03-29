@@ -306,6 +306,29 @@ export function getCachedMutedConversations(
 }
 
 // ---------------------------------------------------------------------------
+// Logged-in account profiles (localStorage — sync)
+// ---------------------------------------------------------------------------
+
+export function cacheAccountProfiles(
+  profiles: Record<string, unknown>
+): void {
+  try {
+    localStorage.setItem(`${LS_PREFIX}:accountProfiles`, JSON.stringify(profiles));
+  } catch {
+    // ignore
+  }
+}
+
+export function getCachedAccountProfiles(): Record<string, unknown> | null {
+  try {
+    const raw = localStorage.getItem(`${LS_PREFIX}:accountProfiles`);
+    return raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Housekeeping
 // ---------------------------------------------------------------------------
 
