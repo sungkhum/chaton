@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 
-const STORAGE_KEY = "chattra:drafts";
+const STORAGE_KEY = "chaton:drafts";
 
 function loadDrafts(): Record<string, string> {
   try {

@@ -23,11 +23,11 @@ import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { MessageStatusIndicator } from "./messages/message-status-indicator";
 import { ImageMessage } from "./messages/image-message";
 import { GifMessage } from "./messages/gif-message";
-import { VoiceNoteMessage } from "./messages/voice-note-message";
 import { VideoMessage } from "./messages/video-message";
 import { FileMessage } from "./messages/file-message";
 import { ReplyPreview } from "./messages/reply-preview";
 import { ReactionPills } from "./messages/reaction-pills";
+import { FormattedMessage } from "./messages/formatted-message";
 import { shortenLongWord } from "./search-users";
 
 export interface MessagingBubblesProps {
@@ -57,24 +57,6 @@ function convertTstampToDateTime(tstampNanos: number) {
   return date.toLocaleString("default", { hour: "numeric", minute: "numeric" });
 }
 
-const URL_REGEX = /(https?:\/\/[^\s]+)/g;
-
-function Linkify({ children }: { children: string }) {
-  const parts = children.split(URL_REGEX);
-  return (
-    <>
-      {parts.map((part, i) =>
-        URL_REGEX.test(part) ? (
-          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="underline text-[#20E0AA]">
-            {part}
-          </a>
-        ) : (
-          part
-        )
-      )}
-    </>
-  );
-}
 
 function MessageContent({ message }: { message: DecryptedMessageEntryResponse }) {
   const parsed = parseMessageType(message);
@@ -89,7 +71,7 @@ function MessageContent({ message }: { message: DecryptedMessageEntryResponse })
           height={parsed.mediaHeight}
         />
       ) : (
-        <Linkify>{messageToShow}</Linkify>
+        <FormattedMessage>{messageToShow}</FormattedMessage>
       );
 
     case "gif":
@@ -101,14 +83,7 @@ function MessageContent({ message }: { message: DecryptedMessageEntryResponse })
           height={parsed.mediaHeight}
         />
       ) : (
-        <Linkify>{messageToShow}</Linkify>
-      );
-
-    case "voice-note":
-      return parsed.videoUrl ? (
-        <VoiceNoteMessage videoUrl={parsed.videoUrl} duration={parsed.duration} />
-      ) : (
-        <Linkify>{messageToShow}</Linkify>
+        <FormattedMessage>{messageToShow}</FormattedMessage>
       );
 
     case "video":
@@ -120,7 +95,7 @@ function MessageContent({ message }: { message: DecryptedMessageEntryResponse })
           duration={parsed.duration}
         />
       ) : (
-        <Linkify>{messageToShow}</Linkify>
+        <FormattedMessage>{messageToShow}</FormattedMessage>
       );
 
     case "file":
@@ -139,11 +114,7 @@ function MessageContent({ message }: { message: DecryptedMessageEntryResponse })
 
     case "text":
     default:
-      return (
-        <div className="text-md break-words whitespace-pre-wrap" id="message-text">
-          <Linkify>{messageToShow}</Linkify>
-        </div>
-      );
+      return <FormattedMessage>{messageToShow}</FormattedMessage>;
   }
 }
 

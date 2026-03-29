@@ -1,7 +1,7 @@
-# Chattra Landing Page Copy
+# Chaton Landing Page Copy
 
 ## Navigation
-- **Logo**: Chattra (with icon)
+- **Logo**: Chaton (with icon)
 - **Nav links**: Features | Technology | Scale
 - **CTA button**: LAUNCH APP
 
@@ -13,7 +13,7 @@
 
 **Headline**: Messaging that no one can shut down.
 
-**Subheadline**: Chattra is end-to-end encrypted messaging on the DeSo blockchain. Your message content is unreadable to everyone except you and your recipients. **Built to scale. Impossible to censor.**
+**Subheadline**: Chaton is end-to-end encrypted messaging on the DeSo blockchain. Your message content is unreadable to everyone except you and your recipients. **Built to scale. Impossible to censor.**
 
 **Primary CTA**: Start Messaging — Free
 **Secondary CTA**: See how it works
@@ -34,7 +34,7 @@
 
 **Headline**: Your conversations don't belong on **someone else's server.**
 
-**Subheadline**: Traditional messengers store your data on servers one company controls. One breach, one policy change, one outage — and your conversations are gone. Chattra stores encrypted messages across independent DeSo nodes.
+**Subheadline**: Traditional messengers store your data on servers one company controls. One breach, one policy change, one outage — and your conversations are gone. Chaton stores encrypted messages across independent DeSo nodes.
 
 ### Feature Cards
 
@@ -64,7 +64,7 @@
 |-------|------|
 | Ethereum | $393M |
 | Solana | $1.3M |
-| DeSo + Chattra | **$80** |
+| DeSo + Chaton | **$80** |
 
 **DeSo label**: Native on-chain scale
 
@@ -105,7 +105,7 @@ async function encryptMessage(content: string, recipientKey: string) {
 - Group encryption keys
 - *The letter inside is sealed. Only sender and recipient hold the keys.*
 
-**Paragraph**: DeSo is a public blockchain — anyone can run a node and verify that message content is stored as ciphertext, and that no one (including Chattra) can decrypt it without your private key. This is how we prove our privacy claims instead of just asking you to believe them.
+**Paragraph**: DeSo is a public blockchain — anyone can run a node and verify that message content is stored as ciphertext, and that no one (including Chaton) can decrypt it without your private key. This is how we prove our privacy claims instead of just asking you to believe them.
 
 ---
 
@@ -126,6 +126,6 @@ async function encryptMessage(content: string, recipientKey: string) {
 
 ## Footer
 
-- **Logo**: Chattra
+- **Logo**: Chaton
 - **Links**: Protocol | GitHub | Security
 - **Copyright**: &copy; 2026 CHATTRA. END-TO-END ENCRYPTED MESSAGING ON DESO BLOCKCHAIN.

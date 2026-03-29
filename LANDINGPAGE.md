@@ -1,4 +1,4 @@
-# Chattra Landing Page Copy
+# Chaton Landing Page Copy
 
 > Landing page sections in order. Each section includes headline, body, and notes for implementation.
 
@@ -10,7 +10,7 @@
 Messaging that no one can shut down.
 
 **Subheadline:**
-Chattra is encrypted messaging built on the DeSo blockchain. Your messages are end-to-end encrypted. Your identity is portable. And no company — including us — can read your conversations, lock your account, or take your data.
+Chaton is encrypted messaging built on the DeSo blockchain. Your messages are end-to-end encrypted. Your identity is portable. And no company — including us — can read your conversations, lock your account, or take your data.
 
 **CTA:**
 Start Messaging — it's free
@@ -35,7 +35,7 @@ Every major messaging app stores your conversations on servers controlled by a s
 - **One policy change** can delete your history or ban your account
 - **One breach** exposes everything
 
-Chattra is different. Your messages live on the DeSo blockchain — distributed across thousands of independent nodes. No single point of failure. No single point of control.
+Chaton is different. Your messages live on the DeSo blockchain — distributed across thousands of independent nodes. No single point of failure. No single point of control.
 
 ---
 
@@ -45,7 +45,7 @@ Chattra is different. Your messages live on the DeSo blockchain — distributed 
 Built on blockchain. Encrypted by default.
 
 **Body:**
-Chattra runs on DeSo — a blockchain designed from the ground up for social applications. Here's what that means in practice:
+Chaton runs on DeSo — a blockchain designed from the ground up for social applications. Here's what that means in practice:
 
 **Your messages are encrypted before they leave your device.**
 We use end-to-end encryption (AES-128-CTR + ECDH key exchange) for every conversation — DMs and group chats. Only you and your recipients hold the keys. The encrypted message is stored on-chain, but the content is unreadable to everyone else.
@@ -73,20 +73,19 @@ Like any messaging system, the network knows *that* a message was sent and *betw
 Real messaging. Not a crypto experiment.
 
 **Body:**
-Chattra has everything you expect from a modern messenger, plus things no centralized app can offer.
+Chaton has everything you expect from a modern messenger, plus things no centralized app can offer.
 
 ### Messaging
 - **1:1 and group chats** — encrypted end-to-end by default
-- **Voice notes** — record and send in one tap
 - **GIFs, images, and files** — share rich media inline
 - **Replies and reactions** — thread conversations naturally
 - **Typing indicators and read receipts** — know when someone's there
 - **Real-time delivery** — messages arrive in under a second
 
-### Only on Chattra
-- **Portable identity** — your account works across every DeSo app, not just Chattra
+### Only on Chaton
+- **Portable identity** — your account works across every DeSo app, not just Chaton
 - **Send money in-chat** — tip or pay anyone directly inside a conversation with $DESO
-- **No platform lock-in** — if Chattra disappears tomorrow, your messages and contacts survive on the blockchain
+- **No platform lock-in** — if Chaton disappears tomorrow, your messages and contacts survive on the blockchain
 - **Token-gated groups** — create communities where membership is tied to holding a social token
 - **Censorship-resistant storage** — messages distributed across thousands of nodes worldwide
 
@@ -119,7 +118,7 @@ DeSo is different. It's a Layer-1 blockchain built *exclusively* for social appl
 We can't read your messages. Verify it yourself.
 
 **Body:**
-Chattra isn't asking you to trust us. The DeSo blockchain is open and auditable. Anyone can run a node and verify that:
+Chaton isn't asking you to trust us. The DeSo blockchain is open and auditable. Anyone can run a node and verify that:
 
 1. **Messages are encrypted** — the on-chain data is ciphertext, not plaintext
 2. **Only participants hold the keys** — encryption happens client-side, in your browser
@@ -127,7 +126,7 @@ Chattra isn't asking you to trust us. The DeSo blockchain is open and auditable.
 
 This isn't a privacy policy. It's math.
 
-If you want to look under the hood, every transaction is visible on-chain. You can verify that message content is encrypted — and that no one, not even Chattra, can decrypt it without your private key.
+If you want to look under the hood, every transaction is visible on-chain. You can verify that message content is encrypted — and that no one, not even Chaton, can decrypt it without your private key.
 
 ---
 
@@ -137,14 +136,14 @@ If you want to look under the hood, every transaction is visible on-chain. You c
 One account. Every app. No lock-in.
 
 **Body:**
-When you create a Chattra account, you're not creating a Chattra account. You're creating a DeSo identity — a cryptographic key pair that you own.
+When you create a Chaton account, you're not creating a Chaton account. You're creating a DeSo identity — a cryptographic key pair that you own.
 
 - **Sign in with Google, MetaMask, or a seed phrase** — whatever you prefer
 - **Your profile, contacts, and message history are portable** — accessible from any DeSo app
 - **No company controls your account** — there's no "account suspended" because there's no central authority to suspend it
 - **Free to start** — verify your phone number and get free starter $DESO to begin messaging immediately
 
-Your identity travels with you. If a better DeSo messaging app comes along, take your entire social life with you. We're betting you'll stay because Chattra is great — not because we hold your data hostage.
+Your identity travels with you. If a better DeSo messaging app comes along, take your entire social life with you. We're betting you'll stay because Chaton is great — not because we hold your data hostage.
 
 ---
 
@@ -154,7 +153,7 @@ Your identity travels with you. If a better DeSo messaging app comes along, take
 Messaging costs almost nothing. Literally.
 
 **Body:**
-Every message on Chattra is a blockchain transaction. The cost? Roughly **1/50,000th of a cent**.
+Every message on Chaton is a blockchain transaction. The cost? Roughly **1/50,000th of a cent**.
 
 | Action | Approximate Cost |
 |--------|-----------------|
@@ -164,7 +163,7 @@ Every message on Chattra is a blockchain transaction. The cost? Roughly **1/50,0
 
 New users get free starter $DESO through phone verification — enough for thousands of messages to get started. After that, $DESO can be purchased in small amounts.
 
-Chattra itself has **no subscription fees, no premium tiers, and no ads.** The only cost is the blockchain transaction fee — and it's practically invisible.
+Chaton itself has **no subscription fees, no premium tiers, and no ads.** The only cost is the blockchain transaction fee — and it's practically invisible.
 
 ---
 
@@ -174,7 +173,7 @@ Chattra itself has **no subscription fees, no premium tiers, and no ads.** The o
 Tip, pay, and fund — without leaving the conversation.
 
 **Body:**
-$DESO is the native currency of the DeSo blockchain. In Chattra, you can send it to anyone in a conversation — instantly, with no intermediary and no fees beyond the standard transaction cost.
+$DESO is the native currency of the DeSo blockchain. In Chaton, you can send it to anyone in a conversation — instantly, with no intermediary and no fees beyond the standard transaction cost.
 
 - Tip a friend for helpful advice
 - Split a bill in a group chat
@@ -191,7 +190,7 @@ No bank. No payment processor. No 3-day hold. Just send.
 Install it. Use it everywhere.
 
 **Body:**
-Chattra is a Progressive Web App. No app store required.
+Chaton is a Progressive Web App. No app store required.
 
 - **Works on any device** — phone, tablet, desktop
 - **Install to your home screen** — looks and feels like a native app
@@ -199,14 +198,14 @@ Chattra is a Progressive Web App. No app store required.
 - **Offline-ready** — browse your conversations without a connection
 - **Always up to date** — no manual updates, ever
 
-Just open Chattra in your browser and tap "Add to Home Screen."
+Just open Chaton in your browser and tap "Add to Home Screen."
 
 ---
 
 ## SECTION 11: Final CTA
 
 **Headline:**
-Messaging should be yours. Start using Chattra.
+Messaging should be yours. Start using Chaton.
 
 **Body:**
 End-to-end encrypted. Built on an open blockchain. No company in control. No ads, no tracking, no lock-in.

@@ -1,4 +1,4 @@
-# Chattra
+# Chaton
 
 Decentralized, end-to-end encrypted chat application built on the DeSo blockchain. Users authenticate via DeSo Identity (no traditional username/password), and all messages are encrypted using DeSo's access groups cryptographic primitives. There is no backend server — the app connects directly to DeSo blockchain nodes.
 
@@ -129,10 +129,10 @@ npm run format  # Prettier formatting
 
 ```bash
 # Build for production
-docker build --build-arg environment=production -t chattra .
+docker build --build-arg environment=production -t chaton .
 
 # Build for testnet
-docker build --build-arg environment=development -t chattra .
+docker build --build-arg environment=development -t chaton .
 ```
 
 Serves on port 80 via Nginx with SPA fallback routing.

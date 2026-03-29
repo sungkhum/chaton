@@ -36,7 +36,6 @@ Sign in with a DeSo identity or an Ethereum wallet (MetaMask), and message anyon
 ### Rich Media
 - **Image sharing** — upload and send images with lightbox preview
 - **GIF picker** — search and send GIFs via Giphy integration
-- **Voice notes** — record, preview, and send audio messages with waveform visualization
 - **Video messages** — send video with inline playback
 - **File attachments** — share files of any type with download links
 
@@ -157,7 +156,7 @@ ChatOn follows a **DeSo-first** architecture. There is no custom backend or data
 ```
 src/
 ├── components/          # React components
-│   ├── compose/         # Message composer (emoji, GIF, voice, reply)
+│   ├── compose/         # Message composer (emoji, GIF, reply)
 │   ├── messages/        # Message type renderers (image, video, file, etc.)
 │   ├── shared/          # Reusable UI primitives
 │   └── form/            # Form components

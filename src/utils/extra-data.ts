@@ -1,27 +1,26 @@
 import { DecryptedMessageEntryResponse } from "deso-protocol";
 
-// ExtraData keys for Chattra rich messages
-export const CHATTRA_TYPE = "chattra:type";
-export const CHATTRA_REPLY_TO = "chattra:replyTo";
-export const CHATTRA_REPLY_PREVIEW = "chattra:replyPreview";
-export const CHATTRA_IMAGE_URL = "chattra:imageUrl";
-export const CHATTRA_GIF_URL = "chattra:gifUrl";
-export const CHATTRA_GIF_TITLE = "chattra:gifTitle";
-export const CHATTRA_MEDIA_WIDTH = "chattra:mediaWidth";
-export const CHATTRA_MEDIA_HEIGHT = "chattra:mediaHeight";
-export const CHATTRA_VIDEO_URL = "chattra:videoUrl";
-export const CHATTRA_DURATION = "chattra:duration";
-export const CHATTRA_FILE_NAME = "chattra:fileName";
-export const CHATTRA_FILE_SIZE = "chattra:fileSize";
-export const CHATTRA_FILE_TYPE = "chattra:fileType";
-export const CHATTRA_EMOJI = "chattra:emoji";
-export const CHATTRA_ACTION = "chattra:action";
+// ExtraData keys for Chaton rich messages
+export const CHATTRA_TYPE = "chaton:type";
+export const CHATTRA_REPLY_TO = "chaton:replyTo";
+export const CHATTRA_REPLY_PREVIEW = "chaton:replyPreview";
+export const CHATTRA_IMAGE_URL = "chaton:imageUrl";
+export const CHATTRA_GIF_URL = "chaton:gifUrl";
+export const CHATTRA_GIF_TITLE = "chaton:gifTitle";
+export const CHATTRA_MEDIA_WIDTH = "chaton:mediaWidth";
+export const CHATTRA_MEDIA_HEIGHT = "chaton:mediaHeight";
+export const CHATTRA_VIDEO_URL = "chaton:videoUrl";
+export const CHATTRA_DURATION = "chaton:duration";
+export const CHATTRA_FILE_NAME = "chaton:fileName";
+export const CHATTRA_FILE_SIZE = "chaton:fileSize";
+export const CHATTRA_FILE_TYPE = "chaton:fileType";
+export const CHATTRA_EMOJI = "chaton:emoji";
+export const CHATTRA_ACTION = "chaton:action";
 
 export type RichMessageType =
   | "text"
   | "image"
   | "gif"
-  | "voice-note"
   | "video"
   | "file"
   | "reaction";

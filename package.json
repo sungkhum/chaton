@@ -1,5 +1,5 @@
 {
-  "name": "chattra",
+  "name": "chaton",
   "version": "0.2.0",
   "private": true,
   "type": "module",
@@ -13,6 +13,7 @@
     "frimousse": "^0.3.0",
     "gsap": "^3.14.2",
     "lucide-react": "^1.7.0",
+    "marked": "^17.0.5",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "serwist": "^9.5.7",
@@ -42,7 +43,7 @@
     "vite": "^6.3.5",
     "vite-tsconfig-paths": "^5.1.4"
   },
-"lint-staged": {
+  "lint-staged": {
     "src/**/*.{js,jsx,ts,tsx}": [
       "eslint --fix",
       "prettier --write"

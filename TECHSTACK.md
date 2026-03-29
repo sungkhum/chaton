@@ -1,4 +1,4 @@
-# Chattra Tech Stack (2026)
+# Chaton Tech Stack (2026)
 
 Telegram-level encrypted messaging PWA on DeSo. **DeSo-first architecture**: the blockchain is the database. No custom backend, no managed database. External services only where DeSo has gaps (real-time delivery, push notifications).
 
@@ -44,7 +44,7 @@ Telegram-level encrypted messaging PWA on DeSo. **DeSo-first architecture**: the
 
 ### Key Insight: DeSo IS the Database
 
-The current chattra app already works this way — it talks directly to DeSo nodes with no backend server. We keep that. DeSo stores messages, handles encryption, manages identity, and even hosts uploaded images via `images.deso.org`.
+The current chaton app already works this way — it talks directly to DeSo nodes with no backend server. We keep that. DeSo stores messages, handles encryption, manages identity, and even hosts uploaded images via `images.deso.org`.
 
 The only thing DeSo lacks is **real-time delivery** (it only supports HTTP polling). We bridge that gap with a thin Cloudflare Durable Object that acts as a WebSocket notification bus: when a client sends a message via DeSo, it also pings the DO, which broadcasts "new message in thread X" to connected clients. Clients then fetch the actual message from DeSo. The DO stores **zero messages**.
 

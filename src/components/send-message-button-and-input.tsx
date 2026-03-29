@@ -3,9 +3,8 @@ import { Send, Image, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { EmojiPickerButton } from "./compose/emoji-picker-button";
 import { GifPicker } from "./compose/gif-picker";
-import { VoiceRecorder } from "./compose/voice-recorder";
 import { GiphyGif } from "../services/giphy.service";
-import { uploadImage, uploadVideoFile } from "../services/media.service";
+import { uploadImage } from "../services/media.service";
 import { ReplyBanner } from "./compose/reply-banner";
 import { useDraftMessages } from "../hooks/useDraftMessages";
 
@@ -96,11 +95,11 @@ export const SendMessageButtonAndInput = ({
 
   const handleGifSelect = (gif: GiphyGif) => {
     sendMessage(gif.title || "GIF", {
-      "chattra:type": "gif",
-      "chattra:gifUrl": gif.images.fixed_width.url,
-      "chattra:gifTitle": gif.title,
-      "chattra:mediaWidth": gif.images.fixed_width.width,
-      "chattra:mediaHeight": gif.images.fixed_width.height,
+      "chaton:type": "gif",
+      "chaton:gifUrl": gif.images.fixed_width.url,
+      "chaton:gifTitle": gif.title,
+      "chaton:mediaWidth": gif.images.fixed_width.width,
+      "chaton:mediaHeight": gif.images.fixed_width.height,
     });
   };
 
@@ -113,8 +112,8 @@ export const SendMessageButtonAndInput = ({
     try {
       const result = await uploadImage(file);
       await sendMessage(file.name, {
-        "chattra:type": "image",
-        "chattra:imageUrl": result.ImageURL,
+        "chaton:type": "image",
+        "chaton:imageUrl": result.ImageURL,
       });
     } catch (err: any) {
       toast.error(`Image upload failed: ${err.message || err}`);
@@ -140,25 +139,6 @@ export const SendMessageButtonAndInput = ({
     }
   };
 
-  const handleVoiceNoteSend = async (blob: Blob, duration: number) => {
-    setIsUploading(true);
-    try {
-      // DeSo's video endpoint rejects audio/* types, but webm is a valid video
-      // container — re-labeling as video/webm lets it through without re-encoding.
-      const file = new File([blob], "voice-note.webm", { type: "video/webm" });
-      const result = await uploadVideoFile(file);
-      await sendMessage("Voice note", {
-        "chattra:type": "voice-note",
-        "chattra:videoUrl": result.url,
-        "chattra:duration": String(duration),
-      });
-    } catch (err: any) {
-      toast.error(`Voice note upload failed: ${err.message || err}`);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
   // Auto-grow textarea
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessageToSend(e.target.value);
@@ -167,8 +147,6 @@ export const SendMessageButtonAndInput = ({
     textarea.style.height = "auto";
     textarea.style.height = `${Math.min(textarea.scrollHeight, 150)}px`;
   };
-
-  const hasText = messageToSend.trim().length > 0;
 
   const typingLabel =
     typingUsers.length === 1
@@ -243,25 +221,19 @@ export const SendMessageButtonAndInput = ({
           rows={1}
         />
 
-        {/* Send or Voice note button */}
-        {hasText ? (
-          <button
-            onClick={() => sendMessage()}
-            disabled={isSending}
-            className="p-2 rounded-full shrink-0 bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black hover:brightness-110 cursor-pointer transition-colors"
-            type="button"
-          >
-            {isSending ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Send className="w-5 h-5" />
-            )}
-          </button>
-        ) : (
-          <div className="shrink-0">
-            <VoiceRecorder onSend={handleVoiceNoteSend} />
-          </div>
-        )}
+        {/* Send button */}
+        <button
+          onClick={() => sendMessage()}
+          disabled={isSending}
+          className="p-2 rounded-full shrink-0 bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black hover:brightness-110 cursor-pointer transition-colors"
+          type="button"
+        >
+          {isSending ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <Send className="w-5 h-5" />
+          )}
+        </button>
       </div>
 
       <p className="text-gray-600 text-[10px] mt-1 ml-2 hidden md:block">

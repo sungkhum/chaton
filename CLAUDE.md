@@ -1,4 +1,4 @@
-# Chattra
+# Chaton
 
 ## Architecture
 
@@ -47,9 +47,9 @@ on-chain follows and User Associations (no backend needed).
 ### Classification order (first match wins)
 
 1. Group chats → always Chats
-2. `chattra:chat-blocked` association exists → hidden
+2. `chaton:chat-blocked` association exists → hidden
 3. Mutual DeSo follow → Chats
-4. `chattra:chat-approved` association exists → Chats
+4. `chaton:chat-approved` association exists → Chats
 5. User initiated the conversation (via search) → Chats
 6. Current user sent the first message → Chats
 7. Everything else → Requests
@@ -66,22 +66,22 @@ on-chain follows and User Associations (no backend needed).
 
 ### Association types
 
-- `chattra:chat-approved` / value `"approved"` — user accepted a chat request
-- `chattra:chat-blocked` / value `"blocked"` — user blocked a sender
+- `chaton:chat-approved` / value `"approved"` — user accepted a chat request
+- `chaton:chat-blocked` / value `"blocked"` — user blocked a sender
 
 ## ExtraData conventions
 
 All rich message metadata uses namespaced keys in DeSo's `ExtraData` field:
 
-- `chattra:type` — message type: `text`, `image`, `gif`, `voice-note`, `video`, `file`, `reaction`
-- `chattra:replyTo` — `TimestampNanosString` of the message being replied to or reacted to
-- `chattra:emoji` — emoji character for reactions
-- `chattra:action` — `"add"` or `"remove"` for reaction toggling
-- `chattra:imageUrl`, `chattra:gifUrl`, `chattra:videoUrl` — media URLs
-- `chattra:duration`, `chattra:mediaWidth`, `chattra:mediaHeight` — media dimensions
-- `chattra:fileName`, `chattra:fileSize`, `chattra:fileType` — file attachments
-- `chattra:replyPreview` — truncated preview text of the replied-to message
-- `chattra:gifTitle` — title of a GIF from Giphy
+- `chaton:type` — message type: `text`, `image`, `gif`, `video`, `file`, `reaction`
+- `chaton:replyTo` — `TimestampNanosString` of the message being replied to or reacted to
+- `chaton:emoji` — emoji character for reactions
+- `chaton:action` — `"add"` or `"remove"` for reaction toggling
+- `chaton:imageUrl`, `chaton:gifUrl`, `chaton:videoUrl` — media URLs
+- `chaton:duration`, `chaton:mediaWidth`, `chaton:mediaHeight` — media dimensions
+- `chaton:fileName`, `chaton:fileSize`, `chaton:fileType` — file attachments
+- `chaton:replyPreview` — truncated preview text of the replied-to message
+- `chaton:gifTitle` — title of a GIF from Giphy
 
 ## Tech stack
 

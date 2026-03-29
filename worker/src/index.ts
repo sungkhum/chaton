@@ -4,7 +4,7 @@ export interface Env {
   CHAT_RELAY: DurableObjectNamespace;
   VAPID_PRIVATE_KEY: string;
   VAPID_SUBJECT: string;
-  ALLOWED_ORIGINS: string; // comma-separated, e.g. "https://chaton.app,https://chattra.pages.dev"
+  ALLOWED_ORIGINS: string; // comma-separated, e.g. "https://chaton.app,https://chaton.pages.dev"
 }
 
 // Origins that are always allowed (localhost for dev)

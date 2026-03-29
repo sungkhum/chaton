@@ -26,7 +26,7 @@ self.addEventListener("push", (event) => {
     body: data.body || "You have a new message",
     icon: "/favicon.png",
     badge: "/favicon.png",
-    tag: data.tag || "chattra-notification",
+    tag: data.tag || "chaton-notification",
     data: {
       url: data.url || "/",
       conversationKey: data.conversationKey,

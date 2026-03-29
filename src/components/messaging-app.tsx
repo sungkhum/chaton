@@ -665,8 +665,8 @@ export const MessagingApp: FC = () => {
       ?.OwnerPublicKeyBase58Check === appUser.PublicKeyBase58Check;
   const isGroupOwner = isGroupChat && isChatOwner;
   const chatMembers = membersByGroupKey[selectedConversationPublicKey];
-  const activeChatUsersMap = isGroupChat
-    ? Object.keys(chatMembers || {}).reduce(
+  const activeChatUsersMap: { [k: string]: string } = isGroupChat
+    ? Object.keys(chatMembers || {}).reduce<{ [k: string]: string }>(
         (acc, curr) => ({ ...acc, [curr]: chatMembers[curr]?.Username || "" }),
         {}
       )
@@ -1000,9 +1000,9 @@ export const MessagingApp: FC = () => {
                               TimestampNanos,
                               TimestampNanosString: String(TimestampNanos),
                               ExtraData: {
-                                "chattra:type": "reaction",
-                                "chattra:replyTo": timestampNanosString,
-                                "chattra:emoji": emoji,
+                                "chaton:type": "reaction",
+                                "chaton:replyTo": timestampNanosString,
+                                "chaton:emoji": emoji,
                               },
                             },
                           } as DecryptedMessageEntryResponse & { _status: string; _localId: string };
@@ -1023,9 +1023,9 @@ export const MessagingApp: FC = () => {
                               recipientKeyName,
                               DEFAULT_KEY_MESSAGING_GROUP_NAME,
                               {
-                                "chattra:type": "reaction",
-                                "chattra:replyTo": timestampNanosString,
-                                "chattra:emoji": emoji,
+                                "chaton:type": "reaction",
+                                "chaton:replyTo": timestampNanosString,
+                                "chaton:emoji": emoji,
                               }
                             );
                             // Notify via WebSocket relay
@@ -1072,8 +1072,8 @@ export const MessagingApp: FC = () => {
                       if (replyToMessage) {
                         extraData = {
                           ...extraData,
-                          "chattra:replyTo": replyToMessage.timestamp,
-                          "chattra:replyPreview": replyToMessage.text.slice(0, 100),
+                          "chaton:replyTo": replyToMessage.timestamp,
+                          "chaton:replyPreview": replyToMessage.text.slice(0, 100),
                         };
                         setReplyToMessage(null);
                       }

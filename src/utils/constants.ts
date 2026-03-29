@@ -3,8 +3,8 @@ import {
   TransactionSpendingLimitResponseOptions,
 } from "deso-protocol";
 
-export const ASSOCIATION_TYPE_APPROVED = "chattra:chat-approved";
-export const ASSOCIATION_TYPE_BLOCKED = "chattra:chat-blocked";
+export const ASSOCIATION_TYPE_APPROVED = "chaton:chat-approved";
+export const ASSOCIATION_TYPE_BLOCKED = "chaton:chat-blocked";
 export const ASSOCIATION_VALUE_APPROVED = "approved";
 export const ASSOCIATION_VALUE_BLOCKED = "blocked";
 
