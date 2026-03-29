@@ -1,6 +1,7 @@
 import { defaultCache } from "@serwist/vite/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import { Serwist, StaleWhileRevalidate, ExpirationPlugin } from "serwist";
+import { createStore, get } from "idb-keyval";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -52,6 +53,30 @@ self.addEventListener("push", (event) => {
 
   event.waitUntil(
     (async () => {
+      // Check if this conversation is muted
+      let isMuted = false;
+      if (data.conversationKey) {
+        try {
+          const store = createStore("chattra-cache", "cache-store");
+          const mutedList = await get<string[]>("mutedConversations", store);
+          if (mutedList?.includes(data.conversationKey as string)) {
+            isMuted = true;
+          }
+        } catch {
+          // IndexedDB unavailable — default to not muted
+        }
+      }
+
+      if (isMuted) {
+        // iOS requires showNotification() on every push — show a silent,
+        // self-replacing notification that disappears quickly.
+        return self.registration.showNotification("ChatOn", {
+          tag: "chaton-muted",
+          silent: true,
+          data: { url: "/" },
+        });
+      }
+
       const title = (data.title as string) || "ChatOn";
       const options: NotificationOptions = {
         body: data.body || "You have a new message",

@@ -281,12 +281,33 @@ export async function getCachedConversationMessages(
 }
 
 // ---------------------------------------------------------------------------
+// Muted conversations (localStorage + IndexedDB for service worker access)
+// ---------------------------------------------------------------------------
+
+export function cacheMutedConversations(
+  publicKey: string,
+  muted: Set<string>
+): void {
+  const arr = Array.from(muted);
+  lsSet(publicKey, "mutedConversations", arr);
+  // Also persist to IndexedDB so the service worker can read it
+  idbSet("mutedConversations", arr);
+}
+
+export function getCachedMutedConversations(
+  publicKey: string
+): Set<string> {
+  const arr = lsGet<string[]>(publicKey, "mutedConversations");
+  return new Set(arr || []);
+}
+
+// ---------------------------------------------------------------------------
 // Housekeeping
 // ---------------------------------------------------------------------------
 
 export async function clearCacheForUser(publicKey: string): Promise<void> {
   // localStorage
-  const lsTypes = ["profile", "classification", "usernames", "lastConversation"];
+  const lsTypes = ["profile", "classification", "usernames", "lastConversation", "mutedConversations"];
   for (const t of lsTypes) {
     lsDel(publicKey, t);
   }

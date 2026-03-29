@@ -5,6 +5,7 @@ import {
 } from "deso-protocol";
 import {
   cacheClassificationData,
+  cacheMutedConversations,
   cacheUserProfile,
 } from "../services/cache.service";
 
@@ -37,6 +38,11 @@ interface ChatOnState {
   incrementUnread: (conversationKey: string) => void;
   clearUnread: (conversationKey: string) => void;
   resetUnread: () => void;
+
+  // Muted conversations
+  mutedConversations: Set<string>;
+  toggleMute: (conversationKey: string) => void;
+  setMutedConversations: (muted: Set<string>) => void;
 
   // Chat Requests
   mutualFollows: Set<string>;
@@ -141,6 +147,24 @@ export const useStore = create<ChatOnState>((set) => ({
     if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
     set({ unreadByConversation: new Map(), totalUnread: 0 });
   },
+
+  // Muted conversations
+  mutedConversations: EMPTY_SET,
+
+  toggleMute: (conversationKey) =>
+    set((state) => {
+      const next = new Set(state.mutedConversations);
+      if (next.has(conversationKey)) {
+        next.delete(conversationKey);
+      } else {
+        next.add(conversationKey);
+      }
+      const publicKey = state.appUser?.PublicKeyBase58Check;
+      if (publicKey) cacheMutedConversations(publicKey, next);
+      return { mutedConversations: next };
+    }),
+
+  setMutedConversations: (muted) => set({ mutedConversations: muted }),
 
   // Chat Requests
   mutualFollows: EMPTY_SET,

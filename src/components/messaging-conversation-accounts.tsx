@@ -1,5 +1,5 @@
 import { ChatType, identity, ProfileEntryResponse } from "deso-protocol";
-import { Check, Users, X } from "lucide-react";
+import { BellOff, Check, Users, X } from "lucide-react";
 import { FC, useState } from "react";
 import { formatRelativeTimestamp, getChatNameFromConversation } from "../utils/helpers";
 import { Conversation, ConversationMap } from "../utils/types";
@@ -36,6 +36,7 @@ export const MessagingConversationAccount: FC<{
   onAccept: (conversationKey: string, publicKey: string) => void;
   onBlock: (conversationKey: string, publicKey: string) => void;
   unreadByConversation: Map<string, number>;
+  mutedConversations: Set<string>;
   membersByGroupKey: {
     [groupKey: string]: { [publicKey: string]: ProfileEntryResponse | null };
   };
@@ -49,6 +50,7 @@ export const MessagingConversationAccount: FC<{
   onAccept,
   onBlock,
   unreadByConversation,
+  mutedConversations,
   membersByGroupKey,
 }) => {
   const [activeTab, setActiveTab] = useState<"chats" | "requests">("chats");
@@ -127,6 +129,7 @@ export const MessagingConversationAccount: FC<{
                   : "";
                 const unreadCount = unreadByConversation.get(key) || 0;
                 const hasUnread = unreadCount > 0;
+                const isMuted = mutedConversations.has(key);
                 const timestamp = value.messages[0]
                   ? formatRelativeTimestamp(value.messages[0].MessageInfo.TimestampNanos)
                   : "";
@@ -168,13 +171,18 @@ export const MessagingConversationAccount: FC<{
                               {displayName}
                             </span>
                           </div>
-                          <span
-                            className={`text-xs shrink-0 ml-2 ${
-                              hasUnread ? "text-[#34F080] font-bold" : "text-gray-500"
-                            }`}
-                          >
-                            {timestamp}
-                          </span>
+                          <div className="flex items-center gap-1 shrink-0 ml-2">
+                            {isMuted && (
+                              <BellOff className="w-3.5 h-3.5 text-gray-500" />
+                            )}
+                            <span
+                              className={`text-xs ${
+                                hasUnread ? "text-[#34F080] font-bold" : "text-gray-500"
+                              }`}
+                            >
+                              {timestamp}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Line 2: Preview + Unread badge */}

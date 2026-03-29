@@ -1,4 +1,4 @@
-import { Loader2, CheckCircle } from "lucide-react";
+import { Loader2, CheckCircle, Bell, BellOff } from "lucide-react";
 import { useStore } from "../store";
 import {
   ChatType,
@@ -36,6 +36,7 @@ import {
   getCachedConversationMessages,
   getCachedConversations,
   getCachedLastConversationKey,
+  getCachedMutedConversations,
   getCachedUsernameMap,
 } from "../services/cache.service";
 import {
@@ -130,6 +131,7 @@ export const MessagingApp: FC = () => {
     setClassificationData, addInitiatedChat, approveUser, rollbackApproval,
     blockUser, rollbackBlock,
     unreadByConversation, clearUnread,
+    mutedConversations, toggleMute,
   } = useStore();
   const [usernameByPublicKeyBase58Check, setUsernameByPublicKeyBase58Check] =
     useState<{ [key: string]: string }>({});
@@ -284,7 +286,7 @@ export const MessagingApp: FC = () => {
             // Different conversation — just merge the conversation list
             simpleConversationMerge(updated);
 
-            if (threadId) {
+            if (threadId && !useStore.getState().mutedConversations.has(threadId)) {
               useStore.getState().incrementUnread(threadId);
             }
           }
@@ -693,6 +695,12 @@ export const MessagingApp: FC = () => {
     const cachedClassification = getCachedClassificationData(publicKey);
     const cachedUsernames = getCachedUsernameMap(publicKey);
     const cachedLastKey = getCachedLastConversationKey(publicKey);
+
+    // Load muted conversations from cache
+    const cachedMuted = getCachedMutedConversations(publicKey);
+    if (cachedMuted.size > 0) {
+      useStore.getState().setMutedConversations(cachedMuted);
+    }
     let renderedFromCache = false;
 
     if (cachedConvos && Object.keys(cachedConvos).length > 0) {
@@ -1257,6 +1265,7 @@ export const MessagingApp: FC = () => {
                 }
                 selectedConversationPublicKey={selectedConversationPublicKey}
                 unreadByConversation={unreadByConversation}
+                mutedConversations={mutedConversations}
               />
             </div>
 
@@ -1266,9 +1275,7 @@ export const MessagingApp: FC = () => {
               }`}
             >
               <header
-                className={`flex justify-between ${
-                  !isGroupChat ? "md:hidden" : ""
-                } items-center border-b border-white/5 relative px-4 md:px-5 h-14`}
+                className="flex justify-between items-center border-b border-white/5 relative px-4 md:px-5 h-14"
               >
                 <div
                   className="cursor-pointer py-4 pl-0 pr-6 md:hidden"
@@ -1300,10 +1307,30 @@ export const MessagingApp: FC = () => {
                   You're the<strong> owner of this group</strong>
                 </div>
                 <div
-                  className={`flex justify-end ${
+                  className={`flex items-center gap-3 justify-end ${
                     !isGroupOwner ? "md:w-full" : ""
                   }`}
                 >
+                  {selectedConversationPublicKey && (
+                    <button
+                      onClick={() => {
+                        toggleMute(selectedConversationPublicKey);
+                        const wasMuted = mutedConversations.has(selectedConversationPublicKey);
+                        toast(wasMuted ? "Notifications unmuted" : "Notifications muted", {
+                          icon: wasMuted ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />,
+                          duration: 2000,
+                        });
+                      }}
+                      className="p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                      title={mutedConversations.has(selectedConversationPublicKey) ? "Unmute notifications" : "Mute notifications"}
+                    >
+                      {mutedConversations.has(selectedConversationPublicKey) ? (
+                        <BellOff className="w-5 h-5 text-gray-500" />
+                      ) : (
+                        <Bell className="w-5 h-5 text-gray-400" />
+                      )}
+                    </button>
+                  )}
                   {isGroupChat ? (
                     <ManageMembersDialog
                       conversation={selectedConversation}
@@ -1328,9 +1355,7 @@ export const MessagingApp: FC = () => {
               </header>
 
               <div
-                className={`pr-2 rounded-none w-[100%] bg-transparent ml-[calc-340px] pb-0 h-[calc(100%-56px)] ${
-                  isGroupChat ? "" : "md:h-full"
-                }`}
+                className="pr-2 rounded-none w-[100%] bg-transparent ml-[calc-340px] pb-0 h-[calc(100%-56px)]"
               >
                 <div className="border-none flex flex-col justify-between h-full">
                   <div className="max-h-[calc(100%-130px)] overflow-hidden">
