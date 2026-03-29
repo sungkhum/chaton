@@ -1417,12 +1417,21 @@ export const MessagingApp: FC = () => {
                               : selectedConversation.messages[0].RecipientInfo
                                   .AccessGroupKeyName;
 
+                          // Build a human-readable fallback for apps without reaction support
+                          const reactedToMsg = selectedConversation.messages.find(
+                            (m) => m.MessageInfo.TimestampNanosString === timestampNanosString
+                          );
+                          const preview = reactedToMsg?.DecryptedMessage?.slice(0, 30) || "";
+                          const fallbackText = preview
+                            ? `Reacted ${emoji} to "${preview}${(reactedToMsg?.DecryptedMessage?.length ?? 0) > 30 ? "…" : ""}"`
+                            : `Reacted ${emoji}`;
+
                           // Optimistic: insert a mock reaction message immediately
                           const convKey = selectedConversationPublicKey;
                           const localId = `local-reaction-${Date.now()}-${Math.random()}`;
                           const TimestampNanos = new Date().getTime() * 1e6;
                           const mockReaction = {
-                            DecryptedMessage: emoji,
+                            DecryptedMessage: fallbackText,
                             IsSender: true,
                             _status: "sending" as const,
                             _localId: localId,
@@ -1455,7 +1464,7 @@ export const MessagingApp: FC = () => {
 
                           try {
                             await encryptAndSendNewMessage(
-                              emoji,
+                              fallbackText,
                               appUser.PublicKeyBase58Check,
                               recipientPublicKey,
                               recipientKeyName,
