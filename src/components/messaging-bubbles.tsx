@@ -164,16 +164,42 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     return () => scrollArea.removeEventListener("scroll", dismiss);
   }, [mobileActionFor]);
 
+  const clearLongPressTimer = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressPosRef.current = null;
+  }, []);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    };
+  }, []);
+
+  // Clear mobile action state on conversation switch
+  useEffect(() => {
+    setMobileActionFor(null);
+    setReactionPickerFor(null);
+    clearLongPressTimer();
+  }, [conversationPublicKey, clearLongPressTimer]);
+
   const handleTouchStart = useCallback(
     (e: React.TouchEvent, messageKey: string) => {
+      // Clear any existing timer (e.g. multi-touch)
+      clearLongPressTimer();
       const touch = e.touches[0];
       longPressPosRef.current = { x: touch.clientX, y: touch.clientY };
       longPressTimerRef.current = setTimeout(() => {
+        longPressTimerRef.current = null;
         if (navigator.vibrate) navigator.vibrate(20);
+        setReactionPickerFor(null); // Close picker from previous message
         setMobileActionFor(messageKey);
       }, 300);
     },
-    []
+    [clearLongPressTimer]
   );
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
@@ -182,20 +208,19 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     const dx = touch.clientX - longPressPosRef.current.x;
     const dy = touch.clientY - longPressPosRef.current.y;
     if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-      longPressPosRef.current = null;
+      clearLongPressTimer();
     }
-  }, []);
+  }, [clearLongPressTimer]);
 
   const handleTouchEnd = useCallback(() => {
-    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-    longPressPosRef.current = null;
-  }, []);
+    clearLongPressTimer();
+  }, [clearLongPressTimer]);
 
   const closeMobileAction = useCallback(() => {
+    clearLongPressTimer(); // Kill pending timer so bar doesn't reopen
     setMobileActionFor(null);
     setReactionPickerFor(null);
-  }, []);
+  }, [clearLongPressTimer]);
 
   const sentinelRef = useRef<HTMLDivElement>(null);
 
