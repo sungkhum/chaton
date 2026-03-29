@@ -21,11 +21,18 @@ import useKeyDown from "../hooks/useKeyDown";
 
 export interface StartGroupChatProps {
   onSuccess: (pubKey: string) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export const StartGroupChat = ({ onSuccess }: StartGroupChatProps) => {
+export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange }: StartGroupChatProps) => {
   const { appUser } = useStore();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (v: boolean) => {
+    setInternalOpen(v);
+    onOpenChange?.(v);
+  };
   const [loading, setLoading] = useState(false);
   const [chatName, setChatName] = useState<string>("");
   const [formTouched, setFormTouched] = useState<boolean>(false);
@@ -140,19 +147,6 @@ export const StartGroupChat = ({ onSuccess }: StartGroupChatProps) => {
 
   return (
     <Fragment>
-      <div className="flex text-lg items-center p-4 py-3 h-[69px] border-b border-t border-blue-800/30 justify-between">
-        <h2 className="font-semibold text-xl text-white">My Chat</h2>
-
-        <button
-          onClick={handleOpen}
-          className="bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black font-bold rounded-full py-2 hover:brightness-110 text-sm px-4 cursor-pointer"
-        >
-          <div className="flex items-center">
-            <span>Create Chat</span>
-          </div>
-        </button>
-      </div>
-
       {open && (
         <>
           {/* Backdrop */}

@@ -72,3 +72,31 @@ export const hasSetupMessaging = (user: AppUser | null) => {
       AccessGroupKeyName === DEFAULT_KEY_MESSAGING_GROUP_NAME
   );
 };
+
+export const formatRelativeTimestamp = (tstampNanos: number): string => {
+  const date = new Date(tstampNanos / 1e6);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+
+  if (diffMins < 1) return "now";
+  if (diffMins < 60) return `${diffMins}m`;
+  if (diffHours < 24) return `${diffHours}h`;
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffDays < 7) {
+    return date.toLocaleDateString("en-US", { weekday: "short" });
+  }
+
+  const month = date.toLocaleDateString("en-US", { month: "short" });
+  const day = date.getDate();
+  if (date.getFullYear() !== now.getFullYear()) {
+    return `${month} ${day}, ${date.getFullYear()}`;
+  }
+  return `${month} ${day}`;
+};

@@ -473,8 +473,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                         IsSender ? "right-0" : "left-0"
                       } bottom-full mb-10`}
                     >
-                      <EmojiPicker
-                        onEmojiSelect={(emoji) => {
+                      <EmojiPicker.Root
+                        onEmojiSelect={(emoji: { emoji: string }) => {
                           onReact?.(
                             message.MessageInfo.TimestampNanosString,
                             emoji.emoji
@@ -494,16 +494,24 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                           <EmojiPicker.Empty className="flex items-center justify-center h-full text-white/40 text-sm">
                             No emoji found
                           </EmojiPicker.Empty>
-                          <EmojiPicker.Row className="flex gap-0.5 px-1">
-                            {({ emoji }) => (
-                              <EmojiPicker.Emoji
-                                emoji={emoji}
-                                className="flex items-center justify-center w-9 h-9 rounded-md text-xl hover:bg-white/10 cursor-pointer transition-colors"
-                              />
-                            )}
-                          </EmojiPicker.Row>
+                          <EmojiPicker.List
+                            components={{
+                              Row: (props) => <div {...props} className="flex gap-0.5 px-1" />,
+                              Emoji: (props) => (
+                                <button
+                                  {...props}
+                                  className="flex items-center justify-center w-9 h-9 rounded-md text-xl hover:bg-white/10 cursor-pointer transition-colors"
+                                />
+                              ),
+                              CategoryHeader: ({ category, ...props }) => (
+                                <div {...props} className="px-2 py-1.5 text-xs font-semibold text-white/40 sticky top-0 bg-[#141c2b] z-10">
+                                  {category.label}
+                                </div>
+                              ),
+                            }}
+                          />
                         </EmojiPicker.Viewport>
-                      </EmojiPicker>
+                      </EmojiPicker.Root>
                     </div>
                   )}
                 </div>

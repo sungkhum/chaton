@@ -683,10 +683,6 @@ export const MessagingApp: FC = () => {
             <div>
               {(autoFetchConversations || isLoadingUser || loading) && (
                 <div className="text-center">
-                  <span className="font-bold text-white text-xl">
-                    Loading Your Chat Experience
-                  </span>
-                  <br />
                   <Loader2 className="w-11 h-11 mt-4 animate-spin text-[#34F080] mx-auto" />
                 </div>
               )}
