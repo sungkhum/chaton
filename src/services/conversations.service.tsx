@@ -2,9 +2,12 @@ import {
   AccessGroupEntryResponse,
   ChatType,
   checkPartyAccessGroups,
+  createUserAssociation,
   DecryptedMessageEntryResponse,
   getAllAccessGroups,
   getAllMessageThreads,
+  getFollowersForUser,
+  getUserAssociations,
   identity,
   NewMessageEntryResponse,
   PublicKeyToProfileEntryResponseMap,
@@ -15,10 +18,14 @@ import {
 import { toast } from "sonner";
 import { withAuth } from "../utils/with-auth";
 import {
+  ASSOCIATION_TYPE_APPROVED,
+  ASSOCIATION_TYPE_BLOCKED,
+  ASSOCIATION_VALUE_APPROVED,
+  ASSOCIATION_VALUE_BLOCKED,
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
   USER_TO_SEND_MESSAGE_TO,
 } from "../utils/constants";
-import { ConversationMap } from "../utils/types";
+import { Conversation, ConversationMap } from "../utils/types";
 import { bytesToHex } from "@noble/hashes/utils";
 
 export const getConversationsNewMap = async (
@@ -257,3 +264,147 @@ export const encryptAndSendNewMessage = async (
 
   return submittedTransactionResponse.TxnHashHex;
 };
+
+// ── Chat Requests: fetch & classify ─────────────────────────────────
+
+const FOLLOWS_PAGE_SIZE = 500;
+
+async function fetchAllFollowsPaginated(
+  publicKey: string,
+  getFollowers: boolean
+): Promise<Set<string>> {
+  const keys = new Set<string>();
+  let lastKey = "";
+
+  while (true) {
+    const res = await getFollowersForUser({
+      PublicKeyBase58Check: publicKey,
+      GetEntriesFollowingUsername: getFollowers,
+      NumToFetch: FOLLOWS_PAGE_SIZE,
+      ...(lastKey ? { LastPublicKeyBase58Check: lastKey } : {}),
+    });
+
+    const entries = Object.keys(res.PublicKeyToProfileEntry || {});
+    if (entries.length === 0) break;
+
+    for (const k of entries) keys.add(k);
+    if (entries.length < FOLLOWS_PAGE_SIZE) break;
+    lastKey = entries[entries.length - 1];
+  }
+
+  return keys;
+}
+
+export async function fetchMutualFollows(
+  publicKey: string
+): Promise<Set<string>> {
+  const [iFollow, followsMe] = await Promise.all([
+    fetchAllFollowsPaginated(publicKey, false),
+    fetchAllFollowsPaginated(publicKey, true),
+  ]);
+
+  const mutual = new Set<string>();
+  for (const key of iFollow) {
+    if (followsMe.has(key)) mutual.add(key);
+  }
+  return mutual;
+}
+
+export async function fetchChatAssociations(
+  publicKey: string
+): Promise<{
+  approved: Map<string, string>;
+  blocked: Map<string, string>;
+}> {
+  const fetchAll = async (associationType: string) => {
+    const map = new Map<string, string>();
+    let lastId = "";
+
+    while (true) {
+      const res = await getUserAssociations({
+        TransactorPublicKeyBase58Check: publicKey,
+        AssociationType: associationType,
+        Limit: 100,
+        ...(lastId ? { LastSeenAssociationID: lastId } : {}),
+      });
+
+      const associations = res.Associations || [];
+      if (associations.length === 0) break;
+
+      for (const a of associations) {
+        map.set(a.TargetUserPublicKeyBase58Check, a.AssociationID);
+      }
+
+      if (associations.length < 100) break;
+      lastId = associations[associations.length - 1].AssociationID;
+    }
+
+    return map;
+  };
+
+  const [approved, blocked] = await Promise.all([
+    fetchAll(ASSOCIATION_TYPE_APPROVED),
+    fetchAll(ASSOCIATION_TYPE_BLOCKED),
+  ]);
+
+  return { approved, blocked };
+}
+
+export function classifyConversation(
+  conversation: Conversation,
+  myPublicKey: string,
+  mutualFollows: Set<string>,
+  approvedUsers: Set<string>,
+  blockedUsers: Set<string>,
+  initiatedChats: Set<string>
+): "chat" | "request" | "blocked" {
+  if (conversation.ChatType === ChatType.GROUPCHAT) return "chat";
+
+  const otherKey = conversation.firstMessagePublicKey;
+
+  if (blockedUsers.has(otherKey)) return "blocked";
+  if (mutualFollows.has(otherKey)) return "chat";
+  if (approvedUsers.has(otherKey)) return "chat";
+  if (initiatedChats.has(otherKey)) return "chat";
+
+  // If the current user sent the first message (chronologically), they initiated
+  if (conversation.messages.length > 0) {
+    const oldest = conversation.messages[conversation.messages.length - 1];
+    if (
+      oldest.IsSender ||
+      oldest.SenderInfo?.OwnerPublicKeyBase58Check === myPublicKey
+    ) {
+      return "chat";
+    }
+  }
+
+  return "request";
+}
+
+export async function createApprovalAssociation(
+  myPublicKey: string,
+  targetPublicKey: string
+): Promise<void> {
+  await withAuth(() =>
+    createUserAssociation({
+      TransactorPublicKeyBase58Check: myPublicKey,
+      TargetUserPublicKeyBase58Check: targetPublicKey,
+      AssociationType: ASSOCIATION_TYPE_APPROVED,
+      AssociationValue: ASSOCIATION_VALUE_APPROVED,
+    })
+  );
+}
+
+export async function createBlockAssociation(
+  myPublicKey: string,
+  targetPublicKey: string
+): Promise<void> {
+  await withAuth(() =>
+    createUserAssociation({
+      TransactorPublicKeyBase58Check: myPublicKey,
+      TargetUserPublicKeyBase58Check: targetPublicKey,
+      AssociationType: ASSOCIATION_TYPE_BLOCKED,
+      AssociationValue: ASSOCIATION_VALUE_BLOCKED,
+    })
+  );
+}

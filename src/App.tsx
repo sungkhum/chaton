@@ -63,6 +63,7 @@ function App() {
           const { messagingPublicKeyBase58Check } =
             currentUser.primaryDerivedKey;
 
+          useStore.getState().resetChatRequestState();
           setIsLoadingUser(true);
           Promise.all([
             getUser(currentUser.publicKey),
@@ -149,6 +150,7 @@ function App() {
         }
 
         if (event === NOTIFICATION_EVENTS.LOGOUT_END) {
+          useStore.getState().resetChatRequestState();
           if (alternateUsers) {
             const fallbackUser = Object.values(alternateUsers)[0];
             identity.setActiveUser(fallbackUser.publicKey);

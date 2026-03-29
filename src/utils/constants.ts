@@ -3,6 +3,11 @@ import {
   TransactionSpendingLimitResponseOptions,
 } from "deso-protocol";
 
+export const ASSOCIATION_TYPE_APPROVED = "chattra:chat-approved";
+export const ASSOCIATION_TYPE_BLOCKED = "chattra:chat-blocked";
+export const ASSOCIATION_VALUE_APPROVED = "approved";
+export const ASSOCIATION_VALUE_BLOCKED = "blocked";
+
 export const getTransactionSpendingLimits = (
   publicKey: string
 ): TransactionSpendingLimitResponseOptions => {
@@ -11,6 +16,8 @@ export const getTransactionSpendingLimits = (
     TransactionCountLimitMap: {
       AUTHORIZE_DERIVED_KEY: 1,
       NEW_MESSAGE: UNLIMITED,
+      CREATE_USER_ASSOCIATION: UNLIMITED,
+      DELETE_USER_ASSOCIATION: UNLIMITED,
     },
     AccessGroupLimitMap: [
       {
@@ -30,8 +37,24 @@ export const getTransactionSpendingLimits = (
         OpCount: UNLIMITED,
       },
     ],
-    // We can flip back to IsUnlimited if we prefer it
-    // IsUnlimited: true,
+    AssociationLimitMap: [
+      {
+        AssociationClass: "User" as const,
+        AssociationType: ASSOCIATION_TYPE_APPROVED,
+        AppScopeType: "Any" as const,
+        AppPublicKeyBase58Check: "",
+        AssociationOperation: "Any" as const,
+        OpCount: UNLIMITED,
+      },
+      {
+        AssociationClass: "User" as const,
+        AssociationType: ASSOCIATION_TYPE_BLOCKED,
+        AppScopeType: "Any" as const,
+        AppPublicKeyBase58Check: "",
+        AssociationOperation: "Any" as const,
+        OpCount: UNLIMITED,
+      },
+    ],
   };
 };
 export const DEFAULT_KEY_MESSAGING_GROUP_NAME: Readonly<string> = "default-key";

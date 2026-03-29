@@ -24,7 +24,33 @@ interface ChatOnState {
   // UI
   lockRefresh: boolean;
   setLockRefresh: (lock: boolean) => void;
+
+  // Chat Requests
+  mutualFollows: Set<string>;
+  approvedUsers: Set<string>;
+  blockedUsers: Set<string>;
+  initiatedChats: Set<string>;
+  approvedAssociationIds: Map<string, string>;
+  blockedAssociationIds: Map<string, string>;
+  chatRequestsLoaded: boolean;
+
+  setClassificationData: (
+    mutualFollows: Set<string>,
+    approved: Set<string>,
+    blocked: Set<string>,
+    approvedIds: Map<string, string>,
+    blockedIds: Map<string, string>
+  ) => void;
+  addInitiatedChat: (publicKey: string) => void;
+  approveUser: (publicKey: string) => void;
+  blockUser: (publicKey: string) => void;
+  rollbackApproval: (publicKey: string) => void;
+  rollbackBlock: (publicKey: string) => void;
+  resetChatRequestState: () => void;
 }
+
+const EMPTY_SET = new Set<string>();
+const EMPTY_MAP = new Map<string, string>();
 
 export const useStore = create<ChatOnState>((set) => ({
   // Auth
@@ -61,4 +87,63 @@ export const useStore = create<ChatOnState>((set) => ({
   // UI
   lockRefresh: false,
   setLockRefresh: (lockRefresh) => set({ lockRefresh }),
+
+  // Chat Requests
+  mutualFollows: EMPTY_SET,
+  approvedUsers: EMPTY_SET,
+  blockedUsers: EMPTY_SET,
+  initiatedChats: EMPTY_SET,
+  approvedAssociationIds: EMPTY_MAP,
+  blockedAssociationIds: EMPTY_MAP,
+  chatRequestsLoaded: false,
+
+  setClassificationData: (mutualFollows, approved, blocked, approvedIds, blockedIds) =>
+    set({
+      mutualFollows,
+      approvedUsers: approved,
+      blockedUsers: blocked,
+      approvedAssociationIds: approvedIds,
+      blockedAssociationIds: blockedIds,
+      chatRequestsLoaded: true,
+    }),
+
+  addInitiatedChat: (publicKey) =>
+    set((state) => ({
+      initiatedChats: new Set([...state.initiatedChats, publicKey]),
+    })),
+
+  approveUser: (publicKey) =>
+    set((state) => ({
+      approvedUsers: new Set([...state.approvedUsers, publicKey]),
+    })),
+
+  blockUser: (publicKey) =>
+    set((state) => ({
+      blockedUsers: new Set([...state.blockedUsers, publicKey]),
+    })),
+
+  rollbackApproval: (publicKey) =>
+    set((state) => {
+      const next = new Set(state.approvedUsers);
+      next.delete(publicKey);
+      return { approvedUsers: next };
+    }),
+
+  rollbackBlock: (publicKey) =>
+    set((state) => {
+      const next = new Set(state.blockedUsers);
+      next.delete(publicKey);
+      return { blockedUsers: next };
+    }),
+
+  resetChatRequestState: () =>
+    set({
+      mutualFollows: EMPTY_SET,
+      approvedUsers: EMPTY_SET,
+      blockedUsers: EMPTY_SET,
+      initiatedChats: EMPTY_SET,
+      approvedAssociationIds: EMPTY_MAP,
+      blockedAssociationIds: EMPTY_MAP,
+      chatRequestsLoaded: false,
+    }),
 }));

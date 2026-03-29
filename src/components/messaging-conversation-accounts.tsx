@@ -1,4 +1,5 @@
 import { ChatType, identity, ProfileEntryResponse } from "deso-protocol";
+import { Check, X } from "lucide-react";
 import { FC, useState } from "react";
 import {
   MAX_MEMBERS_IN_GROUP_SUMMARY_SHOWN,
@@ -12,24 +13,48 @@ import { shortenLongWord } from "./search-users";
 import { SaveToClipboard } from "./shared/save-to-clipboard";
 import { StartGroupChat } from "./start-group-chat";
 
+const sortConversations = (
+  entries: [string, { messages: any[] }][],
+  selectedKey: string
+) =>
+  entries.sort(([aPub, convoA], [bPub, convoB]) => {
+    if (convoA.messages.length === 0) {
+      return aPub === selectedKey ? -1 : 1;
+    }
+    if (convoB.messages.length === 0) {
+      return bPub === selectedKey ? 1 : -1;
+    }
+    return (
+      convoB.messages[0].MessageInfo.TimestampNanos -
+      convoA.messages[0].MessageInfo.TimestampNanos
+    );
+  });
+
 export const MessagingConversationAccount: FC<{
   conversations: ConversationMap;
+  requestConversations: ConversationMap;
   getUsernameByPublicKeyBase58Check: { [key: string]: string };
   selectedConversationPublicKey: string;
   onClick: (publicKey: string) => void;
   rehydrateConversation: (publicKey?: string) => void;
+  onAccept: (conversationKey: string, publicKey: string) => void;
+  onBlock: (conversationKey: string, publicKey: string) => void;
   membersByGroupKey: {
     [groupKey: string]: { [publicKey: string]: ProfileEntryResponse | null };
   };
 }> = ({
   conversations,
+  requestConversations,
   getUsernameByPublicKeyBase58Check,
   selectedConversationPublicKey,
   onClick,
   rehydrateConversation,
+  onAccept,
+  onBlock,
   membersByGroupKey,
 }) => {
   const [activeTab, setActiveTab] = useState<"chats" | "requests">("chats");
+  const requestCount = Object.keys(requestConversations).length;
 
   return (
     <div className="h-full rounded-md rounded-r-none">
@@ -54,11 +79,16 @@ export const MessagingConversationAccount: FC<{
           </button>
           <button
             onClick={() => setActiveTab("requests")}
-            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors cursor-pointer ${
+            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors cursor-pointer relative ${
               activeTab === "requests" ? "bg-[#34F080]/15 text-[#34F080]" : "text-gray-400 hover:text-gray-200"
             }`}
           >
             Requests
+            {requestCount > 0 && (
+              <span className="ml-1.5 bg-[#34F080] text-black text-[10px] font-bold rounded-full w-5 h-5 inline-flex items-center justify-center">
+                {requestCount}
+              </span>
+            )}
           </button>
         </div>
 
@@ -67,20 +97,10 @@ export const MessagingConversationAccount: FC<{
           {activeTab === "chats" && (
             <div className="conversations-list overflow-y-auto max-h-full custom-scrollbar">
               <div className="h-full">
-                {Object.entries(conversations)
-                  .sort(([aPub, convoA], [bPub, convoB]) => {
-                    if (convoA.messages.length === 0) {
-                      return aPub === selectedConversationPublicKey ? -1 : 1;
-                    }
-                    if (convoB.messages.length === 0) {
-                      return bPub === selectedConversationPublicKey ? 1 : -1;
-                    }
-                    return (
-                      convoB.messages[0].MessageInfo.TimestampNanos -
-                      convoA.messages[0].MessageInfo.TimestampNanos
-                    );
-                  })
-                  .map(([key, value]) => {
+                {sortConversations(
+                  Object.entries(conversations),
+                  selectedConversationPublicKey
+                ).map(([key, value]) => {
                     const isDM = value.ChatType === ChatType.DM;
                     const isGroupChat = value.ChatType === ChatType.GROUPCHAT;
                     const publicKey = isDM
@@ -140,14 +160,82 @@ export const MessagingConversationAccount: FC<{
           )}
 
           {activeTab === "requests" && (
-            <div>
-              <h2 className="text-white font-semibold text-2xl mt-5 mb-2">
-                Coming soon!
-              </h2>
-              <div className="text-gray-500 text-base px-6">
-                An on-chain message request & approval flow will be launching
-                soon.
-              </div>
+            <div className="conversations-list overflow-y-auto max-h-full custom-scrollbar">
+              {requestCount === 0 ? (
+                <div className="text-gray-500 text-sm text-center mt-8 px-6">
+                  No message requests
+                </div>
+              ) : (
+                <div className="h-full">
+                  {sortConversations(
+                    Object.entries(requestConversations),
+                    selectedConversationPublicKey
+                  ).map(([key, value]) => {
+                      const publicKey = value.firstMessagePublicKey;
+                      const chatName = getChatNameFromConversation(
+                        value,
+                        getUsernameByPublicKeyBase58Check
+                      );
+                      const selectedConversationStyle =
+                        key === selectedConversationPublicKey
+                          ? "selected-conversation bg-white/5 border-l-2 border-[#34F080]"
+                          : "border-l-2 border-transparent";
+                      return (
+                        <div
+                          className={`px-3 py-3 ${selectedConversationStyle} hover:bg-white/5 transition-colors`}
+                          key={`request-thread-${key}`}
+                        >
+                          <div
+                            onClick={() => onClick(key)}
+                            className="flex justify-start cursor-pointer"
+                          >
+                            <MessagingDisplayAvatar
+                              username={chatName}
+                              publicKey={publicKey}
+                              diameter={44}
+                              classNames="mx-2"
+                            />
+                            <div className="w-[calc(100%-70px)] text-left">
+                              <div className="text-left ml-2 text-white font-semibold text-sm">
+                                {chatName ? "@" : ""}
+                                {shortenLongWord(chatName, 7, 7) ||
+                                  shortenLongWord(publicKey)}
+                              </div>
+                              {value.messages[0] && (
+                                <div className="text-left break-all truncate w-full text-gray-500 text-sm ml-2">
+                                  {value.messages[0].DecryptedMessage.slice(0, 50)}...
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 mt-2 ml-14">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onAccept(key, publicKey);
+                              }}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#34F080]/15 text-[#34F080] text-xs font-bold hover:bg-[#34F080]/25 cursor-pointer transition-colors"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              Accept
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onBlock(key, publicKey);
+                              }}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 text-gray-400 text-xs font-bold hover:bg-red-500/15 hover:text-red-400 cursor-pointer transition-colors"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              Block
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
             </div>
           )}
         </div>

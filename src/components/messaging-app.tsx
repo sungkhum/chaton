@@ -11,12 +11,17 @@ import {
   PublicKeyToProfileEntryResponseMap,
 } from "deso-protocol";
 import { useInterval } from "hooks/useInterval";
-import { FC, useContext, useEffect, useRef, useState } from "react";
+import { FC, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useMobile } from "../hooks/useMobile";
 import {
+  classifyConversation,
+  createApprovalAssociation,
+  createBlockAssociation,
   decryptAccessGroupMessagesWithRetry,
   encryptAndSendNewMessage,
+  fetchChatAssociations,
+  fetchMutualFollows,
   getConversations,
 } from "../services/conversations.service";
 import {
@@ -94,8 +99,12 @@ export const MockBubble: FC<{
 };
 
 export const MessagingApp: FC = () => {
-  const { appUser, isLoadingUser, allAccessGroups, setAllAccessGroups, lockRefresh, setLockRefresh } =
-    useStore();
+  const {
+    appUser, isLoadingUser, allAccessGroups, setAllAccessGroups, lockRefresh, setLockRefresh,
+    mutualFollows, approvedUsers, blockedUsers, initiatedChats, chatRequestsLoaded,
+    setClassificationData, addInitiatedChat, approveUser, rollbackApproval,
+    blockUser, rollbackBlock,
+  } = useStore();
   const [usernameByPublicKeyBase58Check, setUsernameByPublicKeyBase58Check] =
     useState<{ [key: string]: string }>({});
   const [autoFetchConversations, setAutoFetchConversations] = useState(false);
@@ -113,6 +122,45 @@ export const MessagingApp: FC = () => {
     timestamp: string;
   } | null>(null);
   const { isMobile } = useMobile();
+
+  // Derive classified conversation maps from the single conversations state + store Sets
+  const { chatConversations, requestConversations } = useMemo(() => {
+    if (!appUser) return { chatConversations: {} as ConversationMap, requestConversations: {} as ConversationMap };
+    const chats: ConversationMap = {};
+    const requests: ConversationMap = {};
+    for (const [key, convo] of Object.entries(conversations)) {
+      const cls = classifyConversation(
+        convo, appUser.PublicKeyBase58Check,
+        mutualFollows, approvedUsers, blockedUsers, initiatedChats
+      );
+      if (cls === "chat") chats[key] = convo;
+      else if (cls === "request") requests[key] = convo;
+      // "blocked" → omitted
+    }
+    return { chatConversations: chats, requestConversations: requests };
+  }, [conversations, mutualFollows, approvedUsers, blockedUsers, initiatedChats, appUser]);
+
+  const handleAcceptRequest = async (conversationKey: string, publicKey: string) => {
+    if (!appUser) return;
+    approveUser(publicKey);
+    try {
+      await createApprovalAssociation(appUser.PublicKeyBase58Check, publicKey);
+    } catch (e) {
+      rollbackApproval(publicKey);
+      toast.error("Failed to accept chat request");
+    }
+  };
+
+  const handleBlockRequest = async (conversationKey: string, publicKey: string) => {
+    if (!appUser) return;
+    blockUser(publicKey);
+    try {
+      await createBlockAssociation(appUser.PublicKeyBase58Check, publicKey);
+    } catch (e) {
+      rollbackBlock(publicKey);
+      toast.error("Failed to block user");
+    }
+  };
 
   // Dependencies of useInterval must use `useRef` to get the most recent state
   const lockRefreshRef = useRef(lockRefresh); // reference to lockRefresh that keeps current state in setInterval
@@ -316,11 +364,34 @@ export const MessagingApp: FC = () => {
       toast.error("You must be logged in to use this feature");
       return;
     }
+
+    // Mark user-initiated conversations (from search) so they go to Chats
+    if (selectedKey) {
+      addInitiatedChat(selectedKey.slice(0, PUBLIC_KEY_LENGTH));
+    }
+
+    // Fetch conversations + classification data in parallel on first load
+    const conversationPromise = getConversations(appUser.PublicKeyBase58Check, allAccessGroups);
+    const classificationPromise = !chatRequestsLoaded
+      ? Promise.all([
+          fetchMutualFollows(appUser.PublicKeyBase58Check),
+          fetchChatAssociations(appUser.PublicKeyBase58Check),
+        ]).then(([mutual, assoc]) => {
+          const approvedSet = new Set(assoc.approved.keys());
+          const blockedSet = new Set(assoc.blocked.keys());
+          setClassificationData(mutual, approvedSet, blockedSet, assoc.approved, assoc.blocked);
+        }).catch((e) => {
+          console.error("Failed to load chat request classification data:", e);
+        })
+      : Promise.resolve();
+
+    const [conversationResult] = await Promise.all([conversationPromise, classificationPromise]);
+
     const {
       conversations,
       publicKeyToProfileEntryResponseMap,
       updatedAllAccessGroups,
-    } = await getConversations(appUser.PublicKeyBase58Check, allAccessGroups);
+    } = conversationResult;
     setAllAccessGroups(updatedAllAccessGroups);
     let conversationsResponse = conversations || {};
     const keyToUse =
@@ -733,7 +804,10 @@ export const MessagingApp: FC = () => {
                   }
                 }}
                 membersByGroupKey={membersByGroupKey}
-                conversations={conversations}
+                conversations={chatConversations}
+                requestConversations={requestConversations}
+                onAccept={handleAcceptRequest}
+                onBlock={handleBlockRequest}
                 getUsernameByPublicKeyBase58Check={
                   usernameByPublicKeyBase58Check
                 }

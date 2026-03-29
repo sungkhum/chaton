@@ -39,6 +39,36 @@ optimistic updates everywhere.
 - Never force a full conversation refetch as the only way to see your own action.
 - Never let `lockRefresh` stay true if the send promise rejects — always release in `finally`.
 
+## Chat Requests
+
+DM conversations from strangers go to a "Requests" tab. Classification uses DeSo's
+on-chain follows and User Associations (no backend needed).
+
+### Classification order (first match wins)
+
+1. Group chats → always Chats
+2. `chattra:chat-blocked` association exists → hidden
+3. Mutual DeSo follow → Chats
+4. `chattra:chat-approved` association exists → Chats
+5. User initiated the conversation (via search) → Chats
+6. Current user sent the first message → Chats
+7. Everything else → Requests
+
+### Data flow
+
+- On first load, `fetchMutualFollows` and `fetchChatAssociations` run in `Promise.all`
+  alongside `getConversations`. Results cached in Zustand store for the session.
+- `classifyConversation()` is a pure function. A `useMemo` in messaging-app.tsx derives
+  `chatConversations` and `requestConversations` from the single `conversations` state
+  plus the store Sets. This means all existing optimistic update code works unchanged.
+- Accept/Block create on-chain associations (`createUserAssociation`) with optimistic
+  Set updates and rollback on failure.
+
+### Association types
+
+- `chattra:chat-approved` / value `"approved"` — user accepted a chat request
+- `chattra:chat-blocked` / value `"blocked"` — user blocked a sender
+
 ## ExtraData conventions
 
 All rich message metadata uses namespaced keys in DeSo's `ExtraData` field:
@@ -57,7 +87,7 @@ All rich message metadata uses namespaced keys in DeSo's `ExtraData` field:
 
 - React 19 + TypeScript + Vite
 - Tailwind CSS v4
-- Zustand (global store for auth/access groups only, conversations in component state)
+- Zustand (global store for auth, access groups, chat request classification; conversations in component state)
 - deso-protocol SDK for all blockchain interaction
 - Sonner for toasts
 - Cloudflare Workers + Durable Objects for WebSocket relay
