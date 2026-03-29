@@ -157,34 +157,70 @@ export const MessagingApp: FC = () => {
   // Real-time WebSocket relay
   const handleWsNewMessage = useCallback(
     (threadId: string, _from: string) => {
-      // Trigger a conversation refresh when relay notifies us
-      if (appUser && !lockRefresh) {
-        getConversations(appUser.PublicKeyBase58Check, allAccessGroups).then(
-          ({ conversations: updated, updatedAllAccessGroups }) => {
-            setAllAccessGroups(updatedAllAccessGroups);
-            setConversations((prev) => {
-              // Merge: keep optimistic messages, add new data
-              const merged = { ...prev };
-              for (const [key, convo] of Object.entries(updated)) {
-                if (!merged[key]) merged[key] = convo;
-                else {
-                  const optimistic = merged[key].messages.filter((m: any) => m._localId);
-                  merged[key] = { ...convo, messages: [...optimistic, ...convo.messages] };
-                }
+      if (!appUser) return;
+
+      getConversations(appUser.PublicKeyBase58Check, allAccessGroups).then(
+        async ({ conversations: updated, updatedAllAccessGroups }) => {
+          setAllAccessGroups(updatedAllAccessGroups);
+
+          const currentSelectedKey = selectedConversationPublicKeyRef.current;
+
+          if (threadId && threadId === currentSelectedKey) {
+            // Notification is for the conversation we're looking at —
+            // fetch the full thread so new messages appear immediately.
+            try {
+              const { updatedConversations, pubKeyPlusGroupName: newPubKey } =
+                await getConversation(currentSelectedKey, {
+                  ...updated,
+                  [currentSelectedKey]: updated[currentSelectedKey],
+                });
+
+              const updatedMessages =
+                updatedConversations[currentSelectedKey]?.messages;
+              if (updatedMessages) {
+                mergeConversationUpdate(
+                  updatedConversations,
+                  currentSelectedKey,
+                  updatedMessages
+                );
+                setPubKeyPlusGroupName(newPubKey);
               }
-              // Fire-and-forget cache write
-              cacheConversations(appUser.PublicKeyBase58Check, merged);
-              return merged;
-            });
-            // Increment unread for the thread that received a new message
-            if (threadId && threadId !== selectedConversationPublicKey) {
+            } catch {
+              // Fall back to the simple conversation-list merge
+              simpleConversationMerge(updated);
+            }
+          } else {
+            // Different conversation — just merge the conversation list
+            simpleConversationMerge(updated);
+
+            if (threadId) {
               useStore.getState().incrementUnread(threadId);
             }
           }
-        ).catch(() => {});
-      }
+        }
+      ).catch(() => {});
     },
-    [appUser, allAccessGroups, lockRefresh, selectedConversationPublicKey]
+    [appUser, allAccessGroups, mergeConversationUpdate]
+  );
+
+  // Lightweight merge for conversations we're not currently viewing:
+  // keeps optimistic messages, layers in fresh blockchain data.
+  const simpleConversationMerge = useCallback(
+    (updated: ConversationMap) => {
+      setConversations((prev) => {
+        const merged = { ...prev };
+        for (const [key, convo] of Object.entries(updated)) {
+          if (!merged[key]) merged[key] = convo;
+          else {
+            const optimistic = merged[key].messages.filter((m: any) => m._localId);
+            merged[key] = { ...convo, messages: [...optimistic, ...convo.messages] };
+          }
+        }
+        if (appUser) cacheConversations(appUser.PublicKeyBase58Check, merged);
+        return merged;
+      });
+    },
+    [appUser]
   );
 
   const { onTypingReceived, getTypingUsersForConversation } = useTypingDisplay();
@@ -245,6 +281,62 @@ export const MessagingApp: FC = () => {
     lockRefreshRef.current = lockRefresh;
     selectedConversationPublicKeyRef.current = selectedConversationPublicKey;
   });
+
+  // Shared merge logic: reconcile optimistic messages with blockchain-confirmed data.
+  // Used by both the WebSocket handler and the polling interval.
+  const mergeConversationUpdate = useCallback(
+    (
+      updatedConversations: ConversationMap,
+      selectedKey: string,
+      updatedMessages: DecryptedMessageEntryResponse[]
+    ) => {
+      setConversations((prev) => {
+        const currentMessages = prev[selectedKey]?.messages || [];
+
+        const optimisticMessages = currentMessages.filter(
+          (m: any) => m._localId && m._status !== "sent"
+        );
+
+        const confirmedKeys = new Set(
+          updatedMessages.map(
+            (m) =>
+              m.SenderInfo.OwnerPublicKeyBase58Check +
+              ":" +
+              m.DecryptedMessage?.slice(0, 50)
+          )
+        );
+
+        const stillPendingOptimistic = optimisticMessages.filter(
+          (m: any) =>
+            !confirmedKeys.has(
+              m.SenderInfo.OwnerPublicKeyBase58Check +
+                ":" +
+                m.DecryptedMessage?.slice(0, 50)
+            )
+        );
+
+        const merged = {
+          ...updatedConversations,
+          [selectedKey]: {
+            ...prev[selectedKey],
+            messages: [...stillPendingOptimistic, ...updatedMessages],
+          },
+        };
+
+        if (appUser) {
+          cacheConversations(appUser.PublicKeyBase58Check, merged);
+          cacheConversationMessages(
+            appUser.PublicKeyBase58Check,
+            selectedKey,
+            updatedMessages
+          );
+        }
+
+        return merged;
+      });
+    },
+    [appUser]
+  );
 
   // Retry a single pending message (used by startup retry and the retry button)
   const retryingIds = useRef(new Set<string>());
@@ -493,62 +585,15 @@ export const MessagingApp: FC = () => {
         conversations[selectedConversationPublicKey] &&
         initConversationKey === selectedConversationPublicKeyRef.current
       ) {
-        // Live updates to the current conversation.
-        // Merge blockchain-confirmed messages with any remaining optimistic messages.
-        setConversations((conversations) => {
-          const currentMessages =
-            conversations[selectedConversationPublicKey].messages;
-          const updatedMessages =
-            updatedConversations[selectedConversationPublicKey].messages;
-
-          // Separate optimistic (local) messages from confirmed ones
-          const optimisticMessages = currentMessages.filter(
-            (m: any) => m._localId && m._status !== "sent"
+        const updatedMessages =
+          updatedConversations[selectedConversationPublicKey]?.messages;
+        if (updatedMessages) {
+          mergeConversationUpdate(
+            updatedConversations,
+            selectedConversationPublicKey,
+            updatedMessages
           );
-
-          // Build a set of confirmed timestamps+senders for deduplication
-          const confirmedKeys = new Set(
-            updatedMessages.map(
-              (m) =>
-                m.SenderInfo.OwnerPublicKeyBase58Check +
-                ":" +
-                m.DecryptedMessage?.slice(0, 50)
-            )
-          );
-
-          // Keep only optimistic messages that don't yet have a blockchain counterpart
-          const stillPendingOptimistic = optimisticMessages.filter(
-            (m: any) =>
-              !confirmedKeys.has(
-                m.SenderInfo.OwnerPublicKeyBase58Check +
-                  ":" +
-                  m.DecryptedMessage?.slice(0, 50)
-              )
-          );
-
-          const merged = {
-            ...updatedConversations,
-            [selectedConversationPublicKey]: {
-              ...conversations[selectedConversationPublicKey],
-              messages: [
-                ...stillPendingOptimistic,
-                ...updatedMessages,
-              ],
-            },
-          };
-
-          // Fire-and-forget cache writes
-          if (appUser) {
-            cacheConversations(appUser.PublicKeyBase58Check, merged);
-            cacheConversationMessages(
-              appUser.PublicKeyBase58Check,
-              selectedConversationPublicKey,
-              updatedMessages
-            );
-          }
-
-          return merged;
-        });
+        }
         setPubKeyPlusGroupName(pubKeyPlusGroupName);
       }
     },

@@ -19,6 +19,13 @@ export function useWebSocket(callbacks: WsCallbacks) {
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>();
   const { appUser } = useStore();
 
+  // Keep callbacks in a ref so the WebSocket message handler always calls
+  // the latest version without needing to reconnect when they change.
+  const callbacksRef = useRef(callbacks);
+  useEffect(() => {
+    callbacksRef.current = callbacks;
+  }, [callbacks]);
+
   const connect = useCallback(() => {
     if (!RELAY_URL || !appUser) return;
 
@@ -44,16 +51,16 @@ export function useWebSocket(callbacks: WsCallbacks) {
           const data = JSON.parse(event.data);
           switch (data.type) {
             case "new-message":
-              callbacks.onNewMessage?.(data.threadId, data.from);
+              callbacksRef.current.onNewMessage?.(data.threadId, data.from);
               break;
             case "typing":
-              callbacks.onTyping?.(data.from, data.conversationKey);
+              callbacksRef.current.onTyping?.(data.from, data.conversationKey);
               break;
             case "presence":
-              callbacks.onPresence?.(data.users);
+              callbacksRef.current.onPresence?.(data.users);
               break;
             case "read":
-              callbacks.onRead?.(data.from, data.conversationKey);
+              callbacksRef.current.onRead?.(data.from, data.conversationKey);
               break;
           }
         } catch {
@@ -72,7 +79,7 @@ export function useWebSocket(callbacks: WsCallbacks) {
     } catch {
       scheduleReconnect();
     }
-  }, [appUser, callbacks]);
+  }, [appUser]);
 
   const scheduleReconnect = useCallback(() => {
     const delay = Math.min(

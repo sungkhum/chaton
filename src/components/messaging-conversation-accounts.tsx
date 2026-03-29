@@ -121,10 +121,10 @@ export const MessagingConversationAccount: FC<{
                   value,
                   getUsernameByPublicKeyBase58Check
                 );
-                const selectedConversationStyle =
-                  key === selectedConversationPublicKey
-                    ? "selected-conversation bg-white/5"
-                    : "";
+                const isSelected = key === selectedConversationPublicKey;
+                const selectedConversationStyle = isSelected
+                  ? "selected-conversation bg-white/5"
+                  : "";
                 const unreadCount = unreadByConversation.get(key) || 0;
                 const hasUnread = unreadCount > 0;
                 const timestamp = value.messages[0]
@@ -138,9 +138,9 @@ export const MessagingConversationAccount: FC<{
                     <div
                       onClick={() => onClick(key)}
                       className={`px-4 py-3 ${selectedConversationStyle} hover:bg-white/5 cursor-pointer flex items-center gap-3 transition-colors ${
-                        hasUnread
-                          ? "border-l-2 border-l-[#34F080] bg-[#34F080]/[0.04]"
-                          : "border-l-2 border-l-transparent"
+                        hasUnread && !isSelected
+                          ? "bg-white/[0.03]"
+                          : ""
                       }`}
                     >
                       <MessagingDisplayAvatar
@@ -155,11 +155,13 @@ export const MessagingConversationAccount: FC<{
                         <div className="flex items-center justify-between mb-0.5">
                           <div className="flex items-center gap-1 min-w-0">
                             {isGroupChat && (
-                              <Users className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                              <Users className={`w-3.5 h-3.5 shrink-0 ${hasUnread ? "text-gray-300" : "text-gray-400"}`} />
                             )}
                             <span
                               className={`truncate text-sm ${
-                                hasUnread ? "text-white font-bold" : "text-white font-semibold"
+                                hasUnread
+                                  ? "text-white font-bold"
+                                  : "text-gray-400 font-medium"
                               }`}
                             >
                               {isDM && chatName ? "@" : ""}
@@ -179,7 +181,9 @@ export const MessagingConversationAccount: FC<{
                         <div className="flex items-center justify-between">
                           <p
                             className={`truncate text-sm ${
-                              hasUnread ? "text-gray-200 font-medium" : "text-gray-500"
+                              hasUnread
+                                ? "text-white/80 font-medium"
+                                : "text-gray-500"
                             }`}
                           >
                             {value.messages[0]
@@ -187,7 +191,7 @@ export const MessagingConversationAccount: FC<{
                               : ""}
                           </p>
                           {hasUnread && (
-                            <span className="bg-[#34F080] text-black text-[10px] font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5 shrink-0 ml-2">
+                            <span className="bg-[#34F080] text-black text-[11px] font-bold rounded-full min-w-[22px] h-[22px] flex items-center justify-center px-1.5 shrink-0 ml-2">
                               {unreadCount > 99 ? "99+" : unreadCount}
                             </span>
                           )}
