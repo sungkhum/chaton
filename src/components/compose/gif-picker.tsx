@@ -90,8 +90,20 @@ export const GifPicker = ({ onSelect, onClose }: GifPickerProps) => {
         )}
       </div>
 
-      <div className="text-center py-1 text-[10px] text-blue-400/30 border-t border-blue-800/30">
-        Powered by GIPHY
+      <div className="flex items-center justify-end px-3 py-1.5 border-t border-blue-800/30">
+        <a
+          href="https://giphy.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 opacity-50 hover:opacity-80 transition-opacity"
+        >
+          <span className="text-[10px] text-blue-300/70 tracking-wide uppercase">
+            Powered by
+          </span>
+          <span className="text-[11px] font-bold tracking-wider text-blue-300/70">
+            GIPHY
+          </span>
+        </a>
       </div>
     </div>
   );
