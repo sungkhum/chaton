@@ -534,7 +534,6 @@ export const LandingPage = () => {
               <span className="font-black tracking-tighter text-4xl">ChatOn</span>
             </div>
             <div className="flex flex-wrap justify-center gap-10 md:gap-16 text-xs font-black uppercase tracking-[0.4em] text-gray-500">
-              <a href="#" className="hover:text-[#34F080] transition-colors">Protocol</a>
               <a
                 href="https://github.com/sungkhum/chaton"
                 target="_blank"
@@ -543,7 +542,8 @@ export const LandingPage = () => {
               >
                 GitHub
               </a>
-              <a href="#" className="hover:text-[#34F080] transition-colors">Security</a>
+              <a href="/privacy" className="hover:text-[#34F080] transition-colors">Privacy</a>
+              <a href="/terms" className="hover:text-[#34F080] transition-colors">Terms</a>
             </div>
           </div>
           <div className="mt-12 md:mt-32 text-center">

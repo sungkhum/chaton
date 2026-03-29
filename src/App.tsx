@@ -12,6 +12,7 @@ import { Toaster } from "sonner";
 import { Header } from "./components/header";
 import { InstallPrompt } from "./components/install-prompt";
 import { LandingPage } from "./components/landing-page";
+import { LegalPage } from "./components/legal-page";
 import { MessagingApp } from "./components/messaging-app";
 import { AppUser, useStore } from "./store";
 import { withAuth } from "./utils/with-auth";
@@ -264,6 +265,16 @@ function App() {
   );
 
   const { appUser, isLoadingUser } = useStore();
+  const path = window.location.pathname;
+
+  // Legal pages are always accessible regardless of auth state
+  if (path === "/privacy") {
+    return <LegalPage type="privacy" />;
+  }
+  if (path === "/terms") {
+    return <LegalPage type="terms" />;
+  }
+
   const showLanding = !appUser && !isLoadingUser;
 
   if (showLanding) {
