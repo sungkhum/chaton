@@ -1,6 +1,9 @@
-name = "chattra-relay"
+name = "chaton-relay"
 main = "src/index.ts"
 compatibility_date = "2024-09-23"
+
+[vars]
+ALLOWED_ORIGINS = "https://getchaton.com,https://www.getchaton.com"
 
 [durable_objects]
 bindings = [

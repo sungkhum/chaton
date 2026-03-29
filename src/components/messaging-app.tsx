@@ -11,9 +11,11 @@ import {
   PublicKeyToProfileEntryResponseMap,
 } from "deso-protocol";
 import { useInterval } from "hooks/useInterval";
-import { FC, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { FC, useContext, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { useMobile } from "../hooks/useMobile";
+import { useWebSocket } from "../hooks/useWebSocket";
+import { useTypingIndicator, useTypingDisplay } from "../hooks/useTypingIndicator";
 import {
   classifyConversation,
   createApprovalAssociation,
@@ -104,6 +106,7 @@ export const MessagingApp: FC = () => {
     mutualFollows, approvedUsers, blockedUsers, initiatedChats, chatRequestsLoaded,
     setClassificationData, addInitiatedChat, approveUser, rollbackApproval,
     blockUser, rollbackBlock,
+    unreadByConversation, clearUnread,
   } = useStore();
   const [usernameByPublicKeyBase58Check, setUsernameByPublicKeyBase58Check] =
     useState<{ [key: string]: string }>({});
@@ -122,6 +125,46 @@ export const MessagingApp: FC = () => {
     timestamp: string;
   } | null>(null);
   const { isMobile } = useMobile();
+
+  // Real-time WebSocket relay
+  const handleWsNewMessage = useCallback(
+    (threadId: string, _from: string) => {
+      // Trigger a conversation refresh when relay notifies us
+      if (appUser && !lockRefresh) {
+        getConversations(appUser.PublicKeyBase58Check, allAccessGroups).then(
+          ({ conversations: updated, updatedAllAccessGroups }) => {
+            setAllAccessGroups(updatedAllAccessGroups);
+            setConversations((prev) => {
+              // Merge: keep optimistic messages, add new data
+              const merged = { ...prev };
+              for (const [key, convo] of Object.entries(updated)) {
+                if (!merged[key]) merged[key] = convo;
+                else {
+                  const optimistic = merged[key].messages.filter((m: any) => m._localId);
+                  merged[key] = { ...convo, messages: [...optimistic, ...convo.messages] };
+                }
+              }
+              return merged;
+            });
+            // Increment unread for the thread that received a new message
+            if (threadId && threadId !== selectedConversationPublicKey) {
+              useStore.getState().incrementUnread(threadId);
+            }
+          }
+        ).catch(() => {});
+      }
+    },
+    [appUser, allAccessGroups, lockRefresh, selectedConversationPublicKey]
+  );
+
+  const { onTypingReceived, getTypingUsersForConversation } = useTypingDisplay();
+
+  const { sendNotify, sendTyping, sendRead } = useWebSocket({
+    onNewMessage: handleWsNewMessage,
+    onTyping: onTypingReceived,
+  });
+
+  const { onKeystroke } = useTypingIndicator(sendTyping);
 
   // Derive classified conversation maps from the single conversations state + store Sets
   const { chatConversations, requestConversations } = useMemo(() => {
@@ -183,6 +226,18 @@ export const MessagingApp: FC = () => {
       setLoading(false);
     }
   }, [appUser, isMobile]);
+
+  // Handle push notification clicks from service worker
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === "notification-click" && event.data.conversationKey) {
+        setSelectedConversationPublicKey(event.data.conversationKey);
+        clearUnread(event.data.conversationKey);
+      }
+    };
+    navigator.serviceWorker?.addEventListener("message", handler);
+    return () => navigator.serviceWorker?.removeEventListener("message", handler);
+  }, []);
 
   useEffect(() => {
     setSelectedConversationPublicKey("");
@@ -789,6 +844,8 @@ export const MessagingApp: FC = () => {
                     return;
                   }
                   setSelectedConversationPublicKey(key);
+                  clearUnread(key);
+                  sendRead(key);
 
                   setLoadingConversation(true);
                   setLockRefresh(true);
@@ -812,6 +869,7 @@ export const MessagingApp: FC = () => {
                   usernameByPublicKeyBase58Check
                 }
                 selectedConversationPublicKey={selectedConversationPublicKey}
+                unreadByConversation={unreadByConversation}
               />
             </div>
 
@@ -974,6 +1032,8 @@ export const MessagingApp: FC = () => {
                                 "chattra:emoji": emoji,
                               }
                             );
+                            // Notify via WebSocket relay
+                            sendNotify(convKey, [recipientPublicKey]);
                             // Mark as sent
                             setConversations((prev) => ({
                               ...prev,
@@ -1007,6 +1067,10 @@ export const MessagingApp: FC = () => {
                     conversationKey={selectedConversationPublicKey}
                     replyTo={replyToMessage}
                     onCancelReply={() => setReplyToMessage(null)}
+                    onKeystroke={() => onKeystroke(selectedConversationPublicKey)}
+                    typingUsers={getTypingUsersForConversation(selectedConversationPublicKey)
+                      .map((pk) => usernameByPublicKeyBase58Check[pk] || shortenLongWord(pk))
+                      .filter(Boolean)}
                     onClick={async (messageToSend: string, extraData?: Record<string, string>) => {
                       // Merge reply data into extraData if replying
                       if (replyToMessage) {
@@ -1071,6 +1135,12 @@ export const MessagingApp: FC = () => {
                           recipientAccessGroupKeyName,
                           DEFAULT_KEY_MESSAGING_GROUP_NAME,
                           extraData
+                        );
+                        // Notify via WebSocket relay
+                        sendNotify(
+                          convKey,
+                          [recipientPublicKey],
+                          usernameByPublicKeyBase58Check[appUser.PublicKeyBase58Check] || appUser.PublicKeyBase58Check
                         );
                         // Update status to "sent" (blockchain accepted)
                         setConversations((prev) => ({

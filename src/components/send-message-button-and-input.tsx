@@ -14,6 +14,8 @@ export interface SendMessageButtonAndInputProps {
   replyTo?: { text: string; timestamp: string } | null;
   onCancelReply?: () => void;
   conversationKey?: string;
+  onKeystroke?: () => void;
+  typingUsers?: string[];
 }
 
 export const SendMessageButtonAndInput = ({
@@ -21,6 +23,8 @@ export const SendMessageButtonAndInput = ({
   replyTo,
   onCancelReply,
   conversationKey = "",
+  onKeystroke,
+  typingUsers = [],
 }: SendMessageButtonAndInputProps) => {
   const [isSending, setIsSending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -158,6 +162,7 @@ export const SendMessageButtonAndInput = ({
   // Auto-grow textarea
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessageToSend(e.target.value);
+    onKeystroke?.();
     const textarea = e.target;
     textarea.style.height = "auto";
     textarea.style.height = `${Math.min(textarea.scrollHeight, 150)}px`;
@@ -165,8 +170,19 @@ export const SendMessageButtonAndInput = ({
 
   const hasText = messageToSend.trim().length > 0;
 
+  const typingLabel =
+    typingUsers.length === 1
+      ? `${typingUsers[0]} is typing...`
+      : typingUsers.length > 1
+        ? `${typingUsers.slice(0, 2).join(", ")} are typing...`
+        : null;
+
   return (
     <div className="w-full px-3 pb-3 md:px-6 md:pb-4">
+      {typingLabel && (
+        <div className="text-xs text-gray-400 px-2 pb-1 animate-pulse">{typingLabel}</div>
+      )}
+
       {replyTo && (
         <ReplyBanner replyTo={replyTo.text} onCancel={() => onCancelReply?.()} />
       )}

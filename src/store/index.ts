@@ -25,6 +25,13 @@ interface ChatOnState {
   lockRefresh: boolean;
   setLockRefresh: (lock: boolean) => void;
 
+  // Unread badges
+  unreadByConversation: Map<string, number>;
+  totalUnread: number;
+  incrementUnread: (conversationKey: string) => void;
+  clearUnread: (conversationKey: string) => void;
+  resetUnread: () => void;
+
   // Chat Requests
   mutualFollows: Set<string>;
   approvedUsers: Set<string>;
@@ -87,6 +94,35 @@ export const useStore = create<ChatOnState>((set) => ({
   // UI
   lockRefresh: false,
   setLockRefresh: (lockRefresh) => set({ lockRefresh }),
+
+  // Unread badges
+  unreadByConversation: new Map(),
+  totalUnread: 0,
+
+  incrementUnread: (conversationKey) =>
+    set((state) => {
+      const next = new Map(state.unreadByConversation);
+      next.set(conversationKey, (next.get(conversationKey) || 0) + 1);
+      const total = Array.from(next.values()).reduce((a, b) => a + b, 0);
+      if (navigator.setAppBadge) navigator.setAppBadge(total).catch(() => {});
+      return { unreadByConversation: next, totalUnread: total };
+    }),
+
+  clearUnread: (conversationKey) =>
+    set((state) => {
+      if (!state.unreadByConversation.has(conversationKey)) return state;
+      const next = new Map(state.unreadByConversation);
+      next.delete(conversationKey);
+      const total = Array.from(next.values()).reduce((a, b) => a + b, 0);
+      if (total === 0 && navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
+      else if (navigator.setAppBadge) navigator.setAppBadge(total).catch(() => {});
+      return { unreadByConversation: next, totalUnread: total };
+    }),
+
+  resetUnread: () => {
+    if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
+    set({ unreadByConversation: new Map(), totalUnread: 0 });
+  },
 
   // Chat Requests
   mutualFollows: EMPTY_SET,

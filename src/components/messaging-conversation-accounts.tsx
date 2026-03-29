@@ -39,6 +39,7 @@ export const MessagingConversationAccount: FC<{
   rehydrateConversation: (publicKey?: string) => void;
   onAccept: (conversationKey: string, publicKey: string) => void;
   onBlock: (conversationKey: string, publicKey: string) => void;
+  unreadByConversation: Map<string, number>;
   membersByGroupKey: {
     [groupKey: string]: { [publicKey: string]: ProfileEntryResponse | null };
   };
@@ -51,6 +52,7 @@ export const MessagingConversationAccount: FC<{
   rehydrateConversation,
   onAccept,
   onBlock,
+  unreadByConversation,
   membersByGroupKey,
 }) => {
   const [activeTab, setActiveTab] = useState<"chats" | "requests">("chats");
@@ -114,22 +116,29 @@ export const MessagingConversationAccount: FC<{
                       key === selectedConversationPublicKey
                         ? "selected-conversation bg-white/5 border-l-2 border-[#34F080]"
                         : "border-l-2 border-transparent";
+                    const unreadCount = unreadByConversation.get(key) || 0;
                     return (
                       <div
                         onClick={() => onClick(key)}
                         className={`px-3 py-3 ${selectedConversationStyle} hover:bg-white/5 cursor-pointer flex justify-start transition-colors`}
                         key={`message-thread-${key}`}
                       >
-                        <MessagingDisplayAvatar
-                          username={isDM ? chatName : undefined}
-                          publicKey={isDM ? value.firstMessagePublicKey : chatName || ""}
-                          groupChat={isGroupChat}
-                          diameter={44}
-                          classNames="mx-2"
-                        />
+                        <div className="relative mx-2">
+                          <MessagingDisplayAvatar
+                            username={isDM ? chatName : undefined}
+                            publicKey={isDM ? value.firstMessagePublicKey : chatName || ""}
+                            groupChat={isGroupChat}
+                            diameter={44}
+                          />
+                          {unreadCount > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-[#34F080] text-black text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                              {unreadCount > 99 ? "99+" : unreadCount}
+                            </span>
+                          )}
+                        </div>
                         <div className="w-[calc(100%-70px)] text-left">
                           <header className="flex items-center justify-between">
-                            <div className="text-left ml-2 text-white font-semibold text-sm">
+                            <div className={`text-left ml-2 text-sm ${unreadCount > 0 ? "text-white font-bold" : "text-white font-semibold"}`}>
                               {isDM && chatName ? "@" : ""}
                               {shortenLongWord(chatName, 7, 7) ||
                                 shortenLongWord(publicKey)}
@@ -147,7 +156,7 @@ export const MessagingConversationAccount: FC<{
                           </header>
 
                           {value.messages[0] && (
-                            <div className="text-left break-all truncate w-full text-gray-500 text-sm ml-2">
+                            <div className={`text-left break-all truncate w-full text-sm ml-2 ${unreadCount > 0 ? "text-gray-300 font-medium" : "text-gray-500"}`}>
                               {value.messages[0].DecryptedMessage.slice(0, 50)}...
                             </div>
                           )}

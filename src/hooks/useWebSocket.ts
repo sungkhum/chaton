@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useStore } from "../store";
+import { subscribeToPush, requestPushPermission, isPushSupported } from "../utils/push-notifications";
 
 const RELAY_URL = import.meta.env.VITE_RELAY_URL || "";
 const RECONNECT_BASE_MS = 1000;
@@ -34,6 +35,8 @@ export function useWebSocket(callbacks: WsCallbacks) {
             publicKey: appUser.PublicKeyBase58Check,
           })
         );
+        // Register push subscription for offline notifications
+        registerPushSubscription(appUser.PublicKeyBase58Check);
       };
 
       ws.onmessage = (event) => {
@@ -81,7 +84,7 @@ export function useWebSocket(callbacks: WsCallbacks) {
   }, [connect]);
 
   const sendNotify = useCallback(
-    (threadId: string, recipients: string[]) => {
+    (threadId: string, recipients: string[], fromUsername?: string) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(
           JSON.stringify({
@@ -89,6 +92,7 @@ export function useWebSocket(callbacks: WsCallbacks) {
             threadId,
             recipients,
             from: appUser?.PublicKeyBase58Check,
+            fromUsername,
           })
         );
       }
@@ -133,4 +137,31 @@ export function useWebSocket(callbacks: WsCallbacks) {
   }, [connect]);
 
   return { sendNotify, sendTyping, sendRead, isConnected: !!wsRef.current };
+}
+
+const pushRegistered = new Set<string>();
+
+async function registerPushSubscription(publicKey: string) {
+  if (!RELAY_URL || !isPushSupported() || pushRegistered.has(publicKey)) return;
+
+  try {
+    const granted = await requestPushPermission();
+    if (!granted) return;
+
+    const subscription = await subscribeToPush();
+    if (!subscription) return;
+
+    const res = await fetch(`${RELAY_URL}/push/subscribe`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        publicKey,
+        subscription: subscription.toJSON(),
+      }),
+    });
+
+    if (res.ok) pushRegistered.add(publicKey);
+  } catch {
+    // Push registration is best-effort
+  }
 }

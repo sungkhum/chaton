@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import { sendPushNotification, PushSubscriptionData } from "./web-push";
 
 interface WsMessage {
   type: "notify" | "typing" | "read" | "register";
@@ -6,6 +7,7 @@ interface WsMessage {
   threadId?: string;
   recipients?: string[];
   from?: string;
+  fromUsername?: string;
   conversationKey?: string;
 }
 
@@ -15,8 +17,35 @@ interface ConnectedClient {
   lastSeen: number;
 }
 
+export interface RelayEnv {
+  VAPID_PRIVATE_KEY: string;
+  VAPID_SUBJECT: string;
+}
+
 export class ChatRelay extends DurableObject {
   private clients: Map<string, ConnectedClient[]> = new Map();
+  private env: RelayEnv;
+  private dbReady = false;
+
+  constructor(ctx: DurableObjectState, env: RelayEnv) {
+    super(ctx, env);
+    this.env = env;
+  }
+
+  private ensureDb() {
+    if (this.dbReady) return;
+    this.ctx.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        public_key TEXT NOT NULL,
+        endpoint TEXT NOT NULL,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        created_at INTEGER DEFAULT (unixepoch()),
+        PRIMARY KEY (public_key, endpoint)
+      )
+    `);
+    this.dbReady = true;
+  }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
@@ -26,17 +55,77 @@ export class ChatRelay extends DurableObject {
       if (upgradeHeader !== "websocket") {
         return new Response("Expected WebSocket", { status: 426 });
       }
-
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
-
       this.ctx.acceptWebSocket(server);
-
       return new Response(null, { status: 101, webSocket: client });
+    }
+
+    // Push subscription management
+    if (url.pathname === "/push/subscribe" && request.method === "POST") {
+      return this.handlePushSubscribe(request);
+    }
+    if (url.pathname === "/push/unsubscribe" && request.method === "POST") {
+      return this.handlePushUnsubscribe(request);
     }
 
     return new Response("Not found", { status: 404 });
   }
+
+  // ── Push subscription endpoints ──
+
+  private async handlePushSubscribe(request: Request): Promise<Response> {
+    try {
+      const { publicKey, subscription } = await request.json<{
+        publicKey: string;
+        subscription: PushSubscriptionData;
+      }>();
+
+      if (!publicKey || !subscription?.endpoint || !subscription?.keys) {
+        return new Response("Missing fields", { status: 400 });
+      }
+
+      this.ensureDb();
+      this.ctx.storage.sql.exec(
+        `INSERT OR REPLACE INTO push_subscriptions (public_key, endpoint, p256dh, auth)
+         VALUES (?, ?, ?, ?)`,
+        publicKey,
+        subscription.endpoint,
+        subscription.keys.p256dh,
+        subscription.keys.auth
+      );
+
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (e) {
+      return new Response("Bad request", { status: 400 });
+    }
+  }
+
+  private async handlePushUnsubscribe(request: Request): Promise<Response> {
+    try {
+      const { publicKey, endpoint } = await request.json<{
+        publicKey: string;
+        endpoint: string;
+      }>();
+
+      this.ensureDb();
+      this.ctx.storage.sql.exec(
+        `DELETE FROM push_subscriptions WHERE public_key = ? AND endpoint = ?`,
+        publicKey,
+        endpoint
+      );
+
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch {
+      return new Response("Bad request", { status: 400 });
+    }
+  }
+
+  // ── WebSocket handlers ──
 
   async webSocketMessage(ws: WebSocket, rawMessage: string | ArrayBuffer) {
     try {
@@ -60,7 +149,7 @@ export class ChatRelay extends DurableObject {
           this.handleRead(ws, message);
           break;
       }
-    } catch (e) {
+    } catch {
       // Ignore malformed messages
     }
   }
@@ -80,30 +169,72 @@ export class ChatRelay extends DurableObject {
     const existing = this.clients.get(publicKey) || [];
     existing.push({ ws, publicKey, lastSeen: Date.now() });
     this.clients.set(publicKey, existing);
-
-    // Broadcast presence update
     this.broadcastPresence();
   }
 
   private handleNotify(message: WsMessage) {
-    const { recipients, threadId, from } = message;
+    const { recipients, threadId, from, fromUsername } = message;
     if (!recipients || !threadId) return;
 
     for (const recipientKey of recipients) {
       const clients = this.clients.get(recipientKey) || [];
+      let delivered = false;
+
       for (const client of clients) {
         try {
-          client.ws.send(
-            JSON.stringify({
-              type: "new-message",
-              threadId,
-              from,
-            })
-          );
+          client.ws.send(JSON.stringify({ type: "new-message", threadId, from }));
+          delivered = true;
         } catch {
-          // Client disconnected, will be cleaned up
+          // Client disconnected
         }
       }
+
+      // If no active WebSocket connections, send a push notification
+      if (!delivered && this.env.VAPID_PRIVATE_KEY) {
+        this.sendPushToUser(recipientKey, fromUsername || from || "Someone", threadId);
+      }
+    }
+  }
+
+  private async sendPushToUser(publicKey: string, fromName: string, threadId: string) {
+    this.ensureDb();
+    const rows = this.ctx.storage.sql.exec(
+      `SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE public_key = ?`,
+      publicKey
+    ).toArray();
+
+    const expiredEndpoints: string[] = [];
+
+    for (const row of rows) {
+      const sub: PushSubscriptionData = {
+        endpoint: row.endpoint as string,
+        keys: { p256dh: row.p256dh as string, auth: row.auth as string },
+      };
+
+      const result = await sendPushNotification(
+        sub,
+        {
+          title: "ChatOn",
+          body: `${fromName} sent you a message`,
+          tag: `thread-${threadId}`,
+          conversationKey: threadId,
+        },
+        this.env.VAPID_PRIVATE_KEY,
+        this.env.VAPID_SUBJECT || "mailto:hello@chaton.app"
+      );
+
+      if (result === "expired") {
+        expiredEndpoints.push(sub.endpoint);
+      }
+    }
+
+    // Clean up expired subscriptions
+    for (const endpoint of expiredEndpoints) {
+      this.ctx.storage.sql.exec(
+        `DELETE FROM push_subscriptions WHERE public_key = ? AND endpoint = ?`,
+        publicKey,
+        endpoint
+      );
     }
   }
 
@@ -114,21 +245,12 @@ export class ChatRelay extends DurableObject {
     const senderKey = this.findPublicKey(ws);
     if (!senderKey) return;
 
-    // Broadcast typing to all connected clients except sender
     for (const [pubKey, clients] of this.clients) {
       if (pubKey === senderKey) continue;
       for (const client of clients) {
         try {
-          client.ws.send(
-            JSON.stringify({
-              type: "typing",
-              from: senderKey,
-              conversationKey,
-            })
-          );
-        } catch {
-          // Ignore
-        }
+          client.ws.send(JSON.stringify({ type: "typing", from: senderKey, conversationKey }));
+        } catch { /* ignore */ }
       }
     }
   }
@@ -144,38 +266,20 @@ export class ChatRelay extends DurableObject {
       if (pubKey === senderKey) continue;
       for (const client of clients) {
         try {
-          client.ws.send(
-            JSON.stringify({
-              type: "read",
-              from: senderKey,
-              conversationKey,
-            })
-          );
-        } catch {
-          // Ignore
-        }
+          client.ws.send(JSON.stringify({ type: "read", from: senderKey, conversationKey }));
+        } catch { /* ignore */ }
       }
     }
   }
 
   private broadcastPresence() {
-    const onlineUsers: Record<string, "online"> = {};
-    for (const pubKey of this.clients.keys()) {
-      onlineUsers[pubKey] = "online";
-    }
-
-    const presenceMessage = JSON.stringify({
-      type: "presence",
-      users: onlineUsers,
-    });
+    const users: Record<string, "online"> = {};
+    for (const pubKey of this.clients.keys()) users[pubKey] = "online";
+    const msg = JSON.stringify({ type: "presence", users });
 
     for (const clients of this.clients.values()) {
       for (const client of clients) {
-        try {
-          client.ws.send(presenceMessage);
-        } catch {
-          // Ignore
-        }
+        try { client.ws.send(msg); } catch { /* ignore */ }
       }
     }
   }
@@ -190,11 +294,8 @@ export class ChatRelay extends DurableObject {
   private removeClient(ws: WebSocket) {
     for (const [pubKey, clients] of this.clients) {
       const filtered = clients.filter((c) => c.ws !== ws);
-      if (filtered.length === 0) {
-        this.clients.delete(pubKey);
-      } else {
-        this.clients.set(pubKey, filtered);
-      }
+      if (filtered.length === 0) this.clients.delete(pubKey);
+      else this.clients.set(pubKey, filtered);
     }
     this.broadcastPresence();
   }
