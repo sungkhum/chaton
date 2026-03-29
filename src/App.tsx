@@ -289,7 +289,7 @@ function App() {
   return (
     <div className="App">
       <Header />
-      <section className="h-[calc(100%-56px)] mt-[56px] overflow-scroll">
+      <section className="h-[calc(100%-56px)] mt-[56px] overflow-hidden">
         <MessagingApp />
       </section>
       <InstallPrompt />

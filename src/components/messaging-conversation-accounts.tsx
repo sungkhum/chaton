@@ -292,10 +292,12 @@ export const MessagingConversationAccount: FC<{
         </div>
       </div>
 
-      <SpeedDialFab
-        onNewMessage={handleNewMessage}
-        onNewGroup={() => setGroupChatOpen(true)}
-      />
+      {!selectedConversationPublicKey && (
+        <SpeedDialFab
+          onNewMessage={handleNewMessage}
+          onNewGroup={() => setGroupChatOpen(true)}
+        />
+      )}
     </div>
   );
 };

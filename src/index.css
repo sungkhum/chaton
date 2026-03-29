@@ -39,6 +39,7 @@ body {
   min-height: 100vh;
   min-height: var(--app-height);
   -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: none;
 }
 
 .App {
