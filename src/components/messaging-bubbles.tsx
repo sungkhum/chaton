@@ -134,7 +134,10 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hoveredMessage, setHoveredMessage] = useState<string | null>(null);
   const [reactionPickerFor, setReactionPickerFor] = useState<string | null>(null);
+  const [mobileActionFor, setMobileActionFor] = useState<string | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressPosRef = useRef<{ x: number; y: number } | null>(null);
   const { isMobile } = useMobile();
 
   // Close reaction picker on click outside
@@ -148,6 +151,52 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [reactionPickerFor]);
+
+  // Close mobile action bar on scroll
+  useEffect(() => {
+    if (!mobileActionFor || !messageAreaRef.current) return;
+    const scrollArea = messageAreaRef.current;
+    const dismiss = () => {
+      setMobileActionFor(null);
+      setReactionPickerFor(null);
+    };
+    scrollArea.addEventListener("scroll", dismiss, { passive: true });
+    return () => scrollArea.removeEventListener("scroll", dismiss);
+  }, [mobileActionFor]);
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent, messageKey: string) => {
+      const touch = e.touches[0];
+      longPressPosRef.current = { x: touch.clientX, y: touch.clientY };
+      longPressTimerRef.current = setTimeout(() => {
+        if (navigator.vibrate) navigator.vibrate(20);
+        setMobileActionFor(messageKey);
+      }, 300);
+    },
+    []
+  );
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!longPressPosRef.current) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - longPressPosRef.current.x;
+    const dy = touch.clientY - longPressPosRef.current.y;
+    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+      longPressPosRef.current = null;
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressPosRef.current = null;
+  }, []);
+
+  const closeMobileAction = useCallback(() => {
+    setMobileActionFor(null);
+    setReactionPickerFor(null);
+  }, []);
+
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Aggregate reactions from reaction-type messages
@@ -290,6 +339,68 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
       ref={messageAreaRef}
       id="scrollableArea"
     >
+      {/* Mobile long-press backdrop */}
+      {isMobile && mobileActionFor && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40"
+          onTouchStart={(e) => {
+            e.preventDefault();
+            closeMobileAction();
+          }}
+        />
+      )}
+
+      {/* Mobile emoji bottom sheet */}
+      {isMobile && reactionPickerFor && (
+        <div
+          ref={pickerRef}
+          className="fixed inset-x-0 bottom-0 z-[60] bg-[#141c2b] rounded-t-2xl border-t border-white/10 pb-[env(safe-area-inset-bottom)]"
+        >
+          <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-2 mb-1" />
+          <EmojiPicker.Root
+            onEmojiSelect={(emoji: { emoji: string }) => {
+              onReact?.(reactionPickerFor, emoji.emoji);
+              closeMobileAction();
+            }}
+            className="w-full h-[320px] bg-transparent [--frimousse-bg:transparent] [--frimousse-border-color:theme(colors.white/10%)]"
+          >
+            <EmojiPicker.Search
+              className="mx-3 mt-1 mb-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-base placeholder:text-white/30 outline-none focus:border-[#34F080]/50"
+              placeholder="Search emoji..."
+            />
+            <EmojiPicker.Viewport className="flex-1 overflow-y-auto px-1">
+              <EmojiPicker.Loading className="flex items-center justify-center h-full text-blue-400/40 text-sm">
+                Loading...
+              </EmojiPicker.Loading>
+              <EmojiPicker.Empty className="flex items-center justify-center h-full text-white/40 text-sm">
+                No emoji found
+              </EmojiPicker.Empty>
+              <EmojiPicker.List
+                components={{
+                  Row: (props) => (
+                    <div {...props} className="flex gap-0.5 px-1" />
+                  ),
+                  Emoji: (props) => (
+                    <button
+                      {...props}
+                      className="flex items-center justify-center w-11 h-11 rounded-md text-2xl hover:bg-white/10 cursor-pointer transition-colors"
+                    />
+                  ),
+                  CategoryHeader: ({ category, ...props }) => (
+                    <div
+                      {...props}
+                      className="px-2 py-1.5 text-xs font-semibold text-white/40 sticky top-0 bg-[#141c2b] z-10"
+                    >
+                      {category.label}
+                    </div>
+                  ),
+                }}
+              />
+            </EmojiPicker.Viewport>
+          </EmojiPicker.Root>
+        </div>
+      )}
+
       <div className="flex flex-col-reverse">
         <div className="scroller-end-stub"></div>
 
@@ -346,14 +457,26 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
             </div>
           );
 
+          const showActionBar = isMobile
+            ? mobileActionFor === messageKey
+            : isHovered || reactionPickerFor === messageKey;
+
           return (
             <div
               className={`mx-0 last:pt-4 ${
                 IsSender ? "ml-auto justify-end" : "mr-auto justify-start"
-              } max-w-[80%] md:max-w-[65%] mb-3 inline-flex items-start top-[20px] text-left group`}
+              } max-w-[80%] md:max-w-[65%] mb-3 inline-flex items-start top-[20px] text-left group ${
+                mobileActionFor === messageKey ? "relative z-50" : ""
+              }`}
               key={messageKey}
               onMouseEnter={() => setHoveredMessage(messageKey)}
               onMouseLeave={() => setHoveredMessage(null)}
+              onTouchStart={
+                isMobile ? (e) => handleTouchStart(e, messageKey) : undefined
+              }
+              onTouchMove={isMobile ? handleTouchMove : undefined}
+              onTouchEnd={isMobile ? handleTouchEnd : undefined}
+              onContextMenu={isMobile ? (e) => e.preventDefault() : undefined}
             >
               {!IsSender && messagingDisplayAvatarAndTimestamp}
               <div className={`w-full ${IsSender ? "text-right" : "text-left"}`}>
@@ -387,20 +510,35 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                     <MessageContent message={message} />
                   </div>
 
-                  {/* Hover action bar (reply + react) */}
-                  {(isHovered || reactionPickerFor === messageKey) && !isMobile && (
+                  {/* Action bar (hover on desktop, long-press on mobile) */}
+                  {showActionBar && (
                     <div
-                      className={`absolute -top-8 ${
+                      className={`absolute ${
+                        isMobile ? "-top-12" : "-top-8"
+                      } ${
                         IsSender ? "right-0" : "left-0"
-                      } flex items-center gap-0.5 bg-[#141c2b] border border-white/10 backdrop-blur-md rounded-lg px-1 py-0.5 shadow-lg z-10`}
+                      } flex items-center gap-0.5 bg-[#141c2b] border border-white/10 backdrop-blur-md rounded-lg ${
+                        isMobile ? "px-1.5 py-1" : "px-1 py-0.5"
+                      } shadow-lg z-10`}
                     >
                       {onReply && (
                         <button
-                          onClick={() => onReply(message)}
-                          className="p-1 hover:bg-white/10 rounded cursor-pointer"
+                          onClick={() => {
+                            onReply(message);
+                            closeMobileAction();
+                          }}
+                          className={`${
+                            isMobile
+                              ? "w-11 h-11 flex items-center justify-center"
+                              : "p-1"
+                          } hover:bg-white/10 rounded cursor-pointer`}
                           title="Reply"
                         >
-                          <Reply className="w-3.5 h-3.5 text-gray-400" />
+                          <Reply
+                            className={`${
+                              isMobile ? "w-5 h-5" : "w-3.5 h-3.5"
+                            } text-gray-400`}
+                          />
                         </button>
                       )}
                       {onReact && (
@@ -414,8 +552,13 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                                   emoji
                                 );
                                 setReactionPickerFor(null);
+                                closeMobileAction();
                               }}
-                              className="p-1 hover:bg-white/10 rounded cursor-pointer text-sm leading-none"
+                              className={`${
+                                isMobile
+                                  ? "w-11 h-11 flex items-center justify-center text-xl"
+                                  : "p-1 text-sm"
+                              } hover:bg-white/10 rounded cursor-pointer leading-none`}
                             >
                               {emoji}
                             </button>
@@ -423,21 +566,31 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                           <button
                             onClick={() =>
                               setReactionPickerFor(
-                                reactionPickerFor === messageKey ? null : messageKey
+                                reactionPickerFor === messageKey
+                                  ? null
+                                  : messageKey
                               )
                             }
-                            className="p-1 hover:bg-white/10 rounded cursor-pointer"
+                            className={`${
+                              isMobile
+                                ? "w-11 h-11 flex items-center justify-center"
+                                : "p-1"
+                            } hover:bg-white/10 rounded cursor-pointer`}
                             title="More reactions"
                           >
-                            <Plus className="w-3.5 h-3.5 text-gray-400" />
+                            <Plus
+                              className={`${
+                                isMobile ? "w-5 h-5" : "w-3.5 h-3.5"
+                              } text-gray-400`}
+                            />
                           </button>
                         </>
                       )}
                     </div>
                   )}
 
-                  {/* Full emoji picker for reactions */}
-                  {reactionPickerFor === messageKey && (
+                  {/* Full emoji picker (desktop: absolute, mobile: fixed bottom sheet) */}
+                  {reactionPickerFor === messageKey && !isMobile && (
                     <div
                       ref={pickerRef}
                       className={`absolute z-50 ${
