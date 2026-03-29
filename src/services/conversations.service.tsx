@@ -13,6 +13,8 @@ import {
   PublicKeyToProfileEntryResponseMap,
   sendDMMessage,
   sendGroupChatMessage,
+  updateDMMessage,
+  updateGroupChatMessage,
   waitForTransactionFound,
 } from "deso-protocol";
 import { toast } from "sonner";
@@ -260,6 +262,80 @@ export const encryptAndSendNewMessage = async (
 
   if (!submittedTransactionResponse) {
     throw new Error("Failed to submit transaction for sending message.");
+  }
+
+  return submittedTransactionResponse.TxnHashHex;
+};
+
+export const encryptAndUpdateMessage = async (
+  newMessageText: string,
+  senderPublicKeyBase58Check: string,
+  RecipientPublicKeyBase58Check: string,
+  RecipientMessagingKeyName = DEFAULT_KEY_MESSAGING_GROUP_NAME,
+  SenderMessagingKeyName = DEFAULT_KEY_MESSAGING_GROUP_NAME,
+  originalTimestampNanosString: string,
+  additionalExtraData: Record<string, string> = {}
+): Promise<string> => {
+  if (SenderMessagingKeyName !== DEFAULT_KEY_MESSAGING_GROUP_NAME) {
+    return Promise.reject("sender must use default key for now");
+  }
+
+  const response = await checkPartyAccessGroups({
+    SenderPublicKeyBase58Check: senderPublicKeyBase58Check,
+    SenderAccessGroupKeyName: SenderMessagingKeyName,
+    RecipientPublicKeyBase58Check: RecipientPublicKeyBase58Check,
+    RecipientAccessGroupKeyName: RecipientMessagingKeyName,
+  });
+
+  if (!response.SenderAccessGroupKeyName) {
+    return Promise.reject("SenderAccessGroupKeyName is undefined");
+  }
+
+  let message: string;
+  let isUnencrypted = false;
+  const ExtraData: { [k: string]: string } = { ...additionalExtraData };
+  if (response.RecipientAccessGroupKeyName) {
+    message = await identity.encryptMessage(
+      response.RecipientAccessGroupPublicKeyBase58Check,
+      newMessageText
+    );
+  } else {
+    message = bytesToHex(new TextEncoder().encode(newMessageText));
+    isUnencrypted = true;
+    ExtraData["unencrypted"] = "true";
+  }
+
+  if (!message) {
+    return Promise.reject("error encrypting message");
+  }
+
+  const requestBody = {
+    SenderAccessGroupOwnerPublicKeyBase58Check: senderPublicKeyBase58Check,
+    SenderAccessGroupPublicKeyBase58Check:
+      response.SenderAccessGroupPublicKeyBase58Check,
+    SenderAccessGroupKeyName: SenderMessagingKeyName,
+    RecipientAccessGroupOwnerPublicKeyBase58Check:
+      RecipientPublicKeyBase58Check,
+    RecipientAccessGroupPublicKeyBase58Check: isUnencrypted
+      ? response.RecipientPublicKeyBase58Check
+      : response.RecipientAccessGroupPublicKeyBase58Check,
+    RecipientAccessGroupKeyName: response.RecipientAccessGroupKeyName,
+    ExtraData,
+    EncryptedMessageText: message,
+    TimestampNanosString: originalTimestampNanosString,
+    MinFeeRateNanosPerKB: 1000,
+  };
+
+  const isDM =
+    !RecipientMessagingKeyName ||
+    RecipientMessagingKeyName === DEFAULT_KEY_MESSAGING_GROUP_NAME;
+
+  const { submittedTransactionResponse } = await withAuth(() =>
+    isDM ? updateDMMessage(requestBody) : updateGroupChatMessage(requestBody)
+  );
+
+  if (!submittedTransactionResponse) {
+    throw new Error("Failed to submit transaction for updating message.");
   }
 
   return submittedTransactionResponse.TxnHashHex;

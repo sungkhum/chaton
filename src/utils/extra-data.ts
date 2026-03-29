@@ -16,6 +16,8 @@ export const MSG_FILE_SIZE = "msg:fileSize";
 export const MSG_FILE_TYPE = "msg:fileType";
 export const MSG_EMOJI = "msg:emoji";
 export const MSG_ACTION = "msg:action";
+export const MSG_EDITED = "msg:edited";
+export const MSG_DELETED = "msg:deleted";
 
 export type RichMessageType =
   | "text"
@@ -42,6 +44,8 @@ export interface ParsedMessage {
   replyPreview?: string;
   emoji?: string;
   action?: "add" | "remove";
+  edited?: boolean;
+  deleted?: boolean;
 }
 
 export function parseMessageType(
@@ -75,6 +79,8 @@ export function parseMessageType(
     replyPreview: extra[MSG_REPLY_PREVIEW],
     emoji: extra[MSG_EMOJI],
     action: extra[MSG_ACTION] as "add" | "remove" | undefined,
+    edited: extra[MSG_EDITED] === "true",
+    deleted: extra[MSG_DELETED] === "true",
   };
 }
 
@@ -102,6 +108,8 @@ export function buildExtraData(
   if (parsed.replyPreview) extra[MSG_REPLY_PREVIEW] = parsed.replyPreview;
   if (parsed.emoji) extra[MSG_EMOJI] = parsed.emoji;
   if (parsed.action) extra[MSG_ACTION] = parsed.action;
+  if (parsed.edited) extra[MSG_EDITED] = "true";
+  if (parsed.deleted) extra[MSG_DELETED] = "true";
 
   return extra;
 }

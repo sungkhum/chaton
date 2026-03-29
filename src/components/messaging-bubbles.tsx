@@ -7,7 +7,7 @@ import {
   GetPaginatedMessagesForDmThreadResponse,
   GetPaginatedMessagesForGroupChatThreadResponse,
 } from "deso-protocol";
-import { Loader2, Reply, Plus } from "lucide-react";
+import { Loader2, Reply, Plus, Pencil, Trash2 } from "lucide-react";
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EmojiPicker } from "frimousse";
 import { toast } from "sonner";
@@ -42,6 +42,10 @@ export interface MessagingBubblesProps {
   onReply?: (message: DecryptedMessageEntryResponse) => void;
   onReact?: (timestampNanosString: string, emoji: string) => void;
   onRetry?: (localId: string) => void;
+  onEdit?: (message: DecryptedMessageEntryResponse) => void;
+  onDeleteForMe?: (timestampNanosString: string) => void;
+  onDeleteForEveryone?: (message: DecryptedMessageEntryResponse) => void;
+  hiddenMessageIds?: Set<string>;
 }
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
@@ -66,6 +70,15 @@ function convertTstampToDateTime(tstampNanos: number) {
 
 function MessageContent({ message }: { message: DecryptedMessageEntryResponse }) {
   const parsed = parseMessageType(message);
+
+  if (parsed.deleted) {
+    return (
+      <span className="text-gray-500 italic text-sm select-text">
+        This message was deleted
+      </span>
+    );
+  }
+
   const messageToShow = message.DecryptedMessage || message.error || "";
 
   switch (parsed.type) {
@@ -143,6 +156,10 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   onReply,
   onReact,
   onRetry,
+  onEdit,
+  onDeleteForMe,
+  onDeleteForEveryone,
+  hiddenMessageIds,
 }: MessagingBubblesProps) => {
   const messageAreaRef = useRef<HTMLDivElement>(null);
   const { appUser, allAccessGroups, setAllAccessGroups } = useStore();
@@ -153,22 +170,24 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   const [hoveredMessage, setHoveredMessage] = useState<string | null>(null);
   const [reactionPickerFor, setReactionPickerFor] = useState<string | null>(null);
   const [mobileActionFor, setMobileActionFor] = useState<string | null>(null);
+  const [deleteMenuFor, setDeleteMenuFor] = useState<string | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressPosRef = useRef<{ x: number; y: number } | null>(null);
   const { isMobile } = useMobile();
 
-  // Close reaction picker on click outside
+  // Close reaction picker / delete menu on click outside
   useEffect(() => {
-    if (!reactionPickerFor) return;
+    if (!reactionPickerFor && !deleteMenuFor) return;
     const handleClick = (e: MouseEvent) => {
       if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
         setReactionPickerFor(null);
       }
+      setDeleteMenuFor(null);
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [reactionPickerFor]);
+  }, [reactionPickerFor, deleteMenuFor]);
 
   // Close mobile action bar on scroll
   useEffect(() => {
@@ -197,10 +216,11 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     };
   }, []);
 
-  // Clear mobile action state on conversation switch
+  // Clear action state on conversation switch
   useEffect(() => {
     setMobileActionFor(null);
     setReactionPickerFor(null);
+    setDeleteMenuFor(null);
     clearLongPressTimer();
   }, [conversationPublicKey, clearLongPressTimer]);
 
@@ -238,6 +258,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     clearLongPressTimer(); // Kill pending timer so bar doesn't reopen
     setMobileActionFor(null);
     setReactionPickerFor(null);
+    setDeleteMenuFor(null);
   }, [clearLongPressTimer]);
 
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -370,10 +391,12 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     return <div></div>;
   }
 
-  // Filter out reaction messages from visible display (they're aggregated instead)
+  // Filter out reaction messages (aggregated) and hidden messages (delete for me)
   const displayMessages = visibleMessages.filter((msg) => {
     const parsed = parseMessageType(msg);
-    return parsed.type !== "reaction";
+    if (parsed.type === "reaction") return false;
+    if (hiddenMessageIds?.has(msg.MessageInfo.TimestampNanosString)) return false;
+    return true;
   });
 
   return (
@@ -530,7 +553,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
 
           const showActionBar = isMobile
             ? mobileActionFor === messageKey
-            : isHovered || reactionPickerFor === messageKey;
+            : isHovered || reactionPickerFor === messageKey || deleteMenuFor === messageKey;
 
           return (
             <div
@@ -583,13 +606,18 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                 {/* Message bubble */}
                 <div className="relative inline-block">
                   <div
-                    className={`${senderStyles} mt-auto mb-1 py-2.5 px-3 md:px-4 break-words inline-flex text-left relative items-center`}
+                    className={`${senderStyles} mt-auto mb-1 py-2.5 px-3 md:px-4 break-words inline-flex text-left relative items-center gap-1.5`}
                   >
                     <MessageContent message={message} />
+                    {parsed.edited && !parsed.deleted && (
+                      <span className="text-gray-500 text-[10px] self-end whitespace-nowrap leading-none">
+                        (edited)
+                      </span>
+                    )}
                   </div>
 
                   {/* Action bar (hover on desktop, long-press on mobile) */}
-                  {showActionBar && (
+                  {showActionBar && !parsed.deleted && (
                     <div
                       className={`absolute ${
                         isMobile ? "-top-12" : "-top-8"
@@ -667,6 +695,90 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                             />
                           </button>
                         </>
+                      )}
+
+                      {/* Divider before edit/delete actions */}
+                      {(onEdit || onDeleteForMe || onDeleteForEveryone) && (
+                        <div className="w-px h-5 bg-white/10 mx-0.5" />
+                      )}
+
+                      {/* Edit button — own text messages only, not optimistic */}
+                      {onEdit && IsSender && parsed.type === "text" && !(message as any)._localId && (
+                        <button
+                          onClick={() => {
+                            onEdit(message);
+                            closeMobileAction();
+                          }}
+                          className={`${
+                            isMobile
+                              ? "w-11 h-11 flex items-center justify-center"
+                              : "p-1"
+                          } hover:bg-white/10 rounded cursor-pointer`}
+                          title="Edit"
+                        >
+                          <Pencil
+                            className={`${
+                              isMobile ? "w-5 h-5" : "w-3.5 h-3.5"
+                            } text-gray-400`}
+                          />
+                        </button>
+                      )}
+
+                      {/* Delete button */}
+                      {(onDeleteForMe || onDeleteForEveryone) && !(message as any)._localId && (
+                        <div className="relative">
+                          <button
+                            onClick={() =>
+                              setDeleteMenuFor(
+                                deleteMenuFor === messageKey ? null : messageKey
+                              )
+                            }
+                            className={`${
+                              isMobile
+                                ? "w-11 h-11 flex items-center justify-center"
+                                : "p-1"
+                            } hover:bg-white/10 rounded cursor-pointer`}
+                            title="Delete"
+                          >
+                            <Trash2
+                              className={`${
+                                isMobile ? "w-5 h-5" : "w-3.5 h-3.5"
+                              } text-gray-400`}
+                            />
+                          </button>
+
+                          {/* Delete dropdown */}
+                          {deleteMenuFor === messageKey && (
+                            <div
+                              className={`absolute top-full mt-1 ${
+                                IsSender ? "right-0" : "left-0"
+                              } bg-[#141c2b] border border-white/10 rounded-lg shadow-lg z-20 min-w-[180px] py-1`}
+                            >
+                              {onDeleteForMe && (
+                                <button
+                                  onClick={() => {
+                                    onDeleteForMe(message.MessageInfo.TimestampNanosString);
+                                    closeMobileAction();
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 cursor-pointer transition-colors"
+                                >
+                                  Delete for me
+                                </button>
+                              )}
+                              {onDeleteForEveryone && IsSender && (
+                                <button
+                                  onClick={() => {
+                                    onDeleteForEveryone(message);
+                                    closeMobileAction();
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-white/10 cursor-pointer transition-colors"
+                                >
+                                  Delete for everyone
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}

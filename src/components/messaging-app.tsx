@@ -22,6 +22,7 @@ import {
   createBlockAssociation,
   decryptAccessGroupMessagesWithRetry,
   encryptAndSendNewMessage,
+  encryptAndUpdateMessage,
   fetchChatAssociations,
   fetchMutualFollows,
   getConversations,
@@ -70,6 +71,10 @@ import {
   getPendingMessages,
   type PendingMessage,
 } from "../services/pending-messages.service";
+import {
+  getHiddenMessageIds,
+  hideMessage,
+} from "../services/hidden-messages.service";
 
 export const MockBubble: FC<{
     username: string;
@@ -142,6 +147,11 @@ export const MessagingApp: FC = () => {
     text: string;
     timestamp: string;
   } | null>(null);
+  const [editingMessage, setEditingMessage] = useState<{
+    text: string;
+    timestamp: string;
+  } | null>(null);
+  const [hiddenMessageIds, setHiddenMessageIds] = useState<Set<string>>(new Set());
   const { isMobile } = useMobile();
 
   // Real-time WebSocket relay
@@ -395,6 +405,12 @@ export const MessagingApp: FC = () => {
       }
     });
   }, [appUser, loading, retryPendingMessage]);
+
+  // Load hidden message IDs from IndexedDB on startup
+  useEffect(() => {
+    if (!appUser) return;
+    getHiddenMessageIds(appUser.PublicKeyBase58Check).then(setHiddenMessageIds);
+  }, [appUser]);
 
   useEffect(() => {
     if (!appUser) return;
@@ -1123,6 +1139,8 @@ export const MessagingApp: FC = () => {
                     return;
                   }
                   setSelectedConversationPublicKey(key);
+                  setEditingMessage(null);
+                  setReplyToMessage(null);
                   clearUnread(key);
                   sendRead(key);
 
@@ -1203,6 +1221,8 @@ export const MessagingApp: FC = () => {
                   className="cursor-pointer py-4 pl-0 pr-6 md:hidden"
                   onClick={() => {
                     setSelectedConversationPublicKey("");
+                    setEditingMessage(null);
+                    setReplyToMessage(null);
                   }}
                 >
                   <img src="/assets/left-chevron.png" width={20} alt="back" />
@@ -1280,12 +1300,102 @@ export const MessagingApp: FC = () => {
                             },
                           }));
                         }}
-                        onReply={(msg) =>
+                        onReply={(msg) => {
+                          setEditingMessage(null);
                           setReplyToMessage({
                             text: msg.DecryptedMessage || "",
                             timestamp: msg.MessageInfo.TimestampNanosString,
-                          })
-                        }
+                          });
+                        }}
+                        hiddenMessageIds={hiddenMessageIds}
+                        onEdit={(msg) => {
+                          setReplyToMessage(null);
+                          setEditingMessage({
+                            text: msg.DecryptedMessage || "",
+                            timestamp: msg.MessageInfo.TimestampNanosString,
+                          });
+                        }}
+                        onDeleteForMe={async (timestampNanosString) => {
+                          if (!appUser) return;
+                          setHiddenMessageIds((prev) => {
+                            const next = new Set(prev);
+                            next.add(timestampNanosString);
+                            return next;
+                          });
+                          await hideMessage(appUser.PublicKeyBase58Check, timestampNanosString);
+                        }}
+                        onDeleteForEveryone={async (message) => {
+                          if (!appUser) return;
+                          const convKey = selectedConversationPublicKey;
+                          const recipientPublicKey =
+                            selectedConversation.ChatType === ChatType.DM
+                              ? selectedConversation.firstMessagePublicKey
+                              : selectedConversation.messages[0].RecipientInfo
+                                  .OwnerPublicKeyBase58Check;
+                          const recipientKeyName =
+                            selectedConversation.ChatType === ChatType.DM
+                              ? DEFAULT_KEY_MESSAGING_GROUP_NAME
+                              : selectedConversation.messages[0].RecipientInfo
+                                  .AccessGroupKeyName;
+                          const timestampNanosString = message.MessageInfo.TimestampNanosString;
+
+                          // Save original for rollback
+                          const originalMessage = message;
+
+                          // Preserve existing ExtraData and add deleted flag
+                          const existingExtraData = message.MessageInfo?.ExtraData || {};
+                          const deletedExtraData = { ...existingExtraData, "msg:deleted": "true" };
+
+                          // Optimistic: replace message with tombstone
+                          setConversations((prev) => ({
+                            ...prev,
+                            [convKey]: {
+                              ...prev[convKey],
+                              messages: prev[convKey].messages.map((m) =>
+                                m.MessageInfo.TimestampNanosString === timestampNanosString
+                                  ? {
+                                      ...m,
+                                      DecryptedMessage: "",
+                                      MessageInfo: {
+                                        ...m.MessageInfo,
+                                        ExtraData: deletedExtraData,
+                                      },
+                                    }
+                                  : m
+                              ),
+                            },
+                          }));
+                          setLockRefresh(true);
+
+                          try {
+                            await encryptAndUpdateMessage(
+                              "[deleted]",
+                              appUser.PublicKeyBase58Check,
+                              recipientPublicKey,
+                              recipientKeyName,
+                              DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                              timestampNanosString,
+                              deletedExtraData
+                            );
+                            sendNotify(convKey, [recipientPublicKey]);
+                          } catch (e) {
+                            toast.error("Failed to delete message for everyone");
+                            // Rollback
+                            setConversations((prev) => ({
+                              ...prev,
+                              [convKey]: {
+                                ...prev[convKey],
+                                messages: prev[convKey].messages.map((m) =>
+                                  m.MessageInfo.TimestampNanosString === timestampNanosString
+                                    ? originalMessage
+                                    : m
+                                ),
+                              },
+                            }));
+                          } finally {
+                            setLockRefresh(false);
+                          }
+                        }}
                         onRetry={async (localId) => {
                           if (!appUser) return;
                           const pendingMsgs = await getPendingMessages(appUser.PublicKeyBase58Check);
@@ -1391,6 +1501,84 @@ export const MessagingApp: FC = () => {
                     conversationKey={selectedConversationPublicKey}
                     replyTo={replyToMessage}
                     onCancelReply={() => setReplyToMessage(null)}
+                    editingMessage={editingMessage}
+                    onCancelEdit={() => setEditingMessage(null)}
+                    onSubmitEdit={async (newText, timestamp) => {
+                      if (!appUser || !newText.trim()) return;
+                      setEditingMessage(null);
+                      const convKey = selectedConversationPublicKey;
+                      const recipientPublicKey =
+                        selectedConversation.ChatType === ChatType.DM
+                          ? selectedConversation.firstMessagePublicKey
+                          : selectedConversation.messages[0].RecipientInfo
+                              .OwnerPublicKeyBase58Check;
+                      const recipientKeyName =
+                        selectedConversation.ChatType === ChatType.DM
+                          ? DEFAULT_KEY_MESSAGING_GROUP_NAME
+                          : selectedConversation.messages[0].RecipientInfo
+                              .AccessGroupKeyName;
+
+                      // Find original message for rollback
+                      const originalMessage = selectedConversation.messages.find(
+                        (m) => m.MessageInfo.TimestampNanosString === timestamp
+                      );
+
+                      // Preserve existing ExtraData (e.g. reply info) and add edited flag
+                      const existingExtraData = originalMessage?.MessageInfo?.ExtraData || {};
+                      const updatedExtraData = { ...existingExtraData, "msg:edited": "true" };
+
+                      // Optimistic: update message text and add edited flag
+                      setConversations((prev) => ({
+                        ...prev,
+                        [convKey]: {
+                          ...prev[convKey],
+                          messages: prev[convKey].messages.map((m) =>
+                            m.MessageInfo.TimestampNanosString === timestamp
+                              ? {
+                                  ...m,
+                                  DecryptedMessage: newText,
+                                  MessageInfo: {
+                                    ...m.MessageInfo,
+                                    ExtraData: updatedExtraData,
+                                  },
+                                }
+                              : m
+                          ),
+                        },
+                      }));
+                      setLockRefresh(true);
+
+                      try {
+                        await encryptAndUpdateMessage(
+                          newText,
+                          appUser.PublicKeyBase58Check,
+                          recipientPublicKey,
+                          recipientKeyName,
+                          DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                          timestamp,
+                          updatedExtraData
+                        );
+                        sendNotify(convKey, [recipientPublicKey]);
+                      } catch (e) {
+                        toast.error("Failed to edit message");
+                        // Rollback
+                        if (originalMessage) {
+                          setConversations((prev) => ({
+                            ...prev,
+                            [convKey]: {
+                              ...prev[convKey],
+                              messages: prev[convKey].messages.map((m) =>
+                                m.MessageInfo.TimestampNanosString === timestamp
+                                  ? originalMessage
+                                  : m
+                              ),
+                            },
+                          }));
+                        }
+                      } finally {
+                        setLockRefresh(false);
+                      }
+                    }}
                     onKeystroke={() => onKeystroke(selectedConversationPublicKey)}
                     typingUsers={getTypingUsersForConversation(selectedConversationPublicKey)
                       .map((pk) => usernameByPublicKeyBase58Check[pk] || shortenLongWord(pk))

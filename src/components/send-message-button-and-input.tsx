@@ -1,5 +1,5 @@
 import { KeyboardEvent, useEffect, useRef, useState } from "react";
-import { Send, Image, Loader2 } from "lucide-react";
+import { Send, Image, Loader2, Pencil, X, Check } from "lucide-react";
 import { toast } from "sonner";
 import { EmojiPickerButton } from "./compose/emoji-picker-button";
 import { GifPicker } from "./compose/gif-picker";
@@ -16,6 +16,9 @@ export interface SendMessageButtonAndInputProps {
   conversationKey?: string;
   onKeystroke?: () => void;
   typingUsers?: string[];
+  editingMessage?: { text: string; timestamp: string } | null;
+  onCancelEdit?: () => void;
+  onSubmitEdit?: (newText: string, timestamp: string) => void;
 }
 
 export const SendMessageButtonAndInput = ({
@@ -25,6 +28,9 @@ export const SendMessageButtonAndInput = ({
   conversationKey = "",
   onKeystroke,
   typingUsers = [],
+  editingMessage,
+  onCancelEdit,
+  onSubmitEdit,
 }: SendMessageButtonAndInputProps) => {
   const [isSending, setIsSending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -37,21 +43,43 @@ export const SendMessageButtonAndInput = ({
     conversationKey ? getDraft(conversationKey) : ""
   );
 
-  // Load draft when conversation changes
+  // Load draft when conversation changes or when exiting edit mode
   useEffect(() => {
-    if (conversationKey) {
+    if (conversationKey && !editingMessage) {
       setMessageToSend(getDraft(conversationKey));
     }
-  }, [conversationKey]);
+  }, [conversationKey, editingMessage]);
 
-  // Save draft on change
+  // Pre-fill input when entering edit mode
   useEffect(() => {
-    if (conversationKey) {
+    if (editingMessage) {
+      setMessageToSend(editingMessage.text);
+      textareaRef.current?.focus();
+    }
+  }, [editingMessage]);
+
+  // Save draft on change (skip while editing to avoid overwriting)
+  useEffect(() => {
+    if (conversationKey && !editingMessage) {
       setDraft(conversationKey, messageToSend);
     }
   }, [messageToSend, conversationKey]);
 
   const sendMessage = async (text?: string, extraData?: Record<string, string>) => {
+    // Edit mode: submit the edit instead of sending a new message
+    if (editingMessage && onSubmitEdit) {
+      const msg = text || messageToSend;
+      if (!msg.trim()) {
+        toast.warning("Message cannot be empty");
+        return;
+      }
+      onSubmitEdit(msg, editingMessage.timestamp);
+      setMessageToSend("");
+      if (conversationKey) setDraft(conversationKey, "");
+      textareaRef.current?.focus();
+      return;
+    }
+
     const msg = text || messageToSend;
     if (!msg && !extraData) {
       toast.warning("The provided message is empty");
@@ -162,8 +190,26 @@ export const SendMessageButtonAndInput = ({
         <div className="text-xs text-gray-400 px-2 pb-1 animate-pulse">{typingLabel}</div>
       )}
 
-      {replyTo && (
+      {replyTo && !editingMessage && (
         <ReplyBanner replyTo={replyTo.text} onCancel={() => onCancelReply?.()} />
+      )}
+
+      {editingMessage && (
+        <div className="flex items-center justify-between bg-blue-500/10 border-l-2 border-blue-400 px-3 py-2 mb-2 rounded-r-lg">
+          <div className="text-xs text-gray-400 truncate flex-1 flex items-center gap-1.5">
+            <Pencil className="w-3 h-3 shrink-0" />
+            <span>Editing: <span className="text-gray-200">{editingMessage.text.slice(0, 80)}</span></span>
+          </div>
+          <button
+            onClick={() => {
+              onCancelEdit?.();
+              setMessageToSend(conversationKey ? getDraft(conversationKey) : "");
+            }}
+            className="ml-2 text-gray-500 hover:text-white cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       )}
 
       <div className="flex items-center gap-1 bg-[#0a1019] rounded-2xl border border-white/8 px-2 py-1.5">
@@ -213,6 +259,12 @@ export const SendMessageButtonAndInput = ({
           value={messageToSend}
           onChange={handleTextareaChange}
           onKeyDown={async (e) => {
+            if (e.key === "Escape" && editingMessage) {
+              e.preventDefault();
+              onCancelEdit?.();
+              setMessageToSend(conversationKey ? getDraft(conversationKey) : "");
+              return;
+            }
             if (canSend(e)) {
               e.preventDefault();
               await sendMessage();
@@ -222,15 +274,21 @@ export const SendMessageButtonAndInput = ({
           rows={1}
         />
 
-        {/* Send button */}
+        {/* Send / Save button */}
         <button
           onClick={() => sendMessage()}
           disabled={isSending}
-          className="p-2 rounded-full shrink-0 bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black hover:brightness-110 cursor-pointer transition-colors"
+          className={`p-2 rounded-full shrink-0 hover:brightness-110 cursor-pointer transition-colors ${
+            editingMessage
+              ? "bg-gradient-to-r from-blue-400 to-blue-500 text-white"
+              : "bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black"
+          }`}
           type="button"
         >
           {isSending ? (
             <Loader2 className="w-5 h-5 animate-spin" />
+          ) : editingMessage ? (
+            <Check className="w-5 h-5" />
           ) : (
             <Send className="w-5 h-5" />
           )}
