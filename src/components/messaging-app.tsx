@@ -242,7 +242,7 @@ export const MessagingApp: FC = () => {
         );
 
         const merged = {
-          ...updatedConversations,
+          ...prev,
           [selectedKey]: {
             ...prev[selectedKey],
             messages: [...stillPendingOptimistic, ...updatedMessages],
@@ -266,13 +266,22 @@ export const MessagingApp: FC = () => {
 
   // Lightweight merge for conversations we're not currently viewing:
   // keeps optimistic messages, layers in fresh blockchain data.
+  // IMPORTANT: The `updated` map comes from getConversations() which only
+  // carries the latest ~1 message per conversation. For the currently viewed
+  // conversation we already have a full thread loaded, so we must NOT replace
+  // its messages — only update metadata (firstMessagePublicKey, ChatType).
   const simpleConversationMerge = useCallback(
     (updated: ConversationMap) => {
       setConversations((prev) => {
         const merged = { ...prev };
+        const currentKey = selectedConversationPublicKeyRef.current;
         for (const [key, convo] of Object.entries(updated)) {
-          if (!merged[key]) merged[key] = convo;
-          else {
+          if (!merged[key]) {
+            merged[key] = convo;
+          } else if (key === currentKey) {
+            // Preserve the full thread; only refresh conversation metadata
+            merged[key] = { ...convo, messages: merged[key].messages };
+          } else {
             const optimistic = merged[key].messages.filter((m: any) => m._localId);
             merged[key] = { ...convo, messages: [...optimistic, ...convo.messages] };
           }
