@@ -37,6 +37,8 @@ import {
   cacheLastConversationKey,
   cacheLastReadTimestamp,
   cacheUsernameMap,
+  syncUnreadConversations,
+  removeUnreadConversation,
   getCachedClassificationData,
   getCachedConversationMessages,
   getCachedConversations,
@@ -974,6 +976,8 @@ export const MessagingApp: FC = () => {
           unreadMap.set(k, 1);
         }
       }
+      // Sync unread state to IndexedDB so the service worker has accurate counts
+      syncUnreadConversations(Array.from(unreadMap.keys()));
       if (unreadMap.size > 0) {
         initializeUnread(unreadMap);
       } else {
@@ -1357,6 +1361,7 @@ export const MessagingApp: FC = () => {
                   setEditingMessage(null);
                   setReplyToMessage(null);
                   clearUnread(key);
+                  removeUnreadConversation(key);
                   sendRead(key);
 
                   // Persist last-read timestamp for this conversation

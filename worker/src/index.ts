@@ -232,8 +232,8 @@ async function deliverPush(env: Env, job: PushJob): Promise<void> {
     const result = await sendPushNotification(
       subscription,
       {
-        title: "ChatOn",
-        body: `${job.senderName} sent you a message`,
+        title: job.senderName,
+        body: "sent you a message",
         tag: `thread-${job.conversationKey}`,
         conversationKey: job.conversationKey,
       },

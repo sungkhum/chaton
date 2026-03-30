@@ -337,6 +337,39 @@ export function getCachedAccountProfiles(): Record<string, unknown> | null {
 }
 
 // ---------------------------------------------------------------------------
+// Unread conversations (IndexedDB — shared with service worker)
+// ---------------------------------------------------------------------------
+
+export function syncUnreadConversations(keys: string[]): void {
+  idbSet("unreadConversations:active", keys);
+}
+
+export function addUnreadConversation(key: string): void {
+  // Read-modify-write; fire-and-forget
+  if (!idbStore) return;
+  get<string[]>("unreadConversations:active", idbStore)
+    .then((arr) => {
+      const current = arr || [];
+      if (!current.includes(key)) {
+        current.push(key);
+        return idbSet("unreadConversations:active", current);
+      }
+    })
+    .catch(() => {});
+}
+
+export function removeUnreadConversation(key: string): void {
+  if (!idbStore) return;
+  get<string[]>("unreadConversations:active", idbStore)
+    .then((arr) => {
+      if (!arr) return;
+      const filtered = arr.filter((k) => k !== key);
+      return idbSet("unreadConversations:active", filtered);
+    })
+    .catch(() => {});
+}
+
+// ---------------------------------------------------------------------------
 // Last-read timestamps (localStorage — sync)
 // ---------------------------------------------------------------------------
 
@@ -378,6 +411,7 @@ export async function clearCacheForUser(publicKey: string): Promise<void> {
       await del(k as string, idbStore);
     }
     await del("mutedConversations:active", idbStore);
+    await del("unreadConversations:active", idbStore);
   } catch {
     // ignore
   }

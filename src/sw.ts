@@ -1,7 +1,7 @@
 import { defaultCache } from "@serwist/vite/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import { Serwist, StaleWhileRevalidate, ExpirationPlugin } from "serwist";
-import { createStore, get } from "idb-keyval";
+import { createStore, get, set } from "idb-keyval";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -10,6 +10,8 @@ declare global {
 }
 
 declare const self: ServiceWorkerGlobalScope & typeof globalThis;
+
+const idbStore = createStore("chattra-cache", "cache-store");
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
@@ -57,8 +59,7 @@ self.addEventListener("push", (event) => {
       let isMuted = false;
       if (data.conversationKey) {
         try {
-          const store = createStore("chattra-cache", "cache-store");
-          const mutedList = await get<string[]>("mutedConversations:active", store);
+          const mutedList = await get<string[]>("mutedConversations:active", idbStore);
           if (mutedList?.includes(data.conversationKey as string)) {
             isMuted = true;
           }
@@ -90,14 +91,20 @@ self.addEventListener("push", (event) => {
         },
       };
 
-      // Set app badge indicator
-      try {
-        await (self.navigator as Navigator & { setAppBadge: () => Promise<void> }).setAppBadge();
-      } catch {
-        // Badge API not supported or failed
-      }
+      await self.registration.showNotification(title, options);
 
-      return self.registration.showNotification(title, options);
+      // Track unread conversation in IndexedDB and update badge count
+      try {
+        const convKey = data.conversationKey as string;
+        const unread: string[] = (await get<string[]>("unreadConversations:active", idbStore)) || [];
+        if (convKey && !unread.includes(convKey)) {
+          unread.push(convKey);
+          await set("unreadConversations:active", unread, idbStore);
+        }
+        await (self.navigator as Navigator & { setAppBadge: (n: number) => Promise<void> }).setAppBadge(unread.length);
+      } catch {
+        // Badge API or IndexedDB not supported
+      }
     })()
   );
 });
