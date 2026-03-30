@@ -174,6 +174,48 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   const [deleteMenuFor, setDeleteMenuFor] = useState<string | null>(null);
   const actionBarRef = useRef<HTMLDivElement>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
+
+  // Reposition context menu / emoji picker if they overflow the viewport
+  useEffect(() => {
+    const reposition = (el: HTMLElement | null) => {
+      if (!el) return;
+      // Reset any previous adjustments
+      el.style.top = "";
+      el.style.bottom = "";
+      el.style.left = "";
+      el.style.right = "";
+      el.style.marginTop = "";
+      el.style.marginBottom = "";
+
+      requestAnimationFrame(() => {
+        const rect = el.getBoundingClientRect();
+        const scrollArea = messageAreaRef.current;
+        const topBound = scrollArea ? scrollArea.getBoundingClientRect().top : 0;
+
+        // If menu extends above the visible area, flip to below the bubble
+        if (rect.top < topBound) {
+          el.style.bottom = "auto";
+          el.style.top = "100%";
+          el.style.marginTop = "4px";
+          el.style.marginBottom = "0";
+        }
+
+        // Prevent horizontal overflow
+        const viewportWidth = window.innerWidth;
+        if (rect.right > viewportWidth - 8) {
+          el.style.left = "auto";
+          el.style.right = "0";
+        }
+        if (rect.left < 8) {
+          el.style.right = "auto";
+          el.style.left = "0";
+        }
+      });
+    };
+
+    reposition(actionBarRef.current);
+    reposition(pickerRef.current);
+  }, [hoveredMessage, mobileActionFor, reactionPickerFor]);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressPosRef = useRef<{ x: number; y: number } | null>(null);
   const { isMobile } = useMobile();
