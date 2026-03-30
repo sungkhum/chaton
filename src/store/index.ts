@@ -37,6 +37,7 @@ interface ChatOnState {
   totalUnread: number;
   incrementUnread: (conversationKey: string) => void;
   clearUnread: (conversationKey: string) => void;
+  initializeUnread: (unreadMap: Map<string, number>) => void;
   resetUnread: () => void;
 
   // Muted conversations
@@ -151,6 +152,18 @@ export const useStore = create<ChatOnState>((set) => ({
       const total = Array.from(next.values()).reduce((a, b) => a + b, 0);
       if (total === 0 && navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
       else if (navigator.setAppBadge) navigator.setAppBadge(total).catch(() => {});
+      return { unreadByConversation: next, totalUnread: total };
+    }),
+
+  initializeUnread: (unreadMap) =>
+    set((state) => {
+      // Merge with any existing unread counts (from WebSocket during load)
+      const next = new Map(state.unreadByConversation);
+      for (const [key, count] of unreadMap) {
+        if (!next.has(key)) next.set(key, count);
+      }
+      const total = Array.from(next.values()).reduce((a, b) => a + b, 0);
+      if (total > 0 && navigator.setAppBadge) navigator.setAppBadge(total).catch(() => {});
       return { unreadByConversation: next, totalUnread: total };
     }),
 

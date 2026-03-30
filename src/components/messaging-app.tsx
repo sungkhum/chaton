@@ -35,11 +35,13 @@ import {
   cacheConversations,
   cacheConversationMessages,
   cacheLastConversationKey,
+  cacheLastReadTimestamp,
   cacheUsernameMap,
   getCachedClassificationData,
   getCachedConversationMessages,
   getCachedConversations,
   getCachedLastConversationKey,
+  getCachedLastReadTimestamps,
   getCachedMutedConversations,
   getCachedUsernameMap,
 } from "../services/cache.service";
@@ -135,7 +137,7 @@ export const MessagingApp: FC = () => {
     archivedGroups, archivedGroupAssociationIds,
     setClassificationData, addInitiatedChat, approveUser, rollbackApproval,
     blockUser, rollbackBlock, archiveGroup, unarchiveGroup, rollbackArchive, rollbackUnarchive, mergeArchivedGroupIds,
-    unreadByConversation, clearUnread,
+    unreadByConversation, clearUnread, initializeUnread,
     mutedConversations, toggleMute,
   } = useStore();
   const [usernameByPublicKeyBase58Check, setUsernameByPublicKeyBase58Check] =
@@ -312,6 +314,14 @@ export const MessagingApp: FC = () => {
                   updatedMessages
                 );
                 setPubKeyPlusGroupName(newPubKey);
+                // Update last-read since user is viewing this conversation
+                if (updatedMessages[0]) {
+                  cacheLastReadTimestamp(
+                    appUser.PublicKeyBase58Check,
+                    currentSelectedKey,
+                    updatedMessages[0].MessageInfo.TimestampNanos
+                  );
+                }
               }
             } catch {
               // Fall back to the simple conversation-list merge
@@ -948,6 +958,30 @@ export const MessagingApp: FC = () => {
       });
       setPubKeyPlusGroupName(pubKeyPlusGroupName);
 
+      // Compute initial unread state from persisted last-read timestamps
+      const lastReadTimestamps = getCachedLastReadTimestamps(publicKey);
+      const unreadMap = new Map<string, number>();
+      for (const [k, convo] of Object.entries(conversationsResponse)) {
+        if (k === keyToUse) continue; // Currently selected conversation
+        const latestMsg = convo.messages[0];
+        if (!latestMsg || latestMsg.IsSender) continue; // No messages or I sent the latest
+        const msgTs = latestMsg.MessageInfo.TimestampNanos;
+        const lastRead = lastReadTimestamps[k];
+        if (lastRead === undefined || msgTs > lastRead) {
+          unreadMap.set(k, 1);
+        }
+      }
+      if (unreadMap.size > 0) {
+        initializeUnread(unreadMap);
+      }
+      // Mark the selected conversation as read
+      if (keyToUse) {
+        const selectedConvo = conversationsResponse[keyToUse];
+        if (selectedConvo?.messages[0]) {
+          cacheLastReadTimestamp(publicKey, keyToUse, selectedConvo.messages[0].MessageInfo.TimestampNanos);
+        }
+      }
+
       // Cache messages for the selected conversation
       if (updatedConversations[keyToUse]) {
         cacheConversationMessages(
@@ -1318,6 +1352,15 @@ export const MessagingApp: FC = () => {
                   setReplyToMessage(null);
                   clearUnread(key);
                   sendRead(key);
+
+                  // Persist last-read timestamp for this conversation
+                  if (appUser && conversations[key]?.messages[0]) {
+                    cacheLastReadTimestamp(
+                      appUser.PublicKeyBase58Check,
+                      key,
+                      conversations[key].messages[0].MessageInfo.TimestampNanos
+                    );
+                  }
 
                   // Cache the last selected conversation
                   if (appUser) {

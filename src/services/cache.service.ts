@@ -337,12 +337,32 @@ export function getCachedAccountProfiles(): Record<string, unknown> | null {
 }
 
 // ---------------------------------------------------------------------------
+// Last-read timestamps (localStorage — sync)
+// ---------------------------------------------------------------------------
+
+export function cacheLastReadTimestamp(
+  publicKey: string,
+  conversationKey: string,
+  timestampNanos: number
+): void {
+  const existing = lsGet<Record<string, number>>(publicKey, "lastRead") || {};
+  existing[conversationKey] = timestampNanos;
+  lsSet(publicKey, "lastRead", existing);
+}
+
+export function getCachedLastReadTimestamps(
+  publicKey: string
+): Record<string, number> {
+  return lsGet<Record<string, number>>(publicKey, "lastRead") || {};
+}
+
+// ---------------------------------------------------------------------------
 // Housekeeping
 // ---------------------------------------------------------------------------
 
 export async function clearCacheForUser(publicKey: string): Promise<void> {
   // localStorage
-  const lsTypes = ["profile", "classification", "usernames", "lastConversation", "mutedConversations"];
+  const lsTypes = ["profile", "classification", "usernames", "lastConversation", "mutedConversations", "lastRead"];
   for (const t of lsTypes) {
     lsDel(publicKey, t);
   }
