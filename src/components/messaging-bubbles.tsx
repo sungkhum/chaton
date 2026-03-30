@@ -144,7 +144,7 @@ function MessageContent({ message }: { message: DecryptedMessageEntryResponse })
           </span>
         );
       }
-      return <FormattedMessage>{messageToShow}</FormattedMessage>;
+      return <FormattedMessage mentions={parsed.mentions}>{messageToShow}</FormattedMessage>;
     }
   }
 }
@@ -610,7 +610,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                         {getUsernameByPublicKey[
                           message.SenderInfo.OwnerPublicKeyBase58Check
                         ]
-                          ? `@${getUsernameByPublicKey[message.SenderInfo.OwnerPublicKeyBase58Check]}`
+                          ? getUsernameByPublicKey[message.SenderInfo.OwnerPublicKeyBase58Check]
                           : shortenLongWord(message.SenderInfo.OwnerPublicKeyBase58Check)}
                       </p>
                     </div>
@@ -637,10 +637,10 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
 
                   {/* Telegram-style context menu (right-click on desktop, long-press on mobile) */}
                   {showActionBar && !parsed.deleted && (
-                    <div ref={actionBarRef} className="contents">
-                      {/* Quick reactions row — above the message */}
+                    <div ref={actionBarRef} className={`absolute ${IsSender ? "right-0" : "left-0"} bottom-full mb-1 z-10 flex flex-col items-stretch`}>
+                      {/* Quick reactions row */}
                       {onReact && (
-                        <div className={`absolute ${IsSender ? "right-0" : "left-0"} bottom-full mb-1 z-10 flex items-center gap-0.5 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg ${
+                        <div className={`flex items-center gap-0.5 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg ${
                           isMobile ? "px-1.5 py-1.5" : "px-1 py-1"
                         }`}>
                           {QUICK_REACTIONS.map((emoji) => (
@@ -685,8 +685,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                         </div>
                       )}
 
-                      {/* Action menu — below the message */}
-                      <div className={`absolute ${IsSender ? "right-0" : "left-0"} top-full mt-1 z-10 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg ${
+                      {/* Action menu */}
+                      <div className={`mt-1 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg ${
                         isMobile ? "py-1.5 min-w-[200px]" : "py-1 min-w-[180px]"
                       }`}>
                         {onReply && (

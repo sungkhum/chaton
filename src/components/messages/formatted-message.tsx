@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { marked } from "marked";
+import { MentionEntry } from "../../utils/extra-data";
 
 // Configure marked for chat messages
 marked.setOptions({
@@ -18,9 +19,37 @@ renderer.image = ({ href, text }) => {
   return `<a href="${href}" target="_blank" rel="noopener noreferrer">${text || href}</a>`;
 };
 
-export function FormattedMessage({ children }: { children: string }) {
+/** Escape special regex characters in a string */
+function escapeRegex(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * After markdown rendering, replace @username tokens that appear in the
+ * mentions array with highlighted spans.
+ */
+function highlightMentions(html: string, mentions: MentionEntry[]): string {
+  if (mentions.length === 0) return html;
+  for (const m of mentions) {
+    // Match @username as a whole word (not inside an HTML tag attribute)
+    const pattern = new RegExp(`(?<![\\w/])@${escapeRegex(m.un)}(?!\\w)`, "g");
+    html = html.replace(
+      pattern,
+      `<span class="mention-highlight">@${m.un}</span>`
+    );
+  }
+  return html;
+}
+
+export function FormattedMessage({
+  children,
+  mentions,
+}: {
+  children: string;
+  mentions?: MentionEntry[];
+}) {
   const html = useMemo(() => {
-    const raw = marked.parse(children, { renderer, async: false }) as string;
+    let raw = marked.parse(children, { renderer, async: false }) as string;
     // Remove wrapping <p> tags for simple single-line messages to avoid extra spacing
     const trimmed = raw.trim();
     if (
@@ -28,10 +57,15 @@ export function FormattedMessage({ children }: { children: string }) {
       trimmed.endsWith("</p>") &&
       trimmed.indexOf("<p>", 1) === -1
     ) {
-      return trimmed.slice(3, -4);
+      raw = trimmed.slice(3, -4);
+    } else {
+      raw = trimmed;
     }
-    return trimmed;
-  }, [children]);
+    if (mentions && mentions.length > 0) {
+      raw = highlightMentions(raw, mentions);
+    }
+    return raw;
+  }, [children, mentions]);
 
   return (
     <div

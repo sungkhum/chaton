@@ -275,6 +275,10 @@ export const LandingPage = () => {
           <div className="hidden md:flex items-center gap-12 text-xs font-bold tracking-[0.2em] uppercase text-gray-400">
             <a href="#features" className="hover:text-[#34F080] transition-colors">Features</a>
             <a href="#technology" className="hover:text-[#34F080] transition-colors">Technology</a>
+            <a href="/support" className="hover:text-[#34F080] transition-colors flex items-center gap-1.5">
+              <Heart className="w-3 h-3" />
+              Donate
+            </a>
           </div>
           <button
             onClick={() => identity.login()}

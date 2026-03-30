@@ -18,6 +18,7 @@ export const MSG_EMOJI = "msg:emoji";
 export const MSG_ACTION = "msg:action";
 export const MSG_EDITED = "msg:edited";
 export const MSG_DELETED = "msg:deleted";
+export const MSG_MENTIONS = "msg:mentions";
 
 // Generic DeSo access group ExtraData keys — any messaging app can adopt these
 export const GROUP_IMAGE_URL = "group:imageUrl";
@@ -29,6 +30,12 @@ export type RichMessageType =
   | "video"
   | "file"
   | "reaction";
+
+/** A user mentioned in a message. pk = publicKey, un = username. */
+export interface MentionEntry {
+  pk: string;
+  un: string;
+}
 
 export interface ParsedMessage {
   type: RichMessageType;
@@ -49,6 +56,7 @@ export interface ParsedMessage {
   action?: "add" | "remove";
   edited?: boolean;
   deleted?: boolean;
+  mentions?: MentionEntry[];
 }
 
 export function parseMessageType(
@@ -84,6 +92,9 @@ export function parseMessageType(
     action: extra[MSG_ACTION] as "add" | "remove" | undefined,
     edited: extra[MSG_EDITED] === "true",
     deleted: extra[MSG_DELETED] === "true",
+    mentions: extra[MSG_MENTIONS]
+      ? (JSON.parse(extra[MSG_MENTIONS]) as MentionEntry[])
+      : undefined,
   };
 }
 
@@ -130,6 +141,8 @@ export function buildExtraData(
   if (parsed.action) extra[MSG_ACTION] = parsed.action;
   if (parsed.edited) extra[MSG_EDITED] = "true";
   if (parsed.deleted) extra[MSG_DELETED] = "true";
+  if (parsed.mentions && parsed.mentions.length > 0)
+    extra[MSG_MENTIONS] = JSON.stringify(parsed.mentions);
 
   return extra;
 }

@@ -2,10 +2,6 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { identity, sendDeso } from "deso-protocol";
 import {
   Heart,
-  Server,
-  Lock,
-  Code,
-  Globe,
   ArrowRight,
   Sparkles,
 } from "lucide-react";
@@ -44,14 +40,13 @@ export const SupportPage = () => {
         tl.from(".sp-badge", { y: -20, autoAlpha: 0, duration: 0.6 })
           .from(".sp-title", { y: 40, autoAlpha: 0, duration: 1 }, "<0.1")
           .from(".sp-subtitle", { y: 20, autoAlpha: 0 }, "<0.15")
-          .from(".sp-card", { y: 30, autoAlpha: 0, stagger: 0.1 }, "<0.2")
-          .from(".sp-donate", { y: 40, autoAlpha: 0, duration: 0.9 }, "<0.15")
+          .from(".sp-donate", { y: 40, autoAlpha: 0, duration: 0.9 }, "<0.2")
           .from(".sp-footer-text", { y: 10, autoAlpha: 0 }, "<0.2");
       });
 
       mm.add("(prefers-reduced-motion: reduce)", () => {
         gsap.set(
-          ".sp-badge, .sp-title, .sp-subtitle, .sp-card, .sp-donate, .sp-footer-text",
+          ".sp-badge, .sp-title, .sp-subtitle, .sp-donate, .sp-footer-text",
           { autoAlpha: 1, y: 0 }
         );
       });
@@ -93,7 +88,7 @@ export const SupportPage = () => {
       <main className="relative pt-28 md:pt-36 pb-16 md:pb-24 px-4 md:px-6">
         <div className="max-w-3xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-12 md:mb-20">
+          <div className="text-center mb-8 md:mb-10">
             <div className="sp-badge inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-[#34F080]/8 border border-[#34F080]/20 text-[#34F080] text-[10px] font-black tracking-[0.3em] uppercase mb-6">
               <Heart className="w-3.5 h-3.5" />
               Support Open Source
@@ -113,57 +108,6 @@ export const SupportPage = () => {
               Just a developer building messaging that belongs to its users.
               Your support keeps it that way.
             </p>
-          </div>
-
-          {/* Why support cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-12 md:mb-20">
-            <div className="sp-card landing-glass-card p-6 md:p-8 rounded-2xl md:rounded-3xl group">
-              <Server className="w-6 h-6 text-[#34F080] mb-4" />
-              <h3 className="text-lg font-bold text-white mb-2 text-left">
-                Zero infrastructure cost
-              </h3>
-              <p className="text-sm text-gray-500 leading-relaxed text-left">
-                The DeSo blockchain is the database. A Cloudflare Worker handles
-                real-time delivery. No servers to pay for, no databases to
-                maintain. Your tip goes directly to development time.
-              </p>
-            </div>
-
-            <div className="sp-card landing-glass-card p-6 md:p-8 rounded-2xl md:rounded-3xl group">
-              <Lock className="w-6 h-6 text-[#20E0AA] mb-4" />
-              <h3 className="text-lg font-bold text-white mb-2 text-left">
-                Privacy without compromise
-              </h3>
-              <p className="text-sm text-gray-500 leading-relaxed text-left">
-                End-to-end encrypted. No analytics. No tracking pixels. No
-                cookies. Your messages are unreadable to everyone except you and
-                your recipients.
-              </p>
-            </div>
-
-            <div className="sp-card landing-glass-card p-6 md:p-8 rounded-2xl md:rounded-3xl group">
-              <Code className="w-6 h-6 text-[#40B8E0] mb-4" />
-              <h3 className="text-lg font-bold text-white mb-2 text-left">
-                Fully open source
-              </h3>
-              <p className="text-sm text-gray-500 leading-relaxed text-left">
-                Every line of code is public. Anyone can audit, fork, or
-                contribute. No closed-source modules. No hidden tracking.
-                Verify, don't trust.
-              </p>
-            </div>
-
-            <div className="sp-card landing-glass-card p-6 md:p-8 rounded-2xl md:rounded-3xl group">
-              <Globe className="w-6 h-6 text-[#3090D0] mb-4" />
-              <h3 className="text-lg font-bold text-white mb-2 text-left">
-                Censorship resistant
-              </h3>
-              <p className="text-sm text-gray-500 leading-relaxed text-left">
-                Built on the DeSo blockchain. Your account is a key pair you
-                control. No platform can suspend you, read your messages, or
-                shut the network down.
-              </p>
-            </div>
           </div>
 
           {/* Donation section */}

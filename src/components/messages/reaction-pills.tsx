@@ -133,7 +133,7 @@ export const ReactionPills = ({
                         diameter={24}
                       />
                       <span className="text-sm text-gray-200 truncate">
-                        {username ? `@${username}` : `${pk.slice(0, 8)}...`}
+                        {username ? username : `${pk.slice(0, 8)}...`}
                       </span>
                       {pk === currentUserKey && (
                         <span className="text-[10px] text-[#34F080] ml-auto">you</span>

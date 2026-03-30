@@ -1,13 +1,14 @@
-import { KeyboardEvent, useEffect, useRef, useState } from "react";
+import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Send, Image, Loader2, Pencil, X, Check } from "lucide-react";
 import { toast } from "sonner";
 import { EmojiPickerButton } from "./compose/emoji-picker-button";
 import { GifPicker } from "./compose/gif-picker";
+import { MentionPicker, MentionCandidate } from "./compose/mention-picker";
 import { GiphyGif } from "../services/giphy.service";
 import { uploadImage } from "../services/media.service";
 import { ReplyBanner } from "./compose/reply-banner";
 import { useDraftMessages } from "../hooks/useDraftMessages";
-import { buildExtraData } from "../utils/extra-data";
+import { buildExtraData, MentionEntry, MSG_MENTIONS } from "../utils/extra-data";
 
 export interface SendMessageButtonAndInputProps {
   onClick: (messageToSend: string, extraData?: Record<string, string>) => void;
@@ -19,6 +20,8 @@ export interface SendMessageButtonAndInputProps {
   editingMessage?: { text: string; timestamp: string } | null;
   onCancelEdit?: () => void;
   onSubmitEdit?: (newText: string, timestamp: string) => void;
+  /** Group chat members for @mention autocomplete. When provided, enables mentions. */
+  mentionCandidates?: MentionCandidate[];
 }
 
 export const SendMessageButtonAndInput = ({
@@ -31,6 +34,7 @@ export const SendMessageButtonAndInput = ({
   editingMessage,
   onCancelEdit,
   onSubmitEdit,
+  mentionCandidates,
 }: SendMessageButtonAndInputProps) => {
   const [isSending, setIsSending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -42,6 +46,27 @@ export const SendMessageButtonAndInput = ({
   const [messageToSend, setMessageToSend] = useState(() =>
     conversationKey ? getDraft(conversationKey) : ""
   );
+
+  // Mention state
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionStartIdx, setMentionStartIdx] = useState(0);
+  const [mentionSelectedIdx, setMentionSelectedIdx] = useState(0);
+
+  const filteredMentions = useMemo(() => {
+    if (mentionQuery === null || !mentionCandidates) return [];
+    return mentionCandidates.filter((c) =>
+      c.username.toLowerCase().includes(mentionQuery.toLowerCase())
+    );
+  }, [mentionQuery, mentionCandidates]);
+
+  // Track confirmed mentions by their username (to encode in ExtraData on send)
+  const mentionedUsersRef = useRef<Map<string, MentionCandidate>>(new Map());
+
+  // Reset mention state when conversation changes
+  useEffect(() => {
+    mentionedUsersRef.current.clear();
+    setMentionQuery(null);
+  }, [conversationKey]);
 
   // Load draft when conversation changes or when exiting edit mode
   useEffect(() => {
@@ -64,6 +89,21 @@ export const SendMessageButtonAndInput = ({
       setDraft(conversationKey, messageToSend);
     }
   }, [messageToSend, conversationKey]);
+
+  /** Collect mentions that are still present in the final message text */
+  const collectMentions = useCallback(
+    (text: string): MentionEntry[] | undefined => {
+      if (mentionedUsersRef.current.size === 0) return undefined;
+      const mentions: MentionEntry[] = [];
+      for (const [, c] of mentionedUsersRef.current) {
+        if (text.includes(`@${c.username}`)) {
+          mentions.push({ pk: c.publicKey, un: c.username });
+        }
+      }
+      return mentions.length > 0 ? mentions : undefined;
+    },
+    []
+  );
 
   const sendMessage = async (text?: string, extraData?: Record<string, string>) => {
     // Edit mode: submit the edit instead of sending a new message
@@ -91,7 +131,16 @@ export const SendMessageButtonAndInput = ({
     }
     setIsSending(true);
     setMessageToSend("");
+    setMentionQuery(null);
     if (conversationKey) clearDraft(conversationKey);
+
+    // Attach mention metadata if present
+    const mentions = collectMentions(msg);
+    if (mentions) {
+      extraData = { ...extraData, [MSG_MENTIONS]: JSON.stringify(mentions) };
+    }
+    mentionedUsersRef.current.clear();
+
     try {
       await onClick(msg, extraData);
     } catch (e) {
@@ -121,6 +170,63 @@ export const SendMessageButtonAndInput = ({
       textarea.focus();
     });
   };
+
+  const selectMention = useCallback(
+    (candidate: MentionCandidate) => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+
+      // Replace from @-trigger position to current cursor with @username + space
+      const before = messageToSend.slice(0, mentionStartIdx);
+      const after = messageToSend.slice(textarea.selectionStart);
+      const insert = `@${candidate.username} `;
+      const newValue = before + insert + after;
+      setMessageToSend(newValue);
+      setMentionQuery(null);
+
+      // Track this mention
+      mentionedUsersRef.current.set(candidate.username, candidate);
+
+      requestAnimationFrame(() => {
+        const pos = mentionStartIdx + insert.length;
+        textarea.selectionStart = textarea.selectionEnd = pos;
+        textarea.focus();
+      });
+    },
+    [messageToSend, mentionStartIdx]
+  );
+
+  /** Detect whether cursor is inside an @-mention trigger */
+  const updateMentionState = useCallback(
+    (value: string, cursorPos: number) => {
+      if (!mentionCandidates || mentionCandidates.length === 0) {
+        setMentionQuery(null);
+        return;
+      }
+      // Walk backwards from cursor to find @
+      const textBefore = value.slice(0, cursorPos);
+      const atIdx = textBefore.lastIndexOf("@");
+      if (atIdx === -1) {
+        setMentionQuery(null);
+        return;
+      }
+      // @ must be at start of input or preceded by whitespace
+      if (atIdx > 0 && !/\s/.test(textBefore[atIdx - 1])) {
+        setMentionQuery(null);
+        return;
+      }
+      const query = textBefore.slice(atIdx + 1);
+      // No spaces in mention query
+      if (/\s/.test(query)) {
+        setMentionQuery(null);
+        return;
+      }
+      setMentionStartIdx(atIdx);
+      setMentionQuery(query);
+      setMentionSelectedIdx(0);
+    },
+    [mentionCandidates]
+  );
 
   const handleGifSelect = (gif: GiphyGif) => {
     sendMessage(gif.title || "GIF", buildExtraData({
@@ -170,11 +276,13 @@ export const SendMessageButtonAndInput = ({
 
   // Auto-grow textarea
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setMessageToSend(e.target.value);
+    const value = e.target.value;
+    setMessageToSend(value);
     onKeystroke?.();
     const textarea = e.target;
     textarea.style.height = "auto";
     textarea.style.height = `${Math.min(textarea.scrollHeight, 150)}px`;
+    updateMentionState(value, textarea.selectionStart);
   };
 
   const typingLabel =
@@ -183,6 +291,8 @@ export const SendMessageButtonAndInput = ({
       : typingUsers.length > 1
         ? `${typingUsers.slice(0, 2).join(", ")} are typing...`
         : null;
+
+  const showMentionPicker = mentionQuery !== null && filteredMentions.length > 0;
 
   return (
     <div className="w-full px-3 pb-3 md:px-6 md:pb-4">
@@ -212,7 +322,17 @@ export const SendMessageButtonAndInput = ({
         </div>
       )}
 
-      <div className="flex items-center gap-1 bg-[#0a1019] rounded-2xl border border-white/8 px-2 py-1.5">
+      <div className="relative flex items-center gap-1 bg-[#0a1019] rounded-2xl border border-white/8 px-2 py-1.5">
+        {/* Mention picker dropdown */}
+        {showMentionPicker && (
+          <MentionPicker
+            candidates={filteredMentions}
+            query={mentionQuery!}
+            selectedIndex={mentionSelectedIdx}
+            onSelect={selectMention}
+          />
+        )}
+
         {/* Attachment button */}
         <label className={`p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors ${isUploading ? "opacity-50 pointer-events-none" : ""}`}>
           {isUploading ? (
@@ -264,6 +384,34 @@ export const SendMessageButtonAndInput = ({
               onCancelEdit?.();
               setMessageToSend(conversationKey ? getDraft(conversationKey) : "");
               return;
+            }
+            // Mention picker keyboard navigation
+            if (showMentionPicker) {
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setMentionSelectedIdx((i) =>
+                  i < filteredMentions.length - 1 ? i + 1 : 0
+                );
+                return;
+              }
+              if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setMentionSelectedIdx((i) =>
+                  i > 0 ? i - 1 : filteredMentions.length - 1
+                );
+                return;
+              }
+              if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
+                e.preventDefault();
+                const selected = filteredMentions[mentionSelectedIdx];
+                if (selected) selectMention(selected);
+                return;
+              }
+              if (e.key === "Escape") {
+                e.preventDefault();
+                setMentionQuery(null);
+                return;
+              }
             }
             if (canSend(e)) {
               e.preventDefault();
