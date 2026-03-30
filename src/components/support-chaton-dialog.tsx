@@ -1,4 +1,5 @@
-import { Fragment, useState } from "react";
+import { useState } from "react";
+import { createPortal } from "react-dom";
 import { sendDeso, identity } from "deso-protocol";
 import { toast } from "sonner";
 import { Heart, Sparkles, X } from "lucide-react";
@@ -76,11 +77,15 @@ export const SupportChatOnDialog = ({
     }
   };
 
-  return (
-    <Fragment>
-      <div className="fixed inset-0 bg-black/60 z-50" onClick={onClose} />
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-[#050e1d] text-blue-100 border border-blue-900/60 w-[92%] max-w-[420px] rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-hidden">
+  return createPortal(
+      <div
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60"
+        onClick={onClose}
+      >
+        <div
+          className="bg-[#050e1d] text-blue-100 border border-blue-900/60 w-[92%] max-w-[420px] rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header gradient bar */}
           <div className="h-1 bg-gradient-to-r from-[#34F080] via-[#20E0AA] to-[#40B8E0]" />
 
@@ -227,7 +232,7 @@ export const SupportChatOnDialog = ({
             </>
           )}
         </div>
-      </div>
-    </Fragment>
+      </div>,
+    document.body
   );
 };
