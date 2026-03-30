@@ -8,17 +8,20 @@ import {
   SmilePlus,
   Wallet,
   GitFork,
+  Heart,
 } from "lucide-react";
 import { NotificationToggle } from "./notification-toggle";
 import { toast } from "sonner";
 import { formatDisplayName, getProfileURL } from "../utils/helpers";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { SaveToClipboard } from "./shared/save-to-clipboard";
+import { SupportChatOnDialog } from "./support-chaton-dialog";
 import { UserAccountList } from "./user-account-list";
 
 export const Header = () => {
   const { appUser, setLockRefresh } = useStore();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showSupport, setShowSupport] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -148,6 +151,17 @@ export const Header = () => {
 
                 <button
                   className="flex items-center w-full pt-[9px] pb-2 px-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-md cursor-pointer transition-colors"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setShowSupport(true);
+                  }}
+                >
+                  <Heart className="mr-3 w-5 h-5 text-[#34F080]" />
+                  <span className="text-base">Support ChatOn</span>
+                </button>
+
+                <button
+                  className="flex items-center w-full pt-[9px] pb-2 px-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-md cursor-pointer transition-colors"
                   onClick={async () => {
                     if (!appUser) return;
                     setLockRefresh(true);
@@ -169,6 +183,12 @@ export const Header = () => {
           </div>
         </div>
       </div>
+      {showSupport && appUser && (
+        <SupportChatOnDialog
+          appUser={appUser}
+          onClose={() => setShowSupport(false)}
+        />
+      )}
     </header>
   );
 };

@@ -11,6 +11,7 @@ import {
   Ban,
   UserCheck,
   Globe,
+  Heart,
 } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -155,6 +156,22 @@ export const LandingPage = () => {
           .fromTo(".cta-button", { scale: 0.9, opacity: 0 }, { scale: 1, opacity: 1 }, "<0.2")
           .fromTo(".cta-badge", { y: 20, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.08 }, "<0.15");
 
+        // ── Support section ──
+        const supportTl = gsap.timeline({
+          defaults: { ease: "power3.out", duration: 0.8 },
+          scrollTrigger: {
+            trigger: ".support-section",
+            start: "top 85%",
+            toggleActions: "play none none none",
+          },
+        });
+
+        supportTl
+          .fromTo(".support-icon", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, ease: "back.out(1.7)" })
+          .fromTo(".support-heading", { y: 20, opacity: 0 }, { y: 0, opacity: 1 }, "<0.15")
+          .fromTo(".support-desc", { y: 15, opacity: 0 }, { y: 0, opacity: 1 }, "<0.1")
+          .fromTo(".support-btn", { y: 15, opacity: 0 }, { y: 0, opacity: 1 }, "<0.1");
+
         // ── Footer ──
         gsap.fromTo(".landing-footer",
           { y: 20, opacity: 0 },
@@ -177,7 +194,8 @@ export const LandingPage = () => {
           ".hero-badge, .hero-title, .hero-desc, .hero-cta > *, .hero-mockup, " +
           ".features-heading, .feature-card, .tech-heading, .tech-subhead, " +
           ".tech-code, .tech-card, .tech-footer, .cta-heading, .cta-button, " +
-          ".cta-badge, .landing-footer",
+          ".cta-badge, .support-icon, .support-heading, .support-desc, " +
+          ".support-btn, .landing-footer",
           { autoAlpha: 1, y: 0, x: 0, scale: 1 }
         );
       });
@@ -521,6 +539,32 @@ export const LandingPage = () => {
         </div>
       </section>
 
+      {/* Support Section */}
+      <section className="support-section py-12 md:py-20 px-4 md:px-6 relative">
+        <div className="max-w-xl mx-auto text-center">
+          <div className="support-icon w-14 h-14 mx-auto mb-6 rounded-full bg-[#34F080]/8 border border-[#34F080]/15 flex items-center justify-center">
+            <Heart className="w-6 h-6 text-[#34F080]" />
+          </div>
+          <h3 className="support-heading text-2xl md:text-3xl font-black text-white mb-3">
+            Enjoying ChatOn?
+          </h3>
+          <p className="support-desc text-sm md:text-base text-gray-500 font-medium leading-relaxed mb-6">
+            ChatOn is free, open-source, and runs at zero infrastructure cost.
+            If you believe in decentralized messaging, a small $DESO tip helps
+            fund ongoing development.
+          </p>
+          <a
+            href="/support"
+            className="support-btn inline-flex items-center gap-2.5 px-6 py-3 bg-white/5 border border-white/10 text-gray-300 hover:text-[#34F080] hover:border-[#34F080]/40 font-semibold rounded-xl transition-all cursor-pointer text-sm"
+          >
+            <Heart className="w-4 h-4" />
+            Support ChatOn with $DESO
+          </a>
+        </div>
+      </section>
+
+      <div className="landing-divider mx-auto max-w-5xl" />
+
       {/* Footer */}
       <footer className="landing-footer py-12 md:py-24 border-t border-white/5 bg-[#0F1520]">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
@@ -542,6 +586,7 @@ export const LandingPage = () => {
               >
                 GitHub
               </a>
+              <a href="/support" className="hover:text-[#34F080] transition-colors">Support</a>
               <a href="/privacy" className="hover:text-[#34F080] transition-colors">Privacy</a>
               <a href="/terms" className="hover:text-[#34F080] transition-colors">Terms</a>
             </div>

@@ -89,4 +89,6 @@ export const REFRESH_MESSAGES_INTERVAL_MS = 5000;
 export const REFRESH_MESSAGES_MOBILE_INTERVAL_MS = 20000;
 export const BASE_TITLE = "DeSo Chat Protocol";
 export const TITLE_DIVIDER = " · ";
+export const CHATON_DONATION_PUBLIC_KEY: Readonly<string> =
+  "BC1YLibU7KwQRTnWJ3nDyVzitNFdyDa28LjZDEnH5Y6xP9oHa59J5xK";
 const UNLIMITED = "UNLIMITED";

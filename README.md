@@ -10,8 +10,9 @@
 </p>
 
 <p align="center">
-  <a href="https://chaton.social">Live App</a> &nbsp;·&nbsp;
+  <a href="https://getchaton.com">Live App</a> &nbsp;·&nbsp;
   <a href="https://github.com/sungkhum/chaton">GitHub</a> &nbsp;·&nbsp;
+  <a href="https://getchaton.com/support">Support ChatOn</a> &nbsp;·&nbsp;
   <a href="https://focus.xyz/nathanwells">Built by @nathanwells</a>
 </p>
 
@@ -226,6 +227,16 @@ npm run lint:fix
 git commit -m "Add your feature"
 git push origin feature/your-feature
 ```
+
+## Support ChatOn
+
+ChatOn is free, open-source, and runs at $0/month. No ads, no tracking, no VC funding — just a developer building messaging that belongs to its users.
+
+If ChatOn is useful to you, consider sending a tip in $DESO:
+
+**[Support ChatOn with $DESO &rarr;](https://getchaton.com/support)**
+
+All tips go directly on-chain to [@GetChatOn](https://focus.xyz/GetChatOn). Transparent and verifiable by anyone.
 
 ## License
 

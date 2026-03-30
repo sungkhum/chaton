@@ -13,6 +13,7 @@ import { Header } from "./components/header";
 import { InstallPrompt } from "./components/install-prompt";
 import { LandingPage } from "./components/landing-page";
 import { LegalPage } from "./components/legal-page";
+import { SupportPage } from "./components/support-page";
 import { MessagingApp } from "./components/messaging-app";
 import { AppUser, useStore } from "./store";
 import { withAuth } from "./utils/with-auth";
@@ -277,7 +278,7 @@ function App() {
   const splashRemovedRef = useRef(false);
 
   // Remove splash once content is ready (not during loading)
-  const contentReady = !isLoadingUser || !!appUser || path === "/privacy" || path === "/terms";
+  const contentReady = !isLoadingUser || !!appUser || path === "/privacy" || path === "/terms" || path === "/support";
   useEffect(() => {
     if (!contentReady || splashRemovedRef.current) return;
     splashRemovedRef.current = true;
@@ -314,6 +315,14 @@ function App() {
   }
   if (path === "/terms") {
     return <LegalPage type="terms" />;
+  }
+  if (path === "/support") {
+    return (
+      <>
+        <SupportPage />
+        <Toaster position="top-right" theme="dark" />
+      </>
+    );
   }
 
   const showLanding = !appUser && !isLoadingUser;
