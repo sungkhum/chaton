@@ -1,5 +1,6 @@
 import { buildProfilePictureUrl } from "deso-protocol";
 import { FC, useCallback, useEffect, useMemo, useState } from "react";
+import { AVATAR_COLORS, hashToColorIndex, getInitials } from "../utils/avatar";
 import { getProfileURL } from "../utils/helpers";
 
 function ConditionalLink({
@@ -37,36 +38,6 @@ function ConditionalLink({
   );
 }
 
-// Telegram-inspired vibrant avatar palette, tuned for dark backgrounds
-const AVATAR_COLORS = [
-  { bg: "#E17076", text: "#FFFFFF" }, // coral red
-  { bg: "#FAA74A", text: "#FFFFFF" }, // warm orange
-  { bg: "#A695E7", text: "#FFFFFF" }, // soft violet
-  { bg: "#7BC862", text: "#FFFFFF" }, // fresh green
-  { bg: "#6EC9CB", text: "#FFFFFF" }, // teal cyan
-  { bg: "#65AADD", text: "#FFFFFF" }, // sky blue
-  { bg: "#EE7AAE", text: "#FFFFFF" }, // rose pink
-  { bg: "#E4AE3A", text: "#FFFFFF" }, // golden amber
-];
-
-function hashToColorIndex(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return Math.abs(hash) % AVATAR_COLORS.length;
-}
-
-function getInitials(name: string): string {
-  const cleaned = name.replace(/[^a-zA-Z0-9\s]/g, "").trim();
-  if (!cleaned) return "?";
-  const words = cleaned.split(/\s+/);
-  if (words.length >= 2) {
-    return (words[0][0] + words[1][0]).toUpperCase();
-  }
-  return cleaned.substring(0, 2).toUpperCase();
-}
-
 export const MessagingDisplayAvatar: FC<{
   publicKey?: string;
   username?: string;
@@ -74,6 +45,9 @@ export const MessagingDisplayAvatar: FC<{
   diameter: number;
   classNames?: string;
   groupChat?: boolean;
+  groupImageUrl?: string;
+  /** High-res or NFT profile pic URL from ExtraData (takes priority) */
+  extraDataPicUrl?: string;
 }> = ({
   publicKey,
   username,
@@ -81,9 +55,12 @@ export const MessagingDisplayAvatar: FC<{
   borderColor = "border-white",
   classNames = "",
   groupChat = false,
+  groupImageUrl,
+  extraDataPicUrl,
 }) => {
-  const [profilePicUrl, setProfilePicUrl] = useState("");
   const [imgFailed, setImgFailed] = useState(false);
+  // Track which URL index we're trying (for fallback chain)
+  const [urlIndex, setUrlIndex] = useState(0);
 
   const colorIndex = useMemo(
     () => hashToColorIndex(publicKey || username || ""),
@@ -91,38 +68,47 @@ export const MessagingDisplayAvatar: FC<{
   );
   const avatarColor = AVATAR_COLORS[colorIndex];
 
+  // Build ordered list of candidate image URLs
+  const candidateUrls = useMemo(() => {
+    if (groupChat) return groupImageUrl ? [groupImageUrl] : [];
+    if (!publicKey) return [];
+    const urls: string[] = [];
+    // Priority 1: ExtraData URL (LargeProfilePicURL or NFT pic)
+    if (extraDataPicUrl) urls.push(extraDataPicUrl);
+    // Priority 2: SDK-built standard endpoint
+    const sdkUrl = buildProfilePictureUrl(publicKey, { fallbackImageUrl: "" });
+    if (sdkUrl) urls.push(sdkUrl);
+    // Priority 3: Direct URL construction (fallback if SDK URL is malformed)
+    const directUrl = `${import.meta.env.VITE_NODE_URL}/api/v0/get-single-profile-picture/${publicKey}`;
+    if (!urls.includes(directUrl)) urls.push(directUrl);
+    return urls;
+  }, [publicKey, groupChat, groupImageUrl, extraDataPicUrl]);
+
+  // Reset when candidates change
   useEffect(() => {
     setImgFailed(false);
+    setUrlIndex(0);
+  }, [candidateUrls]);
 
-    if (!publicKey) {
-      setProfilePicUrl("");
-      return;
-    }
-
-    if (groupChat) {
-      // Group chats always use the initials avatar
-      setProfilePicUrl("");
-    } else {
-      setProfilePicUrl(getProfilePicture());
-    }
-  }, [publicKey, groupChat]);
-
-  const getProfilePicture = () => {
-    if (!publicKey) return "";
-    return buildProfilePictureUrl(publicKey, {
-      fallbackImageUrl: "",
-    });
-  };
+  const profilePicUrl = candidateUrls[urlIndex] || "";
 
   const [imgLoaded, setImgLoaded] = useState(false);
-  const showImage = !groupChat && !!profilePicUrl && !imgFailed;
+  const showImage = !!profilePicUrl && !imgFailed;
   const initials = getInitials(
     groupChat ? (publicKey || "") : (username || publicKey || "")
   );
   const fontSize = Math.round(diameter * 0.38);
 
   const handleImgLoad = useCallback(() => setImgLoaded(true), []);
-  const handleImgError = useCallback(() => setImgFailed(true), []);
+  const handleImgError = useCallback(() => {
+    // Try next candidate URL before giving up
+    if (urlIndex < candidateUrls.length - 1) {
+      setUrlIndex((i) => i + 1);
+      setImgLoaded(false);
+    } else {
+      setImgFailed(true);
+    }
+  }, [urlIndex, candidateUrls.length]);
 
   // Reset loaded state when the URL changes
   useEffect(() => {

@@ -139,6 +139,8 @@ export const MessagingApp: FC = () => {
   } = useStore();
   const [usernameByPublicKeyBase58Check, setUsernameByPublicKeyBase58Check] =
     useState<{ [key: string]: string }>({});
+  const [profilePicByPublicKey, setProfilePicByPublicKey] =
+    useState<{ [key: string]: string }>({});
   const [autoFetchConversations, setAutoFetchConversations] = useState(false);
   const [pubKeyPlusGroupName, setPubKeyPlusGroupName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
@@ -699,13 +701,23 @@ export const MessagingApp: FC = () => {
       [`${OwnerPublicKeyBase58Check}${AccessGroupKeyName}`]:
         PublicKeyToProfileEntryResponse,
     }));
-    const usernamesByPublicKeyFromGroup = Object.keys(chatMembers || {}).reduce(
-      (acc, curr) => ({ ...acc, [curr]: chatMembers[curr]?.Username || "" }),
-      {}
-    );
+    const usernamesByPublicKeyFromGroup: Record<string, string> = {};
+    const groupProfilePics: Record<string, string> = {};
+    Object.entries(PublicKeyToProfileEntryResponse || {}).forEach(([pk, profile]) => {
+      usernamesByPublicKeyFromGroup[pk] = profile?.Username || "";
+      const ed = profile?.ExtraData;
+      if (ed) {
+        const picUrl = ed.NFTProfilePictureUrl || ed.LargeProfilePicURL;
+        if (picUrl) groupProfilePics[pk] = picUrl;
+      }
+    });
     setUsernameByPublicKeyBase58Check((state) => ({
       ...state,
       ...usernamesByPublicKeyFromGroup,
+    }));
+    setProfilePicByPublicKey((state) => ({
+      ...state,
+      ...groupProfilePics,
     }));
 
     return PublicKeyToProfileEntryResponse;
@@ -842,13 +854,25 @@ export const MessagingApp: FC = () => {
     );
 
     const publicKeyToUsername: { [k: string]: string } = {};
+    const profilePicUrls: { [k: string]: string } = {};
     Object.entries(publicKeyToProfileEntryResponseMap).forEach(
-      ([pk, profileEntryResponse]) =>
-        (publicKeyToUsername[pk] = profileEntryResponse?.Username || "")
+      ([pk, profileEntryResponse]) => {
+        publicKeyToUsername[pk] = profileEntryResponse?.Username || "";
+        // Extract best profile pic URL from ExtraData (NFT/high-res take priority)
+        const ed = profileEntryResponse?.ExtraData;
+        if (ed) {
+          const picUrl = ed.NFTProfilePictureUrl || ed.LargeProfilePicURL;
+          if (picUrl) profilePicUrls[pk] = picUrl;
+        }
+      }
     );
     setUsernameByPublicKeyBase58Check((state) => ({
       ...state,
       ...publicKeyToUsername,
+    }));
+    setProfilePicByPublicKey((state) => ({
+      ...state,
+      ...profilePicUrls,
     }));
     await updateUsernameToPublicKeyMapFromConversations(DMChats);
     await Promise.all(GroupChats.map((e) => fetchGroupMembers(e)));
@@ -1432,6 +1456,7 @@ export const MessagingApp: FC = () => {
                         conversationPublicKey={pubKeyPlusGroupName}
                         conversations={conversations}
                         getUsernameByPublicKey={activeChatUsersMap}
+                        profilePicByPublicKey={profilePicByPublicKey}
                         onScroll={(e: Array<DecryptedMessageEntryResponse>) => {
                           setConversations((prev) => ({
                             ...prev,

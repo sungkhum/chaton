@@ -15,7 +15,9 @@ import { useMobile } from "../hooks/useMobile";
 import { encryptAndSendNewMessage } from "../services/conversations.service";
 import { withAuth } from "../utils/with-auth";
 import { DEFAULT_KEY_MESSAGING_GROUP_NAME } from "../utils/constants";
+import { GROUP_IMAGE_URL } from "../utils/extra-data";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
+import { GroupImagePicker } from "./group-image-picker";
 import { MyInput } from "./form/my-input";
 import useKeyDown from "../hooks/useKeyDown";
 
@@ -35,6 +37,8 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange }
   };
   const [loading, setLoading] = useState(false);
   const [chatName, setChatName] = useState<string>("");
+  const [groupImageUrl, setGroupImageUrl] = useState<string>("");
+  const [imageUploading, setImageUploading] = useState(false);
   const [formTouched, setFormTouched] = useState<boolean>(false);
   const { members, addMember, removeMember, onPairMissing } = useMembers(
     setLoading,
@@ -52,6 +56,7 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange }
   useEffect(() => {
     if (!open) {
       setChatName("");
+      setGroupImageUrl("");
       setFormTouched(false);
     }
   }, [open]);
@@ -66,13 +71,14 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange }
 
     const newGroupKey = await startGroupChat(
       chatName.trim(),
-      members.map((e) => e.id)
+      members.map((e) => e.id),
+      groupImageUrl
     );
     if (newGroupKey) onSuccess(newGroupKey);
     handleOpen();
   };
 
-  const startGroupChat = async (groupName: string, memberKeys: Array<string>) => {
+  const startGroupChat = async (groupName: string, memberKeys: Array<string>, imageUrl: string) => {
     if (!appUser) {
       toast.error("You must be logged in to start a group chat.");
       return;
@@ -83,12 +89,16 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange }
     try {
       const accessGroupKeys = await identity.accessGroupStandardDerivation(groupName);
 
+      const extraData: Record<string, string> = {};
+      if (imageUrl) extraData[GROUP_IMAGE_URL] = imageUrl;
+
       await withAuth(() =>
         createAccessGroup({
           AccessGroupKeyName: groupName,
           AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
           AccessGroupPublicKeyBase58Check: accessGroupKeys.AccessGroupPublicKeyBase58Check,
           MinFeeRateNanosPerKB: 1000,
+          ...(Object.keys(extraData).length > 0 && { ExtraData: extraData }),
         })
       );
 
@@ -160,14 +170,23 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange }
 
               <form name="start-group-chat-form" onSubmit={formSubmit}>
                 <div className="p-5">
-                  <div className="mb-4 md:mb-8">
-                    <MyInput
-                      label="Name"
-                      error={formTouched && !isNameValid() ? "Group name must be defined" : ""}
-                      placeholder="Group name"
-                      value={chatName}
-                      setValue={setChatName}
+                  <div className="mb-4 md:mb-8 flex items-start gap-4">
+                    <GroupImagePicker
+                      imageUrl={groupImageUrl}
+                      onImageChange={setGroupImageUrl}
+                      onUploadingChange={setImageUploading}
+                      groupName={chatName}
+                      diameter={64}
                     />
+                    <div className="flex-1">
+                      <MyInput
+                        label="Name"
+                        error={formTouched && !isNameValid() ? "Group name must be defined" : ""}
+                        placeholder="Group name"
+                        value={chatName}
+                        setValue={setChatName}
+                      />
+                    </div>
                   </div>
 
                   <div className="mb-4">
@@ -229,10 +248,10 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange }
                   <button
                     type="submit"
                     className="bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black font-bold rounded-full py-2 hover:brightness-110 text-sm px-4 flex items-center cursor-pointer"
-                    disabled={loading}
+                    disabled={loading || imageUploading}
                   >
-                    {loading && <Loader2 className="w-5 h-5 mr-2 animate-spin" />}
-                    <span>Create Chat</span>
+                    {(loading || imageUploading) && <Loader2 className="w-5 h-5 mr-2 animate-spin" />}
+                    <span>{imageUploading ? "Uploading..." : "Create Chat"}</span>
                   </button>
                 </div>
               </form>

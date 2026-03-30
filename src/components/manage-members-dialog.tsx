@@ -98,15 +98,21 @@ export const ManageMembersDialog = ({
     useStore.setState({ allAccessGroups: updatedGroups });
 
     try {
+      // Preserve existing ExtraData keys from other apps/features
+      const mergedExtraData = { ...(group.ExtraData || {}) };
+      if (newImageUrl) {
+        mergedExtraData[GROUP_IMAGE_URL] = newImageUrl;
+      } else {
+        mergedExtraData[GROUP_IMAGE_URL] = "";
+      }
+
       await withAuth(() =>
         updateAccessGroup({
           AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
           AccessGroupKeyName: groupName,
           AccessGroupPublicKeyBase58Check: group.AccessGroupPublicKeyBase58Check,
           MinFeeRateNanosPerKB: 1000,
-          ExtraData: newImageUrl
-            ? { [GROUP_IMAGE_URL]: newImageUrl }
-            : { [GROUP_IMAGE_URL]: "" },
+          ExtraData: mergedExtraData,
         })
       );
       toast.success("Group image updated");

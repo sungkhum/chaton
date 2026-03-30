@@ -1,4 +1,4 @@
-import { DecryptedMessageEntryResponse } from "deso-protocol";
+import { AccessGroupEntryResponse, DecryptedMessageEntryResponse } from "deso-protocol";
 
 // Generic DeSo message ExtraData keys — any messaging app can adopt these
 export const MSG_TYPE = "msg:type";
@@ -18,6 +18,9 @@ export const MSG_EMOJI = "msg:emoji";
 export const MSG_ACTION = "msg:action";
 export const MSG_EDITED = "msg:edited";
 export const MSG_DELETED = "msg:deleted";
+
+// Generic DeSo access group ExtraData keys — any messaging app can adopt these
+export const GROUP_IMAGE_URL = "group:imageUrl";
 
 export type RichMessageType =
   | "text"
@@ -82,6 +85,23 @@ export function parseMessageType(
     edited: extra[MSG_EDITED] === "true",
     deleted: extra[MSG_DELETED] === "true",
   };
+}
+
+/**
+ * Look up the group image URL from an access group's ExtraData.
+ * Returns the URL string or undefined if not set.
+ */
+export function getGroupImageUrl(
+  allAccessGroups: AccessGroupEntryResponse[],
+  ownerPublicKey: string,
+  groupKeyName: string
+): string | undefined {
+  const group = allAccessGroups.find(
+    (g) =>
+      g.AccessGroupOwnerPublicKeyBase58Check === ownerPublicKey &&
+      g.AccessGroupKeyName === groupKeyName
+  );
+  return group?.ExtraData?.[GROUP_IMAGE_URL] || undefined;
 }
 
 export function buildExtraData(
