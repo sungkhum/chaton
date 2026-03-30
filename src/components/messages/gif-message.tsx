@@ -3,9 +3,10 @@ interface GifMessageProps {
   title?: string;
   width?: number;
   height?: number;
+  caption?: string;
 }
 
-export const GifMessage = ({ gifUrl, title, width, height }: GifMessageProps) => {
+export const GifMessage = ({ gifUrl, title, width, height, caption }: GifMessageProps) => {
   const aspectRatio = width && height ? width / height : undefined;
 
   return (
@@ -17,6 +18,11 @@ export const GifMessage = ({ gifUrl, title, width, height }: GifMessageProps) =>
         style={aspectRatio ? { aspectRatio } : undefined}
         loading="lazy"
       />
+      {caption && (
+        <p className="text-sm text-white mt-2 px-1 whitespace-pre-wrap break-words select-text">
+          {caption}
+        </p>
+      )}
       {title && (
         <div className="text-[10px] text-blue-300/40 mt-1 px-1">
           via GIPHY

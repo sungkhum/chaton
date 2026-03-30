@@ -3,6 +3,7 @@ import { Send, Image, Loader2, Pencil, X, Check } from "lucide-react";
 import { toast } from "sonner";
 import { EmojiPickerButton } from "./compose/emoji-picker-button";
 import { GifPicker } from "./compose/gif-picker";
+import { ImagePreviewPanel } from "./compose/image-preview-panel";
 import { MentionPicker, MentionCandidate } from "./compose/mention-picker";
 import { GiphyGif } from "../services/giphy.service";
 import { uploadImage } from "../services/media.service";
@@ -39,6 +40,7 @@ export const SendMessageButtonAndInput = ({
   const [isSending, setIsSending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
+  const [pendingImage, setPendingImage] = useState<{ file: File; previewUrl: string } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { getDraft, setDraft, clearDraft } = useDraftMessages();
 
@@ -228,8 +230,8 @@ export const SendMessageButtonAndInput = ({
     [mentionCandidates]
   );
 
-  const handleGifSelect = (gif: GiphyGif) => {
-    sendMessage(gif.title || "GIF", buildExtraData({
+  const handleGifSelect = (gif: GiphyGif, caption?: string) => {
+    sendMessage(caption || gif.title || "GIF", buildExtraData({
       type: "gif",
       gifUrl: gif.images.fixed_width.url,
       gifTitle: gif.title,
@@ -238,23 +240,40 @@ export const SendMessageButtonAndInput = ({
     }));
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
+  const stageImage = (file: File) => {
+    // Revoke previous preview URL if any
+    if (pendingImage) URL.revokeObjectURL(pendingImage.previewUrl);
+    setPendingImage({ file, previewUrl: URL.createObjectURL(file) });
+  };
 
+  const cancelImage = () => {
+    if (pendingImage) URL.revokeObjectURL(pendingImage.previewUrl);
+    setPendingImage(null);
+  };
+
+  const confirmImage = async (caption?: string) => {
+    if (!pendingImage) return;
     setIsUploading(true);
     try {
-      const result = await uploadImage(file);
-      await sendMessage(file.name, buildExtraData({
+      const result = await uploadImage(pendingImage.file);
+      await sendMessage(caption || pendingImage.file.name, buildExtraData({
         type: "image",
         imageUrl: result.ImageURL,
       }));
+      URL.revokeObjectURL(pendingImage.previewUrl);
+      setPendingImage(null);
     } catch (err: any) {
       toast.error(`Image upload failed: ${err.message || err}`);
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    stageImage(file);
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
@@ -263,12 +282,7 @@ export const SendMessageButtonAndInput = ({
       if (item.type.startsWith("image/")) {
         e.preventDefault();
         const file = item.getAsFile();
-        if (file) {
-          const fakeEvent = {
-            target: { files: [file], value: "" },
-          } as unknown as React.ChangeEvent<HTMLInputElement>;
-          handleImageUpload(fakeEvent);
-        }
+        if (file) stageImage(file);
         return;
       }
     }
@@ -333,6 +347,17 @@ export const SendMessageButtonAndInput = ({
           />
         )}
 
+        {/* Image preview panel */}
+        {pendingImage && (
+          <ImagePreviewPanel
+            file={pendingImage.file}
+            previewUrl={pendingImage.previewUrl}
+            onSend={confirmImage}
+            onCancel={cancelImage}
+            isSending={isUploading}
+          />
+        )}
+
         {/* Attachment button */}
         <label className={`p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors ${isUploading ? "opacity-50 pointer-events-none" : ""}`}>
           {isUploading ? (
@@ -344,7 +369,7 @@ export const SendMessageButtonAndInput = ({
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={handleImageUpload}
+            onChange={handleImageSelect}
             disabled={isUploading}
           />
         </label>

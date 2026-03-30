@@ -89,28 +89,43 @@ function MessageContent({ message }: { message: DecryptedMessageEntryResponse })
   const messageToShow = message.DecryptedMessage || message.error || "";
 
   switch (parsed.type) {
-    case "image":
+    case "image": {
+      // Show caption below image if the message text looks like a user-written caption
+      // (i.e. not just the original filename)
+      const imageCaption =
+        messageToShow && !/\.\w{2,5}$/.test(messageToShow.trim())
+          ? messageToShow
+          : undefined;
       return parsed.imageUrl ? (
         <ImageMessage
           imageUrl={parsed.imageUrl}
           width={parsed.mediaWidth}
           height={parsed.mediaHeight}
+          caption={imageCaption}
         />
       ) : (
         <FormattedMessage>{messageToShow}</FormattedMessage>
       );
+    }
 
-    case "gif":
+    case "gif": {
+      // Show caption below GIF if the message text differs from the gif title
+      const gifCaption =
+        messageToShow && messageToShow !== parsed.gifTitle && messageToShow !== "GIF"
+          ? messageToShow
+          : undefined;
       return parsed.gifUrl ? (
         <GifMessage
           gifUrl={parsed.gifUrl}
           title={parsed.gifTitle}
           width={parsed.mediaWidth}
           height={parsed.mediaHeight}
+          caption={gifCaption}
         />
       ) : (
         <FormattedMessage>{messageToShow}</FormattedMessage>
       );
+    }
 
     case "video":
       return parsed.videoUrl ? (
