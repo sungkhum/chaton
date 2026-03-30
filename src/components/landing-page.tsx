@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 import { identity } from "deso-protocol";
+import { AnimatedEmoji } from "./messages/animated-emoji";
 import {
   ArrowRight,
   ChevronRight,
@@ -12,6 +13,9 @@ import {
   UserCheck,
   Globe,
   Heart,
+  Users,
+  Send,
+  Smile,
 } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -99,6 +103,49 @@ export const LandingPage = () => {
             gsap.fromTo(elements,
               { y: 30, opacity: 0 },
               { y: 0, opacity: 1, duration: 0.7, stagger: 0.1, ease: "power3.out" }
+            ),
+          start: "top 92%",
+        });
+
+        // ── Feature Showcase section ──
+        gsap.fromTo(".showcase-heading",
+          { y: 30, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.8,
+            ease: "power3.out",
+            scrollTrigger: {
+              trigger: ".showcase-heading",
+              start: "top 90%",
+              toggleActions: "play none none none",
+            },
+          }
+        );
+
+        gsap.utils.toArray<HTMLElement>(".showcase-feature").forEach((el) => {
+          gsap.fromTo(el.children,
+            { y: 40, opacity: 0 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.8,
+              stagger: 0.2,
+              ease: "power3.out",
+              scrollTrigger: {
+                trigger: el,
+                start: "top 85%",
+                toggleActions: "play none none none",
+              },
+            }
+          );
+        });
+
+        ScrollTrigger.batch(".showcase-mini", {
+          onEnter: (elements) =>
+            gsap.fromTo(elements,
+              { y: 20, opacity: 0 },
+              { y: 0, opacity: 1, duration: 0.5, stagger: 0.06, ease: "power3.out" }
             ),
           start: "top 92%",
         });
@@ -192,7 +239,9 @@ export const LandingPage = () => {
       mm.add("(prefers-reduced-motion: reduce)", () => {
         gsap.set(
           ".hero-badge, .hero-title, .hero-desc, .hero-cta > *, .hero-mockup, " +
-          ".features-heading, .feature-card, .tech-heading, .tech-subhead, " +
+          ".features-heading, .feature-card, " +
+          ".showcase-heading, .showcase-feature > *, .showcase-mini, " +
+          ".tech-heading, .tech-subhead, " +
           ".tech-code, .tech-card, .tech-footer, .cta-heading, .cta-button, " +
           ".cta-badge, .support-icon, .support-heading, .support-desc, " +
           ".support-btn, .landing-footer",
@@ -388,6 +437,279 @@ export const LandingPage = () => {
 
       <div className="landing-divider mx-auto max-w-5xl" />
 
+      {/* Feature Showcase */}
+      <section className="showcase-section py-12 md:py-28 px-4 md:px-6 relative">
+        <div className="max-w-7xl mx-auto">
+          <div className="showcase-heading text-center mb-12 md:mb-24">
+            <h2 className="text-3xl md:text-7xl font-black tracking-tight mb-5 md:mb-8 max-w-5xl mx-auto leading-tight">
+              A full-featured messenger.{" "}
+              <span className="landing-text-logo-gradient">On the blockchain.</span>
+            </h2>
+            <p className="text-base md:text-xl text-gray-400 max-w-3xl mx-auto font-medium leading-relaxed">
+              Group chats, reactions, GIFs, replies, typing indicators, and spam
+              filtering — everything you expect from a modern messenger, built on
+              infrastructure you actually own.
+            </p>
+          </div>
+
+          {/* Feature 1: Group Chats */}
+          <div className="showcase-feature grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16 items-center mb-16 md:mb-32">
+            <div>
+              <div className="inline-flex items-center gap-2 text-[10px] font-black tracking-[0.3em] uppercase text-[#34F080] mb-4 md:mb-6">
+                <Users className="w-4 h-4" />
+                Group Chats
+              </div>
+              <h3 className="text-2xl md:text-5xl font-black tracking-tight mb-4 md:mb-6 leading-tight">
+                Group chats that live on-chain.
+              </h3>
+              <p className="text-base md:text-lg text-gray-400 font-medium leading-relaxed">
+                Create encrypted group conversations with custom names and profile
+                images. Add or remove members anytime. Every group is a portable
+                on-chain access group that works across the entire DeSo ecosystem.
+              </p>
+            </div>
+            <div className="landing-mockup-wrap">
+              <div className="landing-mockup-inner">
+              <div className="landing-glass-card rounded-3xl p-5 md:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
+                <div className="flex items-center gap-3 mb-5 pb-4 border-b border-white/5">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#34F080] to-[#40B8E0] flex items-center justify-center text-sm font-black text-black shrink-0">
+                    DT
+                  </div>
+                  <div className="text-left flex-1 min-w-0">
+                    <div className="text-sm font-black">Design Team</div>
+                    <div className="text-[10px] text-gray-500">Alex, Maya, Jordan</div>
+                  </div>
+                  <div className="flex -space-x-2 shrink-0">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#34F080]/40 to-[#34F080]/10 border-2 border-[#141c28]" />
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#40B8E0]/40 to-[#40B8E0]/10 border-2 border-[#141c28]" />
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#3090D0]/40 to-[#3090D0]/10 border-2 border-[#141c28]" />
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex gap-2 items-end">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#34F080]/30 to-[#34F080]/10 shrink-0" />
+                    <div className="bg-white/5 border border-white/8 px-3 py-2 rounded-2xl rounded-bl-sm max-w-[80%]">
+                      <div className="text-[10px] text-[#34F080] font-bold mb-0.5">Alex</div>
+                      <div className="text-xs text-gray-300">Just pushed the new brand assets to the repo</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 items-end">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#40B8E0]/30 to-[#40B8E0]/10 shrink-0" />
+                    <div className="bg-white/5 border border-white/8 px-3 py-2 rounded-2xl rounded-bl-sm max-w-[80%]">
+                      <div className="text-[10px] text-[#40B8E0] font-bold mb-0.5">Maya</div>
+                      <div className="text-xs text-gray-300">Love them! The new palette is perfect</div>
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <div className="bg-[#34F080]/10 border border-[#34F080]/20 px-3 py-2 rounded-2xl rounded-br-sm max-w-[80%]">
+                      <div className="text-xs text-[#34F080]/90">Shipping the update tonight 🚀</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center gap-2 bg-white/3 border border-white/5 rounded-full px-4 py-2.5">
+                  <span className="text-[11px] text-gray-600 flex-1">Type a message...</span>
+                  <Send className="w-3.5 h-3.5 text-gray-600" />
+                </div>
+              </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Feature 2: Reactions & Media */}
+          <div className="showcase-feature grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16 items-center mb-16 md:mb-32">
+            <div className="order-2 lg:order-1 landing-mockup-wrap">
+              <div className="landing-mockup-inner face-right">
+              <div className="landing-glass-card rounded-3xl p-5 md:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
+                <div className="space-y-4">
+                  {/* Message with reactions */}
+                  <div className="flex gap-2 items-end">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#20E0AA]/30 to-[#20E0AA]/10 shrink-0" />
+                    <div>
+                      <div className="bg-white/5 border border-white/8 px-3 py-2 rounded-2xl rounded-bl-sm">
+                        <div className="text-xs text-gray-300">The new landing page looks incredible!</div>
+                      </div>
+                      <div className="flex gap-1.5 mt-1.5 ml-1">
+                        <div className="flex items-center gap-1 bg-[#34F080]/10 border border-[#34F080]/20 rounded-full px-2 py-0.5">
+                          <AnimatedEmoji emoji="👍" size={14} />
+                          <span className="text-[9px] font-bold text-[#34F080]">2</span>
+                        </div>
+                        <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
+                          <AnimatedEmoji emoji="❤️" size={14} />
+                          <span className="text-[9px] font-bold text-gray-400">3</span>
+                        </div>
+                        <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
+                          <AnimatedEmoji emoji="🔥" size={14} />
+                          <span className="text-[9px] font-bold text-gray-400">1</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Big emoji message — sent by you */}
+                  <div className="flex items-end justify-end gap-2 pr-1">
+                    <AnimatedEmoji emoji="🎉" size={56} />
+                    <AnimatedEmoji emoji="🙌" size={56} />
+                  </div>
+                  {/* Reply preview + message */}
+                  <div className="flex gap-2 items-end">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#20E0AA]/30 to-[#20E0AA]/10 shrink-0" />
+                    <div className="bg-white/5 border border-white/8 rounded-2xl rounded-bl-sm overflow-hidden max-w-[85%]">
+                      <div className="bg-white/3 border-l-2 border-[#20E0AA] px-3 py-1.5 mx-2 mt-2 rounded-r-lg">
+                        <div className="text-[9px] text-[#20E0AA] font-bold">You</div>
+                        <div className="text-[10px] text-gray-500 truncate">Shipping the update tonight 🚀</div>
+                      </div>
+                      <div className="px-3 py-2">
+                        <div className="text-xs text-gray-300">Can't wait to see it live!</div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* GIF message from sender */}
+                  <div className="flex gap-2 items-end">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#20E0AA]/30 to-[#20E0AA]/10 shrink-0" />
+                    <div>
+                      <div className="rounded-2xl rounded-bl-sm overflow-hidden border border-white/8 max-w-[180px]">
+                        <img
+                          src="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExaGljcTF5b2RtZXJmcWFxbjFtcmk2c2RkNWU1b3hsdWxhNTlzZHp6aCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7abKhOpu0NwenH3O/giphy.webp"
+                          alt="Thumbs up GIF"
+                          className="w-[180px] h-auto block"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="text-[10px] text-blue-300/40 mt-1 px-1">via GIPHY</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              </div>
+            </div>
+            <div className="order-1 lg:order-2">
+              <div className="inline-flex items-center gap-2 text-[10px] font-black tracking-[0.3em] uppercase text-[#20E0AA] mb-4 md:mb-6">
+                <Smile className="w-4 h-4" />
+                Reactions & Media
+              </div>
+              <h3 className="text-2xl md:text-5xl font-black tracking-tight mb-4 md:mb-6 leading-tight">
+                React, reply, and share anything.
+              </h3>
+              <p className="text-base md:text-lg text-gray-400 font-medium leading-relaxed">
+                Tap to react with any emoji — they aggregate into tappable pills
+                below each message. Quote-reply for threaded context. Share GIFs,
+                images, videos, and files — all stored on-chain alongside your
+                encrypted conversations.
+              </p>
+            </div>
+          </div>
+
+          {/* Feature 3: Smart Inbox */}
+          <div className="showcase-feature grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 text-[10px] font-black tracking-[0.3em] uppercase text-[#40B8E0] mb-4 md:mb-6">
+                <ShieldCheck className="w-4 h-4" />
+                Smart Inbox
+              </div>
+              <h3 className="text-2xl md:text-5xl font-black tracking-tight mb-4 md:mb-6 leading-tight">
+                Your inbox. Your rules.
+              </h3>
+              <p className="text-base md:text-lg text-gray-400 font-medium leading-relaxed">
+                Messages from people you don't follow land in Requests — not your
+                main inbox. Accept to start chatting, block to dismiss.
+                Classification uses on-chain follows and associations. No backend,
+                no middleman.
+              </p>
+            </div>
+            <div className="landing-mockup-wrap">
+              <div className="landing-mockup-inner">
+              <div className="landing-glass-card rounded-3xl p-5 md:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
+                <div className="flex gap-1 mb-5 bg-white/3 rounded-xl p-1">
+                  <div className="flex-1 text-center py-2 text-[11px] font-black text-gray-500 rounded-lg">
+                    Chats
+                  </div>
+                  <div className="flex-1 text-center py-2 text-[11px] font-black bg-[#40B8E0]/10 text-[#40B8E0] rounded-lg border border-[#40B8E0]/15">
+                    Requests{" "}
+                    <span className="bg-[#40B8E0] text-black text-[9px] px-1.5 py-0.5 rounded-full ml-0.5">
+                      2
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="bg-white/3 border border-white/5 rounded-xl p-3">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3090D0]/30 to-[#3090D0]/10 shrink-0" />
+                      <div className="text-left flex-1 min-w-0">
+                        <div className="text-xs font-bold text-gray-300">CryptoFan_42</div>
+                        <div className="text-[10px] text-gray-600 truncate">
+                          Hey, have you seen the latest DeSo upd...
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="flex-1 text-center text-[10px] font-black py-1.5 rounded-lg bg-[#34F080]/10 text-[#34F080] border border-[#34F080]/20">
+                        Accept
+                      </div>
+                      <div className="flex-1 text-center text-[10px] font-black py-1.5 rounded-lg bg-white/5 text-gray-500 border border-white/10">
+                        Block
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-white/3 border border-white/5 rounded-xl p-3">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-600 to-gray-800 shrink-0" />
+                      <div className="text-left flex-1 min-w-0">
+                        <div className="text-xs font-bold text-gray-300">NewUser_2024</div>
+                        <div className="text-[10px] text-gray-600 truncate">
+                          Hello! I'm new to DeSo and wanted to...
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="flex-1 text-center text-[10px] font-black py-1.5 rounded-lg bg-[#34F080]/10 text-[#34F080] border border-[#34F080]/20">
+                        Accept
+                      </div>
+                      <div className="flex-1 text-center text-[10px] font-black py-1.5 rounded-lg bg-white/5 text-gray-500 border border-white/10">
+                        Block
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 pt-3 border-t border-white/5 text-center">
+                  <span className="text-[9px] text-gray-600 font-bold uppercase tracking-widest">
+                    Automatic classification · no backend required
+                  </span>
+                </div>
+              </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Mini Features Grid */}
+          <div className="mt-16 md:mt-28">
+            <div className="showcase-heading text-center mb-8 md:mb-12">
+              <p className="text-xs font-black uppercase tracking-[0.3em] text-gray-500">
+                Plus everything else you'd expect
+              </p>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+              {[
+                { color: "#34F080", title: "Edit & Delete", desc: "Fix typos or remove messages after sending" },
+                { color: "#20E0AA", title: "Typing Indicators", desc: "See when someone is composing a reply" },
+                { color: "#40B8E0", title: "Push Notifications", desc: "Real-time alerts via WebSocket relay" },
+                { color: "#3090D0", title: "Mute Conversations", desc: "Silence noisy chats without leaving" },
+                { color: "#34F080", title: "Send $DESO", desc: "Tip friends with crypto in any chat" },
+                { color: "#20E0AA", title: "Multi-Account", desc: "Switch between DeSo identities instantly" },
+                { color: "#40B8E0", title: "Message Status", desc: "Sending, sent, and confirmed indicators" },
+                { color: "#3090D0", title: "Leave & Archive", desc: "Leave groups and rejoin anytime from Archived" },
+              ].map((f) => (
+                <div key={f.title} className="showcase-mini landing-glass-card p-4 md:p-5 rounded-2xl text-left">
+                  <div className="w-2 h-2 rounded-full mb-3" style={{ background: f.color }} />
+                  <div className="text-sm font-bold text-white mb-1">{f.title}</div>
+                  <div className="text-[11px] text-gray-500 leading-relaxed">{f.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="landing-divider mx-auto max-w-5xl" />
+
       {/* Technology Section */}
       <section id="technology" className="tech-section py-12 md:py-28 px-4 md:px-6">
         <div className="max-w-7xl mx-auto">
@@ -502,7 +824,7 @@ export const LandingPage = () => {
       {/* Final CTA */}
       <section className="cta-section py-16 md:py-32 px-4 md:px-6 relative">
         <div className="max-w-7xl mx-auto text-center">
-          <h2 className="cta-heading text-4xl md:text-7xl lg:text-8xl font-black leading-[1.05] tracking-tighter landing-text-logo-gradient mb-8 md:mb-16 pt-2">
+          <h2 className="cta-heading text-4xl md:text-7xl lg:text-8xl font-black leading-[1.15] tracking-tighter landing-text-logo-gradient mb-8 md:mb-16 py-2">
             Messaging should be yours.
           </h2>
           <div className="flex flex-col items-center gap-8 md:gap-12">

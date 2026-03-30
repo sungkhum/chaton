@@ -213,6 +213,11 @@ body,
   margin-top: 4px;
 }
 
+.formatted-message .mention-highlight {
+  color: #34F080;
+  font-weight: 600;
+}
+
 input::placeholder {
   font-size: 0.875rem;
   color: #607d8a !important;
@@ -340,6 +345,14 @@ input::placeholder {
 
 .landing-mockup-inner:hover {
   transform: rotateX(5deg) rotateY(-5deg) rotateZ(0deg);
+}
+
+.landing-mockup-inner.face-right {
+  transform: rotateX(10deg) rotateY(12deg) rotateZ(-2deg);
+}
+
+.landing-mockup-inner.face-right:hover {
+  transform: rotateX(5deg) rotateY(5deg) rotateZ(0deg);
 }
 
 .landing-code-border {
