@@ -221,6 +221,129 @@ worker/
 └── wrangler.toml        # Worker config (D1, Queue, Cron, Durable Object)
 ```
 
+## DeSo Rich Messaging Protocol
+
+ChatOn extends the core DeSo messaging protocol with rich features — reactions, replies, media, mentions, and more — using DeSo's `ExtraData` field on message transactions. Everything below uses generic `msg:` namespaced keys that any DeSo messaging app can adopt for cross-app compatibility.
+
+### How It Works
+
+Every DeSo message transaction has two data channels:
+
+1. **`EncryptedMessageText`** — the message body, encrypted with the recipient's access group key
+2. **`ExtraData`** — a `Record<string, string>` of metadata, stored on-chain
+
+ChatOn uses `ExtraData` to carry structured metadata alongside the encrypted body. The message body contains human-readable text (so apps without rich message support still display something useful), while `ExtraData` carries the machine-readable details.
+
+### Message ExtraData Keys
+
+All keys use the `msg:` namespace. Set only the keys relevant to your message type.
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `msg:type` | `text` \| `image` \| `gif` \| `video` \| `file` \| `reaction` | Message type. Omit for plain text. |
+| `msg:replyTo` | `TimestampNanosString` | Timestamp of the message being replied to or reacted to |
+| `msg:replyPreview` | `string` | Truncated preview of the replied-to message (for display without lookup) |
+| `msg:emoji` | emoji character | The emoji for a reaction (encrypted — see below) |
+| `msg:action` | `add` \| `remove` | Reaction toggle (encrypted — see below). Omit for `add`. |
+| `msg:imageUrl` | URL | Image attachment URL |
+| `msg:gifUrl` | URL | GIF URL (from Giphy or similar) |
+| `msg:gifTitle` | `string` | Title/alt text for the GIF |
+| `msg:videoUrl` | URL | Video attachment URL |
+| `msg:duration` | `string` (seconds) | Media duration |
+| `msg:mediaWidth` | `string` (pixels) | Media width for aspect ratio |
+| `msg:mediaHeight` | `string` (pixels) | Media height for aspect ratio |
+| `msg:fileName` | `string` | File attachment name |
+| `msg:fileSize` | `string` (bytes) | File size |
+| `msg:fileType` | MIME type | File MIME type |
+| `msg:edited` | `"true"` | Message has been edited |
+| `msg:deleted` | `"true"` | Message has been soft-deleted |
+| `msg:mentions` | JSON array | User mentions: `[{"pk":"BC1Y...","un":"alice"}]` |
+| `msg:encrypted` | `"true"` | Flag indicating some ExtraData values are encrypted |
+
+### Encrypted ExtraData
+
+ExtraData is normally stored as plaintext on the blockchain. For sensitive values (like which emoji someone reacted with), ChatOn encrypts individual ExtraData values using the same key used for the message body.
+
+**How it works:**
+
+1. Before sending, encrypt the values of `msg:emoji` and `msg:action` with `identity.encryptMessage(recipientAccessGroupPublicKey, value)` — the same function and key used for the message body.
+2. Set `msg:encrypted: "true"` to signal that some values need decryption.
+3. On the receiving side, decrypt those values after decrypting the message body. The same DM-vs-group key resolution applies.
+
+**Backward compatibility:** Apps that don't handle `msg:encrypted` will see encrypted hex strings in `msg:emoji` instead of an emoji character. They can safely ignore this — the encrypted message body still contains a human-readable fallback like `Reacted 👍 to "hey"`.
+
+### Reactions
+
+Reactions are sent as separate messages with `msg:type: "reaction"`.
+
+```
+ExtraData:
+  msg:type      = "reaction"
+  msg:replyTo   = "1234567890000000000"   # TimestampNanos of target message
+  msg:emoji     = <encrypted emoji>        # e.g. "👍" after decryption
+  msg:encrypted = "true"
+
+EncryptedMessageText: <encrypted fallback, e.g. 'Reacted 👍 to "hey"'>
+```
+
+To aggregate reactions, collect all messages where `msg:type === "reaction"`, group by `msg:replyTo` + decrypted `msg:emoji`, and filter out any with `msg:action === "remove"`.
+
+### Replies
+
+Replies reference the original message by timestamp and include a preview for quick rendering.
+
+```
+ExtraData:
+  msg:replyTo      = "1234567890000000000"   # TimestampNanos of original
+  msg:replyPreview = "Sure, let's meet at..."  # First ~100 chars
+
+EncryptedMessageText: <encrypted reply body>
+```
+
+### Media Messages
+
+Set `msg:type` to the media type, include the URL, and include dimensions for layout.
+
+```
+# Image example
+ExtraData:
+  msg:type        = "image"
+  msg:imageUrl    = "https://images.deso.org/..."
+  msg:mediaWidth  = "1200"
+  msg:mediaHeight = "800"
+```
+
+The encrypted message body should contain a text fallback (e.g., the image URL or a description) for apps that don't render media inline.
+
+### Edit and Delete
+
+Edits and deletes use DeSo's `updateDMMessage` / `updateGroupChatMessage` with the original `TimestampNanosString`. Set `msg:edited: "true"` or `msg:deleted: "true"` in ExtraData.
+
+### Access Group ExtraData
+
+Group metadata uses the `group:` namespace, stored via `createAccessGroup` / `updateAccessGroup`:
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `group:imageUrl` | URL | Group profile image |
+
+### On-Chain Associations
+
+ChatOn uses DeSo User Associations for chat request classification. These are portable across apps.
+
+| Association Type | Value | Meaning |
+|-----------------|-------|---------|
+| `chaton:chat-approved` | `"approved"` | User accepted a chat request from the target user |
+| `chaton:chat-blocked` | `"blocked"` | User blocked the target user |
+| `chat:group-archived` | `<AccessGroupKeyName>` | User left/archived a group chat. Target = group owner's public key. Generic `chat:` prefix so any DeSo app can query it. |
+
+### Implementation Reference
+
+The full implementation lives in two files:
+
+- **[`src/utils/extra-data.ts`](src/utils/extra-data.ts)** — constants, types, `parseMessageType()`, and `buildExtraData()`
+- **[`src/services/conversations.service.tsx`](src/services/conversations.service.tsx)** — encryption/decryption, send/update, and the ExtraData encryption pipeline
+
 ## Contributing
 
 Contributions are welcome. Fork the repo, create a branch, and open a PR.
