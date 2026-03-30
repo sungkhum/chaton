@@ -40,9 +40,8 @@ Sign in with a DeSo identity or an Ethereum wallet (MetaMask), and message anyon
 ### Rich Media
 - **Image sharing** — upload and send images with lightbox preview
 - **GIF picker** — search and send GIFs via Giphy integration
-- **Video messages** — send video with inline playback
-- **File attachments** — share files of any type with download links
 - **Link attachments** — share URLs with descriptions, Open Graph previews, and branded cards for 44+ services (Google Drive, GitHub, Figma, YouTube, Dropbox, etc.)
+- **Rich media rendering** — video and file messages sent from other DeSo apps render with inline playback, download links, and file type icons
 
 ### Real-Time
 - **WebSocket relay** — instant message delivery via Cloudflare Durable Objects
