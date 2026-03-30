@@ -13,6 +13,7 @@ import {
 import { useInterval } from "hooks/useInterval";
 import { FC, useContext, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
+import { useMessageSearch } from "../hooks/useMessageSearch";
 import { useMobile } from "../hooks/useMobile";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { useTypingIndicator, useTypingDisplay } from "../hooks/useTypingIndicator";
@@ -161,6 +162,36 @@ export const MessagingApp: FC = () => {
   } | null>(null);
   const [hiddenMessageIds, setHiddenMessageIds] = useState<Set<string>>(new Set());
   const { isMobile } = useMobile();
+
+  // Message search
+  const {
+    query: searchQuery,
+    setQuery: setSearchQuery,
+    results: searchResults,
+    isSearching: isMessageSearching,
+    isDeepSearching,
+    progress: searchProgress,
+    clearSearch,
+  } = useMessageSearch({
+    userPublicKey: appUser?.PublicKeyBase58Check || "",
+    conversations,
+    usernameMap: usernameByPublicKeyBase58Check,
+    allAccessGroups,
+  });
+
+  const handleSearchResultClick = useCallback(
+    (conversationKey: string) => {
+      clearSearch();
+      setSelectedConversationPublicKey(conversationKey);
+      setPubKeyPlusGroupName(conversationKey);
+      // Clear the search input
+      const input = document.querySelector<HTMLInputElement>(
+        ".search-conversations-input input, .search-conversations-input"
+      );
+      if (input) input.value = "";
+    },
+    [clearSearch]
+  );
 
   // Refs for accessing latest state inside callbacks without causing re-renders
   const lockRefreshRef = useRef(lockRefresh);
@@ -1342,6 +1373,13 @@ export const MessagingApp: FC = () => {
                 selectedConversationPublicKey={selectedConversationPublicKey}
                 unreadByConversation={unreadByConversation}
                 mutedConversations={mutedConversations}
+                searchQuery={searchQuery}
+                searchResults={searchResults}
+                isSearching={isMessageSearching}
+                isDeepSearching={isDeepSearching}
+                searchProgress={searchProgress}
+                onSearchQueryChange={setSearchQuery}
+                onSearchResultClick={handleSearchResultClick}
               />
             </div>
 
@@ -1377,10 +1415,6 @@ export const MessagingApp: FC = () => {
                         />
                       )}
                       <span className="text-white font-bold text-base truncate">
-                        {!isGroupChat &&
-                        !getCurrentChatName().startsWith(PUBLIC_KEY_PREFIX)
-                          ? "@"
-                          : ""}
                         {getCurrentChatName()}
                       </span>
                     </div>
@@ -1760,6 +1794,16 @@ export const MessagingApp: FC = () => {
                     typingUsers={getTypingUsersForConversation(selectedConversationPublicKey)
                       .map((pk) => usernameByPublicKeyBase58Check[pk] || shortenLongWord(pk))
                       .filter(Boolean)}
+                    mentionCandidates={isGroupChat && chatMembers
+                      ? Object.entries(chatMembers)
+                          .filter(([pk, profile]) =>
+                            pk !== appUser?.PublicKeyBase58Check && profile?.Username
+                          )
+                          .map(([pk, profile]) => ({
+                            publicKey: pk,
+                            username: profile!.Username,
+                          }))
+                      : undefined}
                     onClick={async (messageToSend: string, extraData?: Record<string, string>) => {
                       // Merge reply data into extraData if replying
                       if (replyToMessage) {

@@ -58,6 +58,7 @@ interface SearchUsersProps {
   onFocus?: () => void;
   onBlur?: () => void;
   onTyping?: any;
+  onChange?: (value: string) => void;
   className?: string;
 }
 
@@ -70,6 +71,7 @@ export const SearchUsers = ({
   onFocus,
   onBlur,
   onTyping,
+  onChange,
   className = "",
 }: SearchUsersProps) => {
   const [menuItems, setMenuItems] = useState<SearchMenuItem[]>();
@@ -191,6 +193,7 @@ export const SearchUsers = ({
           onChange={async (ev) => {
             const name = ev.target.value.trim();
             setInputValue(ev.target.value);
+            onChange?.(ev.target.value);
 
             if (!name) {
               setMenuItems([]);

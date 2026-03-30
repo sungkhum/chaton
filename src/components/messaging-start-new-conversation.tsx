@@ -4,7 +4,8 @@ import { SearchUsers } from "./search-users";
 
 export const MessagingStartNewConversation: FC<{
   rehydrateConversation: (publicKey: string, autoScroll?: boolean) => void;
-}> = ({ rehydrateConversation }) => {
+  onSearchQueryChange?: (query: string) => void;
+}> = ({ rehydrateConversation, onSearchQueryChange }) => {
   return (
     <div>
       <div className="m-4">
@@ -13,11 +14,13 @@ export const MessagingStartNewConversation: FC<{
             if (!e) {
               return;
             }
+            onSearchQueryChange?.("");
             await rehydrateConversation(
               e?.id + DEFAULT_KEY_MESSAGING_GROUP_NAME,
               true
             );
           }}
+          onChange={onSearchQueryChange}
           placeholder="Search conversations..."
           className="search-conversations-input text-white placeholder:text-gray-500 bg-white/5 border border-white/8 hover:border-[#34F080]/30 rounded-xl"
         />

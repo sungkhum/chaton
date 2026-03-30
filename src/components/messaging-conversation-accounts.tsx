@@ -2,11 +2,13 @@ import { ChatType, identity, ProfileEntryResponse } from "deso-protocol";
 import { Archive, BellOff, Check, RotateCcw, Users, X } from "lucide-react";
 import { FC, useEffect, useState } from "react";
 import { useStore } from "../store";
+import { MessageSearchResult, SearchProgress } from "../services/message-search.service";
 import { getGroupImageUrl } from "../utils/extra-data";
 import { formatRelativeTimestamp, getChatNameFromConversation } from "../utils/helpers";
 import { Conversation, ConversationMap } from "../utils/types";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { MessagingStartNewConversation } from "./messaging-start-new-conversation";
+import { SearchMessageResults } from "./search-message-results";
 import { shortenLongWord } from "./search-users";
 import { SpeedDialFab } from "./speed-dial-fab";
 import { StartGroupChat } from "./start-group-chat";
@@ -44,6 +46,13 @@ export const MessagingConversationAccount: FC<{
   membersByGroupKey: {
     [groupKey: string]: { [publicKey: string]: ProfileEntryResponse | null };
   };
+  searchQuery?: string;
+  searchResults?: MessageSearchResult[];
+  isSearching?: boolean;
+  isDeepSearching?: boolean;
+  searchProgress?: SearchProgress | null;
+  onSearchQueryChange?: (query: string) => void;
+  onSearchResultClick?: (conversationKey: string) => void;
 }> = ({
   conversations,
   requestConversations,
@@ -58,6 +67,13 @@ export const MessagingConversationAccount: FC<{
   unreadByConversation,
   mutedConversations,
   membersByGroupKey,
+  searchQuery = "",
+  searchResults = [],
+  isSearching = false,
+  isDeepSearching = false,
+  searchProgress = null,
+  onSearchQueryChange,
+  onSearchResultClick,
 }) => {
   const { allAccessGroups } = useStore();
   const [activeTab, setActiveTab] = useState<"chats" | "requests" | "archived">("chats");
@@ -89,9 +105,22 @@ export const MessagingConversationAccount: FC<{
 
       <MessagingStartNewConversation
         rehydrateConversation={rehydrateConversation}
+        onSearchQueryChange={onSearchQueryChange}
       />
 
       <div className="h-full max-h-[calc(100%-76px)]">
+        {/* Message search results — replaces tabs when searching */}
+        {searchQuery.trim().length >= 2 ? (
+          <SearchMessageResults
+            results={searchResults}
+            query={searchQuery}
+            isSearching={isSearching}
+            isDeepSearching={isDeepSearching}
+            progress={searchProgress}
+            onSelectResult={(key) => onSearchResultClick?.(key)}
+          />
+        ) : (
+        <>
         {/* Tab Header — Underline Style */}
         <div className="flex border-b border-white/10">
           <button
@@ -202,7 +231,6 @@ export const MessagingConversationAccount: FC<{
                                   : "text-gray-400 font-medium"
                               }`}
                             >
-                              {isDM && chatName ? "@" : ""}
                               {displayName}
                             </span>
                           </div>
@@ -291,7 +319,6 @@ export const MessagingConversationAccount: FC<{
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-0.5">
                               <span className="truncate text-sm text-white font-semibold">
-                                {chatName ? "@" : ""}
                                 {displayName}
                               </span>
                               <span className="text-xs text-gray-500 shrink-0 ml-2">
@@ -432,6 +459,8 @@ export const MessagingConversationAccount: FC<{
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
 
       {!selectedConversationPublicKey && (
