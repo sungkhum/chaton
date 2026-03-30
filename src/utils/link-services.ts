@@ -704,3 +704,23 @@ export function detectLinkService(url: string): LinkService | undefined {
 
   return undefined;
 }
+
+/**
+ * Extract a filename from a URL path (e.g. "report.pdf" from a Dropbox/Drive link).
+ * Walks path segments backwards looking for one with a file extension.
+ */
+export function extractFileNameFromUrl(url: string): string | null {
+  try {
+    const pathname = new URL(url).pathname;
+    const segments = pathname.split("/").filter(Boolean);
+    for (let i = segments.length - 1; i >= 0; i--) {
+      const seg = decodeURIComponent(segments[i]);
+      if (/\.\w{1,10}$/.test(seg) && seg.length > 2) {
+        return seg;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}

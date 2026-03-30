@@ -1,7 +1,7 @@
 import { X, Send, Loader2, LinkIcon } from "lucide-react";
 import { useState, useRef, useEffect, KeyboardEvent, useCallback } from "react";
 import { fetchOgData, OgData } from "../../services/og.service";
-import { detectLinkService } from "../../utils/link-services";
+import { detectLinkService, extractFileNameFromUrl } from "../../utils/link-services";
 
 interface LinkAttachmentPanelProps {
   onSend: (url: string, description?: string, ogData?: OgData) => void;
@@ -26,7 +26,7 @@ export const LinkAttachmentPanel = ({
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
   const [urlTouched, setUrlTouched] = useState(false);
-  const [userEditedDescription, setUserEditedDescription] = useState(false);
+
   const [ogData, setOgData] = useState<OgData | null>(null);
   const [ogLoading, setOgLoading] = useState(false);
   const [ogFetched, setOgFetched] = useState(false);
@@ -56,8 +56,6 @@ export const LinkAttachmentPanel = ({
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const trimmed = url.trim();
 
-    // Reset pre-fill flag when URL changes so new OG title can populate
-    setUserEditedDescription(false);
     setOgFetched(false);
 
     if (!isValidUrl(trimmed)) {
@@ -73,10 +71,8 @@ export const LinkAttachmentPanel = ({
       setOgLoading(false);
       setOgFetched(true);
       setOgImageError(false);
-      // Pre-fill description with OG title if user hasn't typed one
-      if (data.title && !userEditedDescription) {
-        setDescription(data.title);
-      }
+      // Don't pre-fill description — let the user set it.
+      // OG title shows in the preview card automatically.
       // Resolve any pending send wait
       if (ogResolveRef.current) {
         ogResolveRef.current(data);
@@ -131,7 +127,6 @@ export const LinkAttachmentPanel = ({
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDescription(e.target.value);
-    setUserEditedDescription(true);
   };
 
   let domain = "";
@@ -143,7 +138,22 @@ export const LinkAttachmentPanel = ({
 
   const service = validUrl ? detectLinkService(url.trim()) : null;
   const errorId = "link-panel-url-error";
-  const hasOgPreview = ogData && (ogData.title || ogData.description || ogData.image);
+
+  // Prefer URL filename when OG title is just the service name or domain
+  const ogDisplayTitle = (() => {
+    const raw = ogData?.title;
+    if (!raw) return undefined;
+    const lower = raw.toLowerCase();
+    const isGeneric =
+      (service && lower === service.name.toLowerCase()) ||
+      (domain && lower === domain.toLowerCase());
+    if (isGeneric) {
+      return extractFileNameFromUrl(url.trim()) || raw;
+    }
+    return raw;
+  })();
+
+  const hasOgPreview = ogData && (ogDisplayTitle || ogData.description || ogData.image);
   const showNoPreview = ogFetched && !hasOgPreview && !ogLoading && validUrl;
 
   return (
@@ -248,9 +258,9 @@ export const LinkAttachmentPanel = ({
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    {ogData.title && (
+                    {ogDisplayTitle && (
                       <div className="text-xs font-medium text-blue-100 leading-snug truncate">
-                        {ogData.title}
+                        {ogDisplayTitle}
                       </div>
                     )}
                     {ogData.description && (

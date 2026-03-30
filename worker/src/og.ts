@@ -25,23 +25,24 @@ interface OgResult {
   title?: string;
   description?: string;
   image?: string;
+  siteName?: string;
 }
 
 function parseOgTags(html: string): OgResult {
   const result: OgResult = {};
 
   // OG tags: <meta property="og:title" content="...">
-  const ogRegex = /<meta[^>]*property=["']og:(title|description|image)["'][^>]*content=["']([^"']*)["'][^>]*>/gi;
+  const ogRegex = /<meta[^>]*property=["']og:(title|description|image|site_name)["'][^>]*content=["']([^"']*)["'][^>]*>/gi;
   // Also handle content before property
-  const ogRegexAlt = /<meta[^>]*content=["']([^"']*)["'][^>]*property=["']og:(title|description|image)["'][^>]*>/gi;
+  const ogRegexAlt = /<meta[^>]*content=["']([^"']*)["'][^>]*property=["']og:(title|description|image|site_name)["'][^>]*>/gi;
 
   let match: RegExpExecArray | null;
   while ((match = ogRegex.exec(html)) !== null) {
-    const key = match[1].toLowerCase() as keyof OgResult;
+    const key = match[1].toLowerCase().replace("site_name", "siteName") as keyof OgResult;
     if (!result[key]) result[key] = decodeHtmlEntities(match[2]);
   }
   while ((match = ogRegexAlt.exec(html)) !== null) {
-    const key = match[2].toLowerCase() as keyof OgResult;
+    const key = match[2].toLowerCase().replace("site_name", "siteName") as keyof OgResult;
     if (!result[key]) result[key] = decodeHtmlEntities(match[1]);
   }
 
@@ -205,7 +206,42 @@ export async function handleOgFetch(request: Request): Promise<Response> {
     }
   }
 
+  // If og:title is just the service name (e.g. "Dropbox"), try to extract
+  // a real filename from the URL path and use that instead.
+  if (result.title && result.siteName &&
+      result.title.toLowerCase() === result.siteName.toLowerCase()) {
+    const urlFileName = extractFileNameFromUrl(targetUrl);
+    if (urlFileName) result.title = urlFileName;
+  }
+
+  // Also use URL filename if title matches <title> fallback that's just the domain
+  if (!result.title || result.title.toLowerCase() === parsed.hostname.replace(/^www\./, "").toLowerCase()) {
+    const urlFileName = extractFileNameFromUrl(targetUrl);
+    if (urlFileName) result.title = urlFileName;
+  }
+
+  // Don't leak siteName to client — it was only needed for the comparison above
+  delete result.siteName;
+
   return cacheAndReturn(cache, cacheKey, result);
+}
+
+/** Extract a meaningful filename from a URL path (e.g. "report.pdf" from a Dropbox/Drive link) */
+function extractFileNameFromUrl(url: string): string | null {
+  try {
+    const pathname = new URL(url).pathname;
+    const segments = pathname.split("/").filter(Boolean);
+    // Walk backwards to find a segment that looks like a filename (has an extension)
+    for (let i = segments.length - 1; i >= 0; i--) {
+      const seg = decodeURIComponent(segments[i]);
+      if (/\.\w{1,10}$/.test(seg) && seg.length > 2) {
+        return seg;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return null;
 }
 
 function jsonResponse(data: OgResult, status = 200): Response {

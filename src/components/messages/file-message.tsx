@@ -1,7 +1,7 @@
 import { FileText, Download, ExternalLink, LinkIcon } from "lucide-react";
 import { useState } from "react";
 import { formatFileSize } from "../../services/media.service";
-import { detectLinkService } from "../../utils/link-services";
+import { detectLinkService, extractFileNameFromUrl } from "../../utils/link-services";
 
 interface FileMessageProps {
   fileUrl: string;
@@ -49,78 +49,89 @@ export const FileMessage = ({
   // URL-based link attachment (new flow)
   if (isLink && !fileSize && !fileType) {
     const service = detectLinkService(fileUrl);
-    const hasOg = ogTitle || ogDescription || (ogImage && !imageError);
+
+    // Prefer URL filename when OG title is just the service name or domain
+    const displayTitle = (() => {
+      if (!ogTitle) return undefined;
+      const lower = ogTitle.toLowerCase();
+      const isGeneric =
+        (service && lower === service.name.toLowerCase()) ||
+        (domain && lower === domain.toLowerCase());
+      if (isGeneric) {
+        return extractFileNameFromUrl(fileUrl) || ogTitle;
+      }
+      return ogTitle;
+    })();
+
+    const hasOg = displayTitle || ogDescription || (ogImage && !imageError);
 
     const cardGradient = service?.cardGradient ?? "from-blue-900/40 to-indigo-900/30";
     const cardBorder = service?.cardBorder ?? "border-blue-700/30";
 
     return (
-      <a
-        href={fileUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={`block rounded-lg overflow-hidden hover:brightness-110 transition group ${
-          hasOg ? "min-w-[240px] max-w-[360px]" : "min-w-[220px] max-w-[320px]"
-        }`}
-      >
-        <div className={`bg-gradient-to-br ${cardGradient} border ${cardBorder} rounded-lg overflow-hidden`}>
-          {/* OG Image banner */}
-          {ogImage && !imageError && (
-            <img
-              src={ogImage}
-              alt={ogTitle || description || "Link preview"}
-              className="w-full h-[140px] object-cover"
-              onError={() => setImageError(true)}
-            />
-          )}
+      <div className={hasOg ? "min-w-[240px] max-w-[360px]" : "min-w-[220px] max-w-[320px]"}>
+        <a
+          href={fileUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block rounded-lg overflow-hidden hover:brightness-110 transition group"
+        >
+          <div className={`bg-gradient-to-br ${cardGradient} border ${cardBorder} rounded-lg overflow-hidden`}>
+            {/* OG Image banner */}
+            {ogImage && !imageError && (
+              <img
+                src={ogImage}
+                alt={displayTitle || "Link preview"}
+                className="w-full h-[140px] object-cover"
+                onError={() => setImageError(true)}
+              />
+            )}
 
-          <div className="p-3.5">
-            <div className="flex items-start gap-3">
-              {service ? (
-                <div className={`mt-0.5 w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${service.badgeBg}`}>
-                  {service.icon ? (
-                    <service.icon size={18} className={service.badgeText} />
-                  ) : (
-                    <span className={`text-xs font-bold leading-none ${service.badgeText}`}>
-                      {service.badge}
-                    </span>
+            <div className="p-3.5">
+              <div className="flex items-start gap-3">
+                {service ? (
+                  <div className={`mt-0.5 w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${service.badgeBg}`}>
+                    {service.icon ? (
+                      <service.icon size={18} className={service.badgeText} />
+                    ) : (
+                      <span className={`text-xs font-bold leading-none ${service.badgeText}`}>
+                        {service.badge}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mt-0.5 p-2 bg-blue-500/15 rounded-lg shrink-0">
+                    <LinkIcon className="w-5 h-5 text-blue-400" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  {displayTitle && (
+                    <div className="text-sm text-blue-50 leading-snug mb-0.5 line-clamp-2">
+                      {displayTitle}
+                    </div>
                   )}
-                </div>
-              ) : (
-                <div className="mt-0.5 p-2 bg-blue-500/15 rounded-lg shrink-0">
-                  <LinkIcon className="w-5 h-5 text-blue-400" />
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                {/* Primary line: OG title (filename) if available, else description */}
-                {(ogTitle || description) && (
-                  <div className="text-sm text-blue-50 leading-snug mb-0.5 line-clamp-2">
-                    {ogTitle || description}
+                  {ogDescription && (
+                    <div className="text-xs text-gray-500 leading-snug mb-1 line-clamp-2">
+                      {ogDescription}
+                    </div>
+                  )}
+                  <div className="text-xs text-blue-400/60 truncate flex items-center gap-1.5">
+                    <span className="truncate">
+                      {service ? service.name : domain || fileUrl}
+                    </span>
+                    <ExternalLink className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                )}
-                {/* Secondary line: user description beneath OG title */}
-                {ogTitle && description && (
-                  <div className="text-xs text-gray-500 leading-snug mb-1 line-clamp-2">
-                    {description}
-                  </div>
-                )}
-                {/* OG description when no user description */}
-                {ogDescription && !description && (
-                  <div className="text-xs text-gray-500 leading-snug mb-1 line-clamp-2">
-                    {ogDescription}
-                  </div>
-                )}
-                <div className="text-xs text-blue-400/60 truncate flex items-center gap-1.5">
-                  <span className="truncate">
-                    {service ? service.name : domain || fileUrl}
-                  </span>
-                  <ExternalLink className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </a>
+        </a>
+        {description && (
+          <p className="text-sm text-white mt-2 px-1 whitespace-pre-wrap break-words select-text">
+            {description}
+          </p>
+        )}
+      </div>
     );
   }
 
