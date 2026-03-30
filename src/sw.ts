@@ -93,10 +93,10 @@ self.addEventListener("push", (event) => {
 
       const title = (data.title as string) || "ChatOn";
       const options: NotificationOptions = {
-        body: data.body || "You have a new message",
+        body: (data.body as string) || "You have a new message",
         icon: "/favicon.png",
         badge: "/favicon.png",
-        tag: data.tag || "chaton-notification",
+        tag: (data.tag as string) || "chaton-notification",
         renotify: true,
         data: {
           url: data.url || "/",

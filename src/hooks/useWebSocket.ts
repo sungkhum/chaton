@@ -16,7 +16,7 @@ interface WsCallbacks {
 export function useWebSocket(callbacks: WsCallbacks) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttempt = useRef(0);
-  const reconnectTimer = useRef<ReturnType<typeof setTimeout>>();
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const { appUser } = useStore();
 
   // Keep callbacks in a ref so the WebSocket message handler always calls

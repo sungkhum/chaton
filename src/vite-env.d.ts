@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="@serwist/vite/typings" />
 
 interface ImportMetaEnv {
   readonly VITE_NODE_URL: string;

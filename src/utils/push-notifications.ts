@@ -47,7 +47,7 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
     console.log("[push] No existing subscription, creating new one...");
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as unknown as BufferSource,
     });
     console.log("[push] Subscription created:", subscription.endpoint.slice(0, 60));
     return subscription;

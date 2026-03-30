@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
 export function useInterval(callback: () => any, delay: number) {
-  const intervalRef = useRef<number>();
+  const intervalRef = useRef<number>(undefined);
   const callbackRef = useRef(callback);
 
   // Without this, if you change the callback, when setInterval ticks again, it

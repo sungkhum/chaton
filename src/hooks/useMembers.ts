@@ -72,7 +72,7 @@ export function useMembers(
     return toast.error(
       "This user hasn't registered a messaging key on-chain yet." +
         "\nYou can DM them now, but you can't add them to a group chat until they do this.",
-      { autoClose: 10000 }
+      { duration: 10000 }
     );
   };
 
