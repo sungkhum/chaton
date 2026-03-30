@@ -29,25 +29,28 @@ import {
   checkCacheVersion,
 } from "./services/cache.service";
 
-// Safari iOS PWA standalone mode can't use popups for identity login —
-// window.open() either opens in Safari (breaking postMessage) or gets blocked.
+// Mobile browsers and in-app browsers (Telegram, Instagram, etc.) can't
+// reliably use popups for identity login — window.open() either opens a new
+// tab (breaking postMessage) or gets blocked entirely by WebView/WKWebView.
 // Use the redirect flow instead: navigate to identity, then back with query params.
 const isStandalone =
   window.matchMedia("(display-mode: standalone)").matches ||
   (navigator as any).standalone === true;
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+const useRedirectFlow = isStandalone || isMobile;
 
 configure({
   identityURI: import.meta.env.VITE_IDENTITY_URL,
   nodeURI: import.meta.env.VITE_NODE_URL,
   network: DESO_NETWORK,
   spendingLimitOptions: getTransactionSpendingLimits(""),
-  ...(isStandalone && {
+  ...(useRedirectFlow && {
     redirectURI: window.location.origin + window.location.pathname,
   }),
 });
 
-// Handle returning redirect from identity in PWA mode
-if (isStandalone) {
+// Handle returning redirect from identity
+if (useRedirectFlow) {
   identity.handleRedirectURI(window.location.href);
 }
 
