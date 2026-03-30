@@ -175,7 +175,6 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   const [actionBarFlipped, setActionBarFlipped] = useState(false);
   const actionBarRef = useRef<HTMLDivElement>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
-  const activeBubbleRef = useRef<HTMLElement | null>(null);
 
   // Reposition desktop emoji picker if it overflows the viewport
   useEffect(() => {
@@ -286,14 +285,13 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
       clearLongPressTimer();
       const touch = e.touches[0];
       longPressPosRef.current = { x: touch.clientX, y: touch.clientY };
+      // Capture currentTarget synchronously — React nullifies it after the handler returns
+      const target = e.currentTarget as HTMLElement;
       longPressTimerRef.current = setTimeout(() => {
         longPressTimerRef.current = null;
         if (navigator.vibrate) navigator.vibrate(20);
         setReactionPickerFor(null); // Close picker from previous message
-        // Find the bubble element and compute flip before opening
-        const target = e.currentTarget as HTMLElement;
         const bubble = target.querySelector<HTMLElement>(".relative.inline-block");
-        activeBubbleRef.current = bubble;
         computeFlip(bubble);
         setMobileActionFor(messageKey);
       }, 300);
