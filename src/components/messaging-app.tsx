@@ -292,6 +292,8 @@ export const MessagingApp: FC = () => {
 
   // Guard against concurrent WS-triggered fetches (e.g. rapid-fire notifications)
   const wsFetchingRef = useRef(false);
+  // Guard against overlapping polling ticks (setInterval fires even if previous callback is still async)
+  const pollingRef = useRef(false);
 
   // Real-time WebSocket relay
   const handleWsNewMessage = useCallback(
@@ -326,6 +328,14 @@ export const MessagingApp: FC = () => {
                   ...updated,
                   [currentSelectedKey]: updated[currentSelectedKey],
                 });
+
+              // Guard: user may have switched conversations during the await —
+              // still merge the conversation list so new chats appear, but skip
+              // the full-thread merge and pubKeyPlusGroupName update.
+              if (selectedConversationPublicKeyRef.current !== currentSelectedKey) {
+                simpleConversationMerge(updated);
+                return;
+              }
 
               const updatedMessages =
                 updatedConversations[currentSelectedKey]?.messages;
@@ -754,37 +764,43 @@ export const MessagingApp: FC = () => {
         !appUser ||
         !selectedConversationPublicKey ||
         lockRefreshRef.current ||
+        pollingRef.current ||
         !navigator.onLine
       ) {
         return;
       }
-      const { conversations, updatedAllAccessGroups } = await getConversations(
-        appUser.PublicKeyBase58Check,
-        allAccessGroups
-      );
-      setAllAccessGroups(updatedAllAccessGroups);
-      const { updatedConversations, pubKeyPlusGroupName } =
-        await getConversation(selectedConversationPublicKey, {
-          ...conversations,
-          [selectedConversationPublicKey]:
-            conversations[selectedConversationPublicKey],
-        });
+      pollingRef.current = true;
+      try {
+        const { conversations, updatedAllAccessGroups } = await getConversations(
+          appUser.PublicKeyBase58Check,
+          allAccessGroups
+        );
+        setAllAccessGroups(updatedAllAccessGroups);
+        const { updatedConversations, pubKeyPlusGroupName } =
+          await getConversation(selectedConversationPublicKey, {
+            ...conversations,
+            [selectedConversationPublicKey]:
+              conversations[selectedConversationPublicKey],
+          });
 
-      if (
-        !lockRefreshRef.current &&
-        conversations[selectedConversationPublicKey] &&
-        initConversationKey === selectedConversationPublicKeyRef.current
-      ) {
-        const updatedMessages =
-          updatedConversations[selectedConversationPublicKey]?.messages;
-        if (updatedMessages) {
-          mergeConversationUpdate(
-            updatedConversations,
-            selectedConversationPublicKey,
-            updatedMessages
-          );
+        if (
+          !lockRefreshRef.current &&
+          conversations[selectedConversationPublicKey] &&
+          initConversationKey === selectedConversationPublicKeyRef.current
+        ) {
+          const updatedMessages =
+            updatedConversations[selectedConversationPublicKey]?.messages;
+          if (updatedMessages) {
+            mergeConversationUpdate(
+              updatedConversations,
+              selectedConversationPublicKey,
+              updatedMessages
+            );
+          }
+          setPubKeyPlusGroupName(pubKeyPlusGroupName);
         }
-        setPubKeyPlusGroupName(pubKeyPlusGroupName);
+      } finally {
+        pollingRef.current = false;
       }
     },
     isMobile
@@ -1034,7 +1050,8 @@ export const MessagingApp: FC = () => {
     // Cache the username map
     cacheUsernameMap(publicKey, { ...usernameByPublicKeyBase58Check, ...publicKeyToUsername });
 
-    if (selectConversation) {
+    // Only force-select if user hasn't already navigated to a different conversation
+    if (selectConversation && (!selectedConversationPublicKeyRef.current || selectedConversationPublicKeyRef.current === keyToUse)) {
       setSelectedConversationPublicKey(keyToUse);
     }
 
@@ -1046,21 +1063,42 @@ export const MessagingApp: FC = () => {
       const { updatedConversations, pubKeyPlusGroupName } =
         await getConversation(keyToUse, conversationsResponse);
 
-      // Merge: preserve any optimistic messages from the rendered state
+      // Merge: start from prev state so we don't wipe full threads the user
+      // loaded via the click handler while this rehydration was in-flight.
       setConversations((prev) => {
-        const merged = { ...updatedConversations };
-        for (const [k, convo] of Object.entries(prev)) {
-          if (!merged[k]) continue;
-          const optimistic = convo.messages.filter((m: any) => m._localId);
-          if (optimistic.length > 0) {
-            merged[k] = { ...merged[k], messages: [...optimistic, ...merged[k].messages] };
+        const merged = { ...prev };
+        const currentKey = selectedConversationPublicKeyRef.current;
+        for (const [k, convo] of Object.entries(updatedConversations)) {
+          if (!merged[k]) {
+            merged[k] = convo;
+          } else if (k === currentKey && k !== keyToUse) {
+            // User is viewing a different conversation — preserve its full thread
+            merged[k] = { ...convo, messages: merged[k].messages };
+          } else {
+            // For the rehydrated conversation and background conversations,
+            // use fresh data but preserve optimistic messages
+            const optimistic = merged[k].messages.filter((m: any) => m._localId && m._status !== "sent");
+            merged[k] = convo;
+            if (optimistic.length > 0) {
+              merged[k] = { ...merged[k], messages: [...optimistic, ...merged[k].messages] };
+            }
+          }
+        }
+        // Remove conversations no longer returned by the blockchain
+        // (e.g. user was removed from a group) — but keep the one the user is viewing
+        for (const k of Object.keys(merged)) {
+          if (!updatedConversations[k] && k !== currentKey) {
+            delete merged[k];
           }
         }
         // Fire-and-forget cache writes
         cacheConversations(publicKey, merged);
         return merged;
       });
-      setPubKeyPlusGroupName(pubKeyPlusGroupName);
+      // Only update pubKeyPlusGroupName if user is still on this conversation
+      if (selectedConversationPublicKeyRef.current === keyToUse) {
+        setPubKeyPlusGroupName(pubKeyPlusGroupName);
+      }
 
       // Compute initial unread state from persisted last-read timestamps
       const lastReadTimestamps = getCachedLastReadTimestamps(publicKey);
@@ -1105,9 +1143,11 @@ export const MessagingApp: FC = () => {
         );
       }
 
-      // Cache the last selected conversation
-      if (keyToUse) {
-        cacheLastConversationKey(publicKey, keyToUse);
+      // Cache the last selected conversation (use the actual current selection
+      // so a user navigation during rehydration is preserved on next launch)
+      const finalKey = selectedConversationPublicKeyRef.current || keyToUse;
+      if (finalKey) {
+        cacheLastConversationKey(publicKey, finalKey);
       }
     } catch (e) {
       if (!renderedFromCache) {
@@ -1115,7 +1155,11 @@ export const MessagingApp: FC = () => {
         console.error(e);
       }
     } finally {
-      setLoadingConversation(false);
+      // Only clear conversation loading if user hasn't navigated away —
+      // their click handler owns the loading state in that case.
+      if (!selectedConversationPublicKeyRef.current || selectedConversationPublicKeyRef.current === keyToUse) {
+        setLoadingConversation(false);
+      }
       setLoading(false);
     }
 
@@ -1676,7 +1720,8 @@ export const MessagingApp: FC = () => {
                       </div>
                     ) : (
                       <MessagingBubblesAndAvatar
-                        conversationPublicKey={pubKeyPlusGroupName}
+                        key={selectedConversationPublicKey}
+                        conversationPublicKey={selectedConversationPublicKey}
                         conversations={conversations}
                         getUsernameByPublicKey={activeChatUsersMap}
                         profilePicByPublicKey={profilePicByPublicKey}
