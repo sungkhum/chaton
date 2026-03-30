@@ -192,12 +192,12 @@ export class ChatRelay extends DurableObject {
 
       // Always send push — the service worker suppresses if the app is visible
       if (this.env.VAPID_PRIVATE_KEY) {
-        this.sendPushToUser(recipientKey, fromUsername || from || "Someone", threadId);
+        this.sendPushToUser(recipientKey, fromUsername || from || "Someone", threadId, from);
       }
     }
   }
 
-  private async sendPushToUser(publicKey: string, fromName: string, threadId: string) {
+  private async sendPushToUser(publicKey: string, fromName: string, threadId: string, fromPublicKey?: string) {
     this.ensureDb();
     const rows = this.ctx.storage.sql.exec(
       `SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE public_key = ?`,
@@ -219,6 +219,7 @@ export class ChatRelay extends DurableObject {
           body: `${fromName} sent you a message`,
           tag: `thread-${threadId}`,
           conversationKey: threadId,
+          from: fromPublicKey,
         },
         this.env.VAPID_PRIVATE_KEY,
         this.env.VAPID_SUBJECT || "mailto:hello@chaton.app"

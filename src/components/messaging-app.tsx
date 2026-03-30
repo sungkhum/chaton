@@ -299,7 +299,19 @@ export const MessagingApp: FC = () => {
 
           const currentSelectedKey = selectedConversationPublicKeyRef.current;
 
-          if (threadId && threadId === currentSelectedKey) {
+          // The sender passes their own conversation key as threadId, but for
+          // DMs the recipient indexes the same conversation under the sender's
+          // public key. Resolve to the local key so comparisons and unread
+          // tracking use the correct key.
+          let localThreadId = threadId;
+          if (threadId && !updated[threadId] && _from) {
+            const candidateKey = _from + DEFAULT_KEY_MESSAGING_GROUP_NAME;
+            if (updated[candidateKey]) {
+              localThreadId = candidateKey;
+            }
+          }
+
+          if (localThreadId && localThreadId === currentSelectedKey) {
             // Notification is for the conversation we're looking at —
             // fetch the full thread so new messages appear immediately.
             try {
@@ -335,9 +347,9 @@ export const MessagingApp: FC = () => {
             // Different conversation — just merge the conversation list
             simpleConversationMerge(updated);
 
-            if (threadId && !useStore.getState().mutedConversations.has(threadId) && !useStore.getState().archivedGroups.has(threadId)) {
-              useStore.getState().incrementUnread(threadId);
-            } else if (!threadId) {
+            if (localThreadId && !useStore.getState().mutedConversations.has(localThreadId) && !useStore.getState().archivedGroups.has(localThreadId)) {
+              useStore.getState().incrementUnread(localThreadId);
+            } else if (!localThreadId) {
               // Resume from background — compute unread from timestamps
               const lastReadTimestamps = getCachedLastReadTimestamps(appUser.PublicKeyBase58Check);
               const store = useStore.getState();
@@ -1398,6 +1410,19 @@ export const MessagingApp: FC = () => {
                 rehydrateConversation={rehydrateConversation}
                 onClick={async (key: string) => {
                   if (key === selectedConversationPublicKey) {
+                    // Still clear unread badge if a message arrived while viewing
+                    if (unreadByConversation.has(key)) {
+                      clearUnread(key);
+                      removeUnreadConversation(key);
+                      sendRead(key);
+                      if (appUser && conversations[key]?.messages[0]) {
+                        cacheLastReadTimestamp(
+                          appUser.PublicKeyBase58Check,
+                          key,
+                          conversations[key].messages[0].MessageInfo.TimestampNanos
+                        );
+                      }
+                    }
                     return;
                   }
                   setSelectedConversationPublicKey(key);

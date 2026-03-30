@@ -55,12 +55,25 @@ self.addEventListener("push", (event) => {
 
   event.waitUntil(
     (async () => {
+      // For DMs the sender passes their own conversation key (which ends
+      // with "default-key"), but the recipient indexes the same conversation
+      // under the sender's public key.  Derive the local key so muted/unread
+      // checks and notification-click navigation work correctly.
+      // Group chat keys use a custom group name (not "default-key") and are
+      // the same for all participants, so they need no translation.
+      const rawConvKey = data.conversationKey as string | undefined;
+      const fromPubKey = data.from as string | undefined;
+      const isDM = rawConvKey?.endsWith("default-key");
+      const localConvKey = (fromPubKey && isDM)
+        ? fromPubKey + "default-key"
+        : rawConvKey;
+
       // Check if this conversation is muted
       let isMuted = false;
-      if (data.conversationKey) {
+      if (localConvKey) {
         try {
           const mutedList = await get<string[]>("mutedConversations:active", idbStore);
-          if (mutedList?.includes(data.conversationKey as string)) {
+          if (mutedList?.includes(localConvKey)) {
             isMuted = true;
           }
         } catch {
@@ -87,7 +100,7 @@ self.addEventListener("push", (event) => {
         renotify: true,
         data: {
           url: data.url || "/",
-          conversationKey: data.conversationKey,
+          conversationKey: localConvKey,
         },
       };
 
@@ -95,7 +108,7 @@ self.addEventListener("push", (event) => {
 
       // Track unread conversation in IndexedDB and update badge count
       try {
-        const convKey = data.conversationKey as string;
+        const convKey = localConvKey;
         const unread: string[] = (await get<string[]>("unreadConversations:active", idbStore)) || [];
         if (convKey && !unread.includes(convKey)) {
           unread.push(convKey);
