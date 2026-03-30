@@ -769,7 +769,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                       <div ref={actionBarRef} className={
                         isMobile
                           ? `fixed z-50 flex ${actionBarFlipped ? "flex-col-reverse" : "flex-col"} items-stretch`
-                          : `absolute ${IsSender ? "right-0" : "left-0"} ${actionBarFlipped ? "top-full mt-1" : "bottom-full mb-1"} z-10 flex ${actionBarFlipped ? "flex-col-reverse" : "flex-col"} items-stretch`
+                          : `absolute ${IsSender ? "right-0" : "left-0"} ${actionBarFlipped ? "top-full mt-1" : "bottom-full mb-1"} z-30 flex ${actionBarFlipped ? "flex-col-reverse" : "flex-col"} items-stretch`
                       }>
                       {/* Quick reactions row */}
                       {onReact && (
