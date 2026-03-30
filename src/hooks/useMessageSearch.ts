@@ -41,10 +41,10 @@ export function useMessageSearch(
   const [isDeepSearching, setIsDeepSearching] = useState(false);
   const [progress, setProgress] = useState<SearchProgress | null>(null);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
-  const abortRef = useRef<AbortController>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const deepResultsRef = useRef<MessageSearchResult[]>([]);
-  const batchTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const batchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchedTimestampsRef = useRef<Set<string>>(new Set());
 
   // Stable ref for latest conversations/usernameMap so deep search uses fresh data
@@ -57,14 +57,14 @@ export function useMessageSearch(
 
   const cancelSearch = useCallback(() => {
     abortRef.current?.abort();
-    abortRef.current = undefined;
+    abortRef.current = null;
     if (batchTimerRef.current) {
       clearTimeout(batchTimerRef.current);
-      batchTimerRef.current = undefined;
+      batchTimerRef.current = null;
     }
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
-      debounceRef.current = undefined;
+      debounceRef.current = null;
     }
   }, []);
 
@@ -86,7 +86,8 @@ export function useMessageSearch(
       // Cancel any in-flight search
       cancelSearch();
 
-      if (q.length < MIN_QUERY_LENGTH) {
+      const trimmed = q.trim();
+      if (trimmed.length < MIN_QUERY_LENGTH) {
         setResults([]);
         setIsSearching(false);
         setIsDeepSearching(false);
@@ -101,13 +102,14 @@ export function useMessageSearch(
       debounceRef.current = setTimeout(async () => {
         const currentConversations = conversationsRef.current;
         const currentUsernameMap = usernameMapRef.current;
+        const searchTerm = trimmed;
 
         // Phase 1: cached/in-memory search
         try {
           const { results: cacheResults, searchedTimestamps } =
             await searchCachedMessages(
               userPublicKey,
-              q,
+              searchTerm,
               currentConversations,
               currentUsernameMap
             );
@@ -131,7 +133,7 @@ export function useMessageSearch(
 
           await orchestrateDeepSearch(
             userPublicKey,
-            q,
+            searchTerm,
             currentConversations,
             currentUsernameMap,
             accessGroupsRef.current,
@@ -142,7 +144,7 @@ export function useMessageSearch(
               // Batched UI update
               if (!batchTimerRef.current) {
                 batchTimerRef.current = setTimeout(() => {
-                  batchTimerRef.current = undefined;
+                  batchTimerRef.current = null;
                   flushBatch();
                 }, BATCH_INTERVAL_MS);
               }
@@ -155,7 +157,7 @@ export function useMessageSearch(
           // Final flush
           if (batchTimerRef.current) {
             clearTimeout(batchTimerRef.current);
-            batchTimerRef.current = undefined;
+            batchTimerRef.current = null;
           }
           if (!controller.signal.aborted) {
             flushBatch();

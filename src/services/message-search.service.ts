@@ -192,10 +192,11 @@ export async function deepSearchConversation(
   }
 
   // If no messages at all, nothing to paginate from
-  if (!oldestTimestamp && conversation.messages.length === 0) return;
+  if (!oldestTimestamp) return;
 
   // Paginate backwards
-  let cursor = oldestTimestamp;
+  let cursor: string = oldestTimestamp;
+  let previousCursor: string | undefined;
   let accessGroups = allAccessGroups;
   const allFetchedMessages: DecryptedMessageEntryResponse[] = [];
 
@@ -261,7 +262,12 @@ export async function deepSearchConversation(
       const sortedBatch = [...decrypted].sort(
         (a, b) => Number(a.MessageInfo.TimestampNanos) - Number(b.MessageInfo.TimestampNanos)
       );
-      cursor = sortedBatch[0].MessageInfo.TimestampNanosString;
+      const newCursor = sortedBatch[0].MessageInfo.TimestampNanosString;
+
+      // Guard against cursor not advancing (would cause infinite loop)
+      if (newCursor === previousCursor || newCursor === cursor) break;
+      previousCursor = cursor;
+      cursor = newCursor;
 
       // Rate limit: wait between pages
       await delay(100);

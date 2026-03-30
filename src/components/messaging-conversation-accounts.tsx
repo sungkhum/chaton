@@ -53,6 +53,7 @@ export const MessagingConversationAccount: FC<{
   searchProgress?: SearchProgress | null;
   onSearchQueryChange?: (query: string) => void;
   onSearchResultClick?: (conversationKey: string) => void;
+  searchClearTrigger?: number;
 }> = ({
   conversations,
   requestConversations,
@@ -74,6 +75,7 @@ export const MessagingConversationAccount: FC<{
   searchProgress = null,
   onSearchQueryChange,
   onSearchResultClick,
+  searchClearTrigger,
 }) => {
   const { allAccessGroups } = useStore();
   const [activeTab, setActiveTab] = useState<"chats" | "requests" | "archived">("chats");
@@ -106,6 +108,7 @@ export const MessagingConversationAccount: FC<{
       <MessagingStartNewConversation
         rehydrateConversation={rehydrateConversation}
         onSearchQueryChange={onSearchQueryChange}
+        clearTrigger={searchClearTrigger}
       />
 
       <div className="h-full max-h-[calc(100%-76px)]">

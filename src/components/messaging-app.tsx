@@ -179,16 +179,14 @@ export const MessagingApp: FC = () => {
     allAccessGroups,
   });
 
+  const [searchClearTrigger, setSearchClearTrigger] = useState(0);
+
   const handleSearchResultClick = useCallback(
     (conversationKey: string) => {
       clearSearch();
+      setSearchClearTrigger((n) => n + 1);
       setSelectedConversationPublicKey(conversationKey);
       setPubKeyPlusGroupName(conversationKey);
-      // Clear the search input
-      const input = document.querySelector<HTMLInputElement>(
-        ".search-conversations-input input, .search-conversations-input"
-      );
-      if (input) input.value = "";
     },
     [clearSearch]
   );
@@ -1380,6 +1378,7 @@ export const MessagingApp: FC = () => {
                 searchProgress={searchProgress}
                 onSearchQueryChange={setSearchQuery}
                 onSearchResultClick={handleSearchResultClick}
+                searchClearTrigger={searchClearTrigger}
               />
             </div>
 

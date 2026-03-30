@@ -5,7 +5,8 @@ import { SearchUsers } from "./search-users";
 export const MessagingStartNewConversation: FC<{
   rehydrateConversation: (publicKey: string, autoScroll?: boolean) => void;
   onSearchQueryChange?: (query: string) => void;
-}> = ({ rehydrateConversation, onSearchQueryChange }) => {
+  clearTrigger?: number;
+}> = ({ rehydrateConversation, onSearchQueryChange, clearTrigger }) => {
   return (
     <div>
       <div className="m-4">
@@ -21,6 +22,7 @@ export const MessagingStartNewConversation: FC<{
             );
           }}
           onChange={onSearchQueryChange}
+          clearTrigger={clearTrigger}
           placeholder="Search conversations..."
           className="search-conversations-input text-white placeholder:text-gray-500 bg-white/5 border border-white/8 hover:border-[#34F080]/30 rounded-xl"
         />

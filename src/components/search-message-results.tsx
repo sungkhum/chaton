@@ -2,6 +2,7 @@ import { ChatType } from "deso-protocol";
 import { Loader2 } from "lucide-react";
 import { FC, ReactNode } from "react";
 import { MessageSearchResult, SearchProgress } from "../services/message-search.service";
+import { MSG_FILE_NAME, MSG_GIF_TITLE } from "../utils/extra-data";
 import { formatRelativeTimestamp } from "../utils/helpers";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 
@@ -39,6 +40,16 @@ function truncateAround(text: string, start: number, maxLen: number): string {
   return (s > 0 ? "..." : "") + text.slice(s, end) + (end < text.length ? "..." : "");
 }
 
+/** Build the same searchable text the service uses, so highlights match. */
+function getDisplayText(msg: MessageSearchResult["message"]): string {
+  const text = msg.DecryptedMessage || "";
+  const extra = msg.MessageInfo?.ExtraData || {};
+  const parts = [text];
+  if (extra[MSG_FILE_NAME]) parts.push(extra[MSG_FILE_NAME]);
+  if (extra[MSG_GIF_TITLE]) parts.push(extra[MSG_GIF_TITLE]);
+  return parts.join(" ");
+}
+
 export const SearchMessageResults: FC<{
   results: MessageSearchResult[];
   query: string;
@@ -72,8 +83,9 @@ export const SearchMessageResults: FC<{
       {/* Results */}
       {results.map((result) => {
         const isDM = result.chatType === ChatType.DM;
-        const senderKey = result.message.IsSender
-          ? result.message.SenderInfo.OwnerPublicKeyBase58Check
+        // For DMs, show the other party's avatar (conversation partner)
+        const otherPartyKey = result.message.IsSender
+          ? result.message.RecipientInfo.OwnerPublicKeyBase58Check
           : result.message.SenderInfo.OwnerPublicKeyBase58Check;
 
         return (
@@ -84,7 +96,7 @@ export const SearchMessageResults: FC<{
             >
               <MessagingDisplayAvatar
                 username={isDM ? result.conversationName : undefined}
-                publicKey={isDM ? senderKey : result.conversationName || ""}
+                publicKey={isDM ? otherPartyKey : result.conversationName || ""}
                 groupChat={!isDM}
                 diameter={48}
               />
@@ -101,9 +113,9 @@ export const SearchMessageResults: FC<{
                 </div>
 
                 {/* Line 2: Message snippet with highlighted match */}
-                <p className="truncate text-sm text-gray-400">
+                <p className="text-sm text-gray-400 overflow-hidden whitespace-nowrap text-ellipsis">
                   {highlightMatch(
-                    result.message.DecryptedMessage || "",
+                    getDisplayText(result.message),
                     query
                   )}
                 </p>

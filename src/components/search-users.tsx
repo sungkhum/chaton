@@ -59,6 +59,8 @@ interface SearchUsersProps {
   onBlur?: () => void;
   onTyping?: any;
   onChange?: (value: string) => void;
+  /** Increment to programmatically clear the input (resets internal state). */
+  clearTrigger?: number;
   className?: string;
 }
 
@@ -72,6 +74,7 @@ export const SearchUsers = ({
   onBlur,
   onTyping,
   onChange,
+  clearTrigger,
   className = "",
 }: SearchUsersProps) => {
   const [menuItems, setMenuItems] = useState<SearchMenuItem[]>();
@@ -86,6 +89,15 @@ export const SearchUsers = ({
   useEffect(() => {
     setInputValue(initialValue);
   }, [initialValue]);
+
+  // Allow parent to programmatically clear the input
+  useEffect(() => {
+    if (clearTrigger !== undefined && clearTrigger > 0) {
+      setInputValue("");
+      setMenuItems([]);
+      setIsOpen(false);
+    }
+  }, [clearTrigger]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
