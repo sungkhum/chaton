@@ -335,6 +335,28 @@ export const MessagingApp: FC = () => {
 
             if (threadId && !useStore.getState().mutedConversations.has(threadId) && !useStore.getState().archivedGroups.has(threadId)) {
               useStore.getState().incrementUnread(threadId);
+            } else if (!threadId) {
+              // Resume from background — compute unread from timestamps
+              const lastReadTimestamps = getCachedLastReadTimestamps(appUser.PublicKeyBase58Check);
+              const unreadMap = new Map<string, number>();
+              for (const [k, convo] of Object.entries(updated)) {
+                if (k === currentSelectedKey) continue;
+                const latestMsg = convo.messages[0];
+                if (!latestMsg || latestMsg.IsSender) continue;
+                const msgTs = latestMsg.MessageInfo.TimestampNanos;
+                const lastRead = lastReadTimestamps[k];
+                if (lastRead === undefined) {
+                  cacheLastReadTimestamp(appUser.PublicKeyBase58Check, k, msgTs);
+                } else if (msgTs > lastRead) {
+                  unreadMap.set(k, 1);
+                }
+              }
+              syncUnreadConversations(Array.from(unreadMap.keys()));
+              if (unreadMap.size > 0) {
+                useStore.getState().initializeUnread(unreadMap);
+              } else {
+                navigator.clearAppBadge?.();
+              }
             }
           }
         }
