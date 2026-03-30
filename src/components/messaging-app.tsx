@@ -350,39 +350,39 @@ export const MessagingApp: FC = () => {
             if (localThreadId && !useStore.getState().mutedConversations.has(localThreadId) && !useStore.getState().archivedGroups.has(localThreadId)) {
               useStore.getState().incrementUnread(localThreadId);
             } else if (!localThreadId) {
-              // Resume from background — fetch full thread for the selected
-              // conversation so the chat view isn't blank after PWA reopen.
-              if (currentSelectedKey && updated[currentSelectedKey]) {
-                try {
-                  const { updatedConversations, pubKeyPlusGroupName: newPubKey } =
-                    await getConversation(currentSelectedKey, {
+              // Resume from background — fetch full thread and compute
+              // unread in parallel (they're independent operations).
+              const threadPromise =
+                currentSelectedKey && updated[currentSelectedKey]
+                  ? getConversation(currentSelectedKey, {
                       ...updated,
                       [currentSelectedKey]: updated[currentSelectedKey],
-                    });
+                    }).then(({ updatedConversations, pubKeyPlusGroupName: newPubKey }) => {
+                      // Guard: user may have switched conversations during the await
+                      if (selectedConversationPublicKeyRef.current !== currentSelectedKey) return;
+                      const updatedMessages =
+                        updatedConversations[currentSelectedKey]?.messages;
+                      if (updatedMessages) {
+                        mergeConversationUpdate(
+                          updatedConversations,
+                          currentSelectedKey,
+                          updatedMessages
+                        );
+                        setPubKeyPlusGroupName(newPubKey);
+                        if (updatedMessages[0]) {
+                          cacheLastReadTimestamp(
+                            appUser.PublicKeyBase58Check,
+                            currentSelectedKey,
+                            updatedMessages[0].MessageInfo.TimestampNanos
+                          );
+                        }
+                      }
+                    }).catch(() => {
+                      // Full thread fetch failed — simple merge already applied above
+                    })
+                  : Promise.resolve();
 
-                  const updatedMessages =
-                    updatedConversations[currentSelectedKey]?.messages;
-                  if (updatedMessages) {
-                    mergeConversationUpdate(
-                      updatedConversations,
-                      currentSelectedKey,
-                      updatedMessages
-                    );
-                    setPubKeyPlusGroupName(newPubKey);
-                    if (updatedMessages[0]) {
-                      cacheLastReadTimestamp(
-                        appUser.PublicKeyBase58Check,
-                        currentSelectedKey,
-                        updatedMessages[0].MessageInfo.TimestampNanos
-                      );
-                    }
-                  }
-                } catch {
-                  // Full thread fetch failed — simple merge already applied above
-                }
-              }
-
-              // Compute unread from timestamps
+              // Compute unread from timestamps (no await needed — sync reads)
               const lastReadTimestamps = getCachedLastReadTimestamps(appUser.PublicKeyBase58Check);
               const store = useStore.getState();
               const unreadMap = new Map<string, number>();
@@ -405,6 +405,9 @@ export const MessagingApp: FC = () => {
               } else {
                 navigator.clearAppBadge?.();
               }
+
+              // Wait for thread fetch before releasing wsFetchingRef
+              await threadPromise;
             }
           }
         }
