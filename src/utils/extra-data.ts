@@ -19,6 +19,10 @@ export const MSG_ACTION = "msg:action";
 export const MSG_EDITED = "msg:edited";
 export const MSG_DELETED = "msg:deleted";
 export const MSG_MENTIONS = "msg:mentions";
+export const MSG_ENCRYPTED = "msg:encrypted";
+
+/** ExtraData keys whose values should be encrypted before sending to the blockchain. */
+export const ENCRYPTED_EXTRA_DATA_KEYS = [MSG_EMOJI, MSG_ACTION] as const;
 
 // Generic DeSo access group ExtraData keys — any messaging app can adopt these
 export const GROUP_IMAGE_URL = "group:imageUrl";

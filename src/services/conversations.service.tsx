@@ -29,6 +29,10 @@ import {
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
   USER_TO_SEND_MESSAGE_TO,
 } from "../utils/constants";
+import {
+  ENCRYPTED_EXTRA_DATA_KEYS,
+  MSG_ENCRYPTED,
+} from "../utils/extra-data";
 import { Conversation, ConversationMap } from "../utils/types";
 import { bytesToHex } from "@noble/hashes/utils";
 
@@ -188,14 +192,70 @@ export const decryptAccessGroupMessagesWithRetry = async (
   };
 };
 
-export const decryptAccessGroupMessages = (
+export const decryptAccessGroupMessages = async (
   messages: NewMessageEntryResponse[],
   accessGroups: AccessGroupEntryResponse[]
 ): Promise<DecryptedMessageEntryResponse[]> => {
-  return Promise.all(
+  const decrypted = await Promise.all(
     (messages || []).map((m) => identity.decryptMessage(m, accessGroups))
   );
+
+  // Decrypt any encrypted ExtraData values (e.g. msg:emoji, msg:action)
+  return Promise.all(
+    decrypted.map((msg) => decryptExtraDataFields(msg, accessGroups))
+  );
 };
+
+/**
+ * If a message has encrypted ExtraData values (flagged by msg:encrypted),
+ * decrypt each one by feeding it through identity.decryptMessage as a
+ * fake message. This reuses the SDK's DM-vs-group key resolution so we
+ * don't need to reimplement it.
+ */
+async function decryptExtraDataFields(
+  msg: DecryptedMessageEntryResponse,
+  accessGroups: AccessGroupEntryResponse[]
+): Promise<DecryptedMessageEntryResponse> {
+  const extra = msg.MessageInfo?.ExtraData;
+  if (!extra || extra[MSG_ENCRYPTED] !== "true") return msg;
+
+  const updatedExtra = { ...extra };
+
+  for (const key of ENCRYPTED_EXTRA_DATA_KEYS) {
+    const cipherText = updatedExtra[key];
+    if (!cipherText) continue;
+
+    try {
+      // Build a shallow message clone with the encrypted ExtraData value
+      // swapped into EncryptedText so identity.decryptMessage can decrypt it
+      // using the correct key (messaging key for DMs, group key for groups).
+      const fakeMsg = {
+        ...msg,
+        MessageInfo: {
+          ...msg.MessageInfo,
+          EncryptedText: cipherText,
+          // Remove the unencrypted flag so the SDK decrypts instead of hex-decoding
+          ExtraData: Object.fromEntries(
+            Object.entries(extra).filter(([k]) => k !== "unencrypted")
+          ),
+        },
+      } as NewMessageEntryResponse;
+
+      const decryptedFake = await identity.decryptMessage(fakeMsg, accessGroups);
+      updatedExtra[key] = decryptedFake.DecryptedMessage;
+    } catch {
+      // If decryption fails (e.g. legacy plaintext value), leave as-is
+    }
+  }
+
+  return {
+    ...msg,
+    MessageInfo: {
+      ...msg.MessageInfo,
+      ExtraData: updatedExtra,
+    },
+  };
+}
 
 export const encryptAndSendNewMessage = async (
   messageToSend: string,
@@ -228,6 +288,21 @@ export const encryptAndSendNewMessage = async (
       response.RecipientAccessGroupPublicKeyBase58Check,
       messageToSend
     );
+
+    // Encrypt sensitive ExtraData values with the same recipient key
+    let hasEncrypted = false;
+    for (const key of ENCRYPTED_EXTRA_DATA_KEYS) {
+      if (ExtraData[key]) {
+        ExtraData[key] = await identity.encryptMessage(
+          response.RecipientAccessGroupPublicKeyBase58Check,
+          ExtraData[key]
+        );
+        hasEncrypted = true;
+      }
+    }
+    if (hasEncrypted) {
+      ExtraData[MSG_ENCRYPTED] = "true";
+    }
   } else {
     message = bytesToHex(new TextEncoder().encode(messageToSend));
     isUnencrypted = true;
@@ -301,6 +376,21 @@ export const encryptAndUpdateMessage = async (
       response.RecipientAccessGroupPublicKeyBase58Check,
       newMessageText
     );
+
+    // Encrypt sensitive ExtraData values with the same recipient key
+    let hasEncrypted = false;
+    for (const key of ENCRYPTED_EXTRA_DATA_KEYS) {
+      if (ExtraData[key]) {
+        ExtraData[key] = await identity.encryptMessage(
+          response.RecipientAccessGroupPublicKeyBase58Check,
+          ExtraData[key]
+        );
+        hasEncrypted = true;
+      }
+    }
+    if (hasEncrypted) {
+      ExtraData[MSG_ENCRYPTED] = "true";
+    }
   } else {
     message = bytesToHex(new TextEncoder().encode(newMessageText));
     isUnencrypted = true;
