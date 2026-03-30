@@ -33,6 +33,8 @@ Sign in with a DeSo identity or an Ethereum wallet (MetaMask), and message anyon
 - **Optimistic UI** — messages appear instantly; blockchain confirmation happens in the background
 - **Message replies** — reply to specific messages with quoted preview
 - **Emoji reactions** — react to any message with the full emoji set
+- **Animated emoji** — emoji-only messages display as animated Noto Emoji via Google CDN
+- **Formatted messages** — markdown support for bold, italic, links, and code
 
 ### Rich Media
 - **Image sharing** — upload and send images with lightbox preview
@@ -70,11 +72,13 @@ Sign in with a DeSo identity or an Ethereum wallet (MetaMask), and message anyon
 | Blockchain | [deso-protocol](https://www.npmjs.com/package/deso-protocol) SDK |
 | Real-time | Cloudflare Workers + Durable Objects (WebSocket relay) |
 | Push | Cloudflare Cron Triggers + D1 + Queues (blockchain polling) |
-| Emoji | [frimousse](https://github.com/liveblocks/frimousse) (React 19 native) |
+| Emoji Picker | [frimousse](https://github.com/liveblocks/frimousse) (React 19 native) |
+| Animated Emoji | [Noto Emoji Animation](https://fonts.google.com/noto/emoji) (Google CDN, WebP) |
+| Markdown | [Marked](https://github.com/markedjs/marked) (formatted messages) |
 | Icons | Lucide React |
 | Toasts | Sonner |
 | PWA | Serwist (service worker + caching) |
-| Animations | GSAP (landing page) |
+| Animations | GSAP + ScrollTrigger |
 
 ## Getting Started
 
