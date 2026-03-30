@@ -154,13 +154,19 @@ export const ManageMembersDialog = ({
     }
 
     const memberKeys = members.map((e) => e.id);
-    const memberKeysToAdd = memberKeys.filter((k) => !currentMemberKeys.includes(k));
-    const memberKeysToRemove = currentMemberKeys.filter((e) => !memberKeys.includes(e));
+    // js-set-map-lookups: O(1) membership checks instead of O(n) .includes()
+    const currentSet = new Set(currentMemberKeys);
+    const memberSet = new Set(memberKeys);
+    const memberKeysToAdd = memberKeys.filter((k) => !currentSet.has(k));
+    const memberKeysToRemove = currentMemberKeys.filter((k) => !memberSet.has(k));
 
     setUpdating(true);
     try {
-      await addMembersAction(groupName, memberKeysToAdd);
-      await removeMembersAction(groupName, memberKeysToRemove);
+      // async-parallel: independent operations run concurrently
+      await Promise.all([
+        addMembersAction(groupName, memberKeysToAdd),
+        removeMembersAction(groupName, memberKeysToRemove),
+      ]);
     } finally {
       setUpdating(false);
     }

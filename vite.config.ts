@@ -28,6 +28,9 @@ export default defineConfig({
       output: {
         manualChunks: {
           "deso": ["deso-protocol"],
+          "gsap": ["gsap"],
+          "icons": ["lucide-react"],
+          "markdown": ["marked"],
         },
       },
     },

@@ -199,14 +199,11 @@ export const MessagingApp: FC = () => {
 
   // Refs for accessing latest state inside callbacks without causing re-renders
   const lockRefreshRef = useRef(lockRefresh);
+  lockRefreshRef.current = lockRefresh;
   const selectedConversationPublicKeyRef = useRef(
     selectedConversationPublicKey
   );
-
-  useEffect(() => {
-    lockRefreshRef.current = lockRefresh;
-    selectedConversationPublicKeyRef.current = selectedConversationPublicKey;
-  });
+  selectedConversationPublicKeyRef.current = selectedConversationPublicKey;
 
   // Shared merge logic: reconcile optimistic messages with blockchain-confirmed data.
   // Used by both the WebSocket handler and the polling interval.
@@ -701,16 +698,22 @@ export const MessagingApp: FC = () => {
     return () => navigator.serviceWorker?.removeEventListener("message", handler);
   }, []);
 
+  // advanced-event-handler-refs: store handler in ref so the listener
+  // doesn't re-register when handleWsNewMessage changes.
+  const visibilityHandlerRef = useRef(handleWsNewMessage);
+  visibilityHandlerRef.current = handleWsNewMessage;
+
   // Refresh conversations when PWA resumes from background
   useEffect(() => {
+    if (!appUser) return;
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && appUser && !loading) {
-        handleWsNewMessage("", "");
+      if (document.visibilityState === "visible") {
+        visibilityHandlerRef.current("", "");
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [appUser, loading, handleWsNewMessage]);
+  }, [appUser]);
 
   useEffect(() => {
     setSelectedConversationPublicKey("");

@@ -146,7 +146,9 @@ export const useStore = create<ChatOnState>((set) => ({
     set((state) => {
       const next = new Map(state.unreadByConversation);
       next.set(conversationKey, (next.get(conversationKey) || 0) + 1);
-      const total = Array.from(next.values()).reduce((a, b) => a + b, 0);
+      // js-combine-iterations: simple loop avoids intermediate array allocation
+      let total = 0;
+      for (const v of next.values()) total += v;
       if (navigator.setAppBadge) navigator.setAppBadge(total).catch(() => {});
       return { unreadByConversation: next, totalUnread: total };
     }),
@@ -156,7 +158,8 @@ export const useStore = create<ChatOnState>((set) => ({
       if (!state.unreadByConversation.has(conversationKey)) return state;
       const next = new Map(state.unreadByConversation);
       next.delete(conversationKey);
-      const total = Array.from(next.values()).reduce((a, b) => a + b, 0);
+      let total = 0;
+      for (const v of next.values()) total += v;
       if (total === 0 && navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
       else if (navigator.setAppBadge) navigator.setAppBadge(total).catch(() => {});
       return { unreadByConversation: next, totalUnread: total };
@@ -169,7 +172,8 @@ export const useStore = create<ChatOnState>((set) => ({
       for (const [key, count] of unreadMap) {
         if (!next.has(key)) next.set(key, count);
       }
-      const total = Array.from(next.values()).reduce((a, b) => a + b, 0);
+      let total = 0;
+      for (const v of next.values()) total += v;
       if (total > 0 && navigator.setAppBadge) navigator.setAppBadge(total).catch(() => {});
       return { unreadByConversation: next, totalUnread: total };
     }),

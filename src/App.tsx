@@ -7,14 +7,17 @@ import {
   NOTIFICATION_EVENTS,
   User,
 } from "deso-protocol";
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { Toaster } from "sonner";
 import { Header } from "./components/header";
 import { InstallPrompt } from "./components/install-prompt";
-import { LandingPage } from "./components/landing-page";
-import { LegalPage } from "./components/legal-page";
-import { SupportPage } from "./components/support-page";
 import { MessagingApp } from "./components/messaging-app";
+
+// bundle-dynamic-imports: Lazy-load route pages so GSAP and page code
+// stay out of the main chunk. Logged-in users never download landing page code.
+const LandingPage = lazy(() => import("./components/landing-page").then(m => ({ default: m.LandingPage })));
+const LegalPage = lazy(() => import("./components/legal-page").then(m => ({ default: m.LegalPage })));
+const SupportPage = lazy(() => import("./components/support-page").then(m => ({ default: m.SupportPage })));
 import { AppUser, useStore } from "./store";
 import { withAuth } from "./utils/with-auth";
 import {
@@ -345,17 +348,17 @@ function App() {
 
   // Legal pages are always accessible regardless of auth state
   if (path === "/privacy") {
-    return <LegalPage type="privacy" />;
+    return <Suspense fallback={null}><LegalPage type="privacy" /></Suspense>;
   }
   if (path === "/terms") {
-    return <LegalPage type="terms" />;
+    return <Suspense fallback={null}><LegalPage type="terms" /></Suspense>;
   }
   if (path === "/support") {
     return (
-      <>
+      <Suspense fallback={null}>
         <SupportPage />
         <Toaster position="top-right" theme="dark" />
-      </>
+      </Suspense>
     );
   }
 
@@ -363,10 +366,10 @@ function App() {
 
   if (showLanding) {
     return (
-      <>
+      <Suspense fallback={null}>
         <LandingPage />
         <Toaster position="top-right" theme="dark" />
-      </>
+      </Suspense>
     );
   }
 

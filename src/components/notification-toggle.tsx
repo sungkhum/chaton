@@ -117,16 +117,20 @@ export function NotificationToggle() {
     syncPushState();
   }, [syncPushState]);
 
+  // advanced-event-handler-refs: stable listener, no re-registration when syncPushState changes
+  const syncPushStateRef = useRef(syncPushState);
+  syncPushStateRef.current = syncPushState;
+
   // Re-sync when page becomes visible (handles iOS resuming after permission dialog)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        syncPushState();
+        syncPushStateRef.current();
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [syncPushState]);
+  }, []);
 
   const enable = useCallback(async () => {
     if (!appUser || loading) return;

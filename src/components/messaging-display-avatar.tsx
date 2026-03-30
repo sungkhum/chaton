@@ -110,6 +110,13 @@ export const MessagingDisplayAvatar: FC<{
   );
   const fontSize = Math.round(diameter * 0.38);
 
+  // rerender-memo-with-default-value: memoize style objects to avoid new allocations each render
+  const sizeStyle = useMemo(() => ({
+    width: `${diameter}px`,
+    maxWidth: `${diameter}px`,
+    minWidth: `${diameter}px`,
+  }), [diameter]);
+
   const handleImgLoad = useCallback(() => {
     setImgLoaded(true);
     // Cache this URL module-wide so future mounts are instant
@@ -137,11 +144,7 @@ export const MessagingDisplayAvatar: FC<{
   return (
     <ConditionalLink
       className={`block shrink-0 ${classNames}`}
-      style={{
-        width: `${diameter}px`,
-        maxWidth: `${diameter}px`,
-        minWidth: `${diameter}px`,
-      }}
+      style={sizeStyle}
       href={getProfileURL(username)}
       condition={!!username}
       target="_blank"
