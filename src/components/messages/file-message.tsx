@@ -92,21 +92,21 @@ export const FileMessage = ({
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                {/* OG title or user description */}
+                {/* Primary line: OG title (filename) if available, else description */}
                 {(ogTitle || description) && (
                   <div className="text-sm text-blue-50 leading-snug mb-0.5 line-clamp-2">
-                    {description || ogTitle}
+                    {ogTitle || description}
                   </div>
                 )}
-                {/* OG description (show beneath if we have a title/description already) */}
-                {ogDescription && (description || ogTitle) && (
+                {/* Secondary line: user description beneath OG title */}
+                {ogTitle && description && (
                   <div className="text-xs text-gray-500 leading-snug mb-1 line-clamp-2">
-                    {ogDescription}
+                    {description}
                   </div>
                 )}
-                {/* If only OG description, no title */}
-                {ogDescription && !description && !ogTitle && (
-                  <div className="text-sm text-blue-50 leading-snug mb-1 line-clamp-2">
+                {/* OG description when no user description */}
+                {ogDescription && !description && (
+                  <div className="text-xs text-gray-500 leading-snug mb-1 line-clamp-2">
                     {ogDescription}
                   </div>
                 )}

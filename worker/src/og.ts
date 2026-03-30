@@ -152,7 +152,59 @@ export async function handleOgFetch(request: Request): Promise<Response> {
 
   clearTimeout(timeout);
 
-  const result = parseOgTags(html);
+  let result = parseOgTags(html);
+
+  // If no OG data found, check for meta http-equiv="refresh" redirect (e.g. Dropbox)
+  if (!result.title && !result.description && !result.image) {
+    const refreshMatch = html.match(
+      /<meta[^>]*http-equiv=["']refresh["'][^>]*content=["'][^"']*url=([^"'\s>]+)["'][^>]*>/i
+    );
+    if (refreshMatch) {
+      let refreshUrl = decodeHtmlEntities(refreshMatch[1]);
+      // Resolve relative URLs
+      try {
+        refreshUrl = new URL(refreshUrl, targetUrl).href;
+      } catch {
+        // leave as-is if already absolute
+      }
+      const refreshParsed = new URL(refreshUrl);
+      if (!isPrivateHost(refreshParsed.hostname)) {
+        const controller2 = new AbortController();
+        const timeout2 = setTimeout(() => controller2.abort(), 5000);
+        try {
+          const res2 = await fetch(refreshUrl, {
+            signal: controller2.signal,
+            headers: {
+              "User-Agent": "Mozilla/5.0 (compatible; ChatOnBot/1.0; +https://chaton.app)",
+              Accept: "text/html,application/xhtml+xml",
+            },
+            redirect: "follow",
+          });
+          if (res2.ok && res2.headers.get("content-type")?.includes("text/html")) {
+            const reader2 = res2.body?.getReader();
+            if (reader2) {
+              const decoder2 = new TextDecoder();
+              let html2 = "";
+              let bytes2 = 0;
+              while (bytes2 < 50_000) {
+                const { done, value } = await reader2.read();
+                if (done) break;
+                html2 += decoder2.decode(value, { stream: true });
+                bytes2 += value.length;
+                if (html2.includes("</head>")) break;
+              }
+              reader2.cancel();
+              result = parseOgTags(html2);
+            }
+          }
+        } catch {
+          // ignore — return empty result
+        }
+        clearTimeout(timeout2);
+      }
+    }
+  }
+
   return cacheAndReturn(cache, cacheKey, result);
 }
 
