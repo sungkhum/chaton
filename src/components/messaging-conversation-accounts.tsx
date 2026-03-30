@@ -5,11 +5,12 @@ import { useStore } from "../store";
 import { MessageSearchResult, SearchProgress } from "../services/message-search.service";
 import { getGroupImageUrl } from "../utils/extra-data";
 import { formatRelativeTimestamp, getChatNameFromConversation } from "../utils/helpers";
+import { DEFAULT_KEY_MESSAGING_GROUP_NAME } from "../utils/constants";
 import { Conversation, ConversationMap } from "../utils/types";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { MessagingStartNewConversation } from "./messaging-start-new-conversation";
 import { SearchMessageResults } from "./search-message-results";
-import { shortenLongWord } from "./search-users";
+import { SearchMenuItem, shortenLongWord } from "./search-users";
 import { SpeedDialFab } from "./speed-dial-fab";
 import { StartGroupChat } from "./start-group-chat";
 
@@ -37,7 +38,7 @@ export const MessagingConversationAccount: FC<{
   getUsernameByPublicKeyBase58Check: { [key: string]: string };
   selectedConversationPublicKey: string;
   onClick: (publicKey: string) => void;
-  rehydrateConversation: (publicKey?: string) => void;
+  rehydrateConversation: (publicKey?: string, autoScroll?: boolean) => void;
   onAccept: (conversationKey: string, publicKey: string) => void;
   onBlock: (conversationKey: string, publicKey: string) => void;
   onUnarchive: (conversationKey: string) => void;
@@ -80,6 +81,9 @@ export const MessagingConversationAccount: FC<{
   const { allAccessGroups } = useStore();
   const [activeTab, setActiveTab] = useState<"chats" | "requests" | "archived">("chats");
   const [groupChatOpen, setGroupChatOpen] = useState(false);
+  const [userSearchResults, setUserSearchResults] = useState<SearchMenuItem[]>([]);
+  const [localClearTrigger, setLocalClearTrigger] = useState(0);
+  const combinedClearTrigger = (searchClearTrigger || 0) + localClearTrigger;
   const requestCount = Object.keys(requestConversations).length;
   const archivedCount = Object.keys(archivedConversations).length;
 
@@ -108,7 +112,8 @@ export const MessagingConversationAccount: FC<{
       <MessagingStartNewConversation
         rehydrateConversation={rehydrateConversation}
         onSearchQueryChange={onSearchQueryChange}
-        clearTrigger={searchClearTrigger}
+        clearTrigger={combinedClearTrigger}
+        onUserResults={(items) => setUserSearchResults(items)}
       />
 
       <div className="h-full max-h-[calc(100%-76px)]">
@@ -121,6 +126,13 @@ export const MessagingConversationAccount: FC<{
             isDeepSearching={isDeepSearching}
             progress={searchProgress}
             onSelectResult={(key) => onSearchResultClick?.(key)}
+            userResults={userSearchResults}
+            onUserSelected={(item) => {
+              onSearchQueryChange?.("");
+              setLocalClearTrigger(n => n + 1);
+              setUserSearchResults([]);
+              rehydrateConversation(item.id + DEFAULT_KEY_MESSAGING_GROUP_NAME, true);
+            }}
           />
         ) : (
         <>

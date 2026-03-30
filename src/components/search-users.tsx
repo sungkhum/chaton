@@ -61,6 +61,8 @@ interface SearchUsersProps {
   onChange?: (value: string) => void;
   /** Increment to programmatically clear the input (resets internal state). */
   clearTrigger?: number;
+  /** When set, user search results go to this callback instead of showing a dropdown overlay. */
+  onUserResults?: (items: SearchMenuItem[]) => void;
   className?: string;
 }
 
@@ -75,6 +77,7 @@ export const SearchUsers = ({
   onTyping,
   onChange,
   clearTrigger,
+  onUserResults,
   className = "",
 }: SearchUsersProps) => {
   const [menuItems, setMenuItems] = useState<SearchMenuItem[]>();
@@ -93,9 +96,11 @@ export const SearchUsers = ({
   // Allow parent to programmatically clear the input
   useEffect(() => {
     if (clearTrigger !== undefined && clearTrigger > 0) {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
       setInputValue("");
       setMenuItems([]);
       setIsOpen(false);
+      onUserResults?.([]);
     }
   }, [clearTrigger]);
 
@@ -124,6 +129,7 @@ export const SearchUsers = ({
     setInputValue("");
     setMenuItems([]);
     setIsOpen(false);
+    onUserResults?.([]);
     return item;
   };
 
@@ -170,8 +176,12 @@ export const SearchUsers = ({
       profile: p,
       text: nameOrFormattedKey(p, p.PublicKeyBase58Check),
     }));
-    setMenuItems(items);
-    if (items.length > 0) setIsOpen(true);
+    if (onUserResults) {
+      onUserResults(items);
+    } else {
+      setMenuItems(items);
+      if (items.length > 0) setIsOpen(true);
+    }
   };
 
   const getProfilesDebounced = (q: string) => {
@@ -210,6 +220,7 @@ export const SearchUsers = ({
             if (!name) {
               setMenuItems([]);
               setIsOpen(false);
+              onUserResults?.([]);
               return;
             }
 
@@ -231,7 +242,7 @@ export const SearchUsers = ({
         <MyErrorLabel error={error} />
       </div>
 
-      {isOpen && (loading || shownItems.length > 0) && (
+      {!onUserResults && isOpen && (loading || shownItems.length > 0) && (
         <div className="absolute z-10 w-full bg-[#050e1d] text-blue-100 max-h-80 mt-1 rounded-md overflow-y-scroll custom-scrollbar border border-blue-900">
           {loading && (
             <div className="flex justify-center py-4">

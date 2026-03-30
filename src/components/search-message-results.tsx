@@ -2,6 +2,7 @@ import { ChatType } from "deso-protocol";
 import { Loader2 } from "lucide-react";
 import { FC, ReactNode } from "react";
 import { MessageSearchResult, SearchProgress } from "../services/message-search.service";
+import { SearchMenuItem } from "./search-users";
 import { MSG_FILE_NAME, MSG_GIF_TITLE } from "../utils/extra-data";
 import { formatRelativeTimestamp } from "../utils/helpers";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
@@ -57,6 +58,8 @@ export const SearchMessageResults: FC<{
   isDeepSearching: boolean;
   progress: SearchProgress | null;
   onSelectResult: (conversationKey: string) => void;
+  userResults?: SearchMenuItem[];
+  onUserSelected?: (item: SearchMenuItem) => void;
 }> = ({
   results,
   query,
@@ -64,6 +67,8 @@ export const SearchMessageResults: FC<{
   isDeepSearching,
   progress,
   onSelectResult,
+  userResults = [],
+  onUserSelected,
 }) => {
   return (
     <div className="overflow-y-auto max-h-full custom-scrollbar pb-24">
@@ -140,6 +145,31 @@ export const SearchMessageResults: FC<{
           Searching {progress.completedConversations} of{" "}
           {progress.totalConversations} conversations...
         </div>
+      )}
+
+      {/* People section — DeSo user search results */}
+      {userResults.length > 0 && (
+        <>
+          <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-t border-white/5 mt-2">
+            People
+          </div>
+          {userResults.map((item) => (
+            <div
+              key={item.id}
+              onClick={() => onUserSelected?.(item)}
+              className="px-4 py-2.5 hover:bg-white/5 cursor-pointer flex items-center gap-3 transition-colors"
+            >
+              <MessagingDisplayAvatar
+                username={item.profile?.Username}
+                publicKey={item.id}
+                diameter={40}
+              />
+              <span className="text-sm text-white font-medium">
+                {item.text}
+              </span>
+            </div>
+          ))}
+        </>
       )}
     </div>
   );
