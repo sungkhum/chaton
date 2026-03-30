@@ -142,10 +142,14 @@ function MessageContent({ message }: { message: DecryptedMessageEntryResponse })
     case "file":
       return (
         <FileMessage
-          fileUrl={parsed.imageUrl || ""}
+          fileUrl={parsed.fileUrl || parsed.imageUrl || ""}
           fileName={parsed.fileName || "File"}
           fileSize={parsed.fileSize}
           fileType={parsed.fileType}
+          description={parsed.fileDescription}
+          ogTitle={parsed.ogTitle}
+          ogDescription={parsed.ogDescription}
+          ogImage={parsed.ogImage}
         />
       );
 

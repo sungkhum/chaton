@@ -1,5 +1,5 @@
 import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Send, Image, Loader2, Pencil, X, Check } from "lucide-react";
+import { Send, Image, Loader2, Pencil, X, Check, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 import { EmojiPickerButton } from "./compose/emoji-picker-button";
 import { GifPicker } from "./compose/gif-picker";
@@ -8,8 +8,10 @@ import { MentionPicker, MentionCandidate } from "./compose/mention-picker";
 import { GiphyGif } from "../services/giphy.service";
 import { uploadImage } from "../services/media.service";
 import { ReplyBanner } from "./compose/reply-banner";
+import { LinkAttachmentPanel } from "./compose/link-attachment-panel";
 import { useDraftMessages } from "../hooks/useDraftMessages";
 import { buildExtraData, MentionEntry, MSG_MENTIONS } from "../utils/extra-data";
+import { OgData } from "../services/og.service";
 
 export interface SendMessageButtonAndInputProps {
   onClick: (messageToSend: string, extraData?: Record<string, string>) => void;
@@ -41,6 +43,7 @@ export const SendMessageButtonAndInput = ({
   const [isUploading, setIsUploading] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [pendingImage, setPendingImage] = useState<{ file: File; previewUrl: string } | null>(null);
+  const [showLinkPanel, setShowLinkPanel] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { getDraft, setDraft, clearDraft } = useDraftMessages();
 
@@ -244,6 +247,8 @@ export const SendMessageButtonAndInput = ({
     // Revoke previous preview URL if any
     if (pendingImage) URL.revokeObjectURL(pendingImage.previewUrl);
     setPendingImage({ file, previewUrl: URL.createObjectURL(file) });
+    setShowLinkPanel(false);
+    setShowGifPicker(false);
   };
 
   const cancelImage = () => {
@@ -286,6 +291,22 @@ export const SendMessageButtonAndInput = ({
         return;
       }
     }
+  };
+
+  const handleLinkSend = (url: string, description?: string, ogData?: OgData) => {
+    const body = description ? `📎 ${description}\n${url}` : `📎 ${url}`;
+    sendMessage(body, buildExtraData({
+      type: "file",
+      fileUrl: url,
+      fileDescription: description,
+      fileName: (() => {
+        try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; }
+      })(),
+      ogTitle: ogData?.title,
+      ogDescription: ogData?.description,
+      ogImage: ogData?.image,
+    }));
+    setShowLinkPanel(false);
   };
 
   // Auto-grow textarea
@@ -347,6 +368,15 @@ export const SendMessageButtonAndInput = ({
           />
         )}
 
+        {/* Link attachment panel */}
+        {showLinkPanel && (
+          <LinkAttachmentPanel
+            onSend={handleLinkSend}
+            onCancel={() => setShowLinkPanel(false)}
+            isSending={isSending}
+          />
+        )}
+
         {/* Image preview panel */}
         {pendingImage && (
           <ImagePreviewPanel
@@ -358,7 +388,22 @@ export const SendMessageButtonAndInput = ({
           />
         )}
 
-        {/* Attachment button */}
+        {/* Link attachment button */}
+        <button
+          onClick={() => {
+            setShowLinkPanel((v) => !v);
+            setShowGifPicker(false);
+            if (pendingImage) cancelImage();
+          }}
+          aria-label="Attach a link"
+          title="Share a link"
+          className="p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors"
+          type="button"
+        >
+          <Paperclip className="w-[18px] h-[18px]" />
+        </button>
+
+        {/* Image button */}
         <label className={`p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors ${isUploading ? "opacity-50 pointer-events-none" : ""}`}>
           {isUploading ? (
             <Loader2 className="w-[18px] h-[18px] animate-spin" />
@@ -377,7 +422,11 @@ export const SendMessageButtonAndInput = ({
         {/* GIF button */}
         <div className="relative shrink-0">
           <button
-            onClick={() => setShowGifPicker(!showGifPicker)}
+            onClick={() => {
+              setShowGifPicker((v) => !v);
+              setShowLinkPanel(false);
+              if (pendingImage) cancelImage();
+            }}
             className="px-1.5 py-2 text-gray-500 hover:text-[#34F080] cursor-pointer font-extrabold text-[11px] tracking-wide transition-colors"
             type="button"
           >

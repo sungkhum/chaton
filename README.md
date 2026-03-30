@@ -42,6 +42,7 @@ Sign in with a DeSo identity or an Ethereum wallet (MetaMask), and message anyon
 - **GIF picker** — search and send GIFs via Giphy integration
 - **Video messages** — send video with inline playback
 - **File attachments** — share files of any type with download links
+- **Link attachments** — share URLs with descriptions, Open Graph previews, and branded cards for 44+ services (Google Drive, GitHub, Figma, YouTube, Dropbox, etc.)
 
 ### Real-Time
 - **WebSocket relay** — instant message delivery via Cloudflare Durable Objects
@@ -176,7 +177,8 @@ ChatOn follows a **DeSo-first** architecture. The blockchain is the database.
 │  ├─ Durable Object (WebSocket relay) │
 │  ├─ D1 (subscriptions + thread state)│
 │  ├─ Cron Trigger (DeSo poller)       │
-│  └─ Queue (push delivery)            │
+│  ├─ Queue (push delivery)            │
+│  └─ /og endpoint (OG metadata fetch) │
 └──────────────────────────────────────┘
 ```
 
@@ -217,6 +219,7 @@ worker/
 │   ├── chat-relay.ts    # Durable Object: WebSocket relay + real-time push
 │   ├── web-push.ts      # RFC 8291/8292 VAPID encryption (Web Crypto only)
 │   ├── poll.ts          # DeSo thread polling + new message detection
+│   ├── og.ts            # Open Graph metadata fetcher (SSRF-safe, cached)
 │   └── db.ts            # D1 helpers (users, subscriptions, thread state)
 ├── migrations/          # D1 schema migrations
 └── wrangler.toml        # Worker config (D1, Queue, Cron, Durable Object)
@@ -256,6 +259,11 @@ All keys use the `msg:` namespace. Set only the keys relevant to your message ty
 | `msg:fileName` | `string` | File attachment name |
 | `msg:fileSize` | `string` (bytes) | File size |
 | `msg:fileType` | MIME type | File MIME type |
+| `msg:fileUrl` | URL | Shared link URL (for link attachments) |
+| `msg:fileDescription` | `string` | User-provided description for a shared link |
+| `msg:ogTitle` | `string` | Open Graph title fetched from the URL (max 100 chars) |
+| `msg:ogDescription` | `string` | Open Graph description fetched from the URL (max 200 chars) |
+| `msg:ogImage` | URL | Open Graph image URL fetched from the URL |
 | `msg:edited` | `"true"` | Message has been edited |
 | `msg:deleted` | `"true"` | Message has been soft-deleted |
 | `msg:mentions` | JSON array | User mentions: `[{"pk":"BC1Y...","un":"alice"}]` |
@@ -327,6 +335,31 @@ ExtraData:
 
 The encrypted message body should contain a text fallback (e.g., the image URL or a description) for apps that don't render media inline.
 
+### Link Attachments
+
+Users can share URLs with optional descriptions and automatically fetched Open Graph metadata. The URL, description, and OG data are stored in ExtraData while the message body carries a human-readable fallback for other DeSo apps.
+
+```
+ExtraData:
+  msg:type            = "file"
+  msg:fileUrl         = "https://github.com/sungkhum/chaton"
+  msg:fileDescription = "ChatOn source code"
+  msg:fileName        = "github.com"
+  msg:ogTitle         = "sungkhum/chaton"
+  msg:ogDescription   = "Encrypted messaging on the DeSo blockchain"
+  msg:ogImage         = "https://opengraph.githubassets.com/..."
+
+EncryptedMessageText: <encrypted "📎 ChatOn source code\nhttps://github.com/sungkhum/chaton">
+```
+
+**Backward compatibility:** The encrypted message body contains `📎 Description\nURL`, so apps that don't understand the ExtraData keys still display a readable message with the link.
+
+**Open Graph fetching:** OG metadata is fetched once by the sender's client via a Cloudflare Worker endpoint (`/og`). The worker fetches the first 50KB of the target page, extracts `og:title`, `og:description`, and `og:image` (with `<title>` and `<meta name="description">` fallbacks), and caches results for 1 hour. The OG data is embedded in ExtraData at send time — receivers never need to fetch it, which preserves recipient privacy (no IP leakage to the target site).
+
+**Service detection:** ChatOn recognizes 44+ services (Google Drive, Dropbox, GitHub, Figma, YouTube, Notion, etc.) by URL pattern and renders branded cards with service-specific colors and badges. This is purely cosmetic — no special ExtraData is stored; detection happens at render time from `msg:fileUrl`.
+
+**Encryption:** In full privacy mode, `msg:fileUrl`, `msg:fileDescription`, `msg:ogTitle`, `msg:ogDescription`, and `msg:ogImage` are all encrypted alongside the other ExtraData values. Other DeSo apps that haven't implemented decryption will only see the encrypted message body fallback.
+
 ### Edit and Delete
 
 Edits and deletes use DeSo's `updateDMMessage` / `updateGroupChatMessage` with the original `TimestampNanosString`. Set `msg:edited: "true"` or `msg:deleted: "true"` in ExtraData.
@@ -352,10 +385,13 @@ ChatOn uses DeSo User Associations for chat request classification. These are po
 
 ### Implementation Reference
 
-The full implementation lives in two files:
+The full implementation lives in these files:
 
 - **[`src/utils/extra-data.ts`](src/utils/extra-data.ts)** — constants, types, `parseMessageType()`, and `buildExtraData()`
 - **[`src/services/conversations.service.tsx`](src/services/conversations.service.tsx)** — encryption/decryption, send/update, and the ExtraData encryption pipeline
+- **[`src/utils/link-services.ts`](src/utils/link-services.ts)** — URL-to-service detection for 44+ services (renders branded link cards)
+- **[`src/services/og.service.ts`](src/services/og.service.ts)** — client-side Open Graph fetch service (calls the worker `/og` endpoint)
+- **[`worker/src/og.ts`](worker/src/og.ts)** — server-side OG metadata extraction with SSRF protection and Cloudflare cache
 
 ## Contributing
 

@@ -1,5 +1,6 @@
 export { ChatRelay } from "./chat-relay";
 
+import { handleOgFetch } from "./og";
 import { handleScheduled, type PushJob } from "./poll";
 import {
   upsertUser,
@@ -91,6 +92,13 @@ export default {
     if (url.pathname === "/push/subscribe" && request.method === "POST") {
       if (!isOriginAllowed(origin, allowed)) return forbidden();
       const res = await handlePushSubscribe(request, env);
+      return withCors(res, origin!);
+    }
+
+    // Open Graph metadata fetch
+    if (url.pathname === "/og" && request.method === "POST") {
+      if (!isOriginAllowed(origin, allowed)) return forbidden();
+      const res = await handleOgFetch(request);
       return withCors(res, origin!);
     }
 

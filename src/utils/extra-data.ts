@@ -14,6 +14,11 @@ export const MSG_DURATION = "msg:duration";
 export const MSG_FILE_NAME = "msg:fileName";
 export const MSG_FILE_SIZE = "msg:fileSize";
 export const MSG_FILE_TYPE = "msg:fileType";
+export const MSG_FILE_URL = "msg:fileUrl";
+export const MSG_FILE_DESCRIPTION = "msg:fileDescription";
+export const MSG_OG_TITLE = "msg:ogTitle";
+export const MSG_OG_DESCRIPTION = "msg:ogDescription";
+export const MSG_OG_IMAGE = "msg:ogImage";
 export const MSG_EMOJI = "msg:emoji";
 export const MSG_ACTION = "msg:action";
 export const MSG_EDITED = "msg:edited";
@@ -38,6 +43,11 @@ export const FULL_ENCRYPTED_KEYS = [
   MSG_FILE_NAME,
   MSG_FILE_SIZE,
   MSG_FILE_TYPE,
+  MSG_FILE_URL,
+  MSG_FILE_DESCRIPTION,
+  MSG_OG_TITLE,
+  MSG_OG_DESCRIPTION,
+  MSG_OG_IMAGE,
   MSG_REPLY_PREVIEW,
   MSG_MENTIONS,
 ] as const;
@@ -79,6 +89,11 @@ export interface ParsedMessage {
   fileName?: string;
   fileSize?: number;
   fileType?: string;
+  fileUrl?: string;
+  fileDescription?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImage?: string;
   replyTo?: string;
   replyPreview?: string;
   emoji?: string;
@@ -115,6 +130,11 @@ export function parseMessageType(
       ? parseInt(extra[MSG_FILE_SIZE])
       : undefined,
     fileType: extra[MSG_FILE_TYPE],
+    fileUrl: extra[MSG_FILE_URL],
+    fileDescription: extra[MSG_FILE_DESCRIPTION],
+    ogTitle: extra[MSG_OG_TITLE],
+    ogDescription: extra[MSG_OG_DESCRIPTION],
+    ogImage: extra[MSG_OG_IMAGE],
     replyTo: extra[MSG_REPLY_TO],
     replyPreview: extra[MSG_REPLY_PREVIEW],
     emoji: extra[MSG_EMOJI],
@@ -164,6 +184,11 @@ export function buildExtraData(
   if (parsed.fileSize !== undefined)
     extra[MSG_FILE_SIZE] = String(parsed.fileSize);
   if (parsed.fileType) extra[MSG_FILE_TYPE] = parsed.fileType;
+  if (parsed.fileUrl) extra[MSG_FILE_URL] = parsed.fileUrl;
+  if (parsed.fileDescription) extra[MSG_FILE_DESCRIPTION] = parsed.fileDescription;
+  if (parsed.ogTitle) extra[MSG_OG_TITLE] = parsed.ogTitle.slice(0, 100);
+  if (parsed.ogDescription) extra[MSG_OG_DESCRIPTION] = parsed.ogDescription.slice(0, 200);
+  if (parsed.ogImage) extra[MSG_OG_IMAGE] = parsed.ogImage;
   if (parsed.replyTo) extra[MSG_REPLY_TO] = parsed.replyTo;
   if (parsed.replyPreview) extra[MSG_REPLY_PREVIEW] = parsed.replyPreview;
   if (parsed.emoji) extra[MSG_EMOJI] = parsed.emoji;
