@@ -1572,7 +1572,7 @@ export const MessagingApp: FC = () => {
             </div>
 
             <div
-              className={`w-full h-full shrink-0 md:shrink md:w-[calc(100vw-340px)] bg-[#0a1019] md:ml-0 md:z-auto ${
+              className={`w-full h-full shrink-0 md:flex-1 md:min-w-0 bg-[#0a1019] md:ml-0 md:z-auto ${
                 selectedConversationPublicKey ? "ml-[-100%] z-50" : ""
               }`}
             >
