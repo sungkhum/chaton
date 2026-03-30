@@ -28,6 +28,7 @@ Sign in with a DeSo identity or an Ethereum wallet (MetaMask), and message anyon
 
 ### Messaging
 - **End-to-end encrypted DMs** — private conversations between any two DeSo or Ethereum users
+- **Full metadata encryption** — media URLs, reactions, file names, and reply previews are encrypted by default, not just message text
 - **Encrypted group chats** — create named groups, add members, manage access
 - **Cross-chain messaging** — message DeSo usernames, public keys, ETH addresses, or ENS names
 - **Optimistic UI** — messages appear instantly; blockchain confirmation happens in the background
@@ -179,7 +180,7 @@ ChatOn follows a **DeSo-first** architecture. The blockchain is the database.
 └──────────────────────────────────────┘
 ```
 
-- **All messages** are encrypted and stored on the DeSo blockchain
+- **All messages and metadata** (media URLs, reactions, file names) are encrypted and stored on the DeSo blockchain
 - **All identity** (usernames, keys, follows) comes from DeSo
 - **The relay** forwards real-time WebSocket events and sends push notifications
 - **D1** stores push subscriptions and per-user thread timestamps for polling
@@ -264,12 +265,12 @@ All keys use the `msg:` namespace. Set only the keys relevant to your message ty
 
 ExtraData is normally stored as plaintext on the blockchain. For sensitive values, ChatOn encrypts individual ExtraData values using the same key used for the message body.
 
-ChatOn supports two privacy modes, controlled by the user:
+ChatOn supports two privacy modes, controlled by a toggle in the user menu:
 
 | Mode | What's encrypted in ExtraData | Default? |
 |------|-------------------------------|----------|
-| **Standard** | `msg:emoji`, `msg:action` (reaction privacy) | Yes |
-| **Full** | All media URLs, file metadata, reply previews, mentions, plus everything in Standard | No |
+| **Full** | All media URLs, file metadata, reply previews, mentions, reactions | Yes |
+| **Standard** | `msg:emoji`, `msg:action` (reaction privacy only) | No |
 
 **How it works:**
 
@@ -277,7 +278,9 @@ ChatOn supports two privacy modes, controlled by the user:
 2. Set `msg:encrypted: "true"` to signal that some values need decryption.
 3. On the receiving side, always attempt to decrypt all potentially-encrypted keys (the sender may use full mode even if the receiver doesn't). The same DM-vs-group key resolution applies.
 
-**Backward compatibility:** Apps that don't handle `msg:encrypted` will see encrypted hex strings instead of plaintext values. They can safely ignore these — the encrypted message body still contains a human-readable fallback. In Standard mode, only reaction metadata is affected. Full mode makes media URLs and file names unreadable to other DeSo apps — users opt into this tradeoff knowingly.
+**Backward compatibility:** Apps that don't handle `msg:encrypted` will see encrypted hex strings instead of plaintext values. They can safely ignore these — the encrypted message body still contains a human-readable fallback. In Full mode (the default), media URLs, file names, and other metadata are unreadable to other DeSo apps that haven't implemented decryption. Users can switch to Standard mode if cross-app compatibility for media metadata is more important than privacy.
+
+**Note on media URLs:** Images, videos, and files are uploaded to DeSo's public image hosting, so the media itself is accessible to anyone with the URL. What Full encryption protects is the *link* — without decrypting the ExtraData, no one can discover which URLs belong to your conversation. This is a DeSo platform limitation, not a ChatOn limitation.
 
 The user's privacy mode preference is stored as an on-chain self-association (see [On-Chain Associations](#on-chain-associations) below) and cached locally for instant access.
 
@@ -345,7 +348,7 @@ ChatOn uses DeSo User Associations for chat request classification. These are po
 | `chaton:chat-approved` | `"approved"` | Other user | User accepted a chat request from the target user |
 | `chaton:chat-blocked` | `"blocked"` | Other user | User blocked the target user |
 | `chat:group-archived` | `<AccessGroupKeyName>` | Group owner | User left/archived a group chat. Generic `chat:` prefix so any DeSo app can query it. |
-| `chaton:privacy-mode` | `"standard"` \| `"full"` | Self | User's ExtraData encryption preference. Self-referencing (transactor = target). Omitted when `"standard"` (the default). |
+| `chaton:privacy-mode` | `"standard"` \| `"full"` | Self | User's ExtraData encryption preference. Self-referencing (transactor = target). Omitted when `"full"` (the default). |
 
 ### Implementation Reference
 

@@ -305,8 +305,8 @@ export const LandingPage = () => {
             </h1>
             <p className="hero-desc text-base md:text-2xl text-gray-400 leading-relaxed max-w-2xl font-medium border-l-4 border-[#34F080]/25 pl-5 md:pl-8 mb-8 md:mb-14">
               ChatOn is end-to-end encrypted messaging on the DeSo
-              blockchain. Your message content is unreadable to everyone
-              except you and your recipients.{" "}
+              blockchain. Your messages, media, and metadata are unreadable
+              to everyone except you and your recipients.{" "}
               <span className="text-white">Built to scale. Impossible to censor.</span>
             </p>
             <div className="hero-cta flex flex-col sm:flex-row gap-4 md:gap-8">
@@ -403,9 +403,10 @@ export const LandingPage = () => {
                 Content Stays Private
               </h3>
               <p className="text-gray-500 font-medium leading-relaxed text-left">
-                Messages are encrypted in your browser before touching the
-                blockchain. The network can see that you sent a message — but
-                never what you said.
+                Messages, media URLs, reactions, and file metadata are all
+                encrypted in your browser before touching the blockchain. The
+                network can see that you sent a message — but never what you
+                said or shared.
               </p>
             </div>
             <div className="feature-card landing-glass-card p-7 md:p-12 rounded-3xl md:rounded-[48px] group">
@@ -596,8 +597,8 @@ export const LandingPage = () => {
               <p className="text-base md:text-lg text-gray-400 font-medium leading-relaxed">
                 Tap to react with any emoji — they aggregate into tappable pills
                 below each message. Quote-reply for threaded context. Share GIFs,
-                images, videos, and files — all stored on-chain alongside your
-                conversations.
+                images, videos, and files — all encrypted and stored on-chain
+                alongside your conversations.
               </p>
             </div>
           </div>
@@ -799,11 +800,19 @@ export const LandingPage = () => {
                   </li>
                   <li className="flex items-start gap-3">
                     <Check className="w-4 h-4 text-[#3090D0] mt-0.5 shrink-0" />
+                    Image, video, and file URLs
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <Check className="w-4 h-4 text-[#3090D0] mt-0.5 shrink-0" />
+                    Reactions and reply previews
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <Check className="w-4 h-4 text-[#3090D0] mt-0.5 shrink-0" />
                     Group encryption keys
                   </li>
                 </ul>
                 <div className="mt-10 pt-6 border-t border-white/5 text-[10px] text-gray-500 italic">
-                  The letter inside is sealed. Only sender and recipient hold the keys.
+                  The letter inside is sealed — including every attachment. Only sender and recipient hold the keys.
                 </div>
               </div>
             </div>
