@@ -338,9 +338,11 @@ export const MessagingApp: FC = () => {
             } else if (!threadId) {
               // Resume from background — compute unread from timestamps
               const lastReadTimestamps = getCachedLastReadTimestamps(appUser.PublicKeyBase58Check);
+              const store = useStore.getState();
               const unreadMap = new Map<string, number>();
               for (const [k, convo] of Object.entries(updated)) {
                 if (k === currentSelectedKey) continue;
+                if (store.mutedConversations.has(k) || store.archivedGroups.has(k)) continue;
                 const latestMsg = convo.messages[0];
                 if (!latestMsg || latestMsg.IsSender) continue;
                 const msgTs = latestMsg.MessageInfo.TimestampNanos;
@@ -984,9 +986,11 @@ export const MessagingApp: FC = () => {
 
       // Compute initial unread state from persisted last-read timestamps
       const lastReadTimestamps = getCachedLastReadTimestamps(publicKey);
+      const { mutedConversations: muted, archivedGroups: archived } = useStore.getState();
       const unreadMap = new Map<string, number>();
       for (const [k, convo] of Object.entries(conversationsResponse)) {
         if (k === keyToUse) continue; // Currently selected conversation
+        if (muted.has(k) || archived.has(k)) continue; // Skip muted/archived
         const latestMsg = convo.messages[0];
         if (!latestMsg || latestMsg.IsSender) continue; // No messages or I sent the latest
         const msgTs = latestMsg.MessageInfo.TimestampNanos;
