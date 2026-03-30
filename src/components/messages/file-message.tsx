@@ -78,9 +78,13 @@ export const FileMessage = ({
             <div className="flex items-start gap-3">
               {service ? (
                 <div className={`mt-0.5 w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${service.badgeBg}`}>
-                  <span className={`text-xs font-bold leading-none ${service.badgeText}`}>
-                    {service.badge}
-                  </span>
+                  {service.icon ? (
+                    <service.icon size={18} className={service.badgeText} />
+                  ) : (
+                    <span className={`text-xs font-bold leading-none ${service.badgeText}`}>
+                      {service.badge}
+                    </span>
+                  )}
                 </div>
               ) : (
                 <div className="mt-0.5 p-2 bg-blue-500/15 rounded-lg shrink-0">

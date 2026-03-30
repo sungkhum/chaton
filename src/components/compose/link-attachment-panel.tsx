@@ -234,9 +234,13 @@ export const LinkAttachmentPanel = ({
                 <div className="p-2.5 flex items-start gap-2.5">
                   {service ? (
                     <div className={`w-7 h-7 rounded flex items-center justify-center shrink-0 ${service.badgeBg}`}>
-                      <span className={`text-[10px] font-bold leading-none ${service.badgeText}`}>
-                        {service.badge}
-                      </span>
+                      {service.icon ? (
+                        <service.icon size={14} className={service.badgeText} />
+                      ) : (
+                        <span className={`text-[10px] font-bold leading-none ${service.badgeText}`}>
+                          {service.badge}
+                        </span>
+                      )}
                     </div>
                   ) : (
                     <div className="w-7 h-7 rounded flex items-center justify-center shrink-0 bg-blue-500/15">

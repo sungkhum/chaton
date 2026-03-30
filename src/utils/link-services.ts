@@ -3,6 +3,20 @@
  * branding metadata for richer link card rendering.
  */
 
+import type { ComponentType, SVGProps } from "react";
+import {
+  SiGoogledrive, SiDropbox, SiBox, SiIcloud, SiWetransfer,
+  SiGithub, SiGitlab, SiBitbucket, SiCodesandbox, SiStackblitz,
+  SiNpm, SiVercel, SiNetlify,
+  SiFigma, SiMiro, SiSketch,
+  SiYoutube, SiVimeo, SiLoom, SiTwitch, SiSpotify, SiSoundcloud,
+  SiNotion, SiLinear, SiTrello, SiAirtable, SiCoda, SiAsana, SiClickup,
+  SiConfluence, SiJira,
+  SiDiscord, SiZoom, SiGooglemeet, SiCalendly,
+  SiX, SiReddit, SiMedium, SiSubstack, SiProducthunt,
+  SiTypeform,
+} from "@icons-pack/react-simple-icons";
+
 export interface LinkService {
   /** Display name, e.g. "Google Drive" */
   name: string;
@@ -16,6 +30,8 @@ export interface LinkService {
   cardGradient: string;
   /** Tailwind border class for the card */
   cardBorder: string;
+  /** Optional Simple Icons brand icon component */
+  icon?: ComponentType<SVGProps<SVGSVGElement> & { size?: number | string; color?: string }>;
 }
 
 interface ServicePattern {
@@ -33,6 +49,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Google Drive",
       badge: "GD",
+      icon: SiGoogledrive,
       badgeBg: "bg-yellow-500/20",
       badgeText: "text-yellow-400",
       cardGradient: "from-yellow-900/30 to-orange-900/20",
@@ -44,6 +61,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Dropbox",
       badge: "DB",
+      icon: SiDropbox,
       badgeBg: "bg-blue-500/20",
       badgeText: "text-blue-400",
       cardGradient: "from-blue-900/40 to-blue-800/20",
@@ -77,6 +95,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Box",
       badge: "Bx",
+      icon: SiBox,
       badgeBg: "bg-blue-500/20",
       badgeText: "text-blue-300",
       cardGradient: "from-blue-900/35 to-slate-900/20",
@@ -88,6 +107,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "iCloud",
       badge: "iC",
+      icon: SiIcloud,
       badgeBg: "bg-gray-400/20",
       badgeText: "text-gray-300",
       cardGradient: "from-gray-800/40 to-slate-900/20",
@@ -99,6 +119,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "WeTransfer",
       badge: "WT",
+      icon: SiWetransfer,
       badgeBg: "bg-cyan-500/20",
       badgeText: "text-cyan-400",
       cardGradient: "from-cyan-900/35 to-blue-900/20",
@@ -112,6 +133,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "GitHub",
       badge: "GH",
+      icon: SiGithub,
       badgeBg: "bg-gray-400/20",
       badgeText: "text-gray-200",
       cardGradient: "from-gray-800/50 to-gray-900/30",
@@ -123,6 +145,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "GitLab",
       badge: "GL",
+      icon: SiGitlab,
       badgeBg: "bg-orange-500/20",
       badgeText: "text-orange-400",
       cardGradient: "from-orange-900/30 to-red-900/20",
@@ -134,6 +157,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Bitbucket",
       badge: "BB",
+      icon: SiBitbucket,
       badgeBg: "bg-blue-500/20",
       badgeText: "text-blue-400",
       cardGradient: "from-blue-900/40 to-indigo-900/20",
@@ -145,6 +169,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "CodeSandbox",
       badge: "CS",
+      icon: SiCodesandbox,
       badgeBg: "bg-gray-400/20",
       badgeText: "text-gray-200",
       cardGradient: "from-gray-800/45 to-slate-900/20",
@@ -156,6 +181,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "StackBlitz",
       badge: "SB",
+      icon: SiStackblitz,
       badgeBg: "bg-blue-500/20",
       badgeText: "text-blue-300",
       cardGradient: "from-blue-900/40 to-indigo-900/20",
@@ -167,6 +193,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "npm",
       badge: "npm",
+      icon: SiNpm,
       badgeBg: "bg-red-500/20",
       badgeText: "text-red-400",
       cardGradient: "from-red-900/30 to-rose-900/20",
@@ -178,6 +205,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Vercel",
       badge: "V",
+      icon: SiVercel,
       badgeBg: "bg-gray-400/20",
       badgeText: "text-gray-100",
       cardGradient: "from-gray-800/50 to-gray-900/30",
@@ -189,6 +217,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Netlify",
       badge: "N",
+      icon: SiNetlify,
       badgeBg: "bg-teal-500/20",
       badgeText: "text-teal-300",
       cardGradient: "from-teal-900/35 to-cyan-900/20",
@@ -202,6 +231,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Figma",
       badge: "Fg",
+      icon: SiFigma,
       badgeBg: "bg-purple-500/20",
       badgeText: "text-purple-400",
       cardGradient: "from-purple-900/35 to-violet-900/20",
@@ -224,6 +254,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Miro",
       badge: "Mi",
+      icon: SiMiro,
       badgeBg: "bg-yellow-500/20",
       badgeText: "text-yellow-400",
       cardGradient: "from-yellow-900/30 to-amber-900/20",
@@ -235,6 +266,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Sketch",
       badge: "Sk",
+      icon: SiSketch,
       badgeBg: "bg-orange-500/20",
       badgeText: "text-orange-400",
       cardGradient: "from-orange-900/30 to-yellow-900/20",
@@ -248,6 +280,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "YouTube",
       badge: "YT",
+      icon: SiYoutube,
       badgeBg: "bg-red-500/20",
       badgeText: "text-red-400",
       cardGradient: "from-red-900/35 to-rose-900/20",
@@ -259,6 +292,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Vimeo",
       badge: "Vm",
+      icon: SiVimeo,
       badgeBg: "bg-cyan-500/20",
       badgeText: "text-cyan-400",
       cardGradient: "from-cyan-900/35 to-sky-900/20",
@@ -270,6 +304,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Loom",
       badge: "Lo",
+      icon: SiLoom,
       badgeBg: "bg-purple-500/20",
       badgeText: "text-purple-400",
       cardGradient: "from-purple-900/35 to-indigo-900/20",
@@ -281,6 +316,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Twitch",
       badge: "Tw",
+      icon: SiTwitch,
       badgeBg: "bg-violet-500/20",
       badgeText: "text-violet-400",
       cardGradient: "from-violet-900/35 to-purple-900/20",
@@ -292,6 +328,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Spotify",
       badge: "Sp",
+      icon: SiSpotify,
       badgeBg: "bg-green-500/20",
       badgeText: "text-green-400",
       cardGradient: "from-green-900/35 to-emerald-900/20",
@@ -303,6 +340,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "SoundCloud",
       badge: "SC",
+      icon: SiSoundcloud,
       badgeBg: "bg-orange-500/20",
       badgeText: "text-orange-400",
       cardGradient: "from-orange-900/30 to-amber-900/20",
@@ -316,6 +354,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Notion",
       badge: "N",
+      icon: SiNotion,
       badgeBg: "bg-gray-400/20",
       badgeText: "text-gray-200",
       cardGradient: "from-gray-800/50 to-slate-900/25",
@@ -327,6 +366,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Linear",
       badge: "Li",
+      icon: SiLinear,
       badgeBg: "bg-indigo-500/20",
       badgeText: "text-indigo-400",
       cardGradient: "from-indigo-900/35 to-violet-900/20",
@@ -338,6 +378,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Trello",
       badge: "Tr",
+      icon: SiTrello,
       badgeBg: "bg-blue-500/20",
       badgeText: "text-blue-400",
       cardGradient: "from-blue-900/40 to-sky-900/20",
@@ -349,6 +390,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Airtable",
       badge: "At",
+      icon: SiAirtable,
       badgeBg: "bg-blue-500/20",
       badgeText: "text-blue-300",
       cardGradient: "from-blue-900/35 to-indigo-900/20",
@@ -360,6 +402,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Coda",
       badge: "Co",
+      icon: SiCoda,
       badgeBg: "bg-orange-500/20",
       badgeText: "text-orange-400",
       cardGradient: "from-orange-900/30 to-red-900/20",
@@ -371,6 +414,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Asana",
       badge: "As",
+      icon: SiAsana,
       badgeBg: "bg-rose-500/20",
       badgeText: "text-rose-400",
       cardGradient: "from-rose-900/30 to-pink-900/20",
@@ -382,6 +426,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "ClickUp",
       badge: "CU",
+      icon: SiClickup,
       badgeBg: "bg-violet-500/20",
       badgeText: "text-violet-400",
       cardGradient: "from-violet-900/35 to-purple-900/20",
@@ -407,6 +452,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Confluence",
       badge: "Cf",
+      icon: SiConfluence,
       badgeBg: "bg-blue-500/20",
       badgeText: "text-blue-400",
       cardGradient: "from-blue-900/40 to-indigo-900/20",
@@ -418,6 +464,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Jira",
       badge: "Ji",
+      icon: SiJira,
       badgeBg: "bg-blue-500/20",
       badgeText: "text-blue-400",
       cardGradient: "from-blue-900/40 to-indigo-900/20",
@@ -442,6 +489,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Discord",
       badge: "Dc",
+      icon: SiDiscord,
       badgeBg: "bg-indigo-500/20",
       badgeText: "text-indigo-400",
       cardGradient: "from-indigo-900/40 to-violet-900/20",
@@ -453,6 +501,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Zoom",
       badge: "Zm",
+      icon: SiZoom,
       badgeBg: "bg-blue-500/20",
       badgeText: "text-blue-400",
       cardGradient: "from-blue-900/40 to-sky-900/20",
@@ -464,6 +513,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Google Meet",
       badge: "GM",
+      icon: SiGooglemeet,
       badgeBg: "bg-green-500/20",
       badgeText: "text-green-400",
       cardGradient: "from-green-900/35 to-teal-900/20",
@@ -475,6 +525,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Calendly",
       badge: "Ca",
+      icon: SiCalendly,
       badgeBg: "bg-blue-500/20",
       badgeText: "text-blue-400",
       cardGradient: "from-blue-900/35 to-indigo-900/20",
@@ -488,6 +539,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "X",
       badge: "X",
+      icon: SiX,
       badgeBg: "bg-gray-400/20",
       badgeText: "text-gray-200",
       cardGradient: "from-gray-800/50 to-slate-900/25",
@@ -510,6 +562,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Reddit",
       badge: "Re",
+      icon: SiReddit,
       badgeBg: "bg-orange-500/20",
       badgeText: "text-orange-400",
       cardGradient: "from-orange-900/30 to-red-900/20",
@@ -521,6 +574,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Medium",
       badge: "M",
+      icon: SiMedium,
       badgeBg: "bg-gray-400/20",
       badgeText: "text-gray-200",
       cardGradient: "from-gray-800/50 to-slate-900/25",
@@ -532,6 +586,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Substack",
       badge: "Su",
+      icon: SiSubstack,
       badgeBg: "bg-orange-500/20",
       badgeText: "text-orange-400",
       cardGradient: "from-orange-900/30 to-amber-900/20",
@@ -543,6 +598,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Product Hunt",
       badge: "PH",
+      icon: SiProducthunt,
       badgeBg: "bg-orange-500/20",
       badgeText: "text-orange-400",
       cardGradient: "from-orange-900/30 to-red-900/20",
@@ -556,6 +612,7 @@ const SERVICES: ServicePattern[] = [
     service: {
       name: "Typeform",
       badge: "Tf",
+      icon: SiTypeform,
       badgeBg: "bg-gray-400/20",
       badgeText: "text-gray-200",
       cardGradient: "from-gray-800/45 to-slate-900/20",

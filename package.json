@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@icons-pack/react-simple-icons": "^13.11.1",
     "@noble/hashes": "^1.3.2",
     "@serwist/vite": "^9.5.7",
     "@serwist/window": "^9.5.7",
