@@ -967,7 +967,10 @@ export const MessagingApp: FC = () => {
         if (!latestMsg || latestMsg.IsSender) continue; // No messages or I sent the latest
         const msgTs = latestMsg.MessageInfo.TimestampNanos;
         const lastRead = lastReadTimestamps[k];
-        if (lastRead === undefined || msgTs > lastRead) {
+        if (lastRead === undefined) {
+          // First time seeing this conversation — seed as read
+          cacheLastReadTimestamp(publicKey, k, msgTs);
+        } else if (msgTs > lastRead) {
           unreadMap.set(k, 1);
         }
       }
