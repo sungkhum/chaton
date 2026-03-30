@@ -150,6 +150,21 @@ export function useWebSocket(callbacks: WsCallbacks) {
     };
   }, [appUser]);
 
+  // Reconnect WebSocket when PWA resumes from background
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && appUser) {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+          if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+          reconnectAttempt.current = 0;
+          connect();
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [appUser, connect]);
+
   useEffect(() => {
     connect();
     return () => {

@@ -607,6 +607,17 @@ export const MessagingApp: FC = () => {
     return () => navigator.serviceWorker?.removeEventListener("message", handler);
   }, []);
 
+  // Refresh conversations when PWA resumes from background
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && appUser && !loading) {
+        handleWsNewMessage("", "");
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [appUser, loading, handleWsNewMessage]);
+
   useEffect(() => {
     setSelectedConversationPublicKey("");
     setLockRefresh(isLoadingUser);
