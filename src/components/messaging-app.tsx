@@ -1426,8 +1426,8 @@ export const MessagingApp: FC = () => {
                   You're the<strong> owner of this group</strong>
                 </div>
                 <div
-                  className={`flex items-center gap-3 justify-end ${
-                    !isGroupOwner ? "md:w-full" : ""
+                  className={`flex items-center gap-3 justify-end shrink-0 ${
+                    !isGroupOwner ? "md:w-full md:shrink" : ""
                   }`}
                 >
                   {selectedConversationPublicKey && (
@@ -1469,6 +1469,7 @@ export const MessagingApp: FC = () => {
                         }
                         publicKey={selectedConversation.firstMessagePublicKey}
                         diameter={40}
+                        classNames="shrink-0"
                       />
                     )
                   )}
