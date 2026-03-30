@@ -32,7 +32,7 @@ function ConditionalLink({
       href={href}
       target={target}
       rel="noreferrer"
-      className={`w-full ${className}`}
+      className={className}
       style={style}
       onClick={onClick}
     >
@@ -136,7 +136,7 @@ export const MessagingDisplayAvatar: FC<{
 
   return (
     <ConditionalLink
-      className={`block ${classNames}`}
+      className={`block shrink-0 ${classNames}`}
       style={{
         width: `${diameter}px`,
         maxWidth: `${diameter}px`,
@@ -156,7 +156,7 @@ export const MessagingDisplayAvatar: FC<{
           fontSize: `${fontSize}px`,
           position: "relative",
         }}
-        className={`rounded-full flex items-center justify-center font-semibold select-none ${borderColor}`}
+        className={`rounded-full overflow-hidden flex items-center justify-center font-semibold select-none ${borderColor}`}
         title={publicKey}
       >
         <span style={{ color: avatarColor.text, lineHeight: 1 }}>
@@ -172,8 +172,9 @@ export const MessagingDisplayAvatar: FC<{
               transition: "opacity 0.2s ease-in",
               position: "absolute",
               inset: 0,
+              objectFit: "cover",
             }}
-            className={`bg-no-repeat bg-center bg-cover rounded-full ${borderColor}`}
+            className={`rounded-full ${borderColor}`}
             alt={publicKey}
             title={publicKey}
             onLoad={handleImgLoad}

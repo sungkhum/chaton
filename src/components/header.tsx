@@ -43,7 +43,7 @@ export const Header = () => {
   }, [menuOpen]);
 
   return (
-    <header className="flex justify-between items-center px-4 h-14 fixed top-0 z-50 w-full bg-[#080d16]/95 backdrop-blur-xl border-b border-white/5">
+    <header className="flex justify-between items-center px-4 h-14 fixed top-0 z-[60] w-full bg-[#080d16]/95 backdrop-blur-xl border-b border-white/5">
       <a href="/" className="flex items-center gap-2.5">
         <img
           src="/ChatOn-Logo-Small.png"
