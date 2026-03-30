@@ -90,8 +90,8 @@ export function AnimatedEmoji({
       loading={eager ? "eager" : "lazy"}
       draggable={false}
       onError={handleError}
-      className={`inline-block ${className}`}
-      style={{ width: size, height: size }}
+      className={`inline-block shrink-0 ${className}`}
+      style={{ width: size, height: size, minWidth: size, minHeight: size }}
     />
   );
 }

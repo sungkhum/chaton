@@ -55,15 +55,17 @@ export const EmojiPickerButton = ({ onEmojiSelect }: EmojiPickerButtonProps) => 
               </EmojiPicker.Empty>
               <EmojiPicker.List
                 components={{
-                  Row: (props) => <div {...props} className="flex gap-0.5 px-1" />,
-                  Emoji: (props) => (
+                  Row: ({ className: cls, ...props }) => (
+                    <div {...props} className={`${cls || ""} flex gap-0.5 px-1`} />
+                  ),
+                  Emoji: ({ className: cls, ...props }) => (
                     <button
                       {...props}
-                      className="flex items-center justify-center w-9 h-9 rounded-md text-xl hover:bg-white/10 cursor-pointer transition-colors"
+                      className={`${cls || ""} flex items-center justify-center w-9 h-9 rounded-md text-xl hover:bg-white/10 cursor-pointer transition-colors`}
                     />
                   ),
-                  CategoryHeader: ({ category, ...props }) => (
-                    <div {...props} className="px-2 py-1.5 text-xs font-semibold text-white/40 sticky top-0 bg-[#0a1628] z-10">
+                  CategoryHeader: ({ category, className: cls, ...props }) => (
+                    <div {...props} className={`${cls || ""} px-2 py-1.5 text-xs font-semibold text-white/40 sticky top-0 bg-[#0a1628] z-10`}>
                       {category.label}
                     </div>
                   ),

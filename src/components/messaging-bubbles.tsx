@@ -38,6 +38,7 @@ export interface MessagingBubblesProps {
   conversations: ConversationMap;
   conversationPublicKey: string;
   getUsernameByPublicKey: { [k: string]: string };
+  profilePicByPublicKey?: { [k: string]: string };
   onScroll: (e: Array<DecryptedMessageEntryResponse>) => void;
   onReply?: (message: DecryptedMessageEntryResponse) => void;
   onReact?: (timestampNanosString: string, emoji: string) => void;
@@ -152,6 +153,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   conversations,
   conversationPublicKey,
   getUsernameByPublicKey,
+  profilePicByPublicKey,
   onScroll,
   onReply,
   onReact,
@@ -170,23 +172,29 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   const [reactionPickerFor, setReactionPickerFor] = useState<string | null>(null);
   const [mobileActionFor, setMobileActionFor] = useState<string | null>(null);
   const [deleteMenuFor, setDeleteMenuFor] = useState<string | null>(null);
+  const actionBarRef = useRef<HTMLDivElement>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressPosRef = useRef<{ x: number; y: number } | null>(null);
   const { isMobile } = useMobile();
 
-  // Close reaction picker / delete menu on click outside
+  // Close reaction picker / delete menu / desktop action bar on click outside
   useEffect(() => {
-    if (!reactionPickerFor && !deleteMenuFor) return;
+    if (!reactionPickerFor && !deleteMenuFor && !hoveredMessage) return;
     const handleClick = (e: MouseEvent) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (pickerRef.current && !pickerRef.current.contains(target)) {
         setReactionPickerFor(null);
       }
+      // Don't dismiss action bar when clicking inside it or its sub-menus
+      if (actionBarRef.current && actionBarRef.current.contains(target)) return;
+      if (pickerRef.current && pickerRef.current.contains(target)) return;
       setDeleteMenuFor(null);
+      setHoveredMessage(null);
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [reactionPickerFor, deleteMenuFor]);
+  }, [reactionPickerFor, deleteMenuFor, hoveredMessage]);
 
   // Close mobile action bar on scroll
   useEffect(() => {
@@ -257,6 +265,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   const closeMobileAction = useCallback(() => {
     clearLongPressTimer(); // Kill pending timer so bar doesn't reopen
     setMobileActionFor(null);
+    setHoveredMessage(null);
     setReactionPickerFor(null);
     setDeleteMenuFor(null);
   }, [clearLongPressTimer]);
@@ -449,19 +458,19 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
               </EmojiPicker.Empty>
               <EmojiPicker.List
                 components={{
-                  Row: (props) => (
-                    <div {...props} className="flex gap-0.5 px-1" />
+                  Row: ({ className: cls, ...props }) => (
+                    <div {...props} className={`${cls || ""} flex gap-0.5 px-1`} />
                   ),
-                  Emoji: (props) => (
+                  Emoji: ({ className: cls, ...props }) => (
                     <button
                       {...props}
-                      className="flex items-center justify-center w-11 h-11 rounded-md text-2xl hover:bg-white/10 cursor-pointer transition-colors"
+                      className={`${cls || ""} flex items-center justify-center w-11 h-11 rounded-md text-2xl hover:bg-white/10 cursor-pointer transition-colors`}
                     />
                   ),
-                  CategoryHeader: ({ category, ...props }) => (
+                  CategoryHeader: ({ category, className: cls, ...props }) => (
                     <div
                       {...props}
-                      className="px-2 py-1.5 text-xs font-semibold text-white/40 sticky top-0 bg-[#141c2b] z-10"
+                      className={`${cls || ""} px-2 py-1.5 text-xs font-semibold text-white/40 sticky top-0 bg-[#141c2b] z-10`}
                     >
                       {category.label}
                     </div>
@@ -545,6 +554,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                   getUsernameByPublicKey[message.SenderInfo.OwnerPublicKeyBase58Check]
                 }
                 publicKey={message.SenderInfo.OwnerPublicKeyBase58Check}
+                extraDataPicUrl={profilePicByPublicKey?.[message.SenderInfo.OwnerPublicKeyBase58Check]}
                 diameter={36}
                 classNames="relative"
               />
@@ -559,7 +569,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
 
           const showActionBar = isMobile
             ? mobileActionFor === messageKey
-            : isHovered || reactionPickerFor === messageKey || deleteMenuFor === messageKey;
+            : hoveredMessage === messageKey || reactionPickerFor === messageKey;
 
           return (
             <div
@@ -574,14 +584,17 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
               } ${isMobile ? "select-none" : ""}`}
               style={isMobile ? { WebkitTouchCallout: "none" } : undefined}
               key={messageKey}
-              onMouseEnter={() => setHoveredMessage(messageKey)}
-              onMouseLeave={() => setHoveredMessage(null)}
               onTouchStart={
                 isMobile ? (e) => handleTouchStart(e, messageKey) : undefined
               }
               onTouchMove={isMobile ? handleTouchMove : undefined}
               onTouchEnd={isMobile ? handleTouchEnd : undefined}
-              onContextMenu={isMobile ? (e) => e.preventDefault() : undefined}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                if (!isMobile) {
+                  setHoveredMessage(messageKey);
+                }
+              }}
             >
               {!IsSender && (isLastInGroup ? messagingDisplayAvatarAndTimestamp : avatarSpacer)}
               <div className={`w-full ${IsSender ? "text-right" : "text-left"}`}>
@@ -622,39 +635,14 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                     )}
                   </div>
 
-                  {/* Action bar (hover on desktop, long-press on mobile) */}
+                  {/* Telegram-style context menu (right-click on desktop, long-press on mobile) */}
                   {showActionBar && !parsed.deleted && (
-                    <div
-                      className={`absolute ${
-                        isMobile ? "-top-12" : "-top-8"
-                      } ${
-                        IsSender ? "right-0" : "left-0"
-                      } flex items-center gap-0.5 bg-[#141c2b] border border-white/10 backdrop-blur-md rounded-lg ${
-                        isMobile ? "px-1.5 py-1" : "px-1 py-0.5"
-                      } shadow-lg z-10`}
-                    >
-                      {onReply && (
-                        <button
-                          onClick={() => {
-                            onReply(message);
-                            closeMobileAction();
-                          }}
-                          className={`${
-                            isMobile
-                              ? "w-11 h-11 flex items-center justify-center"
-                              : "p-1"
-                          } hover:bg-white/10 rounded cursor-pointer`}
-                          title="Reply"
-                        >
-                          <Reply
-                            className={`${
-                              isMobile ? "w-5 h-5" : "w-3.5 h-3.5"
-                            } text-gray-400`}
-                          />
-                        </button>
-                      )}
+                    <div ref={actionBarRef} className="contents">
+                      {/* Quick reactions row — above the message */}
                       {onReact && (
-                        <>
+                        <div className={`absolute ${IsSender ? "right-0" : "left-0"} bottom-full mb-1 z-10 flex items-center gap-0.5 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg ${
+                          isMobile ? "px-1.5 py-1.5" : "px-1 py-1"
+                        }`}>
                           {QUICK_REACTIONS.map((emoji) => (
                             <button
                               key={emoji}
@@ -668,13 +656,13 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                               }}
                               className={`${
                                 isMobile
-                                  ? "w-11 h-11 flex items-center justify-center"
-                                  : "p-1"
-                              } hover:bg-white/10 rounded cursor-pointer leading-none`}
+                                  ? "w-11 h-11"
+                                  : "w-9 h-9"
+                              } flex items-center justify-center hover:bg-white/10 rounded-lg cursor-pointer transition-colors leading-none`}
                             >
                               <AnimatedEmoji
                                 emoji={emoji}
-                                size={isMobile ? 28 : 20}
+                                size={isMobile ? 28 : 24}
                                 eager
                               />
                             </button>
@@ -688,104 +676,76 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                               )
                             }
                             className={`${
-                              isMobile
-                                ? "w-11 h-11 flex items-center justify-center"
-                                : "p-1"
-                            } hover:bg-white/10 rounded cursor-pointer`}
+                              isMobile ? "w-11 h-11" : "w-9 h-9"
+                            } flex items-center justify-center hover:bg-white/10 rounded-lg cursor-pointer transition-colors`}
                             title="More reactions"
                           >
-                            <Plus
-                              className={`${
-                                isMobile ? "w-5 h-5" : "w-3.5 h-3.5"
-                              } text-gray-400`}
-                            />
+                            <Plus className={`${isMobile ? "w-5 h-5" : "w-4 h-4"} text-gray-400`} />
                           </button>
-                        </>
-                      )}
-
-                      {/* Divider before edit/delete actions */}
-                      {(onEdit || onDeleteForMe || onDeleteForEveryone) && (
-                        <div className="w-px h-5 bg-white/10 mx-0.5" />
-                      )}
-
-                      {/* Edit button — own text messages only, not optimistic */}
-                      {onEdit && IsSender && parsed.type === "text" && !(message as any)._localId && (
-                        <button
-                          onClick={() => {
-                            onEdit(message);
-                            closeMobileAction();
-                          }}
-                          className={`${
-                            isMobile
-                              ? "w-11 h-11 flex items-center justify-center"
-                              : "p-1"
-                          } hover:bg-white/10 rounded cursor-pointer`}
-                          title="Edit"
-                        >
-                          <Pencil
-                            className={`${
-                              isMobile ? "w-5 h-5" : "w-3.5 h-3.5"
-                            } text-gray-400`}
-                          />
-                        </button>
-                      )}
-
-                      {/* Delete button */}
-                      {(onDeleteForMe || onDeleteForEveryone) && !(message as any)._localId && (
-                        <div className="relative">
-                          <button
-                            onClick={() =>
-                              setDeleteMenuFor(
-                                deleteMenuFor === messageKey ? null : messageKey
-                              )
-                            }
-                            className={`${
-                              isMobile
-                                ? "w-11 h-11 flex items-center justify-center"
-                                : "p-1"
-                            } hover:bg-white/10 rounded cursor-pointer`}
-                            title="Delete"
-                          >
-                            <Trash2
-                              className={`${
-                                isMobile ? "w-5 h-5" : "w-3.5 h-3.5"
-                              } text-gray-400`}
-                            />
-                          </button>
-
-                          {/* Delete dropdown */}
-                          {deleteMenuFor === messageKey && (
-                            <div
-                              className={`absolute top-full mt-1 ${
-                                IsSender ? "right-0" : "left-0"
-                              } bg-[#141c2b] border border-white/10 rounded-lg shadow-lg z-20 min-w-[180px] py-1`}
-                            >
-                              {onDeleteForMe && (
-                                <button
-                                  onClick={() => {
-                                    onDeleteForMe(message.MessageInfo.TimestampNanosString);
-                                    closeMobileAction();
-                                  }}
-                                  className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 cursor-pointer transition-colors"
-                                >
-                                  Delete for me
-                                </button>
-                              )}
-                              {onDeleteForEveryone && IsSender && (
-                                <button
-                                  onClick={() => {
-                                    onDeleteForEveryone(message);
-                                    closeMobileAction();
-                                  }}
-                                  className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-white/10 cursor-pointer transition-colors"
-                                >
-                                  Delete for everyone
-                                </button>
-                              )}
-                            </div>
-                          )}
                         </div>
                       )}
+
+                      {/* Action menu — below the message */}
+                      <div className={`absolute ${IsSender ? "right-0" : "left-0"} top-full mt-1 z-10 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg ${
+                        isMobile ? "py-1.5 min-w-[200px]" : "py-1 min-w-[180px]"
+                      }`}>
+                        {onReply && (
+                          <button
+                            onClick={() => {
+                              onReply(message);
+                              closeMobileAction();
+                            }}
+                            className={`w-full flex items-center gap-3 ${
+                              isMobile ? "px-4 py-3" : "px-3 py-2"
+                            } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
+                          >
+                            <Reply className="w-4 h-4 text-gray-400 shrink-0" />
+                            Reply
+                          </button>
+                        )}
+                        {onEdit && IsSender && parsed.type === "text" && !(message as any)._localId && (
+                          <button
+                            onClick={() => {
+                              onEdit(message);
+                              closeMobileAction();
+                            }}
+                            className={`w-full flex items-center gap-3 ${
+                              isMobile ? "px-4 py-3" : "px-3 py-2"
+                            } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
+                          >
+                            <Pencil className="w-4 h-4 text-gray-400 shrink-0" />
+                            Edit
+                          </button>
+                        )}
+                        {onDeleteForMe && !(message as any)._localId && (
+                          <button
+                            onClick={() => {
+                              onDeleteForMe(message.MessageInfo.TimestampNanosString);
+                              closeMobileAction();
+                            }}
+                            className={`w-full flex items-center gap-3 ${
+                              isMobile ? "px-4 py-3" : "px-3 py-2"
+                            } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
+                          >
+                            <Trash2 className="w-4 h-4 text-gray-400 shrink-0" />
+                            Delete for me
+                          </button>
+                        )}
+                        {onDeleteForEveryone && IsSender && !(message as any)._localId && (
+                          <button
+                            onClick={() => {
+                              onDeleteForEveryone(message);
+                              closeMobileAction();
+                            }}
+                            className={`w-full flex items-center gap-3 ${
+                              isMobile ? "px-4 py-3" : "px-3 py-2"
+                            } text-sm text-red-400 hover:bg-white/8 cursor-pointer transition-colors`}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-400 shrink-0" />
+                            Delete for everyone
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -793,9 +753,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                   {reactionPickerFor === messageKey && !isMobile && (
                     <div
                       ref={pickerRef}
-                      className={`absolute z-50 ${
-                        IsSender ? "right-0" : "left-0"
-                      } bottom-full mb-10`}
+                      className={`absolute z-50 ${IsSender ? "right-0" : "left-0"} bottom-full mb-10`}
                     >
                       <EmojiPicker.Root
                         onEmojiSelect={(emoji: { emoji: string }) => {
@@ -820,15 +778,17 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                           </EmojiPicker.Empty>
                           <EmojiPicker.List
                             components={{
-                              Row: (props) => <div {...props} className="flex gap-0.5 px-1" />,
-                              Emoji: (props) => (
+                              Row: ({ className: cls, ...props }) => (
+                                <div {...props} className={`${cls || ""} flex gap-0.5 px-1`} />
+                              ),
+                              Emoji: ({ className: cls, ...props }) => (
                                 <button
                                   {...props}
-                                  className="flex items-center justify-center w-9 h-9 rounded-md text-xl hover:bg-white/10 cursor-pointer transition-colors"
+                                  className={`${cls || ""} flex items-center justify-center w-9 h-9 rounded-md text-xl hover:bg-white/10 cursor-pointer transition-colors`}
                                 />
                               ),
-                              CategoryHeader: ({ category, ...props }) => (
-                                <div {...props} className="px-2 py-1.5 text-xs font-semibold text-white/40 sticky top-0 bg-[#141c2b] z-10">
+                              CategoryHeader: ({ category, className: cls, ...props }) => (
+                                <div {...props} className={`${cls || ""} px-2 py-1.5 text-xs font-semibold text-white/40 sticky top-0 bg-[#141c2b] z-10`}>
                                   {category.label}
                                 </div>
                               ),
@@ -849,6 +809,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                       onReactionClick={(emoji) =>
                         onReact?.(message.MessageInfo.TimestampNanosString, emoji)
                       }
+                      getUsernameByPublicKey={getUsernameByPublicKey}
+                      profilePicByPublicKey={profilePicByPublicKey}
                     />
                   </div>
                 )}
