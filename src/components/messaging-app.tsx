@@ -976,6 +976,9 @@ export const MessagingApp: FC = () => {
       }
       if (unreadMap.size > 0) {
         initializeUnread(unreadMap);
+      } else {
+        // No unread conversations — clear any stale PWA badge set by the service worker
+        navigator.clearAppBadge?.();
       }
       // Mark the selected conversation as read
       if (keyToUse) {
