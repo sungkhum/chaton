@@ -172,50 +172,43 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   const [reactionPickerFor, setReactionPickerFor] = useState<string | null>(null);
   const [mobileActionFor, setMobileActionFor] = useState<string | null>(null);
   const [deleteMenuFor, setDeleteMenuFor] = useState<string | null>(null);
+  const [actionBarFlipped, setActionBarFlipped] = useState(false);
   const actionBarRef = useRef<HTMLDivElement>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const activeBubbleRef = useRef<HTMLElement | null>(null);
 
-  // Reposition context menu / emoji picker if they overflow the viewport
+  // Reposition desktop emoji picker if it overflows the viewport
   useEffect(() => {
-    const reposition = (el: HTMLElement | null) => {
-      if (!el) return;
-      // Reset any previous adjustments
-      el.style.top = "";
-      el.style.bottom = "";
-      el.style.left = "";
-      el.style.right = "";
-      el.style.marginTop = "";
-      el.style.marginBottom = "";
+    const el = pickerRef.current;
+    if (!el) return;
+    el.style.top = "";
+    el.style.bottom = "";
+    el.style.left = "";
+    el.style.right = "";
+    el.style.marginTop = "";
+    el.style.marginBottom = "";
 
-      requestAnimationFrame(() => {
-        const rect = el.getBoundingClientRect();
-        const scrollArea = messageAreaRef.current;
-        const topBound = scrollArea ? scrollArea.getBoundingClientRect().top : 0;
-
-        // If menu extends above the visible area, flip to below the bubble
-        if (rect.top < topBound) {
-          el.style.bottom = "auto";
-          el.style.top = "100%";
-          el.style.marginTop = "4px";
-          el.style.marginBottom = "0";
-        }
-
-        // Prevent horizontal overflow
-        const viewportWidth = window.innerWidth;
-        if (rect.right > viewportWidth - 8) {
-          el.style.left = "auto";
-          el.style.right = "0";
-        }
-        if (rect.left < 8) {
-          el.style.right = "auto";
-          el.style.left = "0";
-        }
-      });
-    };
-
-    reposition(actionBarRef.current);
-    reposition(pickerRef.current);
-  }, [hoveredMessage, mobileActionFor, reactionPickerFor]);
+    requestAnimationFrame(() => {
+      const rect = el.getBoundingClientRect();
+      const scrollArea = messageAreaRef.current;
+      const topBound = scrollArea ? scrollArea.getBoundingClientRect().top : 0;
+      if (rect.top < topBound) {
+        el.style.bottom = "auto";
+        el.style.top = "100%";
+        el.style.marginTop = "4px";
+        el.style.marginBottom = "0";
+      }
+      const viewportWidth = window.innerWidth;
+      if (rect.right > viewportWidth - 8) {
+        el.style.left = "auto";
+        el.style.right = "0";
+      }
+      if (rect.left < 8) {
+        el.style.right = "auto";
+        el.style.left = "0";
+      }
+    });
+  }, [reactionPickerFor]);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressPosRef = useRef<{ x: number; y: number } | null>(null);
   const { isMobile } = useMobile();
@@ -258,6 +251,19 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     longPressPosRef.current = null;
   }, []);
 
+  // Determine if the action bar should render below the bubble instead of above.
+  // Uses ~200px as estimated action bar height (reactions row + menu).
+  const computeFlip = useCallback((bubbleEl: HTMLElement | null) => {
+    if (!bubbleEl || !messageAreaRef.current) {
+      setActionBarFlipped(false);
+      return;
+    }
+    const bubbleRect = bubbleEl.getBoundingClientRect();
+    const scrollRect = messageAreaRef.current.getBoundingClientRect();
+    const spaceAbove = bubbleRect.top - scrollRect.top;
+    setActionBarFlipped(spaceAbove < 200);
+  }, []);
+
   // Clean up timer on unmount
   useEffect(() => {
     return () => {
@@ -284,10 +290,15 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
         longPressTimerRef.current = null;
         if (navigator.vibrate) navigator.vibrate(20);
         setReactionPickerFor(null); // Close picker from previous message
+        // Find the bubble element and compute flip before opening
+        const target = e.currentTarget as HTMLElement;
+        const bubble = target.querySelector<HTMLElement>(".relative.inline-block");
+        activeBubbleRef.current = bubble;
+        computeFlip(bubble);
         setMobileActionFor(messageKey);
       }, 300);
     },
-    [clearLongPressTimer]
+    [clearLongPressTimer, computeFlip]
   );
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
@@ -634,6 +645,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
               onContextMenu={(e) => {
                 e.preventDefault();
                 if (!isMobile) {
+                  const bubble = (e.currentTarget as HTMLElement).querySelector<HTMLElement>(".relative.inline-block");
+                  computeFlip(bubble);
                   setHoveredMessage(messageKey);
                 }
               }}
@@ -679,7 +692,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
 
                   {/* Telegram-style context menu (right-click on desktop, long-press on mobile) */}
                   {showActionBar && !parsed.deleted && (
-                    <div ref={actionBarRef} className={`absolute ${IsSender ? "right-0" : "left-0"} bottom-full mb-1 z-10 flex flex-col items-stretch`}>
+                    <div ref={actionBarRef} className={`absolute ${IsSender ? "right-0" : "left-0"} ${actionBarFlipped ? "top-full mt-1" : "bottom-full mb-1"} z-10 flex ${actionBarFlipped ? "flex-col-reverse" : "flex-col"} items-stretch`}>
                       {/* Quick reactions row */}
                       {onReact && (
                         <div className={`flex items-center gap-0.5 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg ${
