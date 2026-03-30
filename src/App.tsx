@@ -49,11 +49,14 @@ configure({
   }),
 });
 
-// NOTE: No explicit handleRedirectURI call needed — the SDK constructor
-// already processes identity query params from window.location.search
-// before this code runs.  Calling handleRedirectURI(window.location.href)
-// on clean URLs passes undefined to URLSearchParams, which crashes in
-// some WebKit versions and prevents React from mounting.
+// The SDK constructor calls handleRedirectURI(location.search) when search
+// params exist, but that runs BEFORE configure() — so redirectURI isn't set
+// yet. Call it again AFTER configure(), but ONLY when the URL actually has
+// identity redirect params. Calling it on clean URLs passes undefined to
+// URLSearchParams which crashes in some WebKit versions.
+if (useRedirectFlow && window.location.search.includes("service=identity")) {
+  identity.handleRedirectURI(window.location.href);
+}
 
 // Check cache version — clears stale data on schema changes
 checkCacheVersion();
@@ -72,6 +75,16 @@ function App() {
   useEffect(
     () => {
       let pollingIntervalId = 0;
+
+      // Safety net: if loading takes longer than 15s, force to not-loading
+      // so the user can at least see the landing page and re-login.
+      const loadingTimeout = setTimeout(() => {
+        const { isLoadingUser, appUser } = useStore.getState();
+        if (isLoadingUser && !appUser) {
+          console.warn("[ChatOn] Loading timed out — resetting to logged-out state");
+          setIsLoadingUser(false);
+        }
+      }, 15_000);
 
       identity.subscribe(({ event, currentUser, alternateUsers }) => {
         const store = useStore.getState();
@@ -99,8 +112,16 @@ function App() {
             NOTIFICATION_EVENTS.CHANGE_ACTIVE_USER,
           ].includes(event)
         ) {
-          const { messagingPublicKeyBase58Check } =
-            currentUser.primaryDerivedKey;
+          const messagingPublicKeyBase58Check =
+            currentUser.primaryDerivedKey?.messagingPublicKeyBase58Check;
+
+          if (!messagingPublicKeyBase58Check) {
+            // Derived key is missing/corrupted — can't proceed, show landing
+            console.warn("[ChatOn] Missing messagingPublicKeyBase58Check — resetting");
+            setAppUser(null);
+            setIsLoadingUser(false);
+            return;
+          }
 
           useStore.getState().resetChatRequestState();
 
@@ -271,7 +292,16 @@ function App() {
           }
           return;
         }
+      }).catch((err) => {
+        // identity.subscribe() is async — if _getState() throws (e.g.
+        // corrupted localStorage), the subscriber never fires. Fall back
+        // to logged-out state so the user can re-login.
+        console.error("[ChatOn] identity.subscribe failed:", err);
+        setAppUser(null);
+        setIsLoadingUser(false);
       });
+
+      return () => clearTimeout(loadingTimeout);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
