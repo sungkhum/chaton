@@ -223,6 +223,15 @@ input::placeholder {
   color: #607d8a !important;
 }
 
+/* Prevent iOS Safari auto-zoom on input focus (triggers when font-size < 16px) */
+@media screen and (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 .bg-gradient {
   background: linear-gradient(27deg, #07081400 30%, #06f 54%, #000c2100);
   background-repeat: no-repeat;
