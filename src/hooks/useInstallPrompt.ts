@@ -62,7 +62,7 @@ export interface InstallPromptState {
 const LS_DISMISS_KEY = "chaton-install-dismissed-at";
 const LS_VISITS_KEY = "chaton-visit-count";
 const DISMISS_COOLDOWN_DAYS = 14;
-const MIN_VISITS = 2;
+const MIN_VISITS = 1;
 
 function getPlatform(): Platform {
   const ua = navigator.userAgent || "";

@@ -52,7 +52,8 @@ function ManualIosContent() {
   return (
     <>
       <p className="text-sm text-gray-300 mb-4">
-        Add ChatOn to your home screen for a full-screen app experience.
+        Add ChatOn to your home screen for a full-screen app experience with
+        push notifications.
       </p>
       <ol className="space-y-3 text-sm text-gray-200">
         <Step n={1}>
@@ -78,7 +79,7 @@ function ManualIosOtherContent() {
   return (
     <>
       <p className="text-sm text-gray-300 mb-4">
-        To install ChatOn on your iPhone, you need to open this page in{" "}
+        To install ChatOn and enable push notifications, open this page in{" "}
         <strong>Safari</strong>.
       </p>
       <ol className="space-y-3 text-sm text-gray-200">
@@ -125,7 +126,8 @@ function ManualSamsungContent() {
   return (
     <>
       <p className="text-sm text-gray-300 mb-4">
-        Add ChatOn to your home screen for a full-screen app experience.
+        Add ChatOn to your home screen for a full-screen app experience with
+        push notifications.
       </p>
       <ol className="space-y-3 text-sm text-gray-200">
         <Step n={1}>
@@ -256,14 +258,14 @@ export function InstallPrompt() {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm
+        className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm
                     animate-[fadeIn_200ms_ease-out]"
         onClick={dismiss}
       />
 
       {/* Bottom sheet */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 mx-auto max-w-lg
+        className="fixed bottom-0 left-0 right-0 z-[70] mx-auto max-w-lg
                     rounded-t-2xl border border-white/10
                     bg-[#0F1520]/95 backdrop-blur-xl
                     p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]
