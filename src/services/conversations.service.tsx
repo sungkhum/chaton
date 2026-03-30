@@ -660,7 +660,7 @@ export async function deleteArchiveAssociation(
 /**
  * Fetch the user's privacy mode from on-chain associations.
  * Self-referencing association: transactor = target = the user.
- * Returns { mode, associationId } or defaults to "standard".
+ * Returns { mode, associationId } or defaults to "full".
  */
 export async function fetchPrivacyMode(
   publicKey: string
@@ -681,7 +681,7 @@ export async function fetchPrivacyMode(
   } catch (e) {
     console.error("Failed to fetch privacy mode association:", e);
   }
-  return { mode: "standard", associationId: null };
+  return { mode: "full", associationId: null };
 }
 
 /**
@@ -705,7 +705,7 @@ export async function setPrivacyModeOnChain(
   }
 
   // Only create on-chain if not the default — avoids unnecessary transactions
-  if (mode === PRIVACY_MODE_STANDARD && !existingAssociationId) {
+  if (mode === PRIVACY_MODE_FULL && !existingAssociationId) {
     return "";
   }
 

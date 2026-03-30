@@ -211,7 +211,7 @@ export const useStore = create<ChatOnState>((set) => ({
   archivedGroupAssociationIds: EMPTY_MAP,
 
   // Privacy mode
-  privacyMode: "standard" as PrivacyMode,
+  privacyMode: "full" as PrivacyMode,
   privacyModeAssociationId: null,
   setPrivacyMode: (mode, associationId) =>
     set((state) => {
@@ -377,7 +377,7 @@ export const useStore = create<ChatOnState>((set) => ({
       archivedGroupAssociationIds: EMPTY_MAP,
       chatRequestsLoaded: false,
       mutedConversations: EMPTY_SET,
-      privacyMode: "standard" as PrivacyMode,
+      privacyMode: "full" as PrivacyMode,
       privacyModeAssociationId: null,
     }),
 }));

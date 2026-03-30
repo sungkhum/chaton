@@ -11,6 +11,7 @@ import {
   Heart,
 } from "lucide-react";
 import { NotificationToggle } from "./notification-toggle";
+import { PrivacyToggle } from "./privacy-toggle";
 import { toast } from "sonner";
 import { formatDisplayName, getProfileURL } from "../utils/helpers";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
@@ -126,6 +127,7 @@ export const Header = () => {
                 )}
 
                 <NotificationToggle />
+                <PrivacyToggle />
 
                 <div className="border-t border-white/10 my-1" />
 
