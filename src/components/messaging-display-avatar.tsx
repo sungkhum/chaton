@@ -1,7 +1,14 @@
 import { buildProfilePictureUrl } from "deso-protocol";
-import { FC, useCallback, useEffect, useMemo, useState } from "react";
+import { FC, useCallback, useMemo, useRef, useState } from "react";
 import { AVATAR_COLORS, hashToColorIndex, getInitials } from "../utils/avatar";
 import { getProfileURL } from "../utils/helpers";
+
+/**
+ * Module-level cache of image URLs that have successfully loaded.
+ * Survives component remounts — once we know a URL works, skip the
+ * opacity-0 loading phase on subsequent mounts.
+ */
+const loadedUrlCache = new Set<string>();
 
 function ConditionalLink({
   children,
@@ -58,17 +65,13 @@ export const MessagingDisplayAvatar: FC<{
   groupImageUrl,
   extraDataPicUrl,
 }) => {
-  const [imgFailed, setImgFailed] = useState(false);
-  // Track which URL index we're trying (for fallback chain)
-  const [urlIndex, setUrlIndex] = useState(0);
-
   const colorIndex = useMemo(
     () => hashToColorIndex(publicKey || username || ""),
     [publicKey, username]
   );
   const avatarColor = AVATAR_COLORS[colorIndex];
 
-  // Build ordered list of candidate image URLs
+  // Build ordered list of candidate image URLs (deterministic, no cache busters)
   const candidateUrls = useMemo(() => {
     if (groupChat) return groupImageUrl ? [groupImageUrl] : [];
     if (!publicKey) return [];
@@ -84,23 +87,44 @@ export const MessagingDisplayAvatar: FC<{
     return urls;
   }, [publicKey, groupChat, groupImageUrl, extraDataPicUrl]);
 
-  // Reset when candidates change
-  useEffect(() => {
-    setImgFailed(false);
-    setUrlIndex(0);
-  }, [candidateUrls]);
+  // Track which URL index we're trying (for fallback chain)
+  const [urlIndex, setUrlIndex] = useState(0);
+  const [imgFailed, setImgFailed] = useState(false);
 
   const profilePicUrl = candidateUrls[urlIndex] || "";
 
-  const [imgLoaded, setImgLoaded] = useState(false);
+  // Start as `true` if the URL is already in our success cache (instant display on remount)
+  const [imgLoaded, setImgLoaded] = useState(
+    () => !!profilePicUrl && loadedUrlCache.has(profilePicUrl)
+  );
+
+  // Track the URL that successfully loaded — protects against stale onError from
+  // browser cache revalidation firing AFTER onLoad.
+  const loadedUrlRef = useRef<string | null>(
+    imgLoaded ? profilePicUrl : null
+  );
+
   const showImage = !!profilePicUrl && !imgFailed;
   const initials = getInitials(
     groupChat ? (publicKey || "") : (username || publicKey || "")
   );
   const fontSize = Math.round(diameter * 0.38);
 
-  const handleImgLoad = useCallback(() => setImgLoaded(true), []);
+  const handleImgLoad = useCallback(() => {
+    setImgLoaded(true);
+    // Cache this URL module-wide so future mounts are instant
+    const url = candidateUrls[urlIndex];
+    if (url) {
+      loadedUrlCache.add(url);
+      loadedUrlRef.current = url;
+    }
+  }, [candidateUrls, urlIndex]);
+
   const handleImgError = useCallback(() => {
+    // If this URL already loaded successfully (browser cache revalidation race),
+    // ignore the error — the image is already visible.
+    if (loadedUrlRef.current === candidateUrls[urlIndex]) return;
+
     // Try next candidate URL before giving up
     if (urlIndex < candidateUrls.length - 1) {
       setUrlIndex((i) => i + 1);
@@ -108,12 +132,7 @@ export const MessagingDisplayAvatar: FC<{
     } else {
       setImgFailed(true);
     }
-  }, [urlIndex, candidateUrls.length]);
-
-  // Reset loaded state when the URL changes
-  useEffect(() => {
-    setImgLoaded(false);
-  }, [profilePicUrl]);
+  }, [urlIndex, candidateUrls]);
 
   return (
     <ConditionalLink

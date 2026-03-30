@@ -49,10 +49,11 @@ configure({
   }),
 });
 
-// Handle returning redirect from identity
-if (useRedirectFlow) {
-  identity.handleRedirectURI(window.location.href);
-}
+// NOTE: No explicit handleRedirectURI call needed — the SDK constructor
+// already processes identity query params from window.location.search
+// before this code runs.  Calling handleRedirectURI(window.location.href)
+// on clean URLs passes undefined to URLSearchParams, which crashes in
+// some WebKit versions and prevents React from mounting.
 
 // Check cache version — clears stale data on schema changes
 checkCacheVersion();
