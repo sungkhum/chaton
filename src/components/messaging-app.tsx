@@ -350,7 +350,39 @@ export const MessagingApp: FC = () => {
             if (localThreadId && !useStore.getState().mutedConversations.has(localThreadId) && !useStore.getState().archivedGroups.has(localThreadId)) {
               useStore.getState().incrementUnread(localThreadId);
             } else if (!localThreadId) {
-              // Resume from background — compute unread from timestamps
+              // Resume from background — fetch full thread for the selected
+              // conversation so the chat view isn't blank after PWA reopen.
+              if (currentSelectedKey && updated[currentSelectedKey]) {
+                try {
+                  const { updatedConversations, pubKeyPlusGroupName: newPubKey } =
+                    await getConversation(currentSelectedKey, {
+                      ...updated,
+                      [currentSelectedKey]: updated[currentSelectedKey],
+                    });
+
+                  const updatedMessages =
+                    updatedConversations[currentSelectedKey]?.messages;
+                  if (updatedMessages) {
+                    mergeConversationUpdate(
+                      updatedConversations,
+                      currentSelectedKey,
+                      updatedMessages
+                    );
+                    setPubKeyPlusGroupName(newPubKey);
+                    if (updatedMessages[0]) {
+                      cacheLastReadTimestamp(
+                        appUser.PublicKeyBase58Check,
+                        currentSelectedKey,
+                        updatedMessages[0].MessageInfo.TimestampNanos
+                      );
+                    }
+                  }
+                } catch {
+                  // Full thread fetch failed — simple merge already applied above
+                }
+              }
+
+              // Compute unread from timestamps
               const lastReadTimestamps = getCachedLastReadTimestamps(appUser.PublicKeyBase58Check);
               const store = useStore.getState();
               const unreadMap = new Map<string, number>();
@@ -1456,7 +1488,7 @@ export const MessagingApp: FC = () => {
                       appUser.PublicKeyBase58Check,
                       key
                     );
-                    if (cached && cached.length > 0) {
+                    if (cached && cached.length > 0 && key === selectedConversationPublicKeyRef.current) {
                       setConversations((prev) => ({
                         ...prev,
                         [key]: {
@@ -1471,20 +1503,31 @@ export const MessagingApp: FC = () => {
                   try {
                     const { updatedConversations, pubKeyPlusGroupName } =
                       await getConversation(key);
-                    setConversations(updatedConversations);
-                    setPubKeyPlusGroupName(pubKeyPlusGroupName);
+                    // Only apply if this conversation is still selected
+                    // (prevents stale fetch from overwriting after rapid clicks)
+                    if (key === selectedConversationPublicKeyRef.current) {
+                      setConversations((prev) => ({
+                        ...prev,
+                        [key]: updatedConversations[key],
+                      }));
+                      setPubKeyPlusGroupName(pubKeyPlusGroupName);
 
-                    // Cache the fetched messages
-                    if (appUser && updatedConversations[key]) {
-                      cacheConversationMessages(
-                        appUser.PublicKeyBase58Check,
-                        key,
-                        updatedConversations[key].messages
-                      );
+                      // Cache the fetched messages
+                      if (appUser && updatedConversations[key]) {
+                        cacheConversationMessages(
+                          appUser.PublicKeyBase58Check,
+                          key,
+                          updatedConversations[key].messages
+                        );
+                      }
                     }
                   } finally {
-                    setLoadingConversation(false);
-                    setLockRefresh(false);
+                    // Only unlock if still on this conversation to avoid
+                    // releasing the lock for a subsequent click's fetch
+                    if (key === selectedConversationPublicKeyRef.current) {
+                      setLoadingConversation(false);
+                      setLockRefresh(false);
+                    }
                   }
                 }}
                 membersByGroupKey={membersByGroupKey}
@@ -1512,7 +1555,7 @@ export const MessagingApp: FC = () => {
             </div>
 
             <div
-              className={`w-full shrink-0 md:shrink md:w-[calc(100vw-340px)] bg-[#0a1019] md:ml-0 md:z-auto ${
+              className={`w-full h-full shrink-0 md:shrink md:w-[calc(100vw-340px)] bg-[#0a1019] md:ml-0 md:z-auto ${
                 selectedConversationPublicKey ? "ml-[-100%] z-50" : ""
               }`}
             >
@@ -1609,7 +1652,7 @@ export const MessagingApp: FC = () => {
                 className="pr-2 rounded-none w-[100%] bg-transparent ml-[calc-340px] pb-0 h-[calc(100%-56px)]"
               >
                 <div className="border-none flex flex-col justify-between h-full">
-                  <div className="max-h-[calc(100%-130px)] overflow-hidden flex-1">
+                  <div className="overflow-hidden flex-1 min-h-0">
                     {loadingConversation ? (
                       <div className="h-full flex items-center justify-center">
                         <Loader2 className="w-11 h-11 animate-spin text-[#34F080]" />
