@@ -8,6 +8,11 @@ export const ASSOCIATION_TYPE_BLOCKED = "chaton:chat-blocked";
 export const ASSOCIATION_VALUE_APPROVED = "approved";
 export const ASSOCIATION_VALUE_BLOCKED = "blocked";
 
+// Generic group archive association — any DeSo chat app can query for this type
+// to determine which groups a user has left/archived.
+// TargetUser = group owner's public key, Value = access group key name.
+export const ASSOCIATION_TYPE_GROUP_ARCHIVED = "chat:group-archived";
+
 export const getTransactionSpendingLimits = (
   publicKey: string
 ): TransactionSpendingLimitResponseOptions => {
@@ -49,6 +54,14 @@ export const getTransactionSpendingLimits = (
       {
         AssociationClass: "User" as const,
         AssociationType: ASSOCIATION_TYPE_BLOCKED,
+        AppScopeType: "Any" as const,
+        AppPublicKeyBase58Check: "",
+        AssociationOperation: "Any" as const,
+        OpCount: UNLIMITED,
+      },
+      {
+        AssociationClass: "User" as const,
+        AssociationType: ASSOCIATION_TYPE_GROUP_ARCHIVED,
         AppScopeType: "Any" as const,
         AppPublicKeyBase58Check: "",
         AssociationOperation: "Any" as const,

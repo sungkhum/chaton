@@ -151,6 +151,8 @@ interface CachedClassification {
   blockedUsers: string[];
   approvedAssociationIds: [string, string][];
   blockedAssociationIds: [string, string][];
+  archivedGroups: string[];
+  archivedGroupAssociationIds: [string, string][];
 }
 
 export interface ClassificationData {
@@ -159,6 +161,8 @@ export interface ClassificationData {
   blockedUsers: Set<string>;
   approvedAssociationIds: Map<string, string>;
   blockedAssociationIds: Map<string, string>;
+  archivedGroups: Set<string>;
+  archivedGroupAssociationIds: Map<string, string>;
 }
 
 export function cacheClassificationData(
@@ -171,6 +175,8 @@ export function cacheClassificationData(
     blockedUsers: Array.from(data.blockedUsers),
     approvedAssociationIds: Array.from(data.approvedAssociationIds.entries()),
     blockedAssociationIds: Array.from(data.blockedAssociationIds.entries()),
+    archivedGroups: Array.from(data.archivedGroups),
+    archivedGroupAssociationIds: Array.from(data.archivedGroupAssociationIds.entries()),
   };
   lsSet(publicKey, "classification", serialized);
 }
@@ -186,6 +192,8 @@ export function getCachedClassificationData(
     blockedUsers: new Set(raw.blockedUsers),
     approvedAssociationIds: new Map(raw.approvedAssociationIds),
     blockedAssociationIds: new Map(raw.blockedAssociationIds),
+    archivedGroups: new Set(raw.archivedGroups || []),
+    archivedGroupAssociationIds: new Map(raw.archivedGroupAssociationIds || []),
   };
 }
 

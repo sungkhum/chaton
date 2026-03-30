@@ -4,6 +4,7 @@ import {
   checkPartyAccessGroups,
   createUserAssociation,
   DecryptedMessageEntryResponse,
+  deleteUserAssociation,
   getAllAccessGroups,
   getAllMessageThreads,
   getFollowersForUser,
@@ -22,6 +23,7 @@ import { withAuth } from "../utils/with-auth";
 import {
   ASSOCIATION_TYPE_APPROVED,
   ASSOCIATION_TYPE_BLOCKED,
+  ASSOCIATION_TYPE_GROUP_ARCHIVED,
   ASSOCIATION_VALUE_APPROVED,
   ASSOCIATION_VALUE_BLOCKED,
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
@@ -428,13 +430,18 @@ export async function fetchChatAssociations(
 
 export function classifyConversation(
   conversation: Conversation,
+  conversationKey: string,
   myPublicKey: string,
   mutualFollows: Set<string>,
   approvedUsers: Set<string>,
   blockedUsers: Set<string>,
-  initiatedChats: Set<string>
-): "chat" | "request" | "blocked" {
-  if (conversation.ChatType === ChatType.GROUPCHAT) return "chat";
+  initiatedChats: Set<string>,
+  archivedGroups: Set<string>
+): "chat" | "request" | "blocked" | "archived" {
+  if (conversation.ChatType === ChatType.GROUPCHAT) {
+    if (archivedGroups.has(conversationKey)) return "archived";
+    return "chat";
+  }
 
   const otherKey = conversation.firstMessagePublicKey;
 
@@ -481,6 +488,66 @@ export async function createBlockAssociation(
       TargetUserPublicKeyBase58Check: targetPublicKey,
       AssociationType: ASSOCIATION_TYPE_BLOCKED,
       AssociationValue: ASSOCIATION_VALUE_BLOCKED,
+    })
+  );
+}
+
+// ── Group archive (leave group) ─────────────────────────────────────
+
+export async function fetchArchivedGroups(
+  publicKey: string
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  let lastId = "";
+
+  while (true) {
+    const res = await getUserAssociations({
+      TransactorPublicKeyBase58Check: publicKey,
+      AssociationType: ASSOCIATION_TYPE_GROUP_ARCHIVED,
+      Limit: 100,
+      ...(lastId ? { LastSeenAssociationID: lastId } : {}),
+    });
+
+    const associations = res.Associations || [];
+    if (associations.length === 0) break;
+
+    for (const a of associations) {
+      // Reconstruct conversation key: ownerPubKey + groupKeyName
+      const conversationKey =
+        a.TargetUserPublicKeyBase58Check + a.AssociationValue;
+      map.set(conversationKey, a.AssociationID);
+    }
+
+    if (associations.length < 100) break;
+    lastId = associations[associations.length - 1].AssociationID;
+  }
+
+  return map;
+}
+
+export async function createArchiveAssociation(
+  myPublicKey: string,
+  groupOwnerPublicKey: string,
+  groupKeyName: string
+): Promise<void> {
+  await withAuth(() =>
+    createUserAssociation({
+      TransactorPublicKeyBase58Check: myPublicKey,
+      TargetUserPublicKeyBase58Check: groupOwnerPublicKey,
+      AssociationType: ASSOCIATION_TYPE_GROUP_ARCHIVED,
+      AssociationValue: groupKeyName,
+    })
+  );
+}
+
+export async function deleteArchiveAssociation(
+  myPublicKey: string,
+  associationId: string
+): Promise<void> {
+  await withAuth(() =>
+    deleteUserAssociation({
+      TransactorPublicKeyBase58Check: myPublicKey,
+      AssociationID: associationId,
     })
   );
 }

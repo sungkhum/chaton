@@ -19,10 +19,13 @@ import { useTypingIndicator, useTypingDisplay } from "../hooks/useTypingIndicato
 import {
   classifyConversation,
   createApprovalAssociation,
+  createArchiveAssociation,
   createBlockAssociation,
   decryptAccessGroupMessagesWithRetry,
+  deleteArchiveAssociation,
   encryptAndSendNewMessage,
   encryptAndUpdateMessage,
+  fetchArchivedGroups,
   fetchChatAssociations,
   fetchMutualFollows,
   getConversations,
@@ -57,7 +60,7 @@ import {
   scrollContainerToElement,
 } from "../utils/helpers";
 import { Conversation, ConversationMap } from "../utils/types";
-import { buildExtraData, MSG_REPLY_TO, MSG_REPLY_PREVIEW } from "../utils/extra-data";
+import { buildExtraData, getGroupImageUrl, MSG_REPLY_TO, MSG_REPLY_PREVIEW } from "../utils/extra-data";
 import { ManageMembersDialog } from "./manage-members-dialog";
 import { MessagingBubblesAndAvatar } from "./messaging-bubbles";
 import { MessagingConversationAccount } from "./messaging-conversation-accounts";
@@ -128,8 +131,9 @@ export const MessagingApp: FC = () => {
   const {
     appUser, isLoadingUser, allAccessGroups, setAllAccessGroups, lockRefresh, setLockRefresh,
     mutualFollows, approvedUsers, blockedUsers, initiatedChats, chatRequestsLoaded,
+    archivedGroups, archivedGroupAssociationIds,
     setClassificationData, addInitiatedChat, approveUser, rollbackApproval,
-    blockUser, rollbackBlock,
+    blockUser, rollbackBlock, archiveGroup, unarchiveGroup, rollbackArchive, rollbackUnarchive, mergeArchivedGroupIds,
     unreadByConversation, clearUnread,
     mutedConversations, toggleMute,
   } = useStore();
@@ -286,7 +290,7 @@ export const MessagingApp: FC = () => {
             // Different conversation — just merge the conversation list
             simpleConversationMerge(updated);
 
-            if (threadId && !useStore.getState().mutedConversations.has(threadId)) {
+            if (threadId && !useStore.getState().mutedConversations.has(threadId) && !useStore.getState().archivedGroups.has(threadId)) {
               useStore.getState().incrementUnread(threadId);
             }
           }
@@ -306,21 +310,23 @@ export const MessagingApp: FC = () => {
   const { onKeystroke } = useTypingIndicator(sendTyping);
 
   // Derive classified conversation maps from the single conversations state + store Sets
-  const { chatConversations, requestConversations } = useMemo(() => {
-    if (!appUser) return { chatConversations: {} as ConversationMap, requestConversations: {} as ConversationMap };
+  const { chatConversations, requestConversations, archivedConversations } = useMemo(() => {
+    if (!appUser) return { chatConversations: {} as ConversationMap, requestConversations: {} as ConversationMap, archivedConversations: {} as ConversationMap };
     const chats: ConversationMap = {};
     const requests: ConversationMap = {};
+    const archived: ConversationMap = {};
     for (const [key, convo] of Object.entries(conversations)) {
       const cls = classifyConversation(
-        convo, appUser.PublicKeyBase58Check,
-        mutualFollows, approvedUsers, blockedUsers, initiatedChats
+        convo, key, appUser.PublicKeyBase58Check,
+        mutualFollows, approvedUsers, blockedUsers, initiatedChats, archivedGroups
       );
       if (cls === "chat") chats[key] = convo;
       else if (cls === "request") requests[key] = convo;
+      else if (cls === "archived") archived[key] = convo;
       // "blocked" → omitted
     }
-    return { chatConversations: chats, requestConversations: requests };
-  }, [conversations, mutualFollows, approvedUsers, blockedUsers, initiatedChats, appUser]);
+    return { chatConversations: chats, requestConversations: requests, archivedConversations: archived };
+  }, [conversations, mutualFollows, approvedUsers, blockedUsers, initiatedChats, archivedGroups, appUser]);
 
   const handleAcceptRequest = async (conversationKey: string, publicKey: string) => {
     if (!appUser) return;
@@ -341,6 +347,39 @@ export const MessagingApp: FC = () => {
     } catch (e) {
       rollbackBlock(publicKey);
       toast.error("Failed to block user");
+    }
+  };
+
+  const handleArchiveGroup = async (conversationKey: string, groupOwnerPublicKey: string, groupKeyName: string) => {
+    if (!appUser) return;
+    archiveGroup(conversationKey);
+    try {
+      await createArchiveAssociation(appUser.PublicKeyBase58Check, groupOwnerPublicKey, groupKeyName);
+      toast.success("Left group chat");
+      // Background: fetch the association ID so Rejoin works without page refresh
+      fetchArchivedGroups(appUser.PublicKeyBase58Check)
+        .then((ids) => mergeArchivedGroupIds(ids))
+        .catch(() => {});
+    } catch (e) {
+      rollbackArchive(conversationKey);
+      toast.error("Failed to leave group");
+    }
+  };
+
+  const handleUnarchiveGroup = async (conversationKey: string) => {
+    if (!appUser) return;
+    const associationId = archivedGroupAssociationIds.get(conversationKey);
+    if (!associationId) {
+      toast.error("Cannot rejoin — association not found");
+      return;
+    }
+    unarchiveGroup(conversationKey);
+    try {
+      await deleteArchiveAssociation(appUser.PublicKeyBase58Check, associationId);
+      toast.success("Rejoined group chat");
+    } catch (e) {
+      rollbackUnarchive(conversationKey, associationId);
+      toast.error("Failed to rejoin group");
     }
   };
 
@@ -711,7 +750,9 @@ export const MessagingApp: FC = () => {
           cachedClassification.approvedUsers,
           cachedClassification.blockedUsers,
           cachedClassification.approvedAssociationIds,
-          cachedClassification.blockedAssociationIds
+          cachedClassification.blockedAssociationIds,
+          cachedClassification.archivedGroups,
+          cachedClassification.archivedGroupAssociationIds
         );
       }
 
@@ -757,10 +798,12 @@ export const MessagingApp: FC = () => {
       ? Promise.all([
           fetchMutualFollows(publicKey),
           fetchChatAssociations(publicKey),
-        ]).then(([mutual, assoc]) => {
+          fetchArchivedGroups(publicKey),
+        ]).then(([mutual, assoc, archivedMap]) => {
           const approvedSet = new Set(assoc.approved.keys());
           const blockedSet = new Set(assoc.blocked.keys());
-          setClassificationData(mutual, approvedSet, blockedSet, assoc.approved, assoc.blocked);
+          const archivedSet = new Set(archivedMap.keys());
+          setClassificationData(mutual, approvedSet, blockedSet, assoc.approved, assoc.blocked, archivedSet, archivedMap);
         }).catch((e) => {
           console.error("Failed to load chat request classification data:", e);
         })
@@ -1024,6 +1067,13 @@ export const MessagingApp: FC = () => {
     selectedConversation?.messages[0]?.RecipientInfo
       ?.OwnerPublicKeyBase58Check === appUser.PublicKeyBase58Check;
   const isGroupOwner = isGroupChat && isChatOwner;
+  const selectedGroupImageUrl = isGroupChat && selectedConversation?.messages[0]
+    ? getGroupImageUrl(
+        allAccessGroups,
+        selectedConversation.messages[0].RecipientInfo.OwnerPublicKeyBase58Check,
+        selectedConversation.messages[0].RecipientInfo.AccessGroupKeyName
+      )
+    : undefined;
   const chatMembers = membersByGroupKey[selectedConversationPublicKey];
   const activeChatUsersMap: { [k: string]: string } = isGroupChat
     ? Object.keys(chatMembers || {}).reduce<{ [k: string]: string }>(
@@ -1258,8 +1308,10 @@ export const MessagingApp: FC = () => {
                 membersByGroupKey={membersByGroupKey}
                 conversations={chatConversations}
                 requestConversations={requestConversations}
+                archivedConversations={archivedConversations}
                 onAccept={handleAcceptRequest}
                 onBlock={handleBlockRequest}
+                onUnarchive={handleUnarchiveGroup}
                 getUsernameByPublicKeyBase58Check={
                   usernameByPublicKeyBase58Check
                 }
@@ -1291,12 +1343,22 @@ export const MessagingApp: FC = () => {
                   (selectedConversation.messages[0] ||
                     (!isGroupChat &&
                       selectedConversation.firstMessagePublicKey)) && (
-                    <div className="text-white font-bold text-base truncate px-2 md:hidden">
-                      {!isGroupChat &&
-                      !getCurrentChatName().startsWith(PUBLIC_KEY_PREFIX)
-                        ? "@"
-                        : ""}
-                      {getCurrentChatName()}
+                    <div className="flex items-center gap-2 min-w-0 px-2 md:hidden">
+                      {isGroupChat && selectedGroupImageUrl && (
+                        <MessagingDisplayAvatar
+                          publicKey={getCurrentChatName()}
+                          groupChat
+                          groupImageUrl={selectedGroupImageUrl}
+                          diameter={32}
+                        />
+                      )}
+                      <span className="text-white font-bold text-base truncate">
+                        {!isGroupChat &&
+                        !getCurrentChatName().startsWith(PUBLIC_KEY_PREFIX)
+                          ? "@"
+                          : ""}
+                        {getCurrentChatName()}
+                      </span>
                     </div>
                   )}
                 <div
@@ -1334,7 +1396,9 @@ export const MessagingApp: FC = () => {
                   {isGroupChat ? (
                     <ManageMembersDialog
                       conversation={selectedConversation}
+                      conversationKey={selectedConversationPublicKey}
                       onSuccess={rehydrateConversation}
+                      onLeaveGroup={handleArchiveGroup}
                       isGroupOwner={!!isGroupOwner}
                     />
                   ) : (

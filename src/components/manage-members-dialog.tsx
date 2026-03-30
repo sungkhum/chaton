@@ -9,32 +9,39 @@ import {
   identity,
   publicKeyToBase58Check,
   removeAccessGroupMembers,
+  updateAccessGroup,
   waitForTransactionFound,
 } from "deso-protocol";
 import { withAuth } from "../utils/with-auth";
-import { Loader2, Users, X } from "lucide-react";
-import { Fragment, useRef, useState } from "react";
+import { Loader2, LogOut, Users, X } from "lucide-react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import useKeyDown from "../hooks/useKeyDown";
 import { useMembers } from "../hooks/useMembers";
 import { useMobile } from "../hooks/useMobile";
 import { DEFAULT_KEY_MESSAGING_GROUP_NAME } from "../utils/constants";
+import { GROUP_IMAGE_URL, getGroupImageUrl } from "../utils/extra-data";
 import { Conversation } from "../utils/types";
+import { GroupImagePicker } from "./group-image-picker";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { SearchUsers } from "./search-users";
 
 export interface ManageMembersDialogProps {
   onSuccess: () => void;
+  onLeaveGroup: (conversationKey: string, groupOwnerPublicKey: string, groupKeyName: string) => void;
   conversation: Conversation;
+  conversationKey: string;
   isGroupOwner: boolean;
 }
 
 export const ManageMembersDialog = ({
   onSuccess,
+  onLeaveGroup,
   conversation,
+  conversationKey,
   isGroupOwner,
 }: ManageMembersDialogProps) => {
-  const { appUser } = useStore();
+  const { appUser, allAccessGroups } = useStore();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -45,6 +52,87 @@ export const ManageMembersDialog = ({
 
   const handleOpen = () => setOpen(!open);
   const groupName = conversation.messages[0].RecipientInfo.AccessGroupKeyName;
+  const groupOwnerKey = conversation.messages[0].RecipientInfo.OwnerPublicKeyBase58Check;
+
+  const currentGroupImageUrl = getGroupImageUrl(allAccessGroups, groupOwnerKey, groupName) || "";
+  const [groupImageUrl, setGroupImageUrl] = useState(currentGroupImageUrl);
+
+  // Sync local state when the dialog opens or the store value changes
+  useEffect(() => {
+    if (open) setGroupImageUrl(currentGroupImageUrl);
+  }, [open, currentGroupImageUrl]);
+
+  const handleGroupImageSave = async (newImageUrl: string) => {
+    if (!appUser || !isGroupOwner) return;
+
+    // Find the access group's public key
+    const group = allAccessGroups.find(
+      (g) =>
+        g.AccessGroupOwnerPublicKeyBase58Check === groupOwnerKey &&
+        g.AccessGroupKeyName === groupName
+    );
+    if (!group) {
+      toast.error("Could not find access group info");
+      return;
+    }
+
+    const oldImageUrl = currentGroupImageUrl;
+
+    // Optimistic update
+    setGroupImageUrl(newImageUrl);
+    const updatedGroups = allAccessGroups.map((g) => {
+      if (
+        g.AccessGroupOwnerPublicKeyBase58Check === groupOwnerKey &&
+        g.AccessGroupKeyName === groupName
+      ) {
+        const newExtraData = { ...(g.ExtraData || {}) };
+        if (newImageUrl) {
+          newExtraData[GROUP_IMAGE_URL] = newImageUrl;
+        } else {
+          delete newExtraData[GROUP_IMAGE_URL];
+        }
+        return { ...g, ExtraData: newExtraData };
+      }
+      return g;
+    });
+    useStore.setState({ allAccessGroups: updatedGroups });
+
+    try {
+      await withAuth(() =>
+        updateAccessGroup({
+          AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+          AccessGroupKeyName: groupName,
+          AccessGroupPublicKeyBase58Check: group.AccessGroupPublicKeyBase58Check,
+          MinFeeRateNanosPerKB: 1000,
+          ExtraData: newImageUrl
+            ? { [GROUP_IMAGE_URL]: newImageUrl }
+            : { [GROUP_IMAGE_URL]: "" },
+        })
+      );
+      toast.success("Group image updated");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update group image");
+      // Rollback
+      setGroupImageUrl(oldImageUrl);
+      const rollbackGroups = allAccessGroups.map((g) => {
+        if (
+          g.AccessGroupOwnerPublicKeyBase58Check === groupOwnerKey &&
+          g.AccessGroupKeyName === groupName
+        ) {
+          const newExtraData = { ...(g.ExtraData || {}) };
+          if (oldImageUrl) {
+            newExtraData[GROUP_IMAGE_URL] = oldImageUrl;
+          } else {
+            delete newExtraData[GROUP_IMAGE_URL];
+          }
+          return { ...g, ExtraData: newExtraData };
+        }
+        return g;
+      });
+      useStore.setState({ allAccessGroups: rollbackGroups });
+    }
+  };
 
   useKeyDown(() => {
     if (open) setOpen(false);
@@ -208,30 +296,43 @@ export const ManageMembersDialog = ({
             <div className="bg-[#050e1d] text-blue-100 border border-blue-900 w-[90%] md:w-[40%] rounded-lg">
               <div className="text-blue-100 p-5 border-b border-blue-600/20">
                 <div className="flex justify-between w-full items-center">
-                  <span className="text-xl font-semibold">
-                    All Members (
-                    {loading ? (
-                      <Loader2 className="w-4 h-4 inline animate-spin" />
+                  <div className="flex items-center gap-4">
+                    {isGroupOwner ? (
+                      <GroupImagePicker
+                        imageUrl={groupImageUrl}
+                        onImageChange={handleGroupImageSave}
+                        groupName={groupName}
+                        diameter={56}
+                      />
                     ) : (
-                      currentMemberKeys.length
+                      <MessagingDisplayAvatar
+                        publicKey={groupName}
+                        groupChat
+                        groupImageUrl={currentGroupImageUrl}
+                        diameter={56}
+                      />
                     )}
-                    )
-                  </span>
-                  <div className="text-sm text-right font-normal text-blue-300/60 flex">
                     <div>
-                      <strong className="text-blue-300/80">Group Name</strong>
-                      <br />
-                      {groupName}
-                    </div>
-                    {!isGroupOwner && (
-                      <div className="pl-2">
-                        <X
-                          className="w-6 h-6 cursor-pointer"
-                          onClick={() => setOpen(false)}
-                        />
+                      <span className="text-xl font-semibold">
+                        {groupName}
+                      </span>
+                      <div className="text-sm text-blue-300/60">
+                        {loading ? (
+                          <Loader2 className="w-4 h-4 inline animate-spin" />
+                        ) : (
+                          `${currentMemberKeys.length} members`
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
+                  {!isGroupOwner && (
+                    <div className="pl-2">
+                      <X
+                        className="w-6 h-6 cursor-pointer"
+                        onClick={() => setOpen(false)}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -296,26 +397,44 @@ export const ManageMembersDialog = ({
                   </div>
                 </div>
 
-                <div className="flex justify-end p-5 border-t border-blue-600/20 gap-3">
-                  {isGroupOwner && (
-                    <>
-                      <button
-                        onClick={handleOpen}
-                        type="button"
-                        className="rounded-full py-2 bg-transparent border border-blue-600/60 text-sm px-4 text-blue-100 cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="bg-[#ffda59] text-[#6d4800] rounded-full py-2 hover:brightness-95 text-sm px-4 flex items-center cursor-pointer"
-                        disabled={updating}
-                      >
-                        {updating && <Loader2 className="w-5 h-5 mr-2 animate-spin" />}
-                        <span>Update Group</span>
-                      </button>
-                    </>
+                <div className="flex justify-between p-5 border-t border-blue-600/20 gap-3">
+                  {!isGroupOwner && (
+                    <button
+                      onClick={() => {
+                        const ownerKey = conversation.messages[0]?.RecipientInfo?.OwnerPublicKeyBase58Check;
+                        if (ownerKey) {
+                          setOpen(false);
+                          onLeaveGroup(conversationKey, ownerKey, groupName);
+                        }
+                      }}
+                      type="button"
+                      className="rounded-full py-2 bg-red-500/15 border border-red-500/30 text-sm px-4 text-red-400 hover:bg-red-500/25 cursor-pointer flex items-center gap-1.5"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Leave Group
+                    </button>
                   )}
+                  <div className="flex gap-3 ml-auto">
+                    {isGroupOwner && (
+                      <>
+                        <button
+                          onClick={handleOpen}
+                          type="button"
+                          className="rounded-full py-2 bg-transparent border border-blue-600/60 text-sm px-4 text-blue-100 cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="bg-[#ffda59] text-[#6d4800] rounded-full py-2 hover:brightness-95 text-sm px-4 flex items-center cursor-pointer"
+                          disabled={updating}
+                        >
+                          {updating && <Loader2 className="w-5 h-5 mr-2 animate-spin" />}
+                          <span>Update Group</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </form>
             </div>

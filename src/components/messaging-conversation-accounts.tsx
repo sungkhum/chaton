@@ -1,6 +1,8 @@
 import { ChatType, identity, ProfileEntryResponse } from "deso-protocol";
-import { BellOff, Check, Users, X } from "lucide-react";
-import { FC, useState } from "react";
+import { Archive, BellOff, Check, RotateCcw, Users, X } from "lucide-react";
+import { FC, useEffect, useState } from "react";
+import { useStore } from "../store";
+import { getGroupImageUrl } from "../utils/extra-data";
 import { formatRelativeTimestamp, getChatNameFromConversation } from "../utils/helpers";
 import { Conversation, ConversationMap } from "../utils/types";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
@@ -29,12 +31,14 @@ const sortConversations = (
 export const MessagingConversationAccount: FC<{
   conversations: ConversationMap;
   requestConversations: ConversationMap;
+  archivedConversations: ConversationMap;
   getUsernameByPublicKeyBase58Check: { [key: string]: string };
   selectedConversationPublicKey: string;
   onClick: (publicKey: string) => void;
   rehydrateConversation: (publicKey?: string) => void;
   onAccept: (conversationKey: string, publicKey: string) => void;
   onBlock: (conversationKey: string, publicKey: string) => void;
+  onUnarchive: (conversationKey: string) => void;
   unreadByConversation: Map<string, number>;
   mutedConversations: Set<string>;
   membersByGroupKey: {
@@ -43,19 +47,30 @@ export const MessagingConversationAccount: FC<{
 }> = ({
   conversations,
   requestConversations,
+  archivedConversations,
   getUsernameByPublicKeyBase58Check,
   selectedConversationPublicKey,
   onClick,
   rehydrateConversation,
   onAccept,
   onBlock,
+  onUnarchive,
   unreadByConversation,
   mutedConversations,
   membersByGroupKey,
 }) => {
-  const [activeTab, setActiveTab] = useState<"chats" | "requests">("chats");
+  const { allAccessGroups } = useStore();
+  const [activeTab, setActiveTab] = useState<"chats" | "requests" | "archived">("chats");
   const [groupChatOpen, setGroupChatOpen] = useState(false);
   const requestCount = Object.keys(requestConversations).length;
+  const archivedCount = Object.keys(archivedConversations).length;
+
+  // Switch away from Archived tab when it empties (e.g., after rejoining the last group)
+  useEffect(() => {
+    if (activeTab === "archived" && archivedCount === 0) {
+      setActiveTab("chats");
+    }
+  }, [activeTab, archivedCount]);
 
   const handleNewMessage = () => {
     const input = document.querySelector<HTMLInputElement>(
@@ -104,6 +119,18 @@ export const MessagingConversationAccount: FC<{
               </span>
             )}
           </button>
+          {archivedCount > 0 && (
+            <button
+              onClick={() => setActiveTab("archived")}
+              className={`flex-1 py-3 text-sm font-bold transition-colors cursor-pointer border-b-2 relative ${
+                activeTab === "archived"
+                  ? "border-[#34F080] text-[#34F080]"
+                  : "border-transparent text-gray-400 hover:text-gray-200"
+              }`}
+            >
+              Archived
+            </button>
+          )}
         </div>
 
         {/* Tab Content */}
@@ -135,6 +162,13 @@ export const MessagingConversationAccount: FC<{
                   : "";
                 const displayName =
                   shortenLongWord(chatName, 7, 7) || shortenLongWord(publicKey);
+                const groupImgUrl = isGroupChat
+                  ? getGroupImageUrl(
+                      allAccessGroups,
+                      value.messages[0].RecipientInfo.OwnerPublicKeyBase58Check,
+                      value.messages[0].RecipientInfo.AccessGroupKeyName
+                    )
+                  : undefined;
 
                 return (
                   <div key={`message-thread-${key}`}>
@@ -150,6 +184,7 @@ export const MessagingConversationAccount: FC<{
                         username={isDM ? chatName : undefined}
                         publicKey={isDM ? value.firstMessagePublicKey : chatName || ""}
                         groupChat={isGroupChat}
+                        groupImageUrl={groupImgUrl}
                         diameter={48}
                       />
 
@@ -291,6 +326,101 @@ export const MessagingConversationAccount: FC<{
                           >
                             <X className="w-3.5 h-3.5" />
                             Block
+                          </button>
+                        </div>
+                      </div>
+                      <div className="ml-[76px] border-b border-white/5" />
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {activeTab === "archived" && (
+            <div className="conversations-list overflow-y-auto max-h-full custom-scrollbar pb-24">
+              <div className="px-4 py-2.5 flex items-center gap-2 text-gray-500 border-b border-white/5">
+                <Archive className="w-4 h-4" />
+                <span className="text-xs font-medium">Archived Chats</span>
+              </div>
+              {archivedCount === 0 ? (
+                <div className="text-gray-500 text-sm text-center mt-8 px-6">
+                  No archived chats
+                </div>
+              ) : (
+                sortConversations(
+                  Object.entries(archivedConversations),
+                  selectedConversationPublicKey
+                ).map(([key, value]) => {
+                  const isGroupChat = value.ChatType === ChatType.GROUPCHAT;
+                  const chatName = getChatNameFromConversation(
+                    value,
+                    getUsernameByPublicKeyBase58Check
+                  );
+                  const selectedConversationStyle =
+                    key === selectedConversationPublicKey
+                      ? "selected-conversation bg-white/5"
+                      : "";
+                  const timestamp = value.messages[0]
+                    ? formatRelativeTimestamp(value.messages[0].MessageInfo.TimestampNanos)
+                    : "";
+                  const displayName =
+                    shortenLongWord(chatName, 7, 7) || shortenLongWord(key);
+                  const archivedGroupImgUrl = isGroupChat
+                    ? getGroupImageUrl(
+                        allAccessGroups,
+                        value.messages[0].RecipientInfo.OwnerPublicKeyBase58Check,
+                        value.messages[0].RecipientInfo.AccessGroupKeyName
+                      )
+                    : undefined;
+
+                  return (
+                    <div key={`archived-thread-${key}`}>
+                      <div
+                        className={`px-4 py-3 ${selectedConversationStyle} hover:bg-white/5 transition-colors`}
+                      >
+                        <div
+                          onClick={() => onClick(key)}
+                          className="flex items-center gap-3 cursor-pointer"
+                        >
+                          <MessagingDisplayAvatar
+                            publicKey={chatName || ""}
+                            groupChat={isGroupChat}
+                            groupImageUrl={archivedGroupImgUrl}
+                            diameter={48}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-0.5">
+                              <div className="flex items-center gap-1 min-w-0">
+                                {isGroupChat && (
+                                  <Users className="w-3.5 h-3.5 shrink-0 text-gray-400" />
+                                )}
+                                <span className="truncate text-sm text-gray-400 font-medium">
+                                  {displayName}
+                                </span>
+                              </div>
+                              <span className="text-xs text-gray-500 shrink-0 ml-2">
+                                {timestamp}
+                              </span>
+                            </div>
+                            {value.messages[0] && (
+                              <p className="truncate text-sm text-gray-500">
+                                {value.messages[0].DecryptedMessage.slice(0, 60)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 mt-2 ml-[60px]">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUnarchive(key);
+                            }}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#34F080]/15 text-[#34F080] text-xs font-bold hover:bg-[#34F080]/25 cursor-pointer transition-colors"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            Rejoin
                           </button>
                         </div>
                       </div>

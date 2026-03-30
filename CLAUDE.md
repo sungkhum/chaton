@@ -68,6 +68,9 @@ on-chain follows and User Associations (no backend needed).
 
 - `chaton:chat-approved` / value `"approved"` — user accepted a chat request
 - `chaton:chat-blocked` / value `"blocked"` — user blocked a sender
+- `chat:group-archived` / value `<AccessGroupKeyName>` — user left/archived a group chat
+  (generic `chat:` prefix — any DeSo messaging app can query this to check if a user
+  has left a group. Target = group owner's public key, Value = group key name.)
 
 ## ExtraData conventions
 
@@ -83,6 +86,13 @@ field. This is a shared convention any DeSo messaging app can adopt:
 - `msg:fileName`, `msg:fileSize`, `msg:fileType` — file attachments
 - `msg:replyPreview` — truncated preview text of the replied-to message
 - `msg:gifTitle` — title of a GIF from Giphy
+
+### Access Group ExtraData
+
+Group metadata uses `group:` namespaced keys in the access group's `ExtraData` field.
+Stored via `createAccessGroup` / `updateAccessGroup`. Any DeSo messaging app can read these:
+
+- `group:imageUrl` — URL of the group's profile image (uploaded via DeSo image upload)
 
 ## Tech stack
 
