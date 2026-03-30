@@ -254,7 +254,7 @@ export const LandingPage = () => {
   }, []);
 
   return (
-    <div ref={root} className="min-h-screen bg-[#0F1520] text-white selection:bg-[#34F080]/30 selection:text-white relative">
+    <div ref={root} className="min-h-screen bg-[#0F1520] text-white selection:bg-[#34F080]/30 selection:text-white relative overflow-x-clip">
       {/* Atmospheric Orbs */}
       <div className="landing-orb w-[1000px] h-[1000px] bg-[#34F080] bottom-[20%] -left-[400px] opacity-[0.08]" />
       <div className="landing-orb w-[800px] h-[800px] bg-[#20E0AA] top-[40%] left-[15%] opacity-[0.05]" />
