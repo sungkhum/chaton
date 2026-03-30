@@ -29,6 +29,7 @@ import {
   fetchArchivedGroups,
   fetchChatAssociations,
   fetchMutualFollows,
+  fetchPrivacyMode,
   getConversations,
 } from "../services/conversations.service";
 import {
@@ -45,6 +46,7 @@ import {
   getCachedLastConversationKey,
   getCachedLastReadTimestamps,
   getCachedMutedConversations,
+  getCachedPrivacyMode,
   getCachedUsernameMap,
 } from "../services/cache.service";
 import {
@@ -828,6 +830,12 @@ export const MessagingApp: FC = () => {
     if (cachedMuted.size > 0) {
       useStore.getState().setMutedConversations(cachedMuted);
     }
+
+    // Load privacy mode from cache
+    const cachedPrivacy = getCachedPrivacyMode(publicKey);
+    if (cachedPrivacy) {
+      useStore.getState().setPrivacyMode(cachedPrivacy as "standard" | "full");
+    }
     let renderedFromCache = false;
 
     if (cachedConvos && Object.keys(cachedConvos).length > 0) {
@@ -861,6 +869,7 @@ export const MessagingApp: FC = () => {
 
       if (selectConversation && cachedKeyToUse) {
         setSelectedConversationPublicKey(cachedKeyToUse);
+        setPubKeyPlusGroupName(cachedKeyToUse);
       }
 
       // Try to show cached messages for the selected conversation
@@ -874,7 +883,6 @@ export const MessagingApp: FC = () => {
               messages: cachedMsgs as DecryptedMessageEntryResponse[],
             },
           }));
-          setPubKeyPlusGroupName(cachedKeyToUse);
           setLoadingConversation(false);
         }
       }
@@ -897,7 +905,16 @@ export const MessagingApp: FC = () => {
         })
       : Promise.resolve();
 
-    const [conversationResult] = await Promise.all([conversationPromise, classificationPromise]);
+    // Fetch privacy mode from on-chain in parallel
+    const privacyPromise = fetchPrivacyMode(publicKey)
+      .then(({ mode, associationId }) => {
+        useStore.getState().setPrivacyMode(mode, associationId);
+      })
+      .catch((e) => {
+        console.error("Failed to fetch privacy mode:", e);
+      });
+
+    const [conversationResult] = await Promise.all([conversationPromise, classificationPromise, privacyPromise]);
 
     const {
       conversations: freshConversations,
@@ -1384,6 +1401,8 @@ export const MessagingApp: FC = () => {
                     return;
                   }
                   setSelectedConversationPublicKey(key);
+                  setPubKeyPlusGroupName(key);
+                  setLoadingConversation(true);
                   setEditingMessage(null);
                   setReplyToMessage(null);
                   clearUnread(key);
@@ -1407,7 +1426,6 @@ export const MessagingApp: FC = () => {
                   setLockRefresh(true);
 
                   // Try cache-first for messages
-                  let showedCached = false;
                   if (appUser) {
                     const cached = await getCachedConversationMessages(
                       appUser.PublicKeyBase58Check,
@@ -1421,13 +1439,8 @@ export const MessagingApp: FC = () => {
                           messages: cached as DecryptedMessageEntryResponse[],
                         },
                       }));
-                      setPubKeyPlusGroupName(key);
-                      showedCached = true;
+                      setLoadingConversation(false);
                     }
-                  }
-
-                  if (!showedCached) {
-                    setLoadingConversation(true);
                   }
 
                   try {
@@ -1571,12 +1584,12 @@ export const MessagingApp: FC = () => {
                 className="pr-2 rounded-none w-[100%] bg-transparent ml-[calc-340px] pb-0 h-[calc(100%-56px)]"
               >
                 <div className="border-none flex flex-col justify-between h-full">
-                  <div className="max-h-[calc(100%-130px)] overflow-hidden relative">
-                    {loadingConversation && (
-                      <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#0a1019]/80">
+                  <div className="max-h-[calc(100%-130px)] overflow-hidden flex-1">
+                    {loadingConversation ? (
+                      <div className="h-full flex items-center justify-center">
                         <Loader2 className="w-11 h-11 animate-spin text-[#34F080]" />
                       </div>
-                    )}
+                    ) : (
                       <MessagingBubblesAndAvatar
                         conversationPublicKey={pubKeyPlusGroupName}
                         conversations={conversations}
@@ -1796,6 +1809,7 @@ export const MessagingApp: FC = () => {
                           }
                         }}
                       />
+                    )}
                   </div>
 
                   <SendMessageButtonAndInput

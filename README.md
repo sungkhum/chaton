@@ -262,15 +262,24 @@ All keys use the `msg:` namespace. Set only the keys relevant to your message ty
 
 ### Encrypted ExtraData
 
-ExtraData is normally stored as plaintext on the blockchain. For sensitive values (like which emoji someone reacted with), ChatOn encrypts individual ExtraData values using the same key used for the message body.
+ExtraData is normally stored as plaintext on the blockchain. For sensitive values, ChatOn encrypts individual ExtraData values using the same key used for the message body.
+
+ChatOn supports two privacy modes, controlled by the user:
+
+| Mode | What's encrypted in ExtraData | Default? |
+|------|-------------------------------|----------|
+| **Standard** | `msg:emoji`, `msg:action` (reaction privacy) | Yes |
+| **Full** | All media URLs, file metadata, reply previews, mentions, plus everything in Standard | No |
 
 **How it works:**
 
-1. Before sending, encrypt the values of `msg:emoji` and `msg:action` with `identity.encryptMessage(recipientAccessGroupPublicKey, value)` — the same function and key used for the message body.
+1. Before sending, encrypt the relevant ExtraData values with `identity.encryptMessage(recipientAccessGroupPublicKey, value)` — the same function and key used for the message body.
 2. Set `msg:encrypted: "true"` to signal that some values need decryption.
-3. On the receiving side, decrypt those values after decrypting the message body. The same DM-vs-group key resolution applies.
+3. On the receiving side, always attempt to decrypt all potentially-encrypted keys (the sender may use full mode even if the receiver doesn't). The same DM-vs-group key resolution applies.
 
-**Backward compatibility:** Apps that don't handle `msg:encrypted` will see encrypted hex strings in `msg:emoji` instead of an emoji character. They can safely ignore this — the encrypted message body still contains a human-readable fallback like `Reacted 👍 to "hey"`.
+**Backward compatibility:** Apps that don't handle `msg:encrypted` will see encrypted hex strings instead of plaintext values. They can safely ignore these — the encrypted message body still contains a human-readable fallback. In Standard mode, only reaction metadata is affected. Full mode makes media URLs and file names unreadable to other DeSo apps — users opt into this tradeoff knowingly.
+
+The user's privacy mode preference is stored as an on-chain self-association (see [On-Chain Associations](#on-chain-associations) below) and cached locally for instant access.
 
 ### Reactions
 
@@ -331,11 +340,12 @@ Group metadata uses the `group:` namespace, stored via `createAccessGroup` / `up
 
 ChatOn uses DeSo User Associations for chat request classification. These are portable across apps.
 
-| Association Type | Value | Meaning |
-|-----------------|-------|---------|
-| `chaton:chat-approved` | `"approved"` | User accepted a chat request from the target user |
-| `chaton:chat-blocked` | `"blocked"` | User blocked the target user |
-| `chat:group-archived` | `<AccessGroupKeyName>` | User left/archived a group chat. Target = group owner's public key. Generic `chat:` prefix so any DeSo app can query it. |
+| Association Type | Value | Target | Meaning |
+|-----------------|-------|--------|---------|
+| `chaton:chat-approved` | `"approved"` | Other user | User accepted a chat request from the target user |
+| `chaton:chat-blocked` | `"blocked"` | Other user | User blocked the target user |
+| `chat:group-archived` | `<AccessGroupKeyName>` | Group owner | User left/archived a group chat. Generic `chat:` prefix so any DeSo app can query it. |
+| `chaton:privacy-mode` | `"standard"` \| `"full"` | Self | User's ExtraData encryption preference. Self-referencing (transactor = target). Omitted when `"standard"` (the default). |
 
 ### Implementation Reference
 

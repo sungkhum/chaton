@@ -198,6 +198,18 @@ export function getCachedClassificationData(
 }
 
 // ---------------------------------------------------------------------------
+// Privacy mode (localStorage — sync)
+// ---------------------------------------------------------------------------
+
+export function cachePrivacyMode(publicKey: string, mode: string): void {
+  lsSet(publicKey, "privacyMode", mode);
+}
+
+export function getCachedPrivacyMode(publicKey: string): string | null {
+  return lsGet<string>(publicKey, "privacyMode");
+}
+
+// ---------------------------------------------------------------------------
 // Username map (localStorage — sync)
 // ---------------------------------------------------------------------------
 
@@ -395,7 +407,7 @@ export function getCachedLastReadTimestamps(
 
 export async function clearCacheForUser(publicKey: string): Promise<void> {
   // localStorage
-  const lsTypes = ["profile", "classification", "usernames", "lastConversation", "mutedConversations", "lastRead"];
+  const lsTypes = ["profile", "classification", "usernames", "lastConversation", "mutedConversations", "lastRead", "privacyMode"];
   for (const t of lsTypes) {
     lsDel(publicKey, t);
   }

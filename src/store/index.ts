@@ -6,8 +6,10 @@ import {
 import {
   cacheClassificationData,
   cacheMutedConversations,
+  cachePrivacyMode,
   cacheUserProfile,
 } from "../services/cache.service";
+import type { PrivacyMode } from "../utils/extra-data";
 
 export type AppUser = User & {
   messagingPublicKeyBase58Check: string;
@@ -57,6 +59,11 @@ interface ChatOnState {
   // Archived groups (left groups)
   archivedGroups: Set<string>;
   archivedGroupAssociationIds: Map<string, string>;
+
+  // Privacy mode — controls which ExtraData fields are encrypted
+  privacyMode: PrivacyMode;
+  privacyModeAssociationId: string | null;
+  setPrivacyMode: (mode: PrivacyMode, associationId?: string | null) => void;
 
   setClassificationData: (
     mutualFollows: Set<string>,
@@ -202,6 +209,19 @@ export const useStore = create<ChatOnState>((set) => ({
   // Archived groups
   archivedGroups: EMPTY_SET,
   archivedGroupAssociationIds: EMPTY_MAP,
+
+  // Privacy mode
+  privacyMode: "standard" as PrivacyMode,
+  privacyModeAssociationId: null,
+  setPrivacyMode: (mode, associationId) =>
+    set((state) => {
+      const publicKey = state.appUser?.PublicKeyBase58Check;
+      if (publicKey) cachePrivacyMode(publicKey, mode);
+      return {
+        privacyMode: mode,
+        ...(associationId !== undefined ? { privacyModeAssociationId: associationId } : {}),
+      };
+    }),
 
   setClassificationData: (mutualFollows, approved, blocked, approvedIds, blockedIds, archived, archivedIds) =>
     set((state) => {
@@ -357,5 +377,7 @@ export const useStore = create<ChatOnState>((set) => ({
       archivedGroupAssociationIds: EMPTY_MAP,
       chatRequestsLoaded: false,
       mutedConversations: EMPTY_SET,
+      privacyMode: "standard" as PrivacyMode,
+      privacyModeAssociationId: null,
     }),
 }));

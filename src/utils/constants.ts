@@ -13,6 +13,12 @@ export const ASSOCIATION_VALUE_BLOCKED = "blocked";
 // TargetUser = group owner's public key, Value = access group key name.
 export const ASSOCIATION_TYPE_GROUP_ARCHIVED = "chat:group-archived";
 
+// Privacy mode: self-association (target = self) storing the user's encryption preference.
+// Value is "full" (encrypt all metadata) or "standard" (encrypt only reactions).
+export const ASSOCIATION_TYPE_PRIVACY_MODE = "chaton:privacy-mode";
+export const PRIVACY_MODE_FULL = "full";
+export const PRIVACY_MODE_STANDARD = "standard";
+
 export const getTransactionSpendingLimits = (
   publicKey: string
 ): TransactionSpendingLimitResponseOptions => {
@@ -62,6 +68,14 @@ export const getTransactionSpendingLimits = (
       {
         AssociationClass: "User" as const,
         AssociationType: ASSOCIATION_TYPE_GROUP_ARCHIVED,
+        AppScopeType: "Any" as const,
+        AppPublicKeyBase58Check: "",
+        AssociationOperation: "Any" as const,
+        OpCount: UNLIMITED,
+      },
+      {
+        AssociationClass: "User" as const,
+        AssociationType: ASSOCIATION_TYPE_PRIVACY_MODE,
         AppScopeType: "Any" as const,
         AppPublicKeyBase58Check: "",
         AssociationOperation: "Any" as const,

@@ -21,8 +21,33 @@ export const MSG_DELETED = "msg:deleted";
 export const MSG_MENTIONS = "msg:mentions";
 export const MSG_ENCRYPTED = "msg:encrypted";
 
-/** ExtraData keys whose values should be encrypted before sending to the blockchain. */
-export const ENCRYPTED_EXTRA_DATA_KEYS = [MSG_EMOJI, MSG_ACTION] as const;
+/** ExtraData keys always encrypted (reaction privacy — default). */
+export const STANDARD_ENCRYPTED_KEYS = [MSG_EMOJI, MSG_ACTION] as const;
+
+/** ExtraData keys encrypted only when the user opts into full privacy mode.
+ *  Includes all media URLs, file metadata, reply previews, and mentions. */
+export const FULL_ENCRYPTED_KEYS = [
+  ...STANDARD_ENCRYPTED_KEYS,
+  MSG_IMAGE_URL,
+  MSG_GIF_URL,
+  MSG_GIF_TITLE,
+  MSG_VIDEO_URL,
+  MSG_DURATION,
+  MSG_MEDIA_WIDTH,
+  MSG_MEDIA_HEIGHT,
+  MSG_FILE_NAME,
+  MSG_FILE_SIZE,
+  MSG_FILE_TYPE,
+  MSG_REPLY_PREVIEW,
+  MSG_MENTIONS,
+] as const;
+
+export type PrivacyMode = "standard" | "full";
+
+/** Return the list of ExtraData keys to encrypt for the given privacy mode. */
+export function getEncryptedExtraDataKeys(mode: PrivacyMode): readonly string[] {
+  return mode === "full" ? FULL_ENCRYPTED_KEYS : STANDARD_ENCRYPTED_KEYS;
+}
 
 // Generic DeSo access group ExtraData keys — any messaging app can adopt these
 export const GROUP_IMAGE_URL = "group:imageUrl";

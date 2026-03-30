@@ -24,16 +24,21 @@ import {
   ASSOCIATION_TYPE_APPROVED,
   ASSOCIATION_TYPE_BLOCKED,
   ASSOCIATION_TYPE_GROUP_ARCHIVED,
+  ASSOCIATION_TYPE_PRIVACY_MODE,
   ASSOCIATION_VALUE_APPROVED,
   ASSOCIATION_VALUE_BLOCKED,
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
+  PRIVACY_MODE_STANDARD,
   USER_TO_SEND_MESSAGE_TO,
 } from "../utils/constants";
 import {
-  ENCRYPTED_EXTRA_DATA_KEYS,
+  FULL_ENCRYPTED_KEYS,
   MSG_ENCRYPTED,
+  type PrivacyMode,
+  getEncryptedExtraDataKeys,
 } from "../utils/extra-data";
 import { Conversation, ConversationMap } from "../utils/types";
+import { useStore } from "../store";
 import { bytesToHex } from "@noble/hashes/utils";
 
 export const getConversationsNewMap = async (
@@ -221,7 +226,9 @@ async function decryptExtraDataFields(
 
   const updatedExtra = { ...extra };
 
-  for (const key of ENCRYPTED_EXTRA_DATA_KEYS) {
+  // Try decrypting all keys that could be encrypted (the sender may use
+  // full privacy mode even if we don't). The FULL list is a superset.
+  for (const key of FULL_ENCRYPTED_KEYS) {
     const cipherText = updatedExtra[key];
     if (!cipherText) continue;
 
@@ -289,9 +296,13 @@ export const encryptAndSendNewMessage = async (
       messageToSend
     );
 
-    // Encrypt sensitive ExtraData values with the same recipient key
+    // Encrypt sensitive ExtraData values with the same recipient key.
+    // Which keys are encrypted depends on the user's privacy mode.
+    const keysToEncrypt = getEncryptedExtraDataKeys(
+      useStore.getState().privacyMode
+    );
     let hasEncrypted = false;
-    for (const key of ENCRYPTED_EXTRA_DATA_KEYS) {
+    for (const key of keysToEncrypt) {
       if (ExtraData[key]) {
         ExtraData[key] = await identity.encryptMessage(
           response.RecipientAccessGroupPublicKeyBase58Check,
@@ -377,9 +388,11 @@ export const encryptAndUpdateMessage = async (
       newMessageText
     );
 
-    // Encrypt sensitive ExtraData values with the same recipient key
+    const keysToEncrypt = getEncryptedExtraDataKeys(
+      useStore.getState().privacyMode
+    );
     let hasEncrypted = false;
-    for (const key of ENCRYPTED_EXTRA_DATA_KEYS) {
+    for (const key of keysToEncrypt) {
       if (ExtraData[key]) {
         ExtraData[key] = await identity.encryptMessage(
           response.RecipientAccessGroupPublicKeyBase58Check,
@@ -640,4 +653,77 @@ export async function deleteArchiveAssociation(
       AssociationID: associationId,
     })
   );
+}
+
+// ── Privacy mode (on-chain preference) ──────────────────────────────
+
+/**
+ * Fetch the user's privacy mode from on-chain associations.
+ * Self-referencing association: transactor = target = the user.
+ * Returns { mode, associationId } or defaults to "standard".
+ */
+export async function fetchPrivacyMode(
+  publicKey: string
+): Promise<{ mode: PrivacyMode; associationId: string | null }> {
+  try {
+    const res = await getUserAssociations({
+      TransactorPublicKeyBase58Check: publicKey,
+      AssociationType: ASSOCIATION_TYPE_PRIVACY_MODE,
+      Limit: 1,
+    });
+
+    const assoc = res.Associations?.[0];
+    if (assoc) {
+      const value = assoc.AssociationValue;
+      const mode: PrivacyMode = value === "full" ? "full" : "standard";
+      return { mode, associationId: assoc.AssociationID };
+    }
+  } catch (e) {
+    console.error("Failed to fetch privacy mode association:", e);
+  }
+  return { mode: "standard", associationId: null };
+}
+
+/**
+ * Create or update the user's privacy mode on-chain.
+ * If an existing association exists, delete it first (DeSo doesn't support
+ * updating association values — must delete + recreate).
+ */
+export async function setPrivacyModeOnChain(
+  myPublicKey: string,
+  mode: PrivacyMode,
+  existingAssociationId: string | null
+): Promise<string> {
+  // Delete old association if it exists
+  if (existingAssociationId) {
+    await withAuth(() =>
+      deleteUserAssociation({
+        TransactorPublicKeyBase58Check: myPublicKey,
+        AssociationID: existingAssociationId,
+      })
+    );
+  }
+
+  // Only create on-chain if not the default — avoids unnecessary transactions
+  if (mode === PRIVACY_MODE_STANDARD && !existingAssociationId) {
+    return "";
+  }
+
+  const { submittedTransactionResponse } = await withAuth(() =>
+    createUserAssociation({
+      TransactorPublicKeyBase58Check: myPublicKey,
+      TargetUserPublicKeyBase58Check: myPublicKey, // self-association
+      AssociationType: ASSOCIATION_TYPE_PRIVACY_MODE,
+      AssociationValue: mode,
+    })
+  );
+
+  // Fetch the new association ID
+  const res = await getUserAssociations({
+    TransactorPublicKeyBase58Check: myPublicKey,
+    AssociationType: ASSOCIATION_TYPE_PRIVACY_MODE,
+    Limit: 1,
+  });
+
+  return res.Associations?.[0]?.AssociationID || "";
 }
