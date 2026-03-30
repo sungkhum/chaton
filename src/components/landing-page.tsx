@@ -597,7 +597,7 @@ export const LandingPage = () => {
                 Tap to react with any emoji — they aggregate into tappable pills
                 below each message. Quote-reply for threaded context. Share GIFs,
                 images, videos, and files — all stored on-chain alongside your
-                encrypted conversations.
+                conversations.
               </p>
             </div>
           </div>
@@ -796,10 +796,6 @@ export const LandingPage = () => {
                   <li className="flex items-start gap-3">
                     <Check className="w-4 h-4 text-[#3090D0] mt-0.5 shrink-0" />
                     Your actual message content
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <Check className="w-4 h-4 text-[#3090D0] mt-0.5 shrink-0" />
-                    Images, files, and media
                   </li>
                   <li className="flex items-start gap-3">
                     <Check className="w-4 h-4 text-[#3090D0] mt-0.5 shrink-0" />
