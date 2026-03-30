@@ -1,5 +1,6 @@
 import { Smile } from "lucide-react";
 import { lazy, Suspense, useState, useRef, useEffect } from "react";
+import { ChunkErrorBoundary } from "../shared/chunk-error-boundary";
 import { AnimatedEmoji } from "../messages/animated-emoji";
 
 // bundle-conditional: frimousse only loads when user clicks "Search all emoji..."
@@ -51,16 +52,18 @@ export const EmojiPickerButton = ({ onEmojiSelect }: EmojiPickerButtonProps) => 
       {open && (
         <div className="absolute bottom-full mb-2 right-0 z-50">
           {showAll ? (
-            <Suspense fallback={
-              <div className="w-[352px] h-[435px] flex items-center justify-center bg-[#0a1628] rounded-xl border border-blue-800/40 text-blue-400/40 text-sm">
-                Loading...
-              </div>
-            }>
-              <LazyFullEmojiPicker
-                onEmojiSelect={onEmojiSelect}
-                onClose={() => setOpen(false)}
-              />
-            </Suspense>
+            <ChunkErrorBoundary>
+              <Suspense fallback={
+                <div className="w-[352px] h-[435px] flex items-center justify-center bg-[#0a1628] rounded-xl border border-blue-800/40 text-blue-400/40 text-sm">
+                  Loading...
+                </div>
+              }>
+                <LazyFullEmojiPicker
+                  onEmojiSelect={onEmojiSelect}
+                  onClose={() => setOpen(false)}
+                />
+              </Suspense>
+            </ChunkErrorBoundary>
           ) : (
             <div className="bg-[#0a1628] rounded-xl border border-blue-800/40 p-2 w-[280px]">
               <div className="grid grid-cols-8 gap-0.5">

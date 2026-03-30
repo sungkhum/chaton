@@ -346,16 +346,24 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Shared fallback for lazy-loaded route pages — keeps the splash feel
+  // instead of flashing a blank white screen on slow connections.
+  const routeFallback = (
+    <div className="App flex items-center justify-center">
+      <img src="/ChatOn-Logo-Small.png" alt="ChatOn" width={80} height={80} className="rounded-[20px] animate-pulse" />
+    </div>
+  );
+
   // Legal pages are always accessible regardless of auth state
   if (path === "/privacy") {
-    return <Suspense fallback={null}><LegalPage type="privacy" /></Suspense>;
+    return <Suspense fallback={routeFallback}><LegalPage type="privacy" /></Suspense>;
   }
   if (path === "/terms") {
-    return <Suspense fallback={null}><LegalPage type="terms" /></Suspense>;
+    return <Suspense fallback={routeFallback}><LegalPage type="terms" /></Suspense>;
   }
   if (path === "/support") {
     return (
-      <Suspense fallback={null}>
+      <Suspense fallback={routeFallback}>
         <SupportPage />
         <Toaster position="top-right" theme="dark" />
       </Suspense>
@@ -366,7 +374,7 @@ function App() {
 
   if (showLanding) {
     return (
-      <Suspense fallback={null}>
+      <Suspense fallback={routeFallback}>
         <LandingPage />
         <Toaster position="top-right" theme="dark" />
       </Suspense>

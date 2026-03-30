@@ -702,12 +702,14 @@ export const MessagingApp: FC = () => {
   // doesn't re-register when handleWsNewMessage changes.
   const visibilityHandlerRef = useRef(handleWsNewMessage);
   visibilityHandlerRef.current = handleWsNewMessage;
+  const loadingRef = useRef(loading);
+  loadingRef.current = loading;
 
   // Refresh conversations when PWA resumes from background
   useEffect(() => {
     if (!appUser) return;
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
+      if (document.visibilityState === "visible" && !loadingRef.current) {
         visibilityHandlerRef.current("", "");
       }
     };

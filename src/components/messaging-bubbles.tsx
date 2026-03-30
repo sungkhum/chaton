@@ -10,6 +10,7 @@ import {
 import { Loader2, Reply, Plus, Pencil, Trash2 } from "lucide-react";
 import { FC, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { ChunkErrorBoundary } from "./shared/chunk-error-boundary";
 
 // bundle-conditional: frimousse only loads when user opens the full emoji search
 const LazyReactionEmojiPicker = lazy(() =>
@@ -40,7 +41,7 @@ import {
 import { shortenLongWord } from "./search-users";
 
 // rerender-memo-with-default-value: hoisted constant avoids new object each render
-const NO_CALLOUT_STYLE: React.CSSProperties = { WebkitTouchCallout: "none" } as any;
+const NO_CALLOUT_STYLE = { WebkitTouchCallout: "none" } as React.CSSProperties & { WebkitTouchCallout: string };
 
 export interface MessagingBubblesProps {
   conversations: ConversationMap;
@@ -557,20 +558,22 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
         >
           <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-2 mb-1" />
           {showFullPicker ? (
-            <Suspense fallback={
-              <div className="w-full h-[320px] flex items-center justify-center text-blue-400/40 text-sm">Loading...</div>
-            }>
-              <LazyReactionEmojiPicker
-                onSelect={(emoji) => {
-                  onReact?.(reactionPickerFor, emoji);
-                  closeMobileAction();
-                }}
-                className="w-full h-[320px] flex flex-col overflow-hidden bg-transparent [--frimousse-bg:transparent] [--frimousse-border-color:theme(colors.white/10%)]"
-                searchClassName="mx-3 mt-1 mb-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-base placeholder:text-white/30 outline-none focus:border-[#34F080]/50"
-                emojiSize="w-11 h-11 text-2xl"
-                categoryBg="bg-[#141c2b]"
-              />
-            </Suspense>
+            <ChunkErrorBoundary>
+              <Suspense fallback={
+                <div className="w-full h-[320px] flex items-center justify-center text-blue-400/40 text-sm">Loading...</div>
+              }>
+                <LazyReactionEmojiPicker
+                  onSelect={(emoji) => {
+                    onReact?.(reactionPickerFor, emoji);
+                    closeMobileAction();
+                  }}
+                  className="w-full h-[320px] flex flex-col overflow-hidden bg-transparent [--frimousse-bg:transparent] [--frimousse-border-color:theme(colors.white/10%)]"
+                  searchClassName="mx-3 mt-1 mb-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-base placeholder:text-white/30 outline-none focus:border-[#34F080]/50"
+                  emojiSize="w-11 h-11 text-2xl"
+                  categoryBg="bg-[#141c2b]"
+                />
+              </Suspense>
+            </ChunkErrorBoundary>
           ) : (
             <div className="px-3 py-2">
               <div className="grid grid-cols-8 gap-1 justify-items-center">
@@ -887,19 +890,21 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                       className={`absolute z-50 ${IsSender ? "right-0" : "left-0"} bottom-full mb-10`}
                     >
                       {showFullPicker ? (
-                        <Suspense fallback={
-                          <div className="w-[352px] h-[300px] flex items-center justify-center bg-[#141c2b] rounded-xl border border-white/10 text-blue-400/40 text-sm">Loading...</div>
-                        }>
-                          <LazyReactionEmojiPicker
-                            onSelect={(emoji) => {
-                              onReact?.(
-                                message.MessageInfo.TimestampNanosString,
-                                emoji
-                              );
-                              setReactionPickerFor(null);
-                            }}
-                          />
-                        </Suspense>
+                        <ChunkErrorBoundary>
+                          <Suspense fallback={
+                            <div className="w-[352px] h-[300px] flex items-center justify-center bg-[#141c2b] rounded-xl border border-white/10 text-blue-400/40 text-sm">Loading...</div>
+                          }>
+                            <LazyReactionEmojiPicker
+                              onSelect={(emoji) => {
+                                onReact?.(
+                                  message.MessageInfo.TimestampNanosString,
+                                  emoji
+                                );
+                                setReactionPickerFor(null);
+                              }}
+                            />
+                          </Suspense>
+                        </ChunkErrorBoundary>
                       ) : (
                         <div className="bg-[#141c2b] rounded-xl border border-white/10 p-2">
                           <div className="grid grid-cols-8 gap-0.5">

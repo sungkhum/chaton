@@ -162,11 +162,10 @@ export const ManageMembersDialog = ({
 
     setUpdating(true);
     try {
-      // async-parallel: independent operations run concurrently
-      await Promise.all([
-        addMembersAction(groupName, memberKeysToAdd),
-        removeMembersAction(groupName, memberKeysToRemove),
-      ]);
+      // Sequential: add members first, then remove. These are irreversible
+      // blockchain transactions — if add fails we must not have already removed.
+      await addMembersAction(groupName, memberKeysToAdd);
+      await removeMembersAction(groupName, memberKeysToRemove);
     } finally {
       setUpdating(false);
     }
