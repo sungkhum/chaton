@@ -30,9 +30,13 @@
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write 'src/**/*.{js,jsx,ts,tsx,css,md,json}' --config ./.prettierrc",
+    "test:e2e": "playwright test --project=desktop --project=mobile",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:ci": "vite build && PLAYWRIGHT_PWA=1 playwright test",
     "prepare": "husky install"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^8.33.0",
     "eslint-config-prettier": "^8.6.0",

@@ -103,6 +103,39 @@ Stored via `createAccessGroup` / `updateAccessGroup`. Any DeSo messaging app can
 - Sonner for toasts
 - Cloudflare Workers + Durable Objects for WebSocket relay
 
+## Testing
+
+Playwright e2e tests live in `e2e/tests/`. Use the `/playwright-best-practices` skill
+when writing or modifying tests.
+
+### Workflow
+
+- **New features must include Playwright tests** covering the added UI/behavior.
+- **Before committing**, run tests covering the areas of code you touched:
+  - Target specific spec files: `npx playwright test e2e/tests/landing-page.spec.ts`
+  - Or grep by test name: `npx playwright test --grep "footer"`
+  - Full suite when changes are broad: `npm run test:e2e`
+- **PWA/offline changes** require a build first: `npm run test:e2e:ci`
+
+### Running tests
+
+```
+npm run test:e2e          # desktop + mobile against dev server
+npm run test:e2e:ui       # interactive UI mode
+npm run test:e2e:ci       # build + all projects including PWA/offline
+npx playwright show-report # view last HTML report
+```
+
+### Writing tests
+
+- Import `test` and `expect` from `../fixtures` (not `@playwright/test` directly)
+  to get `waitForAppReady` and `consoleErrors` fixtures.
+- Use role-based locators (`getByRole`, `getByText`, `getByLabel`) over CSS selectors.
+- Use web-first assertions (`toBeVisible`, `toHaveText`) — they auto-retry.
+- Landing page tests need `test.setTimeout(60_000)` due to DeSo SDK cold-start.
+- Mark desktop-only tests with `test.skip(testInfo.project.name === "mobile", ...)`.
+- PWA tests use `context.waitForEvent("serviceworker")` for SW detection.
+
 <!-- VITE-AGENTS-MD-START -->
 [Vite Docs Index]|root: ./.vite-docs|version: ^6.3.5 (package.json:vite)|STOP. What you remember about Vite is WRONG for this project. Always search docs and read before any task.|If docs missing, run this command first: npx github:sungkhum/vite-agent-index agents-md --output CLAUDE.md|sections:{root(5),blog(10),changes(5),config(7),guide(23)}|full_index: ./.vite-docs-index/full.index.txt
 <!-- VITE-AGENTS-MD-END -->
