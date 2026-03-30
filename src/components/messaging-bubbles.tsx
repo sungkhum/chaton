@@ -8,7 +8,8 @@ import {
   GetPaginatedMessagesForGroupChatThreadResponse,
 } from "deso-protocol";
 import { Loader2, Reply, Plus, Pencil, Trash2 } from "lucide-react";
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FC, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { EmojiPicker } from "frimousse";
 import { toast } from "sonner";
 import { useMobile } from "../hooks/useMobile";
@@ -50,6 +51,11 @@ export interface MessagingBubblesProps {
 }
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
+const POPULAR_EMOJI = [
+  "😀", "😂", "🥹", "❤️", "🔥", "👍", "👎", "🙏",
+  "😭", "😍", "🥰", "😘", "😎", "🤔", "😱", "😡",
+  "👀", "💯", "🎉", "✨", "💀", "🤣", "😊", "🥺",
+];
 const GROUP_TIME_GAP_NS = 5 * 60 * 1e9; // 5 minutes in nanoseconds
 
 function convertTstampToDateTime(tstampNanos: number) {
@@ -173,8 +179,15 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   const [mobileActionFor, setMobileActionFor] = useState<string | null>(null);
   const [deleteMenuFor, setDeleteMenuFor] = useState<string | null>(null);
   const [actionBarFlipped, setActionBarFlipped] = useState(false);
+  const [showFullPicker, setShowFullPicker] = useState(false);
   const actionBarRef = useRef<HTMLDivElement>(null);
+  const activeBubbleRef = useRef<HTMLElement | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
+
+  // Reset full picker mode when reaction picker closes
+  useEffect(() => {
+    if (!reactionPickerFor) setShowFullPicker(false);
+  }, [reactionPickerFor]);
 
   // Reposition desktop emoji picker if it overflows the viewport
   useEffect(() => {
@@ -263,6 +276,32 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     setActionBarFlipped(spaceAbove < 200);
   }, []);
 
+  // Position the mobile action bar (portal) near the active message bubble
+  useLayoutEffect(() => {
+    const bar = actionBarRef.current;
+    const bubble = activeBubbleRef.current;
+    if (!bar || !bubble || !isMobile || !mobileActionFor) return;
+
+    const bubbleRect = bubble.getBoundingClientRect();
+    const barWidth = bar.offsetWidth;
+    const pad = 12;
+
+    // Vertical: above or below the bubble
+    if (actionBarFlipped) {
+      bar.style.top = `${bubbleRect.bottom + 4}px`;
+      bar.style.bottom = "auto";
+    } else {
+      bar.style.bottom = `${window.innerHeight - bubbleRect.top + 4}px`;
+      bar.style.top = "auto";
+    }
+
+    // Horizontal: align with bubble edge, clamped to viewport
+    const isSenderMsg = bubbleRect.left + bubbleRect.width / 2 > window.innerWidth / 2;
+    let left = isSenderMsg ? bubbleRect.right - barWidth : bubbleRect.left;
+    left = Math.max(pad, Math.min(left, window.innerWidth - barWidth - pad));
+    bar.style.left = `${left}px`;
+  }, [mobileActionFor, isMobile, actionBarFlipped]);
+
   // Clean up timer on unmount
   useEffect(() => {
     return () => {
@@ -293,6 +332,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
         setReactionPickerFor(null); // Close picker from previous message
         const bubble = target.querySelector<HTMLElement>(".relative.inline-block");
         computeFlip(bubble);
+        activeBubbleRef.current = bubble;
         setMobileActionFor(messageKey);
       }, 300);
     },
@@ -316,6 +356,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   const closeMobileAction = useCallback(() => {
     clearLongPressTimer(); // Kill pending timer so bar doesn't reopen
     setMobileActionFor(null);
+    activeBubbleRef.current = null;
     setHoveredMessage(null);
     setReactionPickerFor(null);
     setDeleteMenuFor(null);
@@ -489,47 +530,75 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
           className="fixed inset-x-0 bottom-0 z-[60] bg-[#141c2b] rounded-t-2xl border-t border-white/10 pb-[env(safe-area-inset-bottom)]"
         >
           <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-2 mb-1" />
-          <EmojiPicker.Root
-            onEmojiSelect={(emoji: { emoji: string }) => {
-              onReact?.(reactionPickerFor, emoji.emoji);
-              closeMobileAction();
-            }}
-            className="w-full h-[320px] bg-transparent [--frimousse-bg:transparent] [--frimousse-border-color:theme(colors.white/10%)]"
-          >
-            <EmojiPicker.Search
-              className="mx-3 mt-1 mb-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-base placeholder:text-white/30 outline-none focus:border-[#34F080]/50"
-              placeholder="Search emoji..."
-            />
-            <EmojiPicker.Viewport className="flex-1 overflow-y-auto px-1">
-              <EmojiPicker.Loading className="flex items-center justify-center h-full text-blue-400/40 text-sm">
-                Loading...
-              </EmojiPicker.Loading>
-              <EmojiPicker.Empty className="flex items-center justify-center h-full text-white/40 text-sm">
-                No emoji found
-              </EmojiPicker.Empty>
-              <EmojiPicker.List
-                components={{
-                  Row: ({ className: cls, ...props }) => (
-                    <div {...props} className={`${cls || ""} flex gap-0.5 px-1`} />
-                  ),
-                  Emoji: ({ className: cls, ...props }) => (
-                    <button
-                      {...props}
-                      className={`${cls || ""} flex items-center justify-center w-11 h-11 rounded-md text-2xl hover:bg-white/10 cursor-pointer transition-colors`}
-                    />
-                  ),
-                  CategoryHeader: ({ category, className: cls, ...props }) => (
-                    <div
-                      {...props}
-                      className={`${cls || ""} px-2 py-1.5 text-xs font-semibold text-white/40 sticky top-0 bg-[#141c2b] z-10`}
-                    >
-                      {category.label}
-                    </div>
-                  ),
-                }}
+          {showFullPicker ? (
+            <EmojiPicker.Root
+              onEmojiSelect={(emoji: { emoji: string }) => {
+                onReact?.(reactionPickerFor, emoji.emoji);
+                closeMobileAction();
+              }}
+              className="w-full h-[320px] flex flex-col overflow-hidden bg-transparent [--frimousse-bg:transparent] [--frimousse-border-color:theme(colors.white/10%)]"
+            >
+              <EmojiPicker.Search
+                className="mx-3 mt-1 mb-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-base placeholder:text-white/30 outline-none focus:border-[#34F080]/50"
+                placeholder="Search emoji..."
+                autoFocus
               />
-            </EmojiPicker.Viewport>
-          </EmojiPicker.Root>
+              <EmojiPicker.Viewport className="flex-1 overflow-y-auto px-1">
+                <EmojiPicker.Loading className="flex items-center justify-center h-full text-blue-400/40 text-sm">
+                  Loading...
+                </EmojiPicker.Loading>
+                <EmojiPicker.Empty className="flex items-center justify-center h-full text-white/40 text-sm">
+                  No emoji found
+                </EmojiPicker.Empty>
+                <EmojiPicker.List
+                  components={{
+                    Row: ({ className: cls, ...props }) => (
+                      <div {...props} className={`${cls || ""} flex gap-0.5 px-1`} />
+                    ),
+                    Emoji: ({ className: cls, emoji: emojiData, ...props }) => (
+                      <button
+                        {...props}
+                        className={`${cls || ""} flex items-center justify-center w-11 h-11 rounded-md text-2xl hover:bg-white/10 cursor-pointer transition-colors`}
+                      >
+                        {emojiData.emoji}
+                      </button>
+                    ),
+                    CategoryHeader: ({ category, className: cls, ...props }) => (
+                      <div
+                        {...props}
+                        className={`${cls || ""} px-2 py-1.5 text-xs font-semibold text-white/40 sticky top-0 bg-[#141c2b] z-10`}
+                      >
+                        {category.label}
+                      </div>
+                    ),
+                  }}
+                />
+              </EmojiPicker.Viewport>
+            </EmojiPicker.Root>
+          ) : (
+            <div className="px-3 py-2">
+              <div className="grid grid-cols-8 gap-1 justify-items-center">
+                {POPULAR_EMOJI.map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => {
+                      onReact?.(reactionPickerFor, emoji);
+                      closeMobileAction();
+                    }}
+                    className="flex items-center justify-center w-11 h-11 rounded-md hover:bg-white/10 cursor-pointer transition-colors"
+                  >
+                    <AnimatedEmoji emoji={emoji} size={28} eager />
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setShowFullPicker(true)}
+                className="w-full mt-2 py-2 text-sm text-gray-400 hover:text-white transition-colors text-center cursor-pointer"
+              >
+                Search all emoji...
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -544,21 +613,19 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
               appUser?.PublicKeyBase58Check;
 
           let senderStyles =
-            "bg-[#141c2b] border border-white/6 text-gray-200 rounded-2xl rounded-bl-sm";
+            "bg-[#141c2b] border border-white/6 text-gray-200";
           if (IsSender) {
             senderStyles =
-              "bg-[#0d2818] border border-[#34F080]/15 text-white rounded-2xl rounded-br-sm";
+              "bg-[#0d2818] border border-[#34F080]/15 text-white";
           }
           if (message.error) {
-            senderStyles = "bg-red-500/20 border border-red-500/30 text-red-200 rounded-2xl";
+            senderStyles = "bg-red-500/20 border border-red-500/30 text-red-200";
           }
 
           // For media messages, use a cleaner bubble style
           const isMedia = ["image", "gif", "video"].includes(parsed.type);
           if (isMedia) {
-            senderStyles = IsSender
-              ? "rounded-2xl rounded-br-sm overflow-hidden"
-              : "rounded-2xl rounded-bl-sm overflow-hidden";
+            senderStyles = "overflow-hidden";
           }
 
           // Emoji-only messages float without a bubble
@@ -588,18 +655,27 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
             nextMessage.SenderInfo.OwnerPublicKeyBase58Check !== senderKey ||
             Math.abs(nextMessage.MessageInfo.TimestampNanos - message.MessageInfo.TimestampNanos) > GROUP_TIME_GAP_NS;
 
-          const timestamp = (
-            <div
-              className={`whitespace-nowrap text-xs text-gray-500 mt-2 ${
-                IsSender ? "text-right" : "text-left"
-              }`}
-            >
-              {convertTstampToDateTime(message.MessageInfo.TimestampNanos)}
-            </div>
-          );
+          // Grouped bubble border-radius: connected corners for consecutive messages
+          const R = 18;  // full corner
+          const C = 4;   // connected corner (adjacent message in group)
+          const bubbleRadiusStyle = isEmojiOnly
+            ? {}
+            : IsSender
+              ? {
+                  borderTopLeftRadius: R,
+                  borderTopRightRadius: isFirstInGroup ? R : C,
+                  borderBottomLeftRadius: R,
+                  borderBottomRightRadius: isLastInGroup ? C : C,
+                }
+              : {
+                  borderTopLeftRadius: isFirstInGroup ? R : C,
+                  borderTopRightRadius: R,
+                  borderBottomLeftRadius: isLastInGroup ? C : C,
+                  borderBottomRightRadius: R,
+                };
 
           const messagingDisplayAvatarAndTimestamp = (
-            <div className={`flex flex-col ${IsSender ? "ml-3" : "mr-3"} relative`}>
+            <div className={`w-[36px] shrink-0 ${IsSender ? "ml-3" : "mr-3"} relative`}>
               <MessagingDisplayAvatar
                 username={
                   getUsernameByPublicKey[message.SenderInfo.OwnerPublicKeyBase58Check]
@@ -609,7 +685,9 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                 diameter={36}
                 classNames="relative"
               />
-              {timestamp}
+              <div className="whitespace-nowrap text-[10px] text-gray-500 mt-1 text-center">
+                {convertTstampToDateTime(message.MessageInfo.TimestampNanos)}
+              </div>
             </div>
           );
 
@@ -627,7 +705,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
               className={`mx-0 last:pt-4 ${
                 IsSender ? "ml-auto justify-end" : "mr-auto justify-start"
               } max-w-[80%] md:max-w-[65%] ${
-                isLastInGroup ? "mb-3" : "mb-0.5"
+                isLastInGroup ? "mb-3" : "mb-px"
               } inline-flex items-start ${
                 isFirstInGroup ? "top-[20px]" : ""
               } text-left group ${
@@ -651,12 +729,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
             >
               {!IsSender && (isLastInGroup ? messagingDisplayAvatarAndTimestamp : avatarSpacer)}
               <div className={`w-full ${IsSender ? "text-right" : "text-left"}`}>
-                {isFirstInGroup && (
-                  <header
-                    className={`flex items-center justify-end mb-[3px] ${
-                      IsSender ? "flex-row" : "flex-row-reverse"
-                    }`}
-                  >
+                {isFirstInGroup && !IsSender && (
+                  <header className="flex items-center flex-row-reverse justify-end mb-[3px]">
                     <span className="mx-1"> </span>
                     <div className="text-sm mb-1">
                       <p className="text-[#34F080] text-xs font-semibold">
@@ -678,7 +752,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                 {/* Message bubble */}
                 <div className="relative inline-block">
                   <div
-                    className={`${senderStyles} mt-auto mb-1 py-2.5 px-3 md:px-4 break-words inline-flex text-left relative items-center gap-1.5`}
+                    className={`${senderStyles} mt-auto py-2.5 px-3 md:px-4 break-words inline-flex text-left relative items-center gap-1.5`}
+                    style={bubbleRadiusStyle}
                   >
                     <MessageContent message={message} />
                     {parsed.edited && !parsed.deleted && (
@@ -689,8 +764,13 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                   </div>
 
                   {/* Telegram-style context menu (right-click on desktop, long-press on mobile) */}
-                  {showActionBar && !parsed.deleted && (
-                    <div ref={actionBarRef} className={`absolute ${IsSender ? "right-0" : "left-0"} ${actionBarFlipped ? "top-full mt-1" : "bottom-full mb-1"} z-10 flex ${actionBarFlipped ? "flex-col-reverse" : "flex-col"} items-stretch`}>
+                  {showActionBar && !parsed.deleted && (() => {
+                    const actionBar = (
+                      <div ref={actionBarRef} className={
+                        isMobile
+                          ? `fixed z-50 flex ${actionBarFlipped ? "flex-col-reverse" : "flex-col"} items-stretch`
+                          : `absolute ${IsSender ? "right-0" : "left-0"} ${actionBarFlipped ? "top-full mt-1" : "bottom-full mb-1"} z-10 flex ${actionBarFlipped ? "flex-col-reverse" : "flex-col"} items-stretch`
+                      }>
                       {/* Quick reactions row */}
                       {onReact && (
                         <div className={`flex items-center gap-0.5 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg ${
@@ -800,62 +880,95 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                         )}
                       </div>
                     </div>
-                  )}
+                    );
+                    return isMobile ? createPortal(actionBar, document.body) : actionBar;
+                  })()}
 
-                  {/* Full emoji picker (desktop: absolute, mobile: fixed bottom sheet) */}
+                  {/* Emoji picker (desktop: absolute popup) */}
                   {reactionPickerFor === messageKey && !isMobile && (
                     <div
                       ref={pickerRef}
                       className={`absolute z-50 ${IsSender ? "right-0" : "left-0"} bottom-full mb-10`}
                     >
-                      <EmojiPicker.Root
-                        onEmojiSelect={(emoji: { emoji: string }) => {
-                          onReact?.(
-                            message.MessageInfo.TimestampNanosString,
-                            emoji.emoji
-                          );
-                          setReactionPickerFor(null);
-                        }}
-                        className="w-[352px] h-[300px] bg-[#141c2b] rounded-xl border border-white/10 [--frimousse-bg:transparent] [--frimousse-border-color:theme(colors.white/10%)]"
-                      >
-                        <EmojiPicker.Search
-                          className="mx-2 mt-2 mb-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-white/30 outline-none focus:border-[#34F080]/50"
-                          placeholder="Search emoji..."
-                        />
-                        <EmojiPicker.Viewport className="flex-1 overflow-y-auto px-1">
-                          <EmojiPicker.Loading className="flex items-center justify-center h-full text-blue-400/40 text-sm">
-                            Loading...
-                          </EmojiPicker.Loading>
-                          <EmojiPicker.Empty className="flex items-center justify-center h-full text-white/40 text-sm">
-                            No emoji found
-                          </EmojiPicker.Empty>
-                          <EmojiPicker.List
-                            components={{
-                              Row: ({ className: cls, ...props }) => (
-                                <div {...props} className={`${cls || ""} flex gap-0.5 px-1`} />
-                              ),
-                              Emoji: ({ className: cls, ...props }) => (
-                                <button
-                                  {...props}
-                                  className={`${cls || ""} flex items-center justify-center w-9 h-9 rounded-md text-xl hover:bg-white/10 cursor-pointer transition-colors`}
-                                />
-                              ),
-                              CategoryHeader: ({ category, className: cls, ...props }) => (
-                                <div {...props} className={`${cls || ""} px-2 py-1.5 text-xs font-semibold text-white/40 sticky top-0 bg-[#141c2b] z-10`}>
-                                  {category.label}
-                                </div>
-                              ),
-                            }}
+                      {showFullPicker ? (
+                        <EmojiPicker.Root
+                          onEmojiSelect={(emoji: { emoji: string }) => {
+                            onReact?.(
+                              message.MessageInfo.TimestampNanosString,
+                              emoji.emoji
+                            );
+                            setReactionPickerFor(null);
+                          }}
+                          className="w-[352px] h-[300px] flex flex-col overflow-hidden bg-[#141c2b] rounded-xl border border-white/10 [--frimousse-bg:transparent] [--frimousse-border-color:theme(colors.white/10%)]"
+                        >
+                          <EmojiPicker.Search
+                            className="mx-2 mt-2 mb-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-white/30 outline-none focus:border-[#34F080]/50"
+                            placeholder="Search emoji..."
+                            autoFocus
                           />
-                        </EmojiPicker.Viewport>
-                      </EmojiPicker.Root>
+                          <EmojiPicker.Viewport className="flex-1 overflow-y-auto px-1">
+                            <EmojiPicker.Loading className="flex items-center justify-center h-full text-blue-400/40 text-sm">
+                              Loading...
+                            </EmojiPicker.Loading>
+                            <EmojiPicker.Empty className="flex items-center justify-center h-full text-white/40 text-sm">
+                              No emoji found
+                            </EmojiPicker.Empty>
+                            <EmojiPicker.List
+                              components={{
+                                Row: ({ className: cls, ...props }) => (
+                                  <div {...props} className={`${cls || ""} flex gap-0.5 px-1`} />
+                                ),
+                                Emoji: ({ className: cls, emoji: emojiData, ...props }) => (
+                                  <button
+                                    {...props}
+                                    className={`${cls || ""} flex items-center justify-center w-9 h-9 rounded-md text-xl hover:bg-white/10 cursor-pointer transition-colors`}
+                                  >
+                                    {emojiData.emoji}
+                                  </button>
+                                ),
+                                CategoryHeader: ({ category, className: cls, ...props }) => (
+                                  <div {...props} className={`${cls || ""} px-2 py-1.5 text-xs font-semibold text-white/40 sticky top-0 bg-[#141c2b] z-10`}>
+                                    {category.label}
+                                  </div>
+                                ),
+                              }}
+                            />
+                          </EmojiPicker.Viewport>
+                        </EmojiPicker.Root>
+                      ) : (
+                        <div className="bg-[#141c2b] rounded-xl border border-white/10 p-2">
+                          <div className="grid grid-cols-8 gap-0.5">
+                            {POPULAR_EMOJI.map((emoji) => (
+                              <button
+                                key={emoji}
+                                onClick={() => {
+                                  onReact?.(
+                                    message.MessageInfo.TimestampNanosString,
+                                    emoji
+                                  );
+                                  setReactionPickerFor(null);
+                                }}
+                                className="flex items-center justify-center w-[33px] h-[33px] rounded-md hover:bg-white/10 cursor-pointer transition-colors"
+                              >
+                                <AnimatedEmoji emoji={emoji} size={22} eager />
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            onClick={() => setShowFullPicker(true)}
+                            className="w-full mt-1.5 py-1.5 text-xs text-gray-400 hover:text-white transition-colors text-center cursor-pointer"
+                          >
+                            Search all emoji...
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
 
                 {/* Reaction pills */}
                 {reactions && (
-                  <div className={`${IsSender ? "flex justify-end" : ""}`}>
+                  <div className={`mt-1 ${IsSender ? "flex justify-end" : ""}`}>
                     <ReactionPills
                       reactions={reactions}
                       currentUserKey={appUser?.PublicKeyBase58Check}
@@ -880,7 +993,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                   </div>
                 )}
               </div>
-              {IsSender && (isLastInGroup ? messagingDisplayAvatarAndTimestamp : avatarSpacer)}
+              {/* Own messages don't need avatar — green bubble alignment is enough */}
             </div>
           );
         })}

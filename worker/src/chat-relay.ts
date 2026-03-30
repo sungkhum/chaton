@@ -215,8 +215,8 @@ export class ChatRelay extends DurableObject {
       const result = await sendPushNotification(
         sub,
         {
-          title: fromName,
-          body: "sent you a message",
+          title: "New message",
+          body: `${fromName} sent you a message`,
           tag: `thread-${threadId}`,
           conversationKey: threadId,
         },
