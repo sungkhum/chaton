@@ -773,6 +773,21 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                     )}
                   </div>
 
+                  {/* Status indicator – absolutely positioned so it never shifts layout */}
+                  {IsSender && (message as any)._status && (
+                    <div className="absolute -bottom-4 right-0 z-10">
+                      <MessageStatusIndicator
+                        status={(message as any)._status}
+                        onRetry={(message as any)._localId && (message as any)._status === "failed"
+                          ? () => onRetry?.((message as any)._localId)
+                          : undefined}
+                        onDelete={(message as any)._localId && (message as any)._status === "failed"
+                          ? () => onDeleteFailed?.((message as any)._localId)
+                          : undefined}
+                      />
+                    </div>
+                  )}
+
                   {/* Telegram-style context menu (right-click on desktop, long-press on mobile) */}
                   {showActionBar && !parsed.deleted && (() => {
                     const actionBar = (
@@ -962,20 +977,6 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                   </div>
                 )}
 
-                {/* Message status indicator */}
-                {IsSender && (message as any)._status && (
-                  <div className="flex justify-end -mt-0.5 mb-1">
-                    <MessageStatusIndicator
-                      status={(message as any)._status}
-                      onRetry={(message as any)._localId && (message as any)._status === "failed"
-                        ? () => onRetry?.((message as any)._localId)
-                        : undefined}
-                      onDelete={(message as any)._localId && ((message as any)._status === "failed" || (message as any)._status === "sending")
-                        ? () => onDeleteFailed?.((message as any)._localId)
-                        : undefined}
-                    />
-                  </div>
-                )}
               </div>
               {/* Own messages don't need avatar — green bubble alignment is enough */}
             </div>
