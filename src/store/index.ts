@@ -120,7 +120,9 @@ export const useStore = create<ChatOnState>((set) => ({
 
   setAllAccessGroups: (newAllAccessGroups) =>
     set((state) => {
-      const combined = state.allAccessGroups.concat(newAllAccessGroups);
+      // New groups come first so fresh blockchain data (with ExtraData)
+      // wins over stale cached entries during deduplication.
+      const combined = newAllAccessGroups.concat(state.allAccessGroups);
       const seen = new Set<string>();
       const allAccessGroups = combined.filter((group) => {
         const key =
