@@ -6,7 +6,7 @@ import { useStore } from "../store";
 // Bump this version whenever getTransactionSpendingLimits changes
 // (e.g., new association types, new transaction types).
 // Users with a cached version lower than this will be prompted to re-authorize.
-const PERMISSIONS_VERSION = 2;
+const PERMISSIONS_VERSION = 3;
 const PERMISSIONS_VERSION_KEY = "chaton:permissions-version";
 
 function getStoredPermissionsVersion(publicKey: string): number {

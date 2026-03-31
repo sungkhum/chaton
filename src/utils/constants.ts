@@ -63,50 +63,14 @@ export const getTransactionSpendingLimits = (
         OpCount: UNLIMITED,
       },
     ],
+    // Wildcard: allows create/delete of ANY User association type.
+    // The SDK's hasPermissions check matches AssociationType: "" as a wildcard
+    // for all specific types. This future-proofs us — no need to update this
+    // list when adding new association types.
     AssociationLimitMap: [
       {
         AssociationClass: "User" as const,
-        AssociationType: ASSOCIATION_TYPE_APPROVED,
-        AppScopeType: "Any" as const,
-        AppPublicKeyBase58Check: "",
-        AssociationOperation: "Any" as const,
-        OpCount: UNLIMITED,
-      },
-      {
-        AssociationClass: "User" as const,
-        AssociationType: ASSOCIATION_TYPE_BLOCKED,
-        AppScopeType: "Any" as const,
-        AppPublicKeyBase58Check: "",
-        AssociationOperation: "Any" as const,
-        OpCount: UNLIMITED,
-      },
-      {
-        AssociationClass: "User" as const,
-        AssociationType: ASSOCIATION_TYPE_GROUP_ARCHIVED,
-        AppScopeType: "Any" as const,
-        AppPublicKeyBase58Check: "",
-        AssociationOperation: "Any" as const,
-        OpCount: UNLIMITED,
-      },
-      {
-        AssociationClass: "User" as const,
-        AssociationType: ASSOCIATION_TYPE_PRIVACY_MODE,
-        AppScopeType: "Any" as const,
-        AppPublicKeyBase58Check: "",
-        AssociationOperation: "Any" as const,
-        OpCount: UNLIMITED,
-      },
-      {
-        AssociationClass: "User" as const,
-        AssociationType: ASSOCIATION_TYPE_CHAT_ARCHIVED,
-        AppScopeType: "Any" as const,
-        AppPublicKeyBase58Check: "",
-        AssociationOperation: "Any" as const,
-        OpCount: UNLIMITED,
-      },
-      {
-        AssociationClass: "User" as const,
-        AssociationType: ASSOCIATION_TYPE_DISMISSED,
+        AssociationType: "",
         AppScopeType: "Any" as const,
         AppPublicKeyBase58Check: "",
         AssociationOperation: "Any" as const,
