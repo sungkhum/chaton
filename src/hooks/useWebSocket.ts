@@ -91,7 +91,7 @@ export function useWebSocket(callbacks: WsCallbacks) {
   }, [connect]);
 
   const sendNotify = useCallback(
-    (threadId: string, recipients: string[], fromUsername?: string) => {
+    (threadId: string, recipients: string[], fromUsername?: string, groupName?: string) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(
           JSON.stringify({
@@ -100,6 +100,7 @@ export function useWebSocket(callbacks: WsCallbacks) {
             recipients,
             from: appUser?.PublicKeyBase58Check,
             fromUsername,
+            ...(groupName && { groupName }),
           })
         );
       }

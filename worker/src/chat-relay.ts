@@ -9,6 +9,7 @@ interface WsMessage {
   from?: string;
   fromUsername?: string;
   conversationKey?: string;
+  groupName?: string;
 }
 
 interface ConnectedClient {
@@ -173,7 +174,7 @@ export class ChatRelay extends DurableObject {
   }
 
   private handleNotify(message: WsMessage) {
-    const { recipients, threadId, from, fromUsername } = message;
+    const { recipients, threadId, from, fromUsername, groupName } = message;
     if (!recipients || !threadId) return;
 
     for (const recipientKey of recipients) {
@@ -192,12 +193,12 @@ export class ChatRelay extends DurableObject {
 
       // Always send push — the service worker suppresses if the app is visible
       if (this.env.VAPID_PRIVATE_KEY) {
-        this.sendPushToUser(recipientKey, fromUsername || from || "Someone", threadId, from);
+        this.sendPushToUser(recipientKey, fromUsername || from || "Someone", threadId, from, groupName);
       }
     }
   }
 
-  private async sendPushToUser(publicKey: string, fromName: string, threadId: string, fromPublicKey?: string) {
+  private async sendPushToUser(publicKey: string, fromName: string, threadId: string, fromPublicKey?: string, groupName?: string) {
     this.ensureDb();
     const rows = this.ctx.storage.sql.exec(
       `SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE public_key = ?`,
@@ -212,11 +213,16 @@ export class ChatRelay extends DurableObject {
         keys: { p256dh: row.p256dh as string, auth: row.auth as string },
       };
 
+      const title = groupName ? groupName : "New message";
+      const body = groupName
+        ? `${fromName}: new message`
+        : `${fromName} sent you a message`;
+
       const result = await sendPushNotification(
         sub,
         {
-          title: "New message",
-          body: `${fromName} sent you a message`,
+          title,
+          body,
           tag: `thread-${threadId}`,
           conversationKey: threadId,
           from: fromPublicKey,

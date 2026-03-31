@@ -49,6 +49,8 @@ export interface PushJob {
   threadType: string;
   /** Matches the app's conversation key format for tag dedup & navigation */
   conversationKey: string;
+  /** Group chat name for notification title (undefined for DMs) */
+  groupName?: string;
 }
 
 // ── Thread key derivation ──
@@ -209,6 +211,9 @@ async function pollUserThreads(
       threadKey,
       threadType,
       conversationKey: deriveConversationKey(thread, publicKey),
+      groupName: thread.ChatType === "GroupChat"
+        ? thread.RecipientInfo.AccessGroupKeyName
+        : undefined,
     });
   }
 

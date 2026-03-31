@@ -621,9 +621,9 @@ export const MessagingApp: FC = () => {
           extraData
         );
         removePendingMessage(appUser.PublicKeyBase58Check, localId);
-        sendNotify(
+        notifyConversation(
           conversationKey,
-          [recipientPublicKey],
+          recipientPublicKey,
           usernameByPublicKeyBase58Check[appUser.PublicKeyBase58Check] || appUser.PublicKeyBase58Check
         );
         setConversations((prev) => {
@@ -690,7 +690,8 @@ export const MessagingApp: FC = () => {
 
       setLoading(true);
       setAutoFetchConversations(true);
-      rehydrateConversation(pending || "", false, !isMobile, isLoadingUser);
+      // If opened from a notification, always select the conversation even on mobile
+      rehydrateConversation(pending || "", false, !isMobile || !!pending, isLoadingUser);
     } else {
       setLoading(false);
     }
@@ -843,13 +844,28 @@ export const MessagingApp: FC = () => {
     const { AccessGroupKeyName, OwnerPublicKeyBase58Check } =
       conversation.messages[0].RecipientInfo;
 
-    const { PublicKeyToProfileEntryResponse } =
-      await getPaginatedAccessGroupMembers({
+    // Fetch members and owner profile in parallel — the members API
+    // doesn't include the group owner, so we fetch them separately.
+    const [membersResult, ownerResult] = await Promise.all([
+      getPaginatedAccessGroupMembers({
         AccessGroupOwnerPublicKeyBase58Check: OwnerPublicKeyBase58Check,
         AccessGroupKeyName,
         MaxMembersToFetch:
           MAX_MEMBERS_TO_REQUEST_IN_GROUP + MAX_MEMBERS_IN_GROUP_SUMMARY_SHOWN,
-      });
+      }),
+      getUsersStateless({
+        PublicKeysBase58Check: [OwnerPublicKeyBase58Check],
+        SkipForLeaderboard: true,
+      }),
+    ]);
+
+    const { PublicKeyToProfileEntryResponse } = membersResult;
+
+    // Merge the owner's profile into the members map
+    const ownerProfile = ownerResult.UserList?.[0]?.ProfileEntryResponse;
+    if (ownerProfile && !PublicKeyToProfileEntryResponse[OwnerPublicKeyBase58Check]) {
+      PublicKeyToProfileEntryResponse[OwnerPublicKeyBase58Check] = ownerProfile;
+    }
 
     setMembersByGroupKey((state) => ({
       ...state,
@@ -1337,6 +1353,19 @@ export const MessagingApp: FC = () => {
         {}
       )
     : usernameByPublicKeyBase58Check;
+
+  // For group chats, notify ALL members (relay skips the sender).
+  // For DMs, notify just the other participant.
+  const notifyConversation = (convKey: string, dmRecipient: string, fromUsername?: string) => {
+    const conv = conversations[convKey];
+    const members = membersByGroupKey[convKey];
+    if (conv?.ChatType === ChatType.GROUPCHAT && members) {
+      const groupName = conv.messages[0]?.RecipientInfo?.AccessGroupKeyName;
+      sendNotify(convKey, Object.keys(members), fromUsername, groupName);
+    } else {
+      sendNotify(convKey, [dmRecipient], fromUsername);
+    }
+  };
   return (
     <div className="h-full">      
       {(!conversationsReady ||
@@ -1814,7 +1843,7 @@ export const MessagingApp: FC = () => {
                               timestampNanosString,
                               deletedExtraData
                             );
-                            sendNotify(convKey, [recipientPublicKey]);
+                            notifyConversation(convKey, recipientPublicKey);
                           } catch (e) {
                             toast.error("Failed to delete message for everyone");
                             // Rollback
@@ -1929,7 +1958,7 @@ export const MessagingApp: FC = () => {
                               })
                             );
                             // Notify via WebSocket relay
-                            sendNotify(convKey, [recipientPublicKey]);
+                            notifyConversation(convKey, recipientPublicKey);
                             // Mark as sent
                             setConversations((prev) => ({
                               ...prev,
@@ -2020,7 +2049,7 @@ export const MessagingApp: FC = () => {
                           timestamp,
                           updatedExtraData
                         );
-                        sendNotify(convKey, [recipientPublicKey]);
+                        notifyConversation(convKey, recipientPublicKey);
                       } catch (e) {
                         toast.error("Failed to edit message");
                         // Rollback
@@ -2137,9 +2166,9 @@ export const MessagingApp: FC = () => {
                         // Sent successfully — remove from IndexedDB
                         removePendingMessage(appUser.PublicKeyBase58Check, localId);
                         // Notify via WebSocket relay
-                        sendNotify(
+                        notifyConversation(
                           convKey,
-                          [recipientPublicKey],
+                          recipientPublicKey,
                           usernameByPublicKeyBase58Check[appUser.PublicKeyBase58Check] || appUser.PublicKeyBase58Check
                         );
                         // Update status to "sent" (blockchain accepted)

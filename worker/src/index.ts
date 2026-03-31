@@ -237,11 +237,16 @@ async function deliverPush(env: Env, job: PushJob): Promise<void> {
       keys: { p256dh: sub.p256dh, auth: sub.auth },
     };
 
+    const title = job.groupName ? job.groupName : "New message";
+    const body = job.groupName
+      ? `${job.senderName}: new message`
+      : `${job.senderName} sent you a message`;
+
     const result = await sendPushNotification(
       subscription,
       {
-        title: "New message",
-        body: `${job.senderName} sent you a message`,
+        title,
+        body,
         tag: `thread-${job.conversationKey}`,
         conversationKey: job.conversationKey,
       },

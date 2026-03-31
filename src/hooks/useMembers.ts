@@ -2,8 +2,9 @@ import { useStore } from "../store";
 import {
   getBulkAccessGroups,
   getPaginatedAccessGroupMembers,
+  getUsersStateless,
 } from "deso-protocol";
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
@@ -33,34 +34,54 @@ export function useMembers(
     } else if (conversation) {
       setLoading(true);
 
+      const ownerKey = conversation.messages[0].RecipientInfo.OwnerPublicKeyBase58Check;
+
       getPaginatedAccessGroupMembers({
-        AccessGroupOwnerPublicKeyBase58Check:
-          conversation.messages[0].RecipientInfo.OwnerPublicKeyBase58Check,
+        AccessGroupOwnerPublicKeyBase58Check: ownerKey,
         AccessGroupKeyName:
           conversation.messages[0].RecipientInfo.AccessGroupKeyName,
         MaxMembersToFetch:
           MAX_MEMBERS_TO_REQUEST_IN_GROUP + MAX_MEMBERS_IN_GROUP_SUMMARY_SHOWN,
       })
-        .then((res) => {
-          // Keep the current user on top
-          const currUserIndex = (
-            res.AccessGroupMembersBase58Check ?? []
-          ).indexOf(appUser.PublicKeyBase58Check);
-          res.AccessGroupMembersBase58Check.splice(currUserIndex, 1);
-          const sortedMembers = [
-            appUser.PublicKeyBase58Check,
-            ...res.AccessGroupMembersBase58Check,
-          ];
+        .then(async (res) => {
+          const memberKeys = res.AccessGroupMembersBase58Check ?? [];
+          const profiles = res.PublicKeyToProfileEntryResponse;
 
-          setCurrentMemberKeys(sortedMembers);
+          // The members API doesn't include the group owner — fetch their
+          // profile and insert them if missing.
+          if (!memberKeys.includes(ownerKey)) {
+            memberKeys.push(ownerKey);
+            if (!profiles[ownerKey]) {
+              try {
+                const ownerRes = await getUsersStateless({
+                  PublicKeysBase58Check: [ownerKey],
+                  SkipForLeaderboard: true,
+                });
+                const ownerProfile = ownerRes.UserList?.[0]?.ProfileEntryResponse;
+                if (ownerProfile) profiles[ownerKey] = ownerProfile;
+              } catch {
+                // Non-fatal — will show formatted key as fallback
+              }
+            }
+          }
+
+          // Sort: owner first, then current user, then everyone else
+          const isOwner = appUser.PublicKeyBase58Check === ownerKey;
+          const sorted = [ownerKey];
+          if (!isOwner) {
+            const myIdx = memberKeys.indexOf(appUser.PublicKeyBase58Check);
+            if (myIdx !== -1) sorted.push(appUser.PublicKeyBase58Check);
+          }
+          for (const pk of memberKeys) {
+            if (!sorted.includes(pk)) sorted.push(pk);
+          }
+
+          setCurrentMemberKeys(sorted);
           setMembers(
-            sortedMembers.map((publicKey) => ({
+            sorted.map((publicKey) => ({
               id: publicKey,
-              profile: res.PublicKeyToProfileEntryResponse[publicKey] ?? null,
-              text: nameOrFormattedKey(
-                res.PublicKeyToProfileEntryResponse[publicKey],
-                publicKey
-              ),
+              profile: profiles[publicKey] ?? null,
+              text: nameOrFormattedKey(profiles[publicKey], publicKey),
             }))
           );
         })

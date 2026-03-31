@@ -167,7 +167,7 @@ async function encrypt(
 
 export async function sendPushNotification(
   subscription: PushSubscriptionData,
-  payload: { title: string; body: string; tag?: string; conversationKey?: string },
+  payload: { title: string; body: string; tag?: string; conversationKey?: string; from?: string },
   vapidPrivateKeyBase64url: string,
   vapidSubject: string
 ): Promise<"sent" | "expired" | "error"> {
