@@ -50,6 +50,11 @@ export async function withAuth<T>(fn: () => Promise<T>): Promise<T> {
           ...getTransactionSpendingLimits(publicKey),
         });
 
+        // requestPermissions triggers AUTHORIZE_DERIVED_KEY_START which sets
+        // isLoadingUser(true) in App.tsx. Since the user is already logged in,
+        // the completion event doesn't reset it. Reset it here.
+        useStore.getState().setIsLoadingUser(false);
+
         // Retry the original operation
         return await fn();
       } catch (reAuthError: any) {
@@ -105,6 +110,10 @@ export async function requestFullPermissions(): Promise<boolean> {
     await identity.requestPermissions({
       ...getTransactionSpendingLimits(publicKey),
     });
+
+    // requestPermissions triggers AUTHORIZE_DERIVED_KEY_START which sets
+    // isLoadingUser(true). Reset it since the user is already logged in.
+    useStore.getState().setIsLoadingUser(false);
 
     setStoredPermissionsVersion(publicKey);
     return true;
