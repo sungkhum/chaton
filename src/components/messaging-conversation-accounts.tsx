@@ -596,13 +596,13 @@ export const MessagingConversationAccount: FC<{
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2 mt-2 ml-[60px] flex-wrap">
+                            <div className="flex items-center gap-2 mt-2.5">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   onAccept(key, publicKey);
                                 }}
-                                className="flex items-center gap-1 min-h-[36px] px-3 py-1.5 rounded-lg bg-[#34F080]/15 text-[#34F080] text-xs font-bold hover:bg-[#34F080]/25 cursor-pointer transition-colors"
+                                className="flex-1 flex items-center justify-center gap-1 min-h-[36px] py-1.5 rounded-lg bg-[#34F080]/15 text-[#34F080] text-xs font-bold hover:bg-[#34F080]/25 cursor-pointer transition-colors"
                               >
                                 <Check className="w-3.5 h-3.5" />
                                 Accept
@@ -612,7 +612,7 @@ export const MessagingConversationAccount: FC<{
                                   e.stopPropagation();
                                   onBlock(key, publicKey);
                                 }}
-                                className="flex items-center gap-1 min-h-[36px] px-3 py-1.5 rounded-lg bg-white/5 text-gray-400 text-xs font-bold hover:bg-red-500/15 hover:text-red-400 cursor-pointer transition-colors"
+                                className="flex-1 flex items-center justify-center gap-1 min-h-[36px] py-1.5 rounded-lg bg-red-500/15 text-red-400 text-xs font-bold hover:bg-red-500/25 cursor-pointer transition-colors"
                               >
                                 <X className="w-3.5 h-3.5" />
                                 Block
@@ -622,7 +622,7 @@ export const MessagingConversationAccount: FC<{
                                   e.stopPropagation();
                                   onDismiss(key, publicKey);
                                 }}
-                                className="min-h-[36px] px-3 py-1.5 rounded-lg bg-white/[0.03] text-gray-500 text-xs font-medium hover:bg-white/5 hover:text-gray-300 cursor-pointer transition-colors"
+                                className="flex-1 flex items-center justify-center min-h-[36px] py-1.5 rounded-lg bg-white/[0.03] text-gray-500 text-xs font-medium hover:bg-white/5 hover:text-gray-300 cursor-pointer transition-colors"
                               >
                                 Dismiss
                               </button>
