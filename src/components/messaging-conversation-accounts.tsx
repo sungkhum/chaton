@@ -43,18 +43,12 @@ export const MessagingConversationAccount: FC<{
   onDismiss: (conversationKey: string, publicKey: string) => void;
   onUnarchive: (conversationKey: string) => void;
   onUnarchiveChat: (publicKey: string) => void;
-  onArchiveChat: (conversationKey: string, publicKey: string) => void;
   onUnblock: (publicKey: string) => void;
   onUndismiss: (publicKey: string) => void;
   blockedUsers: Set<string>;
   dismissedUsers: Set<string>;
-  blockedAssociationIds: Map<string, string>;
-  dismissedAssociationIds: Map<string, string>;
   unreadByConversation: Map<string, number>;
   mutedConversations: Set<string>;
-  membersByGroupKey: {
-    [groupKey: string]: { [publicKey: string]: ProfileEntryResponse | null };
-  };
   searchQuery?: string;
   searchResults?: MessageSearchResult[];
   isSearching?: boolean;
@@ -76,16 +70,12 @@ export const MessagingConversationAccount: FC<{
   onDismiss,
   onUnarchive,
   onUnarchiveChat,
-  onArchiveChat,
   onUnblock,
   onUndismiss,
   blockedUsers,
   dismissedUsers,
-  blockedAssociationIds,
-  dismissedAssociationIds,
   unreadByConversation,
   mutedConversations,
-  membersByGroupKey,
   searchQuery = "",
   searchResults = [],
   isSearching = false,

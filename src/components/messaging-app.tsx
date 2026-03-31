@@ -381,7 +381,8 @@ export const MessagingApp: FC = () => {
             // Different conversation — just merge the conversation list
             simpleConversationMerge(updated);
 
-            if (localThreadId && !useStore.getState().mutedConversations.has(localThreadId) && !useStore.getState().archivedGroups.has(localThreadId) && !(_from && useStore.getState().blockedUsers.has(_from)) && !(_from && useStore.getState().dismissedUsers.has(_from)) && !(_from && useStore.getState().archivedChats.has(_from))) {
+            const isDmConvo = updated[localThreadId]?.ChatType === ChatType.DM;
+            if (localThreadId && !useStore.getState().mutedConversations.has(localThreadId) && !useStore.getState().archivedGroups.has(localThreadId) && !(isDmConvo && _from && useStore.getState().blockedUsers.has(_from)) && !(isDmConvo && _from && useStore.getState().dismissedUsers.has(_from)) && !(isDmConvo && _from && useStore.getState().archivedChats.has(_from))) {
               useStore.getState().incrementUnread(localThreadId);
             } else if (!localThreadId) {
               // Resume from background — fetch full thread and compute
@@ -1837,7 +1838,6 @@ export const MessagingApp: FC = () => {
                     }
                   }
                 }}
-                membersByGroupKey={membersByGroupKey}
                 conversations={chatConversations}
                 requestConversations={requestConversations}
                 archivedConversations={archivedConversations}
@@ -1846,13 +1846,10 @@ export const MessagingApp: FC = () => {
                 onDismiss={handleDismissRequest}
                 onUnarchive={handleUnarchiveGroup}
                 onUnarchiveChat={handleUnarchiveChat}
-                onArchiveChat={handleArchiveChat}
                 onUnblock={handleUnblock}
                 onUndismiss={handleUndismiss}
                 blockedUsers={blockedUsers}
                 dismissedUsers={dismissedUsers}
-                blockedAssociationIds={blockedAssociationIds}
-                dismissedAssociationIds={dismissedAssociationIds}
                 getUsernameByPublicKeyBase58Check={
                   usernameByPublicKeyBase58Check
                 }
