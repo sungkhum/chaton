@@ -39,7 +39,8 @@ Sign in with a DeSo identity or an Ethereum wallet (MetaMask), and message anyon
 
 ### Rich Media
 - **Image sharing** — upload and send images with lightbox preview
-- **GIF picker** — search and send GIFs via Giphy integration
+- **GIF & sticker picker** — search and send GIFs and stickers via Klipy integration
+- **Image captions** — add text captions to images and GIFs
 - **Link attachments** — share URLs with descriptions, Open Graph previews, and branded cards for 44+ services (Google Drive, GitHub, Figma, YouTube, Dropbox, etc.)
 - **Rich media rendering** — video and file messages sent from other DeSo apps render with inline playback, download links, and file type icons
 
@@ -53,7 +54,8 @@ Sign in with a DeSo identity or an Ethereum wallet (MetaMask), and message anyon
 ### Chat Requests
 - **Request inbox** — messages from strangers go to a separate "Requests" tab
 - **Smart classification** — mutual DeSo follows, approved contacts, and self-initiated chats go straight to your inbox
-- **Accept / Block** — on-chain associations for permanent, portable decisions
+- **Accept / Block / Dismiss** — on-chain associations for permanent, portable decisions
+- **DM archiving** — hide DM conversations with on-chain associations
 - **No spam** — blocked users are filtered out completely
 
 ### Design
@@ -73,6 +75,7 @@ Sign in with a DeSo identity or an Ethereum wallet (MetaMask), and message anyon
 | Blockchain | [deso-protocol](https://www.npmjs.com/package/deso-protocol) SDK |
 | Real-time | Cloudflare Workers + Durable Objects (WebSocket relay) |
 | Push | Cloudflare Cron Triggers + D1 + Queues (blockchain polling) |
+| GIFs & Stickers | [Klipy](https://klipy.co) (GIF and sticker search API) |
 | Emoji Picker | [frimousse](https://github.com/liveblocks/frimousse) (React 19 native) |
 | Animated Emoji | [Noto Emoji Animation](https://fonts.google.com/noto/emoji) (Google CDN, WebP) |
 | Markdown | [Marked](https://github.com/markedjs/marked) (formatted messages) |
@@ -105,7 +108,7 @@ VITE_NODE_URL=https://node.deso.org
 VITE_IDENTITY_URL=https://identity.deso.org
 VITE_PROFILE_URL=https://focus.xyz
 VITE_IS_TESTNET=false
-VITE_GIPHY_API_KEY=your_giphy_api_key
+VITE_KLIPY_API_KEY=your_klipy_api_key
 VITE_RELAY_URL=wss://your-relay-worker.workers.dev
 VITE_VAPID_PUBLIC_KEY=your_vapid_public_key
 ```
@@ -116,7 +119,7 @@ VITE_VAPID_PUBLIC_KEY=your_vapid_public_key
 | `VITE_IDENTITY_URL` | DeSo Identity service URL |
 | `VITE_PROFILE_URL` | Base URL for user profile links |
 | `VITE_IS_TESTNET` | Set to `true` for testnet |
-| `VITE_GIPHY_API_KEY` | Giphy API key for GIF search |
+| `VITE_KLIPY_API_KEY` | Klipy API key for GIF and sticker search |
 | `VITE_RELAY_URL` | WebSocket relay URL (Cloudflare Worker) |
 | `VITE_VAPID_PUBLIC_KEY` | VAPID key for push notifications |
 
@@ -226,7 +229,9 @@ worker/
 
 ## DeSo Rich Messaging Protocol
 
-ChatOn extends the core DeSo messaging protocol with rich features — reactions, replies, media, mentions, and more — using DeSo's `ExtraData` field on message transactions. Everything below uses generic `msg:` namespaced keys that any DeSo messaging app can adopt for cross-app compatibility.
+ChatOn extends the core DeSo messaging protocol with rich features — reactions, replies, media, mentions, and more — using DeSo's `ExtraData` field on message transactions. Everything below uses generic `msg:` namespaced keys that **any DeSo messaging app can adopt** for cross-app compatibility.
+
+> **Why this matters:** Standard DeSo messaging apps only handle plain text in `EncryptedMessageText`. ChatOn layers structured metadata on top via `ExtraData`, enabling rich media, reactions, replies, edit/delete, and user mentions — all stored on the same blockchain. If your app reads these keys, your users can participate in the same conversations with full fidelity.
 
 ### How It Works
 
@@ -243,14 +248,14 @@ All keys use the `msg:` namespace. Set only the keys relevant to your message ty
 
 | Key | Value | Description |
 |-----|-------|-------------|
-| `msg:type` | `text` \| `image` \| `gif` \| `video` \| `file` \| `reaction` | Message type. Omit for plain text. |
+| `msg:type` | `text` \| `image` \| `gif` \| `sticker` \| `video` \| `file` \| `reaction` | Message type. Omit for plain text. |
 | `msg:replyTo` | `TimestampNanosString` | Timestamp of the message being replied to or reacted to |
 | `msg:replyPreview` | `string` | Truncated preview of the replied-to message (for display without lookup) |
 | `msg:emoji` | emoji character | The emoji for a reaction (encrypted — see below) |
 | `msg:action` | `add` \| `remove` | Reaction toggle (encrypted — see below). Omit for `add`. |
 | `msg:imageUrl` | URL | Image attachment URL |
-| `msg:gifUrl` | URL | GIF URL (from Giphy or similar) |
-| `msg:gifTitle` | `string` | Title/alt text for the GIF |
+| `msg:gifUrl` | URL | GIF or sticker URL |
+| `msg:gifTitle` | `string` | Title/alt text for the GIF or sticker (from Klipy) |
 | `msg:videoUrl` | URL | Video attachment URL |
 | `msg:duration` | `string` (seconds) | Media duration |
 | `msg:mediaWidth` | `string` (pixels) | Media width for aspect ratio |
@@ -268,6 +273,38 @@ All keys use the `msg:` namespace. Set only the keys relevant to your message ty
 | `msg:mentions` | JSON array | User mentions: `[{"pk":"BC1Y...","un":"alice"}]` |
 | `msg:encrypted` | `"true"` | Flag indicating some ExtraData values are encrypted |
 
+### Captions
+
+Images and GIFs support user-written captions. The caption is stored in `EncryptedMessageText` (the message body), not in a separate ExtraData key. When the message body differs from the filename (for images) or the GIF title (for GIFs), it's treated as a caption and rendered below the media.
+
+```
+# Image with caption
+ExtraData:
+  msg:type        = "image"
+  msg:imageUrl    = "https://images.deso.org/..."
+  msg:mediaWidth  = "1200"
+  msg:mediaHeight = "800"
+
+EncryptedMessageText: <encrypted "Check out this view">  # ← caption (not the filename)
+```
+
+To detect a caption: if `msg:type` is `image` and the decrypted message text differs from the original filename, display it as a caption. For GIFs, compare against `msg:gifTitle`.
+
+### Stickers
+
+Stickers use the same ExtraData structure as GIFs but with `msg:type: "sticker"`. The URL in `msg:gifUrl` points to the sticker animation. Stickers are sent immediately without a caption preview (unlike GIFs which show a preview/caption screen before sending).
+
+```
+ExtraData:
+  msg:type        = "sticker"
+  msg:gifUrl      = "https://media.klipy.co/..."
+  msg:gifTitle    = "thumbs up"
+  msg:mediaWidth  = "320"
+  msg:mediaHeight = "320"
+
+EncryptedMessageText: <encrypted "thumbs up">
+```
+
 ### Encrypted ExtraData
 
 ExtraData is normally stored as plaintext on the blockchain. For sensitive values, ChatOn encrypts individual ExtraData values using the same key used for the message body.
@@ -278,6 +315,17 @@ ChatOn supports two privacy modes, controlled by a toggle in the user menu:
 |------|-------------------------------|----------|
 | **Full** | All media URLs, file metadata, reply previews, mentions, reactions | Yes |
 | **Standard** | `msg:emoji`, `msg:action` (reaction privacy only) | No |
+
+**Full mode encrypts these keys:**
+
+```
+msg:emoji, msg:action, msg:imageUrl, msg:gifUrl, msg:gifTitle,
+msg:videoUrl, msg:duration, msg:mediaWidth, msg:mediaHeight,
+msg:fileName, msg:fileSize, msg:fileType, msg:fileUrl, msg:fileDescription,
+msg:ogTitle, msg:ogDescription, msg:ogImage, msg:replyPreview, msg:mentions
+```
+
+**Standard mode encrypts only:** `msg:emoji`, `msg:action`
 
 **How it works:**
 
@@ -332,7 +380,7 @@ ExtraData:
   msg:mediaHeight = "800"
 ```
 
-The encrypted message body should contain a text fallback (e.g., the image URL or a description) for apps that don't render media inline.
+The encrypted message body should contain a text fallback (e.g., the image URL, a caption, or a description) for apps that don't render media inline.
 
 ### Link Attachments
 
@@ -373,21 +421,82 @@ Group metadata uses the `group:` namespace, stored via `createAccessGroup` / `up
 
 ### On-Chain Associations
 
-ChatOn uses DeSo User Associations for chat request classification. These are portable across apps.
+ChatOn uses DeSo User Associations for chat request classification, DM archiving, and user preferences. These are portable across apps — any DeSo messaging app can query for them.
 
 | Association Type | Value | Target | Meaning |
 |-----------------|-------|--------|---------|
 | `chaton:chat-approved` | `"approved"` | Other user | User accepted a chat request from the target user |
 | `chaton:chat-blocked` | `"blocked"` | Other user | User blocked the target user |
-| `chat:group-archived` | `<AccessGroupKeyName>` | Group owner | User left/archived a group chat. Generic `chat:` prefix so any DeSo app can query it. |
-| `chaton:privacy-mode` | `"standard"` \| `"full"` | Self | User's ExtraData encryption preference. Self-referencing (transactor = target). Omitted when `"full"` (the default). |
+| `chaton:chat-dismissed` | `"dismissed"` | Other user | User dismissed a chat request without blocking (can be undone by deleting the association) |
+| `chaton:chat-archived` | `"archived"` | Other user | User archived/hid a DM conversation |
+| `chat:group-archived` | `<AccessGroupKeyName>` | Group owner | User left/archived a group chat. Generic `chat:` prefix so any DeSo app can query it. Composite key: `TargetUserPublicKey + AssociationValue` reconstructs the conversation key. |
+| `chaton:privacy-mode` | `"standard"` \| `"full"` | Self | User's ExtraData encryption preference. Self-referencing (transactor = target). Absent = `"full"` (the default). DeSo doesn't support updating association values, so changing modes requires delete + recreate. |
+
+**Namespace convention:** `chaton:` prefixed types are ChatOn-specific. `chat:` prefixed types (like `chat:group-archived`) are generic conventions that any DeSo messaging app should adopt for cross-app interoperability.
+
+### Chat Request Classification
+
+ChatOn classifies DM conversations as **chat** (inbox), **request** (pending), **blocked**, **archived**, or **dismissed** using on-chain data. This is a pure function — no backend needed.
+
+**Inputs:**
+- The conversation's messages and metadata
+- Mutual DeSo follows (bidirectional follow check)
+- On-chain associations (approved, blocked, dismissed, archived)
+- Whether the current user initiated the conversation
+
+**Classification order (first match wins):**
+
+```
+1. Group chats:
+   a. If group is in archivedGroups → "archived"
+   b. Otherwise → "chat" (always in inbox)
+
+2. DM chats — check the other party's public key:
+   a. blockedUsers.has(otherKey)     → "blocked"
+   b. dismissedUsers.has(otherKey)   → "dismissed"
+   c. archivedChats.has(otherKey)    → "archived"
+   d. mutualFollows.has(otherKey)    → "chat"
+   e. approvedUsers.has(otherKey)    → "chat"
+   f. initiatedChats.has(otherKey)   → "chat"
+   g. Current user sent first msg    → "chat"
+   h. Otherwise                      → "request"
+```
+
+**Data fetching:** On first load, `fetchMutualFollows()` and `fetchChatAssociations()` run in `Promise.all` alongside `getConversations()`. Mutual follows are computed by intersecting the user's following list with their followers list (paginated, 500 per page). Associations are fetched by type with pagination (100 per page). Results are cached in the Zustand store for the session.
+
+### Derived Key Permissions
+
+To avoid repeated authorization prompts, request a derived key with broad permissions up front. Here's the full set of permissions ChatOn requests:
+
+**TransactionCountLimitMap:**
+
+| Transaction Type | Limit | Purpose |
+|-----------------|-------|---------|
+| `AUTHORIZE_DERIVED_KEY` | `1` | The derived key authorization itself |
+| `NEW_MESSAGE` | `UNLIMITED` | Send, edit, and delete DMs and group messages |
+| `ACCESS_GROUP` | `UNLIMITED` | Create/update access groups (default-key setup, new group chats, group images) |
+| `ACCESS_GROUP_MEMBERS` | `UNLIMITED` | Add/remove members from group chats |
+| `UPDATE_PROFILE` | `5` | Profile updates during the key's lifetime |
+| `FOLLOW` | `UNLIMITED` | Follow/unfollow users |
+| `CREATE_USER_ASSOCIATION` | `UNLIMITED` | Create associations (approve, block, dismiss, archive, privacy mode) |
+| `DELETE_USER_ASSOCIATION` | `UNLIMITED` | Delete associations (unblock, unarchive, update privacy mode) |
+| `BASIC_TRANSFER` | `UNLIMITED` | Send DESO (tips/donations) |
+
+**AccessGroupLimitMap:** Single wildcard entry — `ScopeType: "Any"`, `OperationType: "Any"`, scoped to the user's own public key.
+
+**AccessGroupMemberLimitMap:** Single wildcard entry — `ScopeType: "Any"`, `OperationType: "Any"`, scoped to the user's own public key.
+
+**AssociationLimitMap:** Single wildcard entry — `AssociationType: ""` (empty string acts as wildcard for all types), `AssociationOperation: "Any"`, `AppScopeType: "Any"`. This future-proofs the app — no need to update the limit map when adding new association types.
+
+**GlobalDESOLimit:** `5 * 1e9` nanos (5 DESO) — covers transaction fees for all operations.
 
 ### Implementation Reference
 
 The full implementation lives in these files:
 
-- **[`src/utils/extra-data.ts`](src/utils/extra-data.ts)** — constants, types, `parseMessageType()`, and `buildExtraData()`
-- **[`src/services/conversations.service.tsx`](src/services/conversations.service.tsx)** — encryption/decryption, send/update, and the ExtraData encryption pipeline
+- **[`src/utils/extra-data.ts`](src/utils/extra-data.ts)** — all `msg:` and `group:` constants, types, `parseMessageType()`, `buildExtraData()`, and encryption key lists
+- **[`src/utils/constants.ts`](src/utils/constants.ts)** — association type/value constants and `getTransactionSpendingLimits()` (derived key permissions)
+- **[`src/services/conversations.service.tsx`](src/services/conversations.service.tsx)** — encryption/decryption pipeline, send/update messages, all association CRUD, `classifyConversation()`, mutual follow detection
 - **[`src/utils/link-services.ts`](src/utils/link-services.ts)** — URL-to-service detection for 44+ services (renders branded link cards)
 - **[`src/services/og.service.ts`](src/services/og.service.ts)** — client-side Open Graph fetch service (calls the worker `/og` endpoint)
 - **[`worker/src/og.ts`](worker/src/og.ts)** — server-side OG metadata extraction with SSRF protection and Cloudflare cache
