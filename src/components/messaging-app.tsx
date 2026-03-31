@@ -189,6 +189,12 @@ export const MessagingApp: FC = () => {
   const [blockConfirm, setBlockConfirm] = useState<{ conversationKey: string; publicKey: string; name: string } | null>(null);
   const { isMobile } = useMobile();
 
+  // Close DM menu and block dialog when switching conversations
+  useEffect(() => {
+    setDmMenuOpen(false);
+    setBlockConfirm(null);
+  }, [selectedConversationPublicKey]);
+
   // Message search
   const {
     query: searchQuery,
