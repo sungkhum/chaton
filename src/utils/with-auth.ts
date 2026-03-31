@@ -60,14 +60,24 @@ function isDerivedKeyError(errorStr: string): boolean {
 }
 
 /**
- * Check if the current user's derived key has the needed permissions.
- * If not, proactively request re-authorization before attempting a transaction.
+ * Check if the current user's derived key has ALL permissions the app needs.
+ * If not, proactively request re-authorization once so the user isn't prompted
+ * per-action throughout the session.
+ *
+ * Call this once after login / app startup.
  */
 export async function ensurePermissions(): Promise<boolean> {
   try {
+    // Check a representative set of permissions — if the derived key was
+    // created before new association types were added, this will catch it.
     const hasPerms = identity.hasPermissions({
       TransactionCountLimitMap: {
         NEW_MESSAGE: 1,
+        CREATE_USER_ASSOCIATION: 1,
+        DELETE_USER_ASSOCIATION: 1,
+        FOLLOW: 1,
+        ACCESS_GROUP: 1,
+        ACCESS_GROUP_MEMBERS: 1,
       },
     });
 

@@ -17,6 +17,7 @@ import { useMessageSearch } from "../hooks/useMessageSearch";
 import { useMobile } from "../hooks/useMobile";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { useTypingIndicator, useTypingDisplay } from "../hooks/useTypingIndicator";
+import { ensurePermissions } from "../utils/with-auth";
 import {
   classifyConversation,
   createApprovalAssociation,
@@ -380,7 +381,7 @@ export const MessagingApp: FC = () => {
             // Different conversation — just merge the conversation list
             simpleConversationMerge(updated);
 
-            if (localThreadId && !useStore.getState().mutedConversations.has(localThreadId) && !useStore.getState().archivedGroups.has(localThreadId)) {
+            if (localThreadId && !useStore.getState().mutedConversations.has(localThreadId) && !useStore.getState().archivedGroups.has(localThreadId) && !(_from && useStore.getState().blockedUsers.has(_from)) && !(_from && useStore.getState().dismissedUsers.has(_from)) && !(_from && useStore.getState().archivedChats.has(_from))) {
               useStore.getState().incrementUnread(localThreadId);
             } else if (!localThreadId) {
               // Resume from background — fetch full thread and compute
@@ -478,9 +479,30 @@ export const MessagingApp: FC = () => {
     return { chatConversations: chats, requestConversations: requests, archivedConversations: archived };
   }, [conversations, mutualFollows, approvedUsers, blockedUsers, initiatedChats, archivedGroups, archivedChats, dismissedUsers, appUser]);
 
+  // Clean up UI state after a conversation's classification changes
+  const cleanupAfterClassificationChange = (conversationKey: string) => {
+    // Clear selection if the user is viewing this conversation
+    if (selectedConversationPublicKey === conversationKey) {
+      setSelectedConversationPublicKey("");
+    }
+    // Clear any unread badge for this conversation
+    clearUnread(conversationKey);
+    removeUnreadConversation(conversationKey);
+    // Clear search results so stale conversations don't appear
+    if (searchQuery) {
+      clearSearch();
+      setSearchClearTrigger((n) => n + 1);
+    }
+  };
+
   const handleAcceptRequest = async (conversationKey: string, publicKey: string) => {
     if (!appUser) return;
     approveUser(publicKey);
+    // Clear search so the conversation appears in the right tab
+    if (searchQuery) {
+      clearSearch();
+      setSearchClearTrigger((n) => n + 1);
+    }
     try {
       await createApprovalAssociation(appUser.PublicKeyBase58Check, publicKey);
     } catch (e) {
@@ -492,6 +514,7 @@ export const MessagingApp: FC = () => {
   const handleBlockRequest = async (conversationKey: string, publicKey: string) => {
     if (!appUser) return;
     blockUser(publicKey);
+    cleanupAfterClassificationChange(conversationKey);
     try {
       await createBlockAssociation(appUser.PublicKeyBase58Check, publicKey);
       toast("User blocked", {
@@ -515,6 +538,7 @@ export const MessagingApp: FC = () => {
   const handleArchiveGroup = async (conversationKey: string, groupOwnerPublicKey: string, groupKeyName: string) => {
     if (!appUser) return;
     archiveGroup(conversationKey);
+    cleanupAfterClassificationChange(conversationKey);
     try {
       await createArchiveAssociation(appUser.PublicKeyBase58Check, groupOwnerPublicKey, groupKeyName);
       toast("Left group chat", {
@@ -551,6 +575,7 @@ export const MessagingApp: FC = () => {
   const handleArchiveChat = async (conversationKey: string, publicKey: string) => {
     if (!appUser) return;
     archiveChat(publicKey);
+    cleanupAfterClassificationChange(conversationKey);
     try {
       await createArchiveChatAssociation(appUser.PublicKeyBase58Check, publicKey);
       toast("Chat archived", {
@@ -588,6 +613,7 @@ export const MessagingApp: FC = () => {
   const handleDismissRequest = async (conversationKey: string, publicKey: string) => {
     if (!appUser) return;
     dismissUser(publicKey);
+    cleanupAfterClassificationChange(conversationKey);
     try {
       await createDismissAssociation(appUser.PublicKeyBase58Check, publicKey);
       toast("Request dismissed", {
@@ -900,6 +926,10 @@ export const MessagingApp: FC = () => {
       // If the app was opened from a push notification, navigate to that conversation
       const pending = useStore.getState().pendingConversationKey;
       if (pending) useStore.getState().setPendingConversationKey(null);
+
+      // Ensure derived key has all permissions upfront (non-blocking).
+      // This avoids per-action re-auth prompts for users with stale derived keys.
+      ensurePermissions().catch(() => {});
 
       setLoading(true);
       setAutoFetchConversations(true);
@@ -1926,7 +1956,6 @@ export const MessagingApp: FC = () => {
                               selectedConversationPublicKey,
                               selectedConversation.firstMessagePublicKey
                             );
-                            setSelectedConversationPublicKey("");
                           }}
                           className="p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
                           title="Archive chat"
