@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { identity } from "deso-protocol";
 import { AnimatedEmoji } from "./messages/animated-emoji";
 import {
@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { PreSignupTutorial } from "./onboarding/pre-signup-tutorial";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -32,6 +33,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 export const LandingPage = () => {
   const root = useRef<HTMLDivElement>(null);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   useLayoutEffect(() => {
     if (!root.current) return;
@@ -280,12 +282,20 @@ export const LandingPage = () => {
               Donate
             </a>
           </div>
-          <button
-            onClick={() => identity.login()}
-            className="px-8 py-2.5 landing-btn-vivid text-white text-xs font-black rounded-full transition-all cursor-pointer"
-          >
-            LAUNCH APP
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => identity.login()}
+              className="px-5 py-2.5 text-gray-300 hover:text-white text-xs font-black transition-colors cursor-pointer"
+            >
+              LOG IN
+            </button>
+            <button
+              onClick={() => setShowTutorial(true)}
+              className="px-6 py-2.5 landing-btn-vivid text-white text-xs font-black rounded-full transition-all cursor-pointer"
+            >
+              CREATE ACCOUNT
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -311,7 +321,7 @@ export const LandingPage = () => {
             </p>
             <div className="hero-cta flex flex-col sm:flex-row gap-4 md:gap-8">
               <button
-                onClick={() => identity.login()}
+                onClick={() => setShowTutorial(true)}
                 className="px-8 py-4 md:px-12 md:py-6 landing-btn-vivid text-white font-black rounded-2xl flex items-center justify-center gap-3 md:gap-4 text-lg md:text-xl group cursor-pointer"
               >
                 Start Messaging for Free
@@ -838,7 +848,7 @@ export const LandingPage = () => {
           </h2>
           <div className="flex flex-col items-center gap-8 md:gap-12">
             <button
-              onClick={() => identity.login()}
+              onClick={() => setShowTutorial(true)}
               className="cta-button inline-flex items-center gap-4 md:gap-6 px-8 py-5 md:px-12 md:py-8 landing-btn-vivid text-white text-lg md:text-2xl font-black rounded-2xl md:rounded-[32px] group transition-all shadow-[0_0_80px_rgba(43,184,154,0.3)] cursor-pointer"
             >
               Start Messaging for Free
@@ -940,6 +950,10 @@ export const LandingPage = () => {
           </div>
         </div>
       </footer>
+
+      {showTutorial && (
+        <PreSignupTutorial onClose={() => setShowTutorial(false)} />
+      )}
     </div>
   );
 };

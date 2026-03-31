@@ -246,9 +246,15 @@ export const SendMessageButtonAndInput = ({
     }));
   };
 
+  // Text that was in the input when an image was staged — used as initial caption
+  const [stagedCaption, setStagedCaption] = useState("");
+
   const stageImage = (file: File) => {
     // Revoke previous preview URL if any
     if (pendingImage) URL.revokeObjectURL(pendingImage.previewUrl);
+    // Capture current text as the image caption and clear the main input
+    setStagedCaption(messageToSend);
+    setMessageToSend("");
     setPendingImage({ file, previewUrl: URL.createObjectURL(file) });
     setShowLinkPanel(false);
     setShowGifPicker(false);
@@ -256,6 +262,11 @@ export const SendMessageButtonAndInput = ({
 
   const cancelImage = () => {
     if (pendingImage) URL.revokeObjectURL(pendingImage.previewUrl);
+    // Restore the text that was in the input before staging
+    if (stagedCaption) {
+      setMessageToSend(stagedCaption);
+      setStagedCaption("");
+    }
     setPendingImage(null);
   };
 
@@ -270,6 +281,7 @@ export const SendMessageButtonAndInput = ({
       }));
       URL.revokeObjectURL(pendingImage.previewUrl);
       setPendingImage(null);
+      setStagedCaption("");
     } catch (err: any) {
       toast.error(`Image upload failed: ${err.message || err}`);
     } finally {
@@ -405,6 +417,7 @@ export const SendMessageButtonAndInput = ({
             onSend={confirmImage}
             onCancel={cancelImage}
             isSending={isUploading}
+            initialCaption={stagedCaption}
           />
         )}
 

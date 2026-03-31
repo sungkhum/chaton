@@ -1,6 +1,7 @@
 import { ChatType, identity, ProfileEntryResponse } from "deso-protocol";
-import { Archive, BellOff, Check, MessageSquarePlus, Pencil, RotateCcw, Search, Users, X } from "lucide-react";
+import { Archive, BellOff, Check, MessageSquarePlus, Pencil, RotateCcw, Search, Share2, Users, X } from "lucide-react";
 import { FC, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useStore } from "../store";
 import { MessageSearchResult, SearchProgress } from "../services/message-search.service";
 import { getGroupImageUrl } from "../utils/extra-data";
@@ -506,13 +507,39 @@ export const MessagingConversationAccount: FC<{
         )}
       </div>
 
-      {/* Compose FAB — visible on all screen sizes when no conversation is selected on mobile */}
-      <button
-        onClick={() => setComposeOpen(true)}
-        className="absolute bottom-6 right-5 z-20 w-14 h-14 rounded-full bg-gradient-to-r from-[#34F080] to-[#20E0AA] flex items-center justify-center shadow-lg cursor-pointer transition-transform active:scale-95 hover:brightness-110 md:bottom-5 md:right-4 md:w-12 md:h-12"
-      >
-        <Pencil className="w-6 h-6 text-black md:w-5 md:h-5" />
-      </button>
+      {/* Bottom actions — Invite + Compose */}
+      <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
+        <div className="flex items-end justify-between p-4 md:p-3">
+          {/* Invite Friends pill */}
+          <button
+            onClick={async () => {
+              const shareData = {
+                title: "ChatOn",
+                text: "Chat with me on ChatOn — decentralized, end-to-end encrypted messaging on the blockchain. No censorship, no middlemen.",
+                url: "https://getchaton.com",
+              };
+              if (navigator.share) {
+                try { await navigator.share(shareData); } catch { /* cancelled */ }
+              } else {
+                navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
+                toast.success("Invite link copied!");
+              }
+            }}
+            className="pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/5 border border-white/10 hover:border-[#34F080]/40 hover:bg-[#34F080]/10 text-gray-400 hover:text-[#34F080] text-sm font-medium cursor-pointer transition-all active:scale-95 backdrop-blur-sm"
+          >
+            <Share2 className="w-4 h-4" />
+            <span>Invite Friends</span>
+          </button>
+
+          {/* Compose FAB */}
+          <button
+            onClick={() => setComposeOpen(true)}
+            className="pointer-events-auto w-14 h-14 rounded-full bg-gradient-to-r from-[#34F080] to-[#20E0AA] flex items-center justify-center shadow-lg cursor-pointer transition-transform active:scale-95 hover:brightness-110 md:w-12 md:h-12"
+          >
+            <Pencil className="w-6 h-6 text-black md:w-5 md:h-5" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

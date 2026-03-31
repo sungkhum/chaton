@@ -9,6 +9,7 @@ import {
   Wallet,
   GitFork,
   Heart,
+  Share2,
 } from "lucide-react";
 import { NotificationToggle } from "./notification-toggle";
 import { PrivacyToggle } from "./privacy-toggle";
@@ -150,6 +151,27 @@ export const Header = () => {
                   <GitFork className="mr-3 w-5 h-5" />
                   <span className="text-base">Fork This Project</span>
                 </a>
+
+                <button
+                  className="flex items-center w-full pt-[9px] pb-2 px-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-md cursor-pointer transition-colors"
+                  onClick={async () => {
+                    setMenuOpen(false);
+                    const shareData = {
+                      title: "ChatOn",
+                      text: "Chat with me on ChatOn — decentralized, end-to-end encrypted messaging on the blockchain. No censorship, no middlemen.",
+                      url: "https://getchaton.com",
+                    };
+                    if (navigator.share) {
+                      try { await navigator.share(shareData); } catch { /* cancelled */ }
+                    } else {
+                      navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
+                      toast.success("Invite link copied!");
+                    }
+                  }}
+                >
+                  <Share2 className="mr-3 w-5 h-5" />
+                  <span className="text-base">Invite Friends</span>
+                </button>
 
                 <button
                   className="flex items-center w-full pt-[9px] pb-2 px-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-md cursor-pointer transition-colors"

@@ -7,6 +7,7 @@ interface ImagePreviewPanelProps {
   onSend: (caption?: string) => void;
   onCancel: () => void;
   isSending: boolean;
+  initialCaption?: string;
 }
 
 export const ImagePreviewPanel = ({
@@ -15,8 +16,9 @@ export const ImagePreviewPanel = ({
   onSend,
   onCancel,
   isSending,
+  initialCaption = "",
 }: ImagePreviewPanelProps) => {
-  const [caption, setCaption] = useState("");
+  const [caption, setCaption] = useState(initialCaption);
   const captionRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {

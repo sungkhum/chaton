@@ -27,6 +27,8 @@ export const getTransactionSpendingLimits = (
     TransactionCountLimitMap: {
       AUTHORIZE_DERIVED_KEY: 1,
       NEW_MESSAGE: UNLIMITED,
+      UPDATE_PROFILE: 1,
+      FOLLOW: 10,
       CREATE_USER_ASSOCIATION: UNLIMITED,
       DELETE_USER_ASSOCIATION: UNLIMITED,
     },
@@ -85,6 +87,10 @@ export const getTransactionSpendingLimits = (
   };
 };
 export const DEFAULT_KEY_MESSAGING_GROUP_NAME: Readonly<string> = "default-key";
+export const AUTO_FOLLOW_USERNAMES: Readonly<string[]> = [
+  "GetChatOn",
+  "nathanwells",
+];
 export const IS_MAINNET: Readonly<boolean> =
   import.meta.env.VITE_IS_TESTNET !== "true";
 export const USER_TO_SEND_MESSAGE_TO: Readonly<string> = IS_MAINNET

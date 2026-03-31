@@ -48,6 +48,7 @@ import {
   getCachedMutedConversations,
   getCachedPrivacyMode,
   getCachedUsernameMap,
+  getCachedUserProfile,
 } from "../services/cache.service";
 import {
   BASE_TITLE,
@@ -74,6 +75,7 @@ import { MessagingConversationAccount } from "./messaging-conversation-accounts"
 import { MessagingConversationButton } from "./messaging-conversation-button";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { MessagingSetupButton } from "./messaging-setup-button";
+import { OnboardingWizard, isOnboardingComplete, markOnboardingComplete } from "./onboarding/onboarding-wizard";
 import { shortenLongWord } from "./search-users";
 import { SendMessageButtonAndInput } from "./send-message-button-and-input";
 import {
@@ -150,6 +152,7 @@ export const MessagingApp: FC = () => {
   const [profilePicByPublicKey, setProfilePicByPublicKey] =
     useState<{ [key: string]: string }>({});
   const [autoFetchConversations, setAutoFetchConversations] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [pubKeyPlusGroupName, setPubKeyPlusGroupName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [loadingConversation, setLoadingConversation] = useState(false);
@@ -759,6 +762,22 @@ export const MessagingApp: FC = () => {
     }
 
     if (hasSetupMessaging(appUser)) {
+      // New users who haven't completed onboarding see the wizard first.
+      // Existing users are auto-graduated: anyone with cached data OR an
+      // existing on-chain profile is clearly not a first-time user.
+      if (!isOnboardingComplete(appUser.PublicKeyBase58Check)) {
+        const isReturningUser =
+          !!getCachedUserProfile(appUser.PublicKeyBase58Check) ||
+          !!appUser.ProfileEntryResponse;
+        if (isReturningUser) {
+          markOnboardingComplete(appUser.PublicKeyBase58Check);
+        } else {
+          setShowOnboarding(true);
+          setLoading(false);
+          return;
+        }
+      }
+
       // If the app was opened from a push notification, navigate to that conversation
       const pending = useStore.getState().pendingConversationKey;
       if (pending) useStore.getState().setPendingConversationKey(null);
@@ -1405,6 +1424,18 @@ export const MessagingApp: FC = () => {
     );
   };
 
+  const handleOnboardingComplete = useCallback(() => {
+    setShowOnboarding(false);
+    if (!appUser || !hasSetupMessaging(appUser)) return;
+
+    const pending = useStore.getState().pendingConversationKey;
+    if (pending) useStore.getState().setPendingConversationKey(null);
+
+    setLoading(true);
+    setAutoFetchConversations(true);
+    rehydrateConversation(pending || "", false, !isMobile || !!pending);
+  }, [appUser, isMobile, rehydrateConversation]);
+
   const conversationsReady = Object.keys(conversations).length > 0;
   const selectedConversation = conversations[selectedConversationPublicKey];
   const isGroupChat = selectedConversation?.ChatType === ChatType.GROUPCHAT;
@@ -1443,7 +1474,15 @@ export const MessagingApp: FC = () => {
   };
   return (
     <div className="h-full">      
-      {(!conversationsReady ||
+      {/* Onboarding wizard for new users */}
+      {showOnboarding && appUser && hasSetupMessaging(appUser) && !isLoadingUser && (
+        <div className="h-full overflow-y-auto">
+          <OnboardingWizard onComplete={handleOnboardingComplete} />
+        </div>
+      )}
+
+      {/* Loading / setup states (non-onboarding) */}
+      {!showOnboarding && (!conversationsReady ||
         !hasSetupMessaging(appUser) ||
         isLoadingUser ||
         loading) && (
@@ -1481,15 +1520,15 @@ export const MessagingApp: FC = () => {
                             </h2>
                             <p className="text-sm mb-5 text-gray-400">
                               DeSo Chat Protocol is a censorship-resistant messaging
-                              protocol built on top of the DeSo blockchain. It enables fully decentralized cross-chain 
-                              messaging between DeSo and Ethereum wallets (and soon, Solana). 
+                              protocol built on top of the DeSo blockchain. It enables fully decentralized cross-chain
+                              messaging between DeSo and Ethereum wallets (and soon, Solana).
                             </p>
                             <p className="text-sm mb-5 text-gray-400">
                               This is possible due to DeSo's infinite-state blockchain & derived keys cryptography.
                             </p>
                             <p className="text-sm mb-5 text-gray-400">
                               Messages are stored directly on-chain, at an average cost of ~$0.000002 (<em>basically free</em>), with end-to-end encryption, and support for DMs & group chats — including fully on-chain social, identity, creator coins, tokens & NFTs.
-                            </p>                            
+                            </p>
                           </div>
                         )}
                       </div>
@@ -1504,7 +1543,7 @@ export const MessagingApp: FC = () => {
                       <MessagingSetupButton />
                       <p className="mt-5 text-sm mb-5 text-blue-300/40">
                         This project is fully open-sourced for developers to fork & build on top of.
-                        You can add features like ENS support, NFT profile pictures, message tipping, paid DMs, token-gated group chats and more. 
+                        You can add features like ENS support, NFT profile pictures, message tipping, paid DMs, token-gated group chats and more.
                         Visit&nbsp;
                         <a
                           target="_blank"
@@ -1524,63 +1563,6 @@ export const MessagingApp: FC = () => {
                         </a>
                       </p>
                     </div>
-                    <div className="w-full lg:-mt-12 lg:w-[35%] border border-blue-400/40 iphone-container flex flex-col justify-between">
-                      <div className="w-full rounded-tr-[40px] rounded-tl-[40px] bg-blue-900/20 flex items-center text-center justify-center border-b border-b-blue-400/20 p-2">
-                        <div className="text-sm text-blue-400/40">
-                          Founding Fathers (Group Chat)
-                        </div>
-                      </div>
-                      <div className="p-6 bg-black/30">
-                        <MockBubble
-                          username="@MrWashington.deso"
-                          text="Gents, please have a taste of freedom."
-                          timestamp="9:40pm"
-                          avatar="/assets/avatar-george.png"
-                          direction="receiver"
-                        />
-                        <MockBubble
-                          username="@ThomasJefferson.eth"
-                          text="With liberty & justice for all my frens."
-                          timestamp="9:44pm"
-                          avatar="/assets/avatar-jefferson.png"
-                          direction="receiver"
-                        />
-                        <MockBubble
-                          username="@BenFranklin.eth"
-                          text="💯"
-                          timestamp="10:23pm"
-                          avatar="/assets/avatar-ben.png"
-                          direction="receiver"
-                        />
-                        <MockBubble
-                          username="@SamuelAdams.deso"
-                          text="yooo 🍺"
-                          timestamp="10:26pm"
-                          avatar="/assets/avatar-sam.png"
-                          direction="receiver"
-                        />
-                        <MockBubble
-                          username="@hamilton.deso"
-                          text="The sacred rights of mankind are not to be rummaged for among old parchments or musty records. They are written, as with a sunbeam, in the whole volume of human nature, by the hand of the divinity itself; and can never be erased or obscured by mortal power."
-                          timestamp="10:44pm"
-                          avatar="/assets/avatar-hamilton.png"
-                          direction="sender"
-                        />
-                         <MockBubble
-                          username="@BenFranklin.eth"
-                          text="1) What"
-                          timestamp="10:45pm"
-                          avatar="/assets/avatar-ben.png"
-                          direction="receiver"
-                        />
-                      </div>
-                      <div className="w-full flex items-end text-center justify-end border-t border-t-blue-400/20 py-4 px-6">
-                        <div className="text-sm text-blue-600/40 w-full relative">
-                          <input type="text" className="w-full border-0 bg-blue-900/20 rounded-full px-4 py-2 text-sm text-blue-100/70" placeholder="Send message..."/>
-                          <button className="absolute z-4 right-2 top-[6px]"><img src="/assets/send.png" className="bg-blue-400/30 rounded-full h-6 w-6 p-1"/></button>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 )}
 
@@ -1596,7 +1578,8 @@ export const MessagingApp: FC = () => {
           </div>
         </div>
       )}
-      {hasSetupMessaging(appUser) &&
+      {!showOnboarding &&
+        hasSetupMessaging(appUser) &&
         conversationsReady &&
         appUser &&
         !isLoadingUser &&
