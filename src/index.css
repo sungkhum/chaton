@@ -41,14 +41,14 @@ body {
 
 html,
 body {
-  min-height: 100vh;
+  min-height: 100dvh;
   min-height: var(--app-height);
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior: none;
 }
 
 .App {
-  height: 100vh;
+  height: 100dvh;
   height: var(--app-height);
   -webkit-overflow-scrolling: touch !important;
 }
@@ -56,9 +56,11 @@ body {
 @media not all and (hover: hover) {
   html,
   body {
+    min-height: 100dvh;
     min-height: var(--app-height);
   }
   .App {
+    height: 100dvh;
     height: var(--app-height);
   }
 }

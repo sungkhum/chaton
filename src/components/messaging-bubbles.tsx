@@ -7,7 +7,7 @@ import {
   GetPaginatedMessagesForDmThreadResponse,
   GetPaginatedMessagesForGroupChatThreadResponse,
 } from "deso-protocol";
-import { Loader2, Reply, Plus, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Lock, Reply, Plus, Pencil, Trash2 } from "lucide-react";
 import { FC, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChunkErrorBoundary } from "./shared/chunk-error-boundary";
@@ -91,6 +91,15 @@ function MessageContent({ message }: { message: DecryptedMessageEntryResponse })
     return (
       <span className="text-gray-500 italic text-sm select-text">
         This message was deleted
+      </span>
+    );
+  }
+
+  if (message.error && !message.DecryptedMessage) {
+    return (
+      <span className="text-gray-500 italic text-sm select-text flex items-center gap-1.5">
+        <Lock className="w-3 h-3 shrink-0" />
+        Unable to decrypt this message
       </span>
     );
   }
@@ -619,8 +628,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
             senderStyles =
               "bg-[#0d2818] border border-[#34F080]/15 text-white";
           }
-          if (message.error) {
-            senderStyles = "bg-red-500/20 border border-red-500/30 text-red-200";
+          if (message.error && !message.DecryptedMessage) {
+            senderStyles = "bg-white/5 border border-white/10 text-gray-500";
           }
 
           // For media messages, use a cleaner bubble style
@@ -630,9 +639,9 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
           }
 
           // Emoji-only messages float without a bubble
-          const messageText = message.DecryptedMessage || message.error || "";
+          const messageText = message.DecryptedMessage || "";
           const isEmojiOnly =
-            parsed.type === "text" && !!parseEmojiOnlyMessage(messageText);
+            parsed.type === "text" && !message.error && !!parseEmojiOnlyMessage(messageText);
           if (isEmojiOnly) {
             senderStyles = "";
           }
@@ -961,7 +970,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                       onRetry={(message as any)._localId && (message as any)._status === "failed"
                         ? () => onRetry?.((message as any)._localId)
                         : undefined}
-                      onDelete={(message as any)._localId && (message as any)._status === "failed"
+                      onDelete={(message as any)._localId && ((message as any)._status === "failed" || (message as any)._status === "sending")
                         ? () => onDeleteFailed?.((message as any)._localId)
                         : undefined}
                     />

@@ -16,14 +16,23 @@ async function registerSW() {
 registerSW();
 
 /*
- * Fixing weird behavior for height: 100vh on Safari Mobile
- * https://stackoverflow.com/questions/37112218/css3-100vh-not-constant-in-mobile-browser
+ * Reliable mobile viewport height that accounts for virtual keyboard.
+ *
+ * - `visualViewport` fires a `resize` event every time the on-screen keyboard
+ *   opens, closes, or the browser chrome shows/hides. Its `height` reflects
+ *   only the visible area above the keyboard, which is exactly what we need.
+ * - Falls back to `window.innerHeight` on browsers without `visualViewport`.
  */
 const setAppHeight = () => {
-  document.documentElement.style.setProperty(
-    "--app-height",
-    `${window.innerHeight}px`
-  );
+  const vh = window.visualViewport
+    ? window.visualViewport.height
+    : window.innerHeight;
+  document.documentElement.style.setProperty("--app-height", `${vh}px`);
 };
-window.addEventListener("resize", setAppHeight);
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", setAppHeight);
+} else {
+  window.addEventListener("resize", setAppHeight);
+}
 setAppHeight();

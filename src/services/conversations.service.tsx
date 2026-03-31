@@ -175,11 +175,14 @@ export const decryptAccessGroupMessagesWithRetry = async (
     accessGroups
   );
 
-  // Naive approach to figuring out which access groups we need to fetch.
-  const accessGroupsToFetch = decryptedMessageEntries.filter(
-    (dmr) => dmr.error === "Error: access group key not found for group message"
+  // Retry with fresh access groups if any message failed to decrypt.
+  // "access group key not found" = group missing from local list.
+  // "incorrect MAC" = stale/outdated group key (e.g. key was rotated).
+  // Both are fixed by fetching the latest access groups from the blockchain.
+  const hasDecryptionErrors = decryptedMessageEntries.some(
+    (dmr) => dmr.error && !dmr.DecryptedMessage
   );
-  if (accessGroupsToFetch.length > 0) {
+  if (hasDecryptionErrors) {
     const newAllAccessGroups = await getAllAccessGroups({
       PublicKeyBase58Check: publicKeyBase58Check,
     });

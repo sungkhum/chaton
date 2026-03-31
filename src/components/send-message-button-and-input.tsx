@@ -45,6 +45,7 @@ export const SendMessageButtonAndInput = ({
   const [pendingImage, setPendingImage] = useState<{ file: File; previewUrl: string } | null>(null);
   const [showLinkPanel, setShowLinkPanel] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputBarRef = useRef<HTMLDivElement>(null);
   const { getDraft, setDraft, clearDraft } = useDraftMessages();
 
   // Draft persistence
@@ -309,6 +310,23 @@ export const SendMessageButtonAndInput = ({
     setShowLinkPanel(false);
   };
 
+  // On mobile, scroll the input bar into view once the keyboard finishes resizing.
+  // We listen for visualViewport resize (fires when keyboard opens/closes) so the
+  // scroll happens after the viewport has actually shrunk.
+  const handleTextareaFocus = useCallback(() => {
+    const vv = window.visualViewport;
+    if (!vv || !inputBarRef.current) return;
+
+    const scrollOnResize = () => {
+      // Small delay lets the layout settle after the viewport resize
+      requestAnimationFrame(() => {
+        inputBarRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+      });
+      vv.removeEventListener("resize", scrollOnResize);
+    };
+    vv.addEventListener("resize", scrollOnResize, { once: true });
+  }, []);
+
   // Auto-grow textarea
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
@@ -330,7 +348,7 @@ export const SendMessageButtonAndInput = ({
   const showMentionPicker = mentionQuery !== null && filteredMentions.length > 0;
 
   return (
-    <div className="w-full px-3 pb-3 md:px-6 md:pb-4">
+    <div ref={inputBarRef} className="w-full px-3 pb-3 md:px-6 md:pb-4">
       {typingLabel && (
         <div className="text-xs text-gray-400 px-2 pb-1 animate-pulse">{typingLabel}</div>
       )}
@@ -493,6 +511,7 @@ export const SendMessageButtonAndInput = ({
             }
           }}
           onPaste={handlePaste}
+          onFocus={handleTextareaFocus}
           rows={1}
         />
 
