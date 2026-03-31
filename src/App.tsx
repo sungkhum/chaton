@@ -106,6 +106,21 @@ function App() {
           return;
         }
 
+        // Same user re-authorized (e.g. permissions upgrade) — just reset loading
+        if (
+          currentUser &&
+          currentUser?.publicKey === store.appUser?.PublicKeyBase58Check &&
+          store.isLoadingUser &&
+          [
+            NOTIFICATION_EVENTS.SUBSCRIBE,
+            NOTIFICATION_EVENTS.LOGIN_END,
+            NOTIFICATION_EVENTS.AUTHORIZE_DERIVED_KEY_END,
+          ].includes(event)
+        ) {
+          setIsLoadingUser(false);
+          return;
+        }
+
         if (
           currentUser &&
           currentUser?.publicKey !== store.appUser?.PublicKeyBase58Check &&
