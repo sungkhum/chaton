@@ -5,7 +5,7 @@ import { EmojiPickerButton } from "./compose/emoji-picker-button";
 import { GifPicker } from "./compose/gif-picker";
 import { ImagePreviewPanel } from "./compose/image-preview-panel";
 import { MentionPicker, MentionCandidate } from "./compose/mention-picker";
-import { GiphyGif } from "../services/giphy.service";
+import { KlipyItem, getMessageUrl, trackShare } from "../services/klipy.service";
 import { uploadImage } from "../services/media.service";
 import { ReplyBanner } from "./compose/reply-banner";
 import { LinkAttachmentPanel } from "./compose/link-attachment-panel";
@@ -236,13 +236,29 @@ export const SendMessageButtonAndInput = ({
     [mentionCandidates]
   );
 
-  const handleGifSelect = (gif: GiphyGif, caption?: string) => {
-    sendMessage(caption || gif.title || "GIF", buildExtraData({
+  const handleGifSelect = (item: KlipyItem, caption?: string) => {
+    const media = getMessageUrl(item);
+    if (!media) return;
+    trackShare("gifs", item.slug);
+    sendMessage(caption || item.title || "GIF", buildExtraData({
       type: "gif",
-      gifUrl: gif.images.fixed_width.url,
-      gifTitle: gif.title,
-      mediaWidth: parseInt(gif.images.fixed_width.width),
-      mediaHeight: parseInt(gif.images.fixed_width.height),
+      gifUrl: media.url,
+      gifTitle: item.title,
+      mediaWidth: media.width,
+      mediaHeight: media.height,
+    }));
+  };
+
+  const handleStickerSelect = (item: KlipyItem) => {
+    const media = getMessageUrl(item);
+    if (!media) return;
+    trackShare("stickers", item.slug);
+    sendMessage(item.title || "Sticker", buildExtraData({
+      type: "sticker",
+      gifUrl: media.url,
+      gifTitle: item.title,
+      mediaWidth: media.width,
+      mediaHeight: media.height,
     }));
   };
 
@@ -452,26 +468,28 @@ export const SendMessageButtonAndInput = ({
           />
         </label>
 
+        {/* GIF/Sticker picker */}
+        {showGifPicker && (
+          <GifPicker
+            onSelectGif={handleGifSelect}
+            onSelectSticker={handleStickerSelect}
+            onClose={() => setShowGifPicker(false)}
+            customerId={publicKey}
+          />
+        )}
+
         {/* GIF button */}
-        <div className="relative shrink-0">
-          <button
-            onClick={() => {
-              setShowGifPicker((v) => !v);
-              setShowLinkPanel(false);
-              if (pendingImage) cancelImage();
-            }}
-            className="px-1.5 py-2 text-gray-500 hover:text-[#34F080] cursor-pointer font-extrabold text-[11px] tracking-wide transition-colors"
-            type="button"
-          >
-            GIF
-          </button>
-          {showGifPicker && (
-            <GifPicker
-              onSelect={handleGifSelect}
-              onClose={() => setShowGifPicker(false)}
-            />
-          )}
-        </div>
+        <button
+          onClick={() => {
+            setShowGifPicker((v) => !v);
+            setShowLinkPanel(false);
+            if (pendingImage) cancelImage();
+          }}
+          className="px-1.5 py-2 text-gray-500 hover:text-[#34F080] cursor-pointer font-extrabold text-[11px] tracking-wide transition-colors shrink-0"
+          type="button"
+        >
+          GIF
+        </button>
 
         {/* Emoji button */}
         <div className="shrink-0">

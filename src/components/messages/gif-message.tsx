@@ -10,7 +10,7 @@ export const GifMessage = ({ gifUrl, title, width, height, caption }: GifMessage
   const aspectRatio = width && height ? width / height : undefined;
 
   return (
-    <div className="rounded-lg overflow-hidden max-w-[300px]">
+    <div className="rounded-lg overflow-hidden max-w-[250px] md:max-w-[300px]">
       <img
         src={gifUrl}
         alt={title || "GIF"}
@@ -22,11 +22,6 @@ export const GifMessage = ({ gifUrl, title, width, height, caption }: GifMessage
         <p className="text-sm text-white mt-2 px-1 whitespace-pre-wrap break-words select-text">
           {caption}
         </p>
-      )}
-      {title && (
-        <div className="text-[10px] text-blue-300/40 mt-1 px-1">
-          via GIPHY
-        </div>
       )}
     </div>
   );

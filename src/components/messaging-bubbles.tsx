@@ -29,6 +29,7 @@ import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { MessageStatusIndicator } from "./messages/message-status-indicator";
 import { ImageMessage } from "./messages/image-message";
 import { GifMessage } from "./messages/gif-message";
+import { StickerMessage } from "./messages/sticker-message";
 import { VideoMessage } from "./messages/video-message";
 import { FileMessage } from "./messages/file-message";
 import { ReplyPreview } from "./messages/reply-preview";
@@ -144,6 +145,18 @@ function MessageContent({ message }: { message: DecryptedMessageEntryResponse })
         <FormattedMessage>{messageToShow}</FormattedMessage>
       );
     }
+
+    case "sticker":
+      return parsed.gifUrl ? (
+        <StickerMessage
+          stickerUrl={parsed.gifUrl}
+          title={parsed.gifTitle}
+          width={parsed.mediaWidth}
+          height={parsed.mediaHeight}
+        />
+      ) : (
+        <FormattedMessage>{messageToShow}</FormattedMessage>
+      );
 
     case "video":
       return parsed.videoUrl ? (
@@ -633,7 +646,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
           }
 
           // For media messages, use a cleaner bubble style
-          const isMedia = ["image", "gif", "video"].includes(parsed.type);
+          const isMedia = ["image", "gif", "sticker", "video"].includes(parsed.type);
           if (isMedia) {
             senderStyles = "overflow-hidden";
           }

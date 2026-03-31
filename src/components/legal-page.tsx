@@ -118,15 +118,15 @@ const PrivacyContent: FC = () => (
           WebSocket relay worker and serves static assets
         </li>
         <li>
-          <strong className="text-gray-300">Giphy</strong> — provides GIF
-          search when you use the GIF picker (subject to{" "}
+          <strong className="text-gray-300">KLIPY</strong> — provides GIF
+          and sticker search when you use the content picker (subject to{" "}
           <a
-            href="https://giphy.com/privacy"
+            href="https://klipy.com/support/api-terms"
             target="_blank"
             rel="noreferrer"
             className="text-[#34F080] hover:underline"
           >
-            Giphy's privacy policy
+            KLIPY's API terms
           </a>
           )
         </li>

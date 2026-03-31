@@ -583,13 +583,13 @@ export const LandingPage = () => {
                     <div>
                       <div className="rounded-2xl rounded-bl-sm overflow-hidden border border-white/8 max-w-[180px]">
                         <img
-                          src="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExaGljcTF5b2RtZXJmcWFxbjFtcmk2c2RkNWU1b3hsdWxhNTlzZHp6aCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7abKhOpu0NwenH3O/giphy.webp"
+                          src="https://static.klipy.com/gifs/thumbs-up-okay-658/sm.gif"
                           alt="Thumbs up GIF"
                           className="w-[180px] h-auto block"
                           loading="lazy"
                         />
                       </div>
-                      <div className="text-[10px] text-blue-300/40 mt-1 px-1">via GIPHY</div>
+                      <div className="text-[10px] text-blue-300/40 mt-1 px-1">via KLIPY</div>
                     </div>
                   </div>
                 </div>

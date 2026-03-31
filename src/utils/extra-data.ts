@@ -66,6 +66,7 @@ export type RichMessageType =
   | "text"
   | "image"
   | "gif"
+  | "sticker"
   | "video"
   | "file"
   | "reaction";
