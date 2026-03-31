@@ -1,17 +1,15 @@
 import { ChatType, identity, ProfileEntryResponse } from "deso-protocol";
-import { Archive, BellOff, Check, RotateCcw, Users, X } from "lucide-react";
-import { FC, useEffect, useState } from "react";
+import { Archive, BellOff, Check, MessageSquarePlus, Pencil, RotateCcw, Search, Users, X } from "lucide-react";
+import { FC, useEffect, useRef, useState } from "react";
 import { useStore } from "../store";
 import { MessageSearchResult, SearchProgress } from "../services/message-search.service";
 import { getGroupImageUrl } from "../utils/extra-data";
 import { formatRelativeTimestamp, getChatNameFromConversation } from "../utils/helpers";
-import { DEFAULT_KEY_MESSAGING_GROUP_NAME } from "../utils/constants";
 import { Conversation, ConversationMap } from "../utils/types";
+import { ComposePanel } from "./compose-panel";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
-import { MessagingStartNewConversation } from "./messaging-start-new-conversation";
 import { SearchMessageResults } from "./search-message-results";
-import { SearchMenuItem, shortenLongWord } from "./search-users";
-import { SpeedDialFab } from "./speed-dial-fab";
+import { shortenLongWord } from "./search-users";
 import { StartGroupChat } from "./start-group-chat";
 
 const sortConversations = (
@@ -81,11 +79,11 @@ export const MessagingConversationAccount: FC<{
   const { allAccessGroups } = useStore();
   const [activeTab, setActiveTab] = useState<"chats" | "requests" | "archived">("chats");
   const [groupChatOpen, setGroupChatOpen] = useState(false);
-  const [userSearchResults, setUserSearchResults] = useState<SearchMenuItem[]>([]);
-  const [localClearTrigger, setLocalClearTrigger] = useState(0);
-  const combinedClearTrigger = (searchClearTrigger || 0) + localClearTrigger;
+  const [composeOpen, setComposeOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const requestCount = Object.keys(requestConversations).length;
   const archivedCount = Object.keys(archivedConversations).length;
+  const chatCount = Object.keys(conversations).length;
 
   // Switch away from Archived tab when it empties (e.g., after rejoining the last group)
   useEffect(() => {
@@ -94,29 +92,50 @@ export const MessagingConversationAccount: FC<{
     }
   }, [activeTab, archivedCount]);
 
-  const handleNewMessage = () => {
-    const input = document.querySelector<HTMLInputElement>(
-      ".search-conversations-input input, .search-conversations-input"
-    );
-    input?.focus();
+  const handleComposeSelectUser = (publicKeyWithGroup: string) => {
+    rehydrateConversation(publicKeyWithGroup, true);
   };
 
   return (
-    <div className="h-full rounded-md rounded-r-none relative">
+    <div className="h-full rounded-md rounded-r-none relative overflow-hidden">
       <StartGroupChat
         onSuccess={rehydrateConversation}
         open={groupChatOpen}
         onOpenChange={setGroupChatOpen}
       />
 
-      <MessagingStartNewConversation
-        rehydrateConversation={rehydrateConversation}
-        onSearchQueryChange={onSearchQueryChange}
-        clearTrigger={combinedClearTrigger}
-        onUserResults={(items) => setUserSearchResults(items)}
+      <ComposePanel
+        open={composeOpen}
+        onClose={() => setComposeOpen(false)}
+        onSelectUser={handleComposeSelectUser}
+        onNewGroup={() => setGroupChatOpen(true)}
       />
 
-      <div className="h-full max-h-[calc(100%-76px)]">
+      {/* Search bar for filtering existing conversations */}
+      <div className="m-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+          <input
+            ref={searchInputRef}
+            type="text"
+            placeholder="Search conversations..."
+            spellCheck={false}
+            value={searchQuery}
+            onChange={(e) => onSearchQueryChange?.(e.target.value)}
+            className="w-full rounded-xl py-2 pl-9 pr-3 text-sm text-white placeholder:text-gray-500 bg-white/5 border border-white/8 hover:border-[#34F080]/30 focus:border-[#34F080]/50 outline-none transition-colors"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => onSearchQueryChange?.("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-white/10 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5 text-gray-400" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="h-full max-h-[calc(100%-68px)]">
         {/* Message search results — replaces tabs when searching */}
         {searchQuery.trim().length >= 2 ? (
           <SearchMessageResults
@@ -126,13 +145,6 @@ export const MessagingConversationAccount: FC<{
             isDeepSearching={isDeepSearching}
             progress={searchProgress}
             onSelectResult={(key) => onSearchResultClick?.(key)}
-            userResults={userSearchResults}
-            onUserSelected={(item) => {
-              onSearchQueryChange?.("");
-              setLocalClearTrigger(n => n + 1);
-              setUserSearchResults([]);
-              rehydrateConversation(item.id + DEFAULT_KEY_MESSAGING_GROUP_NAME, true);
-            }}
           />
         ) : (
         <>
@@ -181,7 +193,23 @@ export const MessagingConversationAccount: FC<{
         <div className="h-[calc(100%-46px)] relative">
           {activeTab === "chats" && (
             <div className="conversations-list overflow-y-auto max-h-full custom-scrollbar pb-24">
-              {sortConversations(
+              {chatCount === 0 ? (
+                <div className="flex flex-col items-center justify-center px-6 pt-16 text-center">
+                  <div className="w-16 h-16 rounded-full bg-[#34F080]/10 flex items-center justify-center mb-4">
+                    <MessageSquarePlus className="w-8 h-8 text-[#34F080]" />
+                  </div>
+                  <h3 className="text-white font-semibold text-base mb-1.5">No conversations yet</h3>
+                  <p className="text-gray-500 text-sm mb-5 max-w-[220px]">
+                    Start chatting with someone on DeSo or Ethereum
+                  </p>
+                  <button
+                    onClick={() => setComposeOpen(true)}
+                    className="bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black font-bold rounded-full py-2.5 px-6 text-sm hover:brightness-110 cursor-pointer transition-all"
+                  >
+                    Start a conversation
+                  </button>
+                </div>
+              ) : sortConversations(
                 Object.entries(conversations),
                 selectedConversationPublicKey
               ).map(([key, value]) => {
@@ -478,12 +506,13 @@ export const MessagingConversationAccount: FC<{
         )}
       </div>
 
-      {!selectedConversationPublicKey && (
-        <SpeedDialFab
-          onNewMessage={handleNewMessage}
-          onNewGroup={() => setGroupChatOpen(true)}
-        />
-      )}
+      {/* Compose FAB — visible on all screen sizes when no conversation is selected on mobile */}
+      <button
+        onClick={() => setComposeOpen(true)}
+        className="absolute bottom-6 right-5 z-20 w-14 h-14 rounded-full bg-gradient-to-r from-[#34F080] to-[#20E0AA] flex items-center justify-center shadow-lg cursor-pointer transition-transform active:scale-95 hover:brightness-110 md:bottom-5 md:right-4 md:w-12 md:h-12"
+      >
+        <Pencil className="w-6 h-6 text-black md:w-5 md:h-5" />
+      </button>
     </div>
   );
 };

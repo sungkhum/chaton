@@ -1712,7 +1712,7 @@ export const MessagingApp: FC = () => {
               <div
                 className="pr-2 rounded-none w-[100%] bg-transparent ml-[calc-340px] pb-0 h-[calc(100%-56px)]"
               >
-                <div className="border-none flex flex-col justify-between h-full">
+                <div className="border-none flex flex-col h-full">
                   <div className="overflow-hidden flex-1 min-h-0">
                     {loadingConversation ? (
                       <div className="h-full flex items-center justify-center">
@@ -1840,6 +1840,22 @@ export const MessagingApp: FC = () => {
                           if (pending) {
                             retryPendingMessage(pending);
                           }
+                        }}
+                        onDeleteFailed={(localId) => {
+                          if (!appUser) return;
+                          const convKey = selectedConversationPublicKey;
+                          // Remove the failed optimistic message from UI
+                          setConversations((prev) => ({
+                            ...prev,
+                            [convKey]: {
+                              ...prev[convKey],
+                              messages: prev[convKey].messages.filter(
+                                (m: any) => m._localId !== localId
+                              ),
+                            },
+                          }));
+                          // Remove from pending messages storage
+                          removePendingMessage(appUser.PublicKeyBase58Check, localId);
                         }}
                         onReact={async (timestampNanosString, emoji) => {
                           if (!appUser) return;

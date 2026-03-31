@@ -52,6 +52,7 @@ export interface MessagingBubblesProps {
   onReply?: (message: DecryptedMessageEntryResponse) => void;
   onReact?: (timestampNanosString: string, emoji: string) => void;
   onRetry?: (localId: string) => void;
+  onDeleteFailed?: (localId: string) => void;
   onEdit?: (message: DecryptedMessageEntryResponse) => void;
   onDeleteForMe?: (timestampNanosString: string) => void;
   onDeleteForEveryone?: (message: DecryptedMessageEntryResponse) => void;
@@ -191,6 +192,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   onReply,
   onReact,
   onRetry,
+  onDeleteFailed,
   onEdit,
   onDeleteForMe,
   onDeleteForEveryone,
@@ -535,7 +537,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
 
   return (
     <div
-      className="h-full flex flex-col-reverse custom-scrollbar px-3 md:px-6 overflow-y-auto [contain:layout_style]"
+      className="h-full flex flex-col-reverse custom-scrollbar px-3 md:px-6 pb-2 overflow-y-auto [contain:layout_style]"
       ref={messageAreaRef}
       id="scrollableArea"
     >
@@ -745,7 +747,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
 
                 {/* Reply preview if this message is a reply */}
                 {parsed.replyTo && parsed.replyPreview && (
-                  <ReplyPreview replyPreview={parsed.replyPreview} />
+                  <ReplyPreview replyPreview={parsed.replyPreview} isSender={IsSender} />
                 )}
 
                 {/* Message bubble */}
@@ -958,6 +960,9 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                       status={(message as any)._status}
                       onRetry={(message as any)._localId && (message as any)._status === "failed"
                         ? () => onRetry?.((message as any)._localId)
+                        : undefined}
+                      onDelete={(message as any)._localId && (message as any)._status === "failed"
+                        ? () => onDeleteFailed?.((message as any)._localId)
                         : undefined}
                     />
                   </div>
