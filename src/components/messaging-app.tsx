@@ -1,4 +1,4 @@
-import { Loader2, CheckCircle, Bell, BellOff } from "lucide-react";
+import { Loader2, CheckCircle, Bell, BellOff, Archive } from "lucide-react";
 import { useStore } from "../store";
 import {
   ChatType,
@@ -20,13 +20,17 @@ import { useTypingIndicator, useTypingDisplay } from "../hooks/useTypingIndicato
 import {
   classifyConversation,
   createApprovalAssociation,
+  createArchiveChatAssociation,
   createArchiveAssociation,
   createBlockAssociation,
+  createDismissAssociation,
   decryptAccessGroupMessagesWithRetry,
   deleteArchiveAssociation,
+  deleteAssociationById,
   encryptAndSendNewMessage,
   encryptAndUpdateMessage,
   fetchArchivedGroups,
+  fetchAssociationsByType,
   fetchChatAssociations,
   fetchMutualFollows,
   fetchPrivacyMode,
@@ -51,6 +55,9 @@ import {
   getCachedUserProfile,
 } from "../services/cache.service";
 import {
+  ASSOCIATION_TYPE_BLOCKED,
+  ASSOCIATION_TYPE_CHAT_ARCHIVED,
+  ASSOCIATION_TYPE_DISMISSED,
   BASE_TITLE,
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
   MAX_MEMBERS_IN_GROUP_SUMMARY_SHOWN,
@@ -142,8 +149,14 @@ export const MessagingApp: FC = () => {
     appUser, isLoadingUser, allAccessGroups, setAllAccessGroups, lockRefresh, setLockRefresh,
     mutualFollows, approvedUsers, blockedUsers, initiatedChats, chatRequestsLoaded,
     archivedGroups, archivedGroupAssociationIds,
+    archivedChats, archivedChatAssociationIds,
+    dismissedUsers, dismissedAssociationIds,
+    blockedAssociationIds,
     setClassificationData, addInitiatedChat, approveUser, rollbackApproval,
     blockUser, rollbackBlock, archiveGroup, unarchiveGroup, rollbackArchive, rollbackUnarchive, mergeArchivedGroupIds,
+    archiveChat, unarchiveChat, rollbackArchiveChat, rollbackUnarchiveChat, mergeArchivedChatIds,
+    dismissUser, undismissUser, rollbackDismiss, rollbackUndismiss, mergeDismissedIds,
+    unblockUser, rollbackUnblock,
     unreadByConversation, clearUnread, initializeUnread,
     mutedConversations, toggleMute,
   } = useStore();
@@ -454,15 +467,16 @@ export const MessagingApp: FC = () => {
     for (const [key, convo] of Object.entries(conversations)) {
       const cls = classifyConversation(
         convo, key, appUser.PublicKeyBase58Check,
-        mutualFollows, approvedUsers, blockedUsers, initiatedChats, archivedGroups
+        mutualFollows, approvedUsers, blockedUsers, initiatedChats, archivedGroups,
+        archivedChats, dismissedUsers
       );
       if (cls === "chat") chats[key] = convo;
       else if (cls === "request") requests[key] = convo;
       else if (cls === "archived") archived[key] = convo;
-      // "blocked" → omitted
+      // "blocked" and "dismissed" → omitted
     }
     return { chatConversations: chats, requestConversations: requests, archivedConversations: archived };
-  }, [conversations, mutualFollows, approvedUsers, blockedUsers, initiatedChats, archivedGroups, appUser]);
+  }, [conversations, mutualFollows, approvedUsers, blockedUsers, initiatedChats, archivedGroups, archivedChats, dismissedUsers, appUser]);
 
   const handleAcceptRequest = async (conversationKey: string, publicKey: string) => {
     if (!appUser) return;
@@ -480,6 +494,18 @@ export const MessagingApp: FC = () => {
     blockUser(publicKey);
     try {
       await createBlockAssociation(appUser.PublicKeyBase58Check, publicKey);
+      toast("User blocked", {
+        action: { label: "Undo", onClick: () => handleUnblock(publicKey) },
+      });
+      // Background-fetch the association ID so unblock works
+      fetchAssociationsByType(appUser.PublicKeyBase58Check, ASSOCIATION_TYPE_BLOCKED)
+        .then((ids) => {
+          const current = useStore.getState().blockedAssociationIds;
+          const next = new Map(current);
+          for (const [k, v] of ids) next.set(k, v);
+          useStore.setState({ blockedAssociationIds: next });
+        })
+        .catch(() => {});
     } catch (e) {
       rollbackBlock(publicKey);
       toast.error("Failed to block user");
@@ -491,7 +517,9 @@ export const MessagingApp: FC = () => {
     archiveGroup(conversationKey);
     try {
       await createArchiveAssociation(appUser.PublicKeyBase58Check, groupOwnerPublicKey, groupKeyName);
-      toast.success("Left group chat");
+      toast("Left group chat", {
+        action: { label: "Undo", onClick: () => handleUnarchiveGroup(conversationKey) },
+      });
       // Background: fetch the association ID so Rejoin works without page refresh
       fetchArchivedGroups(appUser.PublicKeyBase58Check)
         .then((ids) => mergeArchivedGroupIds(ids))
@@ -504,7 +532,7 @@ export const MessagingApp: FC = () => {
 
   const handleUnarchiveGroup = async (conversationKey: string) => {
     if (!appUser) return;
-    const associationId = archivedGroupAssociationIds.get(conversationKey);
+    const associationId = useStore.getState().archivedGroupAssociationIds.get(conversationKey);
     if (!associationId) {
       toast.error("Cannot rejoin — association not found");
       return;
@@ -516,6 +544,97 @@ export const MessagingApp: FC = () => {
     } catch (e) {
       rollbackUnarchive(conversationKey, associationId);
       toast.error("Failed to rejoin group");
+    }
+  };
+
+  // ── Archive DM chat ──
+  const handleArchiveChat = async (conversationKey: string, publicKey: string) => {
+    if (!appUser) return;
+    archiveChat(publicKey);
+    try {
+      await createArchiveChatAssociation(appUser.PublicKeyBase58Check, publicKey);
+      toast("Chat archived", {
+        action: { label: "Undo", onClick: () => handleUnarchiveChat(publicKey) },
+      });
+      // Background-fetch the association ID so unarchive works
+      fetchAssociationsByType(appUser.PublicKeyBase58Check, ASSOCIATION_TYPE_CHAT_ARCHIVED)
+        .then((ids) => mergeArchivedChatIds(ids))
+        .catch(() => {});
+    } catch (e) {
+      rollbackArchiveChat(publicKey);
+      toast.error("Failed to archive chat");
+    }
+  };
+
+  const handleUnarchiveChat = async (publicKey: string) => {
+    if (!appUser) return;
+    // Read latest from store — not the stale closure — since the ID arrives via background fetch
+    const associationId = useStore.getState().archivedChatAssociationIds.get(publicKey);
+    if (!associationId) {
+      toast.error("Cannot unarchive — association not found. Try again in a moment.");
+      return;
+    }
+    unarchiveChat(publicKey);
+    try {
+      await deleteAssociationById(appUser.PublicKeyBase58Check, associationId);
+      toast.success("Chat unarchived");
+    } catch (e) {
+      rollbackUnarchiveChat(publicKey, associationId);
+      toast.error("Failed to unarchive chat");
+    }
+  };
+
+  // ── Dismiss request ──
+  const handleDismissRequest = async (conversationKey: string, publicKey: string) => {
+    if (!appUser) return;
+    dismissUser(publicKey);
+    try {
+      await createDismissAssociation(appUser.PublicKeyBase58Check, publicKey);
+      toast("Request dismissed", {
+        action: { label: "Undo", onClick: () => handleUndismiss(publicKey) },
+      });
+      // Background-fetch the association ID so undo works
+      fetchAssociationsByType(appUser.PublicKeyBase58Check, ASSOCIATION_TYPE_DISMISSED)
+        .then((ids) => mergeDismissedIds(ids))
+        .catch(() => {});
+    } catch (e) {
+      rollbackDismiss(publicKey);
+      toast.error("Failed to dismiss request");
+    }
+  };
+
+  const handleUndismiss = async (publicKey: string) => {
+    if (!appUser) return;
+    const associationId = useStore.getState().dismissedAssociationIds.get(publicKey);
+    if (!associationId) {
+      toast.error("Cannot undo — association not found. Try again in a moment.");
+      return;
+    }
+    undismissUser(publicKey);
+    try {
+      await deleteAssociationById(appUser.PublicKeyBase58Check, associationId);
+      toast.success("Request restored");
+    } catch (e) {
+      rollbackUndismiss(publicKey, associationId);
+      toast.error("Failed to restore request");
+    }
+  };
+
+  // ── Unblock user ──
+  const handleUnblock = async (publicKey: string) => {
+    if (!appUser) return;
+    const associationId = useStore.getState().blockedAssociationIds.get(publicKey);
+    if (!associationId) {
+      toast.error("Cannot unblock — association not found. Try again in a moment.");
+      return;
+    }
+    unblockUser(publicKey);
+    try {
+      await deleteAssociationById(appUser.PublicKeyBase58Check, associationId);
+      toast.success("User unblocked");
+    } catch (e) {
+      rollbackUnblock(publicKey, associationId);
+      toast.error("Failed to unblock user");
     }
   };
 
@@ -1035,7 +1154,11 @@ export const MessagingApp: FC = () => {
           cachedClassification.approvedAssociationIds,
           cachedClassification.blockedAssociationIds,
           cachedClassification.archivedGroups,
-          cachedClassification.archivedGroupAssociationIds
+          cachedClassification.archivedGroupAssociationIds,
+          cachedClassification.archivedChats,
+          cachedClassification.archivedChatAssociationIds,
+          cachedClassification.dismissedUsers,
+          cachedClassification.dismissedAssociationIds
         );
       }
 
@@ -1086,7 +1209,13 @@ export const MessagingApp: FC = () => {
           const approvedSet = new Set(assoc.approved.keys());
           const blockedSet = new Set(assoc.blocked.keys());
           const archivedSet = new Set(archivedMap.keys());
-          setClassificationData(mutual, approvedSet, blockedSet, assoc.approved, assoc.blocked, archivedSet, archivedMap);
+          const archivedChatsSet = new Set(assoc.archivedChats.keys());
+          const dismissedSet = new Set(assoc.dismissed.keys());
+          setClassificationData(
+            mutual, approvedSet, blockedSet, assoc.approved, assoc.blocked,
+            archivedSet, archivedMap, archivedChatsSet, assoc.archivedChats,
+            dismissedSet, assoc.dismissed
+          );
         }).catch((e) => {
           console.error("Failed to load chat request classification data:", e);
         })
@@ -1684,7 +1813,16 @@ export const MessagingApp: FC = () => {
                 archivedConversations={archivedConversations}
                 onAccept={handleAcceptRequest}
                 onBlock={handleBlockRequest}
+                onDismiss={handleDismissRequest}
                 onUnarchive={handleUnarchiveGroup}
+                onUnarchiveChat={handleUnarchiveChat}
+                onArchiveChat={handleArchiveChat}
+                onUnblock={handleUnblock}
+                onUndismiss={handleUndismiss}
+                blockedUsers={blockedUsers}
+                dismissedUsers={dismissedUsers}
+                blockedAssociationIds={blockedAssociationIds}
+                dismissedAssociationIds={dismissedAssociationIds}
                 getUsernameByPublicKeyBase58Check={
                   usernameByPublicKeyBase58Check
                 }
@@ -1781,16 +1919,31 @@ export const MessagingApp: FC = () => {
                   ) : (
                     selectedConversation &&
                     selectedConversation.firstMessagePublicKey && (
-                      <MessagingDisplayAvatar
-                        username={
-                          activeChatUsersMap[
-                            selectedConversation.firstMessagePublicKey
-                          ]
-                        }
-                        publicKey={selectedConversation.firstMessagePublicKey}
-                        diameter={40}
-                        classNames="shrink-0"
-                      />
+                      <>
+                        <button
+                          onClick={() => {
+                            handleArchiveChat(
+                              selectedConversationPublicKey,
+                              selectedConversation.firstMessagePublicKey
+                            );
+                            setSelectedConversationPublicKey("");
+                          }}
+                          className="p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                          title="Archive chat"
+                        >
+                          <Archive className="w-5 h-5 text-gray-400" />
+                        </button>
+                        <MessagingDisplayAvatar
+                          username={
+                            activeChatUsersMap[
+                              selectedConversation.firstMessagePublicKey
+                            ]
+                          }
+                          publicKey={selectedConversation.firstMessagePublicKey}
+                          diameter={40}
+                          classNames="shrink-0"
+                        />
+                      </>
                     )
                   )}
                 </div>

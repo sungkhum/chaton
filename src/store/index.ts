@@ -61,6 +61,14 @@ interface ChatOnState {
   archivedGroups: Set<string>;
   archivedGroupAssociationIds: Map<string, string>;
 
+  // Archived DM chats
+  archivedChats: Set<string>;
+  archivedChatAssociationIds: Map<string, string>;
+
+  // Dismissed requests
+  dismissedUsers: Set<string>;
+  dismissedAssociationIds: Map<string, string>;
+
   // Privacy mode — controls which ExtraData fields are encrypted
   privacyMode: PrivacyMode;
   privacyModeAssociationId: string | null;
@@ -73,7 +81,11 @@ interface ChatOnState {
     approvedIds: Map<string, string>,
     blockedIds: Map<string, string>,
     archivedGroups: Set<string>,
-    archivedGroupIds: Map<string, string>
+    archivedGroupIds: Map<string, string>,
+    archivedChats: Set<string>,
+    archivedChatIds: Map<string, string>,
+    dismissed: Set<string>,
+    dismissedIds: Map<string, string>
   ) => void;
   addInitiatedChat: (publicKey: string) => void;
   approveUser: (publicKey: string) => void;
@@ -85,11 +97,55 @@ interface ChatOnState {
   rollbackArchive: (conversationKey: string) => void;
   rollbackUnarchive: (conversationKey: string, associationId: string) => void;
   mergeArchivedGroupIds: (ids: Map<string, string>) => void;
+  archiveChat: (publicKey: string) => void;
+  unarchiveChat: (publicKey: string) => void;
+  rollbackArchiveChat: (publicKey: string) => void;
+  rollbackUnarchiveChat: (publicKey: string, associationId: string) => void;
+  mergeArchivedChatIds: (ids: Map<string, string>) => void;
+  dismissUser: (publicKey: string) => void;
+  undismissUser: (publicKey: string) => void;
+  rollbackDismiss: (publicKey: string) => void;
+  rollbackUndismiss: (publicKey: string, associationId: string) => void;
+  mergeDismissedIds: (ids: Map<string, string>) => void;
+  unblockUser: (publicKey: string) => void;
+  rollbackUnblock: (publicKey: string, associationId: string) => void;
   resetChatRequestState: () => void;
 }
 
 const EMPTY_SET = new Set<string>();
 const EMPTY_MAP = new Map<string, string>();
+
+/** Build a ClassificationData snapshot from current state, with optional overrides. */
+function classificationSnapshot(
+  state: ChatOnState,
+  overrides: Partial<{
+    mutualFollows: Set<string>;
+    approvedUsers: Set<string>;
+    blockedUsers: Set<string>;
+    approvedAssociationIds: Map<string, string>;
+    blockedAssociationIds: Map<string, string>;
+    archivedGroups: Set<string>;
+    archivedGroupAssociationIds: Map<string, string>;
+    archivedChats: Set<string>;
+    archivedChatAssociationIds: Map<string, string>;
+    dismissedUsers: Set<string>;
+    dismissedAssociationIds: Map<string, string>;
+  }> = {}
+) {
+  return {
+    mutualFollows: overrides.mutualFollows ?? state.mutualFollows,
+    approvedUsers: overrides.approvedUsers ?? state.approvedUsers,
+    blockedUsers: overrides.blockedUsers ?? state.blockedUsers,
+    approvedAssociationIds: overrides.approvedAssociationIds ?? state.approvedAssociationIds,
+    blockedAssociationIds: overrides.blockedAssociationIds ?? state.blockedAssociationIds,
+    archivedGroups: overrides.archivedGroups ?? state.archivedGroups,
+    archivedGroupAssociationIds: overrides.archivedGroupAssociationIds ?? state.archivedGroupAssociationIds,
+    archivedChats: overrides.archivedChats ?? state.archivedChats,
+    archivedChatAssociationIds: overrides.archivedChatAssociationIds ?? state.archivedChatAssociationIds,
+    dismissedUsers: overrides.dismissedUsers ?? state.dismissedUsers,
+    dismissedAssociationIds: overrides.dismissedAssociationIds ?? state.dismissedAssociationIds,
+  };
+}
 
 export const useStore = create<ChatOnState>((set) => ({
   // Auth
@@ -222,6 +278,14 @@ export const useStore = create<ChatOnState>((set) => ({
   archivedGroups: EMPTY_SET,
   archivedGroupAssociationIds: EMPTY_MAP,
 
+  // Archived DM chats
+  archivedChats: EMPTY_SET,
+  archivedChatAssociationIds: EMPTY_MAP,
+
+  // Dismissed requests
+  dismissedUsers: EMPTY_SET,
+  dismissedAssociationIds: EMPTY_MAP,
+
   // Privacy mode
   privacyMode: "full" as PrivacyMode,
   privacyModeAssociationId: null,
@@ -235,7 +299,7 @@ export const useStore = create<ChatOnState>((set) => ({
       };
     }),
 
-  setClassificationData: (mutualFollows, approved, blocked, approvedIds, blockedIds, archived, archivedIds) =>
+  setClassificationData: (mutualFollows, approved, blocked, approvedIds, blockedIds, archived, archivedIds, archivedChatsSet, archivedChatIds, dismissed, dismissedIds) =>
     set((state) => {
       const publicKey = state.appUser?.PublicKeyBase58Check;
       if (publicKey) {
@@ -247,6 +311,10 @@ export const useStore = create<ChatOnState>((set) => ({
           blockedAssociationIds: blockedIds,
           archivedGroups: archived,
           archivedGroupAssociationIds: archivedIds,
+          archivedChats: archivedChatsSet,
+          archivedChatAssociationIds: archivedChatIds,
+          dismissedUsers: dismissed,
+          dismissedAssociationIds: dismissedIds,
         });
       }
       return {
@@ -257,6 +325,10 @@ export const useStore = create<ChatOnState>((set) => ({
         blockedAssociationIds: blockedIds,
         archivedGroups: archived,
         archivedGroupAssociationIds: archivedIds,
+        archivedChats: archivedChatsSet,
+        archivedChatAssociationIds: archivedChatIds,
+        dismissedUsers: dismissed,
+        dismissedAssociationIds: dismissedIds,
         chatRequestsLoaded: true,
       };
     }),
@@ -270,17 +342,7 @@ export const useStore = create<ChatOnState>((set) => ({
     set((state) => {
       const next = new Set([...state.approvedUsers, publicKey]);
       const myKey = state.appUser?.PublicKeyBase58Check;
-      if (myKey) {
-        cacheClassificationData(myKey, {
-          mutualFollows: state.mutualFollows,
-          approvedUsers: next,
-          blockedUsers: state.blockedUsers,
-          approvedAssociationIds: state.approvedAssociationIds,
-          blockedAssociationIds: state.blockedAssociationIds,
-          archivedGroups: state.archivedGroups,
-          archivedGroupAssociationIds: state.archivedGroupAssociationIds,
-        });
-      }
+      if (myKey) cacheClassificationData(myKey, classificationSnapshot(state, { approvedUsers: next }));
       return { approvedUsers: next };
     }),
 
@@ -288,17 +350,7 @@ export const useStore = create<ChatOnState>((set) => ({
     set((state) => {
       const next = new Set([...state.blockedUsers, publicKey]);
       const myKey = state.appUser?.PublicKeyBase58Check;
-      if (myKey) {
-        cacheClassificationData(myKey, {
-          mutualFollows: state.mutualFollows,
-          approvedUsers: state.approvedUsers,
-          blockedUsers: next,
-          approvedAssociationIds: state.approvedAssociationIds,
-          blockedAssociationIds: state.blockedAssociationIds,
-          archivedGroups: state.archivedGroups,
-          archivedGroupAssociationIds: state.archivedGroupAssociationIds,
-        });
-      }
+      if (myKey) cacheClassificationData(myKey, classificationSnapshot(state, { blockedUsers: next }));
       return { blockedUsers: next };
     }),
 
@@ -320,17 +372,7 @@ export const useStore = create<ChatOnState>((set) => ({
     set((state) => {
       const next = new Set([...state.archivedGroups, conversationKey]);
       const myKey = state.appUser?.PublicKeyBase58Check;
-      if (myKey) {
-        cacheClassificationData(myKey, {
-          mutualFollows: state.mutualFollows,
-          approvedUsers: state.approvedUsers,
-          blockedUsers: state.blockedUsers,
-          approvedAssociationIds: state.approvedAssociationIds,
-          blockedAssociationIds: state.blockedAssociationIds,
-          archivedGroups: next,
-          archivedGroupAssociationIds: state.archivedGroupAssociationIds,
-        });
-      }
+      if (myKey) cacheClassificationData(myKey, classificationSnapshot(state, { archivedGroups: next }));
       return { archivedGroups: next };
     }),
 
@@ -341,17 +383,7 @@ export const useStore = create<ChatOnState>((set) => ({
       const nextIds = new Map(state.archivedGroupAssociationIds);
       nextIds.delete(conversationKey);
       const myKey = state.appUser?.PublicKeyBase58Check;
-      if (myKey) {
-        cacheClassificationData(myKey, {
-          mutualFollows: state.mutualFollows,
-          approvedUsers: state.approvedUsers,
-          blockedUsers: state.blockedUsers,
-          approvedAssociationIds: state.approvedAssociationIds,
-          blockedAssociationIds: state.blockedAssociationIds,
-          archivedGroups: next,
-          archivedGroupAssociationIds: nextIds,
-        });
-      }
+      if (myKey) cacheClassificationData(myKey, classificationSnapshot(state, { archivedGroups: next, archivedGroupAssociationIds: nextIds }));
       return { archivedGroups: next, archivedGroupAssociationIds: nextIds };
     }),
 
@@ -377,6 +409,113 @@ export const useStore = create<ChatOnState>((set) => ({
       return { archivedGroupAssociationIds: nextIds };
     }),
 
+  // ── Archived DM chats ──
+
+  archiveChat: (publicKey) =>
+    set((state) => {
+      const next = new Set([...state.archivedChats, publicKey]);
+      const myKey = state.appUser?.PublicKeyBase58Check;
+      if (myKey) cacheClassificationData(myKey, classificationSnapshot(state, { archivedChats: next }));
+      return { archivedChats: next };
+    }),
+
+  unarchiveChat: (publicKey) =>
+    set((state) => {
+      const next = new Set(state.archivedChats);
+      next.delete(publicKey);
+      const nextIds = new Map(state.archivedChatAssociationIds);
+      nextIds.delete(publicKey);
+      const myKey = state.appUser?.PublicKeyBase58Check;
+      if (myKey) cacheClassificationData(myKey, classificationSnapshot(state, { archivedChats: next, archivedChatAssociationIds: nextIds }));
+      return { archivedChats: next, archivedChatAssociationIds: nextIds };
+    }),
+
+  rollbackArchiveChat: (publicKey) =>
+    set((state) => {
+      const next = new Set(state.archivedChats);
+      next.delete(publicKey);
+      return { archivedChats: next };
+    }),
+
+  rollbackUnarchiveChat: (publicKey, associationId) =>
+    set((state) => {
+      const next = new Set([...state.archivedChats, publicKey]);
+      const nextIds = new Map(state.archivedChatAssociationIds);
+      nextIds.set(publicKey, associationId);
+      return { archivedChats: next, archivedChatAssociationIds: nextIds };
+    }),
+
+  mergeArchivedChatIds: (ids) =>
+    set((state) => {
+      const nextIds = new Map(state.archivedChatAssociationIds);
+      for (const [k, v] of ids) nextIds.set(k, v);
+      return { archivedChatAssociationIds: nextIds };
+    }),
+
+  // ── Dismissed requests ──
+
+  dismissUser: (publicKey) =>
+    set((state) => {
+      const next = new Set([...state.dismissedUsers, publicKey]);
+      const myKey = state.appUser?.PublicKeyBase58Check;
+      if (myKey) cacheClassificationData(myKey, classificationSnapshot(state, { dismissedUsers: next }));
+      return { dismissedUsers: next };
+    }),
+
+  undismissUser: (publicKey) =>
+    set((state) => {
+      const next = new Set(state.dismissedUsers);
+      next.delete(publicKey);
+      const nextIds = new Map(state.dismissedAssociationIds);
+      nextIds.delete(publicKey);
+      const myKey = state.appUser?.PublicKeyBase58Check;
+      if (myKey) cacheClassificationData(myKey, classificationSnapshot(state, { dismissedUsers: next, dismissedAssociationIds: nextIds }));
+      return { dismissedUsers: next, dismissedAssociationIds: nextIds };
+    }),
+
+  rollbackDismiss: (publicKey) =>
+    set((state) => {
+      const next = new Set(state.dismissedUsers);
+      next.delete(publicKey);
+      return { dismissedUsers: next };
+    }),
+
+  rollbackUndismiss: (publicKey, associationId) =>
+    set((state) => {
+      const next = new Set([...state.dismissedUsers, publicKey]);
+      const nextIds = new Map(state.dismissedAssociationIds);
+      nextIds.set(publicKey, associationId);
+      return { dismissedUsers: next, dismissedAssociationIds: nextIds };
+    }),
+
+  mergeDismissedIds: (ids) =>
+    set((state) => {
+      const nextIds = new Map(state.dismissedAssociationIds);
+      for (const [k, v] of ids) nextIds.set(k, v);
+      return { dismissedAssociationIds: nextIds };
+    }),
+
+  // ── Unblock ──
+
+  unblockUser: (publicKey) =>
+    set((state) => {
+      const next = new Set(state.blockedUsers);
+      next.delete(publicKey);
+      const nextIds = new Map(state.blockedAssociationIds);
+      nextIds.delete(publicKey);
+      const myKey = state.appUser?.PublicKeyBase58Check;
+      if (myKey) cacheClassificationData(myKey, classificationSnapshot(state, { blockedUsers: next, blockedAssociationIds: nextIds }));
+      return { blockedUsers: next, blockedAssociationIds: nextIds };
+    }),
+
+  rollbackUnblock: (publicKey, associationId) =>
+    set((state) => {
+      const next = new Set([...state.blockedUsers, publicKey]);
+      const nextIds = new Map(state.blockedAssociationIds);
+      nextIds.set(publicKey, associationId);
+      return { blockedUsers: next, blockedAssociationIds: nextIds };
+    }),
+
   resetChatRequestState: () => {
     if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
     clearActiveServiceWorkerKeys();
@@ -389,6 +528,10 @@ export const useStore = create<ChatOnState>((set) => ({
       blockedAssociationIds: EMPTY_MAP,
       archivedGroups: EMPTY_SET,
       archivedGroupAssociationIds: EMPTY_MAP,
+      archivedChats: EMPTY_SET,
+      archivedChatAssociationIds: EMPTY_MAP,
+      dismissedUsers: EMPTY_SET,
+      dismissedAssociationIds: EMPTY_MAP,
       chatRequestsLoaded: false,
       mutedConversations: EMPTY_SET,
       privacyMode: "full" as PrivacyMode,

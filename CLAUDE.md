@@ -46,13 +46,16 @@ on-chain follows and User Associations (no backend needed).
 
 ### Classification order (first match wins)
 
-1. Group chats → always Chats
-2. `chaton:chat-blocked` association exists → hidden
-3. Mutual DeSo follow → Chats
-4. `chaton:chat-approved` association exists → Chats
-5. User initiated the conversation (via search) → Chats
-6. Current user sent the first message → Chats
-7. Everything else → Requests
+1. Group chats + `chat:group-archived` → Archived
+2. Group chats → Chats
+3. `chaton:chat-blocked` association exists → hidden (blocked)
+4. `chaton:chat-dismissed` association exists → hidden (dismissed)
+5. `chaton:chat-archived` association exists → Archived
+6. Mutual DeSo follow → Chats
+7. `chaton:chat-approved` association exists → Chats
+8. User initiated the conversation (via search) → Chats
+9. Current user sent the first message → Chats
+10. Everything else → Requests
 
 ### Data flow
 
@@ -68,6 +71,10 @@ on-chain follows and User Associations (no backend needed).
 
 - `chaton:chat-approved` / value `"approved"` — user accepted a chat request
 - `chaton:chat-blocked` / value `"blocked"` — user blocked a sender
+- `chaton:chat-archived` / value `"archived"` — user archived a DM conversation
+  (Target = other user's public key. Stays archived on new messages — WhatsApp model.)
+- `chaton:chat-dismissed` / value `"dismissed"` — user dismissed a chat request without
+  blocking (Target = sender's public key. Stays dismissed permanently.)
 - `chat:group-archived` / value `<AccessGroupKeyName>` — user left/archived a group chat
   (generic `chat:` prefix — any DeSo messaging app can query this to check if a user
   has left a group. Target = group owner's public key, Value = group key name.)

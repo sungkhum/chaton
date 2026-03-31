@@ -13,6 +13,16 @@ export const ASSOCIATION_VALUE_BLOCKED = "blocked";
 // TargetUser = group owner's public key, Value = access group key name.
 export const ASSOCIATION_TYPE_GROUP_ARCHIVED = "chat:group-archived";
 
+// DM archive — hides a DM conversation from the main chat list.
+// TargetUser = the other user's public key, Value = "archived".
+export const ASSOCIATION_TYPE_CHAT_ARCHIVED = "chaton:chat-archived";
+export const ASSOCIATION_VALUE_ARCHIVED = "archived";
+
+// Dismiss — hides a chat request without blocking.
+// TargetUser = the sender's public key, Value = "dismissed".
+export const ASSOCIATION_TYPE_DISMISSED = "chaton:chat-dismissed";
+export const ASSOCIATION_VALUE_DISMISSED = "dismissed";
+
 // Privacy mode: self-association (target = self) storing the user's encryption preference.
 // Value is "full" (encrypt all metadata) or "standard" (encrypt only reactions).
 export const ASSOCIATION_TYPE_PRIVACY_MODE = "chaton:privacy-mode";
@@ -80,6 +90,22 @@ export const getTransactionSpendingLimits = (
       {
         AssociationClass: "User" as const,
         AssociationType: ASSOCIATION_TYPE_PRIVACY_MODE,
+        AppScopeType: "Any" as const,
+        AppPublicKeyBase58Check: "",
+        AssociationOperation: "Any" as const,
+        OpCount: UNLIMITED,
+      },
+      {
+        AssociationClass: "User" as const,
+        AssociationType: ASSOCIATION_TYPE_CHAT_ARCHIVED,
+        AppScopeType: "Any" as const,
+        AppPublicKeyBase58Check: "",
+        AssociationOperation: "Any" as const,
+        OpCount: UNLIMITED,
+      },
+      {
+        AssociationClass: "User" as const,
+        AssociationType: ASSOCIATION_TYPE_DISMISSED,
         AppScopeType: "Any" as const,
         AppPublicKeyBase58Check: "",
         AssociationOperation: "Any" as const,

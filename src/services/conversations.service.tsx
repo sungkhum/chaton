@@ -24,10 +24,14 @@ import { withAuth } from "../utils/with-auth";
 import {
   ASSOCIATION_TYPE_APPROVED,
   ASSOCIATION_TYPE_BLOCKED,
+  ASSOCIATION_TYPE_CHAT_ARCHIVED,
+  ASSOCIATION_TYPE_DISMISSED,
   ASSOCIATION_TYPE_GROUP_ARCHIVED,
   ASSOCIATION_TYPE_PRIVACY_MODE,
   ASSOCIATION_VALUE_APPROVED,
+  ASSOCIATION_VALUE_ARCHIVED,
   ASSOCIATION_VALUE_BLOCKED,
+  ASSOCIATION_VALUE_DISMISSED,
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
   PRIVACY_MODE_FULL,
   PRIVACY_MODE_STANDARD,
@@ -577,44 +581,52 @@ export async function fetchMutualFollows(
   return mutual;
 }
 
+/** Fetch all associations of a single type. Returns Map<targetPubKey, associationId>. */
+export async function fetchAssociationsByType(
+  publicKey: string,
+  associationType: string
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  let lastId = "";
+
+  while (true) {
+    const res = await getUserAssociations({
+      TransactorPublicKeyBase58Check: publicKey,
+      AssociationType: associationType,
+      Limit: 100,
+      ...(lastId ? { LastSeenAssociationID: lastId } : {}),
+    });
+
+    const associations = res.Associations || [];
+    if (associations.length === 0) break;
+
+    for (const a of associations) {
+      map.set(a.TargetUserPublicKeyBase58Check, a.AssociationID);
+    }
+
+    if (associations.length < 100) break;
+    lastId = associations[associations.length - 1].AssociationID;
+  }
+
+  return map;
+}
+
 export async function fetchChatAssociations(
   publicKey: string
 ): Promise<{
   approved: Map<string, string>;
   blocked: Map<string, string>;
+  archivedChats: Map<string, string>;
+  dismissed: Map<string, string>;
 }> {
-  const fetchAll = async (associationType: string) => {
-    const map = new Map<string, string>();
-    let lastId = "";
-
-    while (true) {
-      const res = await getUserAssociations({
-        TransactorPublicKeyBase58Check: publicKey,
-        AssociationType: associationType,
-        Limit: 100,
-        ...(lastId ? { LastSeenAssociationID: lastId } : {}),
-      });
-
-      const associations = res.Associations || [];
-      if (associations.length === 0) break;
-
-      for (const a of associations) {
-        map.set(a.TargetUserPublicKeyBase58Check, a.AssociationID);
-      }
-
-      if (associations.length < 100) break;
-      lastId = associations[associations.length - 1].AssociationID;
-    }
-
-    return map;
-  };
-
-  const [approved, blocked] = await Promise.all([
-    fetchAll(ASSOCIATION_TYPE_APPROVED),
-    fetchAll(ASSOCIATION_TYPE_BLOCKED),
+  const [approved, blocked, archivedChats, dismissed] = await Promise.all([
+    fetchAssociationsByType(publicKey, ASSOCIATION_TYPE_APPROVED),
+    fetchAssociationsByType(publicKey, ASSOCIATION_TYPE_BLOCKED),
+    fetchAssociationsByType(publicKey, ASSOCIATION_TYPE_CHAT_ARCHIVED),
+    fetchAssociationsByType(publicKey, ASSOCIATION_TYPE_DISMISSED),
   ]);
 
-  return { approved, blocked };
+  return { approved, blocked, archivedChats, dismissed };
 }
 
 export function classifyConversation(
@@ -625,8 +637,10 @@ export function classifyConversation(
   approvedUsers: Set<string>,
   blockedUsers: Set<string>,
   initiatedChats: Set<string>,
-  archivedGroups: Set<string>
-): "chat" | "request" | "blocked" | "archived" {
+  archivedGroups: Set<string>,
+  archivedChats: Set<string>,
+  dismissedUsers: Set<string>
+): "chat" | "request" | "blocked" | "archived" | "dismissed" {
   if (conversation.ChatType === ChatType.GROUPCHAT) {
     if (archivedGroups.has(conversationKey)) return "archived";
     return "chat";
@@ -635,6 +649,8 @@ export function classifyConversation(
   const otherKey = conversation.firstMessagePublicKey;
 
   if (blockedUsers.has(otherKey)) return "blocked";
+  if (dismissedUsers.has(otherKey)) return "dismissed";
+  if (archivedChats.has(otherKey)) return "archived";
   if (mutualFollows.has(otherKey)) return "chat";
   if (approvedUsers.has(otherKey)) return "chat";
   if (initiatedChats.has(otherKey)) return "chat";
@@ -737,6 +753,50 @@ export async function deleteArchiveAssociation(
     deleteUserAssociation({
       TransactorPublicKeyBase58Check: myPublicKey,
       AssociationID: associationId,
+    })
+  );
+}
+
+// ── DM archive (hide a DM conversation) ────────────────────────────
+
+export async function createArchiveChatAssociation(
+  myPublicKey: string,
+  targetPublicKey: string
+): Promise<void> {
+  await withAuth(() =>
+    createUserAssociation({
+      TransactorPublicKeyBase58Check: myPublicKey,
+      TargetUserPublicKeyBase58Check: targetPublicKey,
+      AssociationType: ASSOCIATION_TYPE_CHAT_ARCHIVED,
+      AssociationValue: ASSOCIATION_VALUE_ARCHIVED,
+    })
+  );
+}
+
+export async function deleteAssociationById(
+  myPublicKey: string,
+  associationId: string
+): Promise<void> {
+  await withAuth(() =>
+    deleteUserAssociation({
+      TransactorPublicKeyBase58Check: myPublicKey,
+      AssociationID: associationId,
+    })
+  );
+}
+
+// ── Dismiss request ─────────────────────────────────────────────────
+
+export async function createDismissAssociation(
+  myPublicKey: string,
+  targetPublicKey: string
+): Promise<void> {
+  await withAuth(() =>
+    createUserAssociation({
+      TransactorPublicKeyBase58Check: myPublicKey,
+      TargetUserPublicKeyBase58Check: targetPublicKey,
+      AssociationType: ASSOCIATION_TYPE_DISMISSED,
+      AssociationValue: ASSOCIATION_VALUE_DISMISSED,
     })
   );
 }
