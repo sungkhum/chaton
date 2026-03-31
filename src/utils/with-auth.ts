@@ -58,6 +58,10 @@ export async function withAuth<T>(fn: () => Promise<T>): Promise<T> {
         // Retry the original operation
         return await fn();
       } catch (reAuthError: any) {
+        // Reset loading in case AUTHORIZE_DERIVED_KEY_START fired but
+        // the popup was cancelled (no END event fires on cancel).
+        useStore.getState().setIsLoadingUser(false);
+
         const reAuthStr = reAuthError?.message || reAuthError?.toString?.() || "";
         if (reAuthStr.includes("user cancelled") || reAuthStr.includes("WINDOW_CLOSED")) {
           toast.error("Authorization cancelled. You need to re-authorize to perform this action.");
@@ -102,22 +106,22 @@ export function needsPermissionUpgrade(): boolean {
  * After success, stores the version so the user isn't prompted again.
  */
 export async function requestFullPermissions(): Promise<boolean> {
-  try {
-    const appUser = useStore.getState().appUser;
-    const publicKey = appUser?.PublicKeyBase58Check || "";
-    if (!publicKey) return false;
+  const appUser = useStore.getState().appUser;
+  const publicKey = appUser?.PublicKeyBase58Check || "";
+  if (!publicKey) return false;
 
+  try {
     await identity.requestPermissions({
       ...getTransactionSpendingLimits(publicKey),
     });
-
-    // requestPermissions triggers AUTHORIZE_DERIVED_KEY_START which sets
-    // isLoadingUser(true). Reset it since the user is already logged in.
-    useStore.getState().setIsLoadingUser(false);
 
     setStoredPermissionsVersion(publicKey);
     return true;
   } catch {
     return false;
+  } finally {
+    // Always reset loading — AUTHORIZE_DERIVED_KEY_START may have fired
+    // but END won't fire if the user cancelled the popup.
+    useStore.getState().setIsLoadingUser(false);
   }
 }
