@@ -43,6 +43,7 @@ export const getTransactionSpendingLimits = (
       FOLLOW: UNLIMITED,
       CREATE_USER_ASSOCIATION: UNLIMITED,
       DELETE_USER_ASSOCIATION: UNLIMITED,
+      BASIC_TRANSFER: UNLIMITED,
     },
     AccessGroupLimitMap: [
       {
