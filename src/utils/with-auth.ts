@@ -68,25 +68,18 @@ function isDerivedKeyError(errorStr: string): boolean {
  */
 export async function ensurePermissions(): Promise<boolean> {
   try {
-    // Check a representative set of permissions — if the derived key was
-    // created before new association types were added, this will catch it.
-    const hasPerms = identity.hasPermissions({
-      TransactionCountLimitMap: {
-        NEW_MESSAGE: 1,
-        CREATE_USER_ASSOCIATION: 1,
-        DELETE_USER_ASSOCIATION: 1,
-        FOLLOW: 1,
-        ACCESS_GROUP: 1,
-        ACCESS_GROUP_MEMBERS: 1,
-      },
-    });
+    const appUser = useStore.getState().appUser;
+    const publicKey = appUser?.PublicKeyBase58Check || "";
+
+    // Check the FULL spending limits including AssociationLimitMap.
+    // Checking only TransactionCountLimitMap misses specific association types —
+    // a derived key can have CREATE_USER_ASSOCIATION but lack individual types
+    // like chaton:chat-approved that were added after the key was created.
+    const fullLimits = getTransactionSpendingLimits(publicKey);
+    const hasPerms = identity.hasPermissions(fullLimits);
 
     if (!hasPerms) {
-      const appUser = useStore.getState().appUser;
-      const publicKey = appUser?.PublicKeyBase58Check || "";
-      await identity.requestPermissions({
-        ...getTransactionSpendingLimits(publicKey),
-      });
+      await identity.requestPermissions(fullLimits);
     }
 
     return true;
