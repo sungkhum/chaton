@@ -23,6 +23,12 @@ function setStoredPermissionsVersion(publicKey: string): void {
   } catch {}
 }
 
+function clearStoredPermissionsVersion(publicKey: string): void {
+  try {
+    localStorage.removeItem(`${PERMISSIONS_VERSION_KEY}:${publicKey}`);
+  } catch {}
+}
+
 /**
  * Wraps any async function that makes a DeSo transaction.
  * If the derived key is expired or unauthorized, it automatically
@@ -110,18 +116,24 @@ export async function requestFullPermissions(): Promise<boolean> {
   const publicKey = appUser?.PublicKeyBase58Check || "";
   if (!publicKey) return false;
 
+  // Store version BEFORE calling requestPermissions. On mobile PWA the
+  // redirect flow navigates away from the page, so the await never resolves
+  // and any code after it never runs. By storing first, we avoid showing
+  // the toast again on every app open. If the user cancels (popup flow),
+  // we clear the version in the catch block.
+  setStoredPermissionsVersion(publicKey);
+
   try {
     await identity.requestPermissions({
       ...getTransactionSpendingLimits(publicKey),
     });
 
-    setStoredPermissionsVersion(publicKey);
     return true;
   } catch {
+    // Auth was cancelled (popup flow) — clear the version so we ask again
+    clearStoredPermissionsVersion(publicKey);
     return false;
   } finally {
-    // Always reset loading — AUTHORIZE_DERIVED_KEY_START may have fired
-    // but END won't fire if the user cancelled the popup.
     useStore.getState().setIsLoadingUser(false);
   }
 }
