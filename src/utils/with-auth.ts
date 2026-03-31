@@ -3,6 +3,26 @@ import { toast } from "sonner";
 import { getTransactionSpendingLimits } from "./constants";
 import { useStore } from "../store";
 
+// Bump this version whenever getTransactionSpendingLimits changes
+// (e.g., new association types, new transaction types).
+// Users with a cached version lower than this will be prompted once to re-authorize.
+const PERMISSIONS_VERSION = 2;
+const PERMISSIONS_VERSION_KEY = "chaton:permissions-version";
+
+function getStoredPermissionsVersion(publicKey: string): number {
+  try {
+    return Number(localStorage.getItem(`${PERMISSIONS_VERSION_KEY}:${publicKey}`)) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function setStoredPermissionsVersion(publicKey: string): void {
+  try {
+    localStorage.setItem(`${PERMISSIONS_VERSION_KEY}:${publicKey}`, String(PERMISSIONS_VERSION));
+  } catch {}
+}
+
 /**
  * Wraps any async function that makes a DeSo transaction.
  * If the derived key is expired or unauthorized, it automatically
@@ -18,7 +38,7 @@ export async function withAuth<T>(fn: () => Promise<T>): Promise<T> {
     const errorStr = error?.message || error?.toString?.() || "";
 
     if (isDerivedKeyError(errorStr)) {
-      // Derived key expired or unauthorized — re-request permissions
+      // Derived key expired or unauthorized — re-request ALL permissions
       const appUser = useStore.getState().appUser;
       const publicKey = appUser?.PublicKeyBase58Check || "";
 
@@ -28,6 +48,9 @@ export async function withAuth<T>(fn: () => Promise<T>): Promise<T> {
         await identity.requestPermissions({
           ...getTransactionSpendingLimits(publicKey),
         });
+
+        // Mark as up-to-date so we don't prompt again
+        if (publicKey) setStoredPermissionsVersion(publicKey);
 
         // Retry the original operation
         return await fn();
@@ -60,28 +83,33 @@ function isDerivedKeyError(errorStr: string): boolean {
 }
 
 /**
- * Check if the current user's derived key has ALL permissions the app needs.
- * If not, proactively request re-authorization once so the user isn't prompted
- * per-action throughout the session.
+ * Ensure the derived key has ALL current permissions.
  *
- * Call this once after login / app startup.
+ * Uses a version number stored in localStorage. When we add new permission
+ * types (association types, transaction types, etc.), we bump PERMISSIONS_VERSION.
+ * Users whose stored version is lower get one re-auth prompt on startup that
+ * requests the full spending limits — covering everything the app needs.
+ *
+ * We don't rely on identity.hasPermissions() because it doesn't reliably
+ * detect missing entries in AssociationLimitMap.
  */
 export async function ensurePermissions(): Promise<boolean> {
   try {
     const appUser = useStore.getState().appUser;
     const publicKey = appUser?.PublicKeyBase58Check || "";
+    if (!publicKey) return true;
 
-    // Check the FULL spending limits including AssociationLimitMap.
-    // Checking only TransactionCountLimitMap misses specific association types —
-    // a derived key can have CREATE_USER_ASSOCIATION but lack individual types
-    // like chaton:chat-approved that were added after the key was created.
-    const fullLimits = getTransactionSpendingLimits(publicKey);
-    const hasPerms = identity.hasPermissions(fullLimits);
-
-    if (!hasPerms) {
-      await identity.requestPermissions(fullLimits);
+    const storedVersion = getStoredPermissionsVersion(publicKey);
+    if (storedVersion >= PERMISSIONS_VERSION) {
+      return true; // Already up-to-date
     }
 
+    // Request the full set of permissions
+    await identity.requestPermissions({
+      ...getTransactionSpendingLimits(publicKey),
+    });
+
+    setStoredPermissionsVersion(publicKey);
     return true;
   } catch {
     return false;
