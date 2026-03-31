@@ -669,6 +669,11 @@ export function classifyConversation(
   return "request";
 }
 
+// All createUserAssociation calls use checkPermissions: false to skip the SDK's
+// built-in per-transaction guardTxPermission prompt. We handle permissions ourselves
+// via withAuth (which requests the full spending limits on failure) and the startup
+// ensurePermissions toast. Without this, the SDK prompts individually per association type.
+
 export async function createApprovalAssociation(
   myPublicKey: string,
   targetPublicKey: string
@@ -679,7 +684,7 @@ export async function createApprovalAssociation(
       TargetUserPublicKeyBase58Check: targetPublicKey,
       AssociationType: ASSOCIATION_TYPE_APPROVED,
       AssociationValue: ASSOCIATION_VALUE_APPROVED,
-    })
+    }, { checkPermissions: false })
   );
 }
 
@@ -693,7 +698,7 @@ export async function createBlockAssociation(
       TargetUserPublicKeyBase58Check: targetPublicKey,
       AssociationType: ASSOCIATION_TYPE_BLOCKED,
       AssociationValue: ASSOCIATION_VALUE_BLOCKED,
-    })
+    }, { checkPermissions: false })
   );
 }
 
@@ -741,7 +746,7 @@ export async function createArchiveAssociation(
       TargetUserPublicKeyBase58Check: groupOwnerPublicKey,
       AssociationType: ASSOCIATION_TYPE_GROUP_ARCHIVED,
       AssociationValue: groupKeyName,
-    })
+    }, { checkPermissions: false })
   );
 }
 
@@ -769,7 +774,7 @@ export async function createArchiveChatAssociation(
       TargetUserPublicKeyBase58Check: targetPublicKey,
       AssociationType: ASSOCIATION_TYPE_CHAT_ARCHIVED,
       AssociationValue: ASSOCIATION_VALUE_ARCHIVED,
-    })
+    }, { checkPermissions: false })
   );
 }
 
@@ -797,7 +802,7 @@ export async function createDismissAssociation(
       TargetUserPublicKeyBase58Check: targetPublicKey,
       AssociationType: ASSOCIATION_TYPE_DISMISSED,
       AssociationValue: ASSOCIATION_VALUE_DISMISSED,
-    })
+    }, { checkPermissions: false })
   );
 }
 
@@ -861,7 +866,7 @@ export async function setPrivacyModeOnChain(
       TargetUserPublicKeyBase58Check: myPublicKey, // self-association
       AssociationType: ASSOCIATION_TYPE_PRIVACY_MODE,
       AssociationValue: mode,
-    })
+    }, { checkPermissions: false })
   );
 
   // Fetch the new association ID

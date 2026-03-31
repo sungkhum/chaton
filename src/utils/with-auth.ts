@@ -96,8 +96,8 @@ export function needsPermissionUpgrade(): boolean {
 }
 
 /**
- * Request the full set of permissions. Must be called from a user gesture
- * (click handler) to avoid popup blockers.
+ * Request the full set of permissions via identity.requestPermissions().
+ * Must be called from a user gesture (click handler) to avoid popup blockers.
  *
  * After success, stores the version so the user isn't prompted again.
  */
