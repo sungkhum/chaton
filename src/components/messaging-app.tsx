@@ -972,12 +972,33 @@ export const MessagingApp: FC = () => {
   const loadingRef = useRef(loading);
   loadingRef.current = loading;
 
-  // Refresh conversations when PWA resumes from background
+  // Refresh conversations + classification data when PWA resumes from background
   useEffect(() => {
     if (!appUser) return;
+    const publicKey = appUser.PublicKeyBase58Check;
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && !loadingRef.current) {
+        // Refresh conversations (existing behavior)
         visibilityHandlerRef.current("", "");
+
+        // Silently re-fetch classification data (associations, follows) so
+        // accept/block/dismiss actions from other devices sync without reload.
+        Promise.all([
+          fetchMutualFollows(publicKey),
+          fetchChatAssociations(publicKey),
+          fetchArchivedGroups(publicKey),
+        ]).then(([mutual, assoc, archivedMap]) => {
+          const approvedSet = new Set(assoc.approved.keys());
+          const blockedSet = new Set(assoc.blocked.keys());
+          const archivedSet = new Set(archivedMap.keys());
+          const archivedChatsSet = new Set(assoc.archivedChats.keys());
+          const dismissedSet = new Set(assoc.dismissed.keys());
+          setClassificationData(
+            mutual, approvedSet, blockedSet, assoc.approved, assoc.blocked,
+            archivedSet, archivedMap, archivedChatsSet, assoc.archivedChats,
+            dismissedSet, assoc.dismissed
+          );
+        }).catch(() => {});
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
