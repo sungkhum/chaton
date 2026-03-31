@@ -1,4 +1,4 @@
-import { Check, CheckCheck, AlertCircle, Loader2 } from "lucide-react";
+import { CheckCheck, AlertCircle, Loader2 } from "lucide-react";
 import { MessageStatus } from "../../store";
 
 interface MessageStatusIndicatorProps {
@@ -16,7 +16,7 @@ export const MessageStatusIndicator = ({
     case "sending":
       return <Loader2 className="w-3 h-3 text-gray-400 animate-spin" />;
     case "sent":
-      return <Check className="w-3 h-3 text-gray-400" />;
+      return <Loader2 className="w-3 h-3 text-gray-400 animate-spin" />;
     case "confirmed":
       return <CheckCheck className="w-3 h-3 text-[#34F080]" />;
     case "failed":
