@@ -645,12 +645,7 @@ export const MessagingApp: FC = () => {
       } catch (e: any) {
         const errorStr = e?.toString() || "Unknown error";
 
-        // Permanent errors that will never succeed on retry — remove from
-        // IndexedDB so the app doesn't keep retrying on every startup.
         const isPermanent = /TxnTooBig|TxnTooLarge|MaxMessageLength/i.test(errorStr);
-        if (isPermanent) {
-          removePendingMessage(appUser.PublicKeyBase58Check, localId);
-        }
 
         setConversations((prev) => {
           if (!prev[conversationKey]) return prev;
@@ -664,11 +659,32 @@ export const MessagingApp: FC = () => {
             },
           };
         });
-        toast.error(
-          isPermanent
-            ? "Message too large to send. It has been removed."
-            : `Failed to send message: ${errorStr}`
-        );
+
+        if (isPermanent) {
+          toast.error("Message too large to send.", {
+            duration: Infinity,
+            action: {
+              label: "Delete",
+              onClick: () => {
+                removePendingMessage(appUser.PublicKeyBase58Check, localId);
+                setConversations((prev) => {
+                  if (!prev[conversationKey]) return prev;
+                  return {
+                    ...prev,
+                    [conversationKey]: {
+                      ...prev[conversationKey],
+                      messages: prev[conversationKey].messages.filter(
+                        (m: any) => m._localId !== localId
+                      ),
+                    },
+                  };
+                });
+              },
+            },
+          });
+        } else {
+          toast.error(`Failed to send message: ${errorStr}`);
+        }
       } finally {
         retryingIds.current.delete(localId);
       }
