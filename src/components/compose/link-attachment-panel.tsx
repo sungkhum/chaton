@@ -139,11 +139,18 @@ export const LinkAttachmentPanel = ({
   const service = validUrl ? detectLinkService(url.trim()) : null;
   const errorId = "link-panel-url-error";
 
-  // Prefer URL filename when OG title is just the service name or domain
+  // Prefer URL filename when OG title is just the service name, domain,
+  // or a known-useless placeholder (e.g. Google Docs JS-rendered titles)
+  const JUNK_TITLES = [
+    "loading google docs", "loading google sheets", "loading google slides",
+    "loading google forms", "google docs", "google sheets", "google slides",
+    "google forms", "google drive", "error",
+  ];
   const ogDisplayTitle = (() => {
     const raw = ogData?.title;
     if (!raw) return undefined;
-    const lower = raw.toLowerCase();
+    const lower = raw.toLowerCase().trim();
+    if (JUNK_TITLES.includes(lower)) return undefined;
     const isGeneric =
       (service && lower === service.name.toLowerCase()) ||
       (domain && lower === domain.toLowerCase());

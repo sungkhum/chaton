@@ -206,6 +206,17 @@ export async function handleOgFetch(request: Request): Promise<Response> {
     }
   }
 
+  // Filter out useless Google Docs/Sheets/Slides placeholder titles.
+  // These JS-rendered apps return generic titles to bot fetchers.
+  const GOOGLE_JUNK_TITLES = [
+    "loading google docs", "loading google sheets", "loading google slides",
+    "loading google forms", "google docs", "google sheets", "google slides",
+    "google forms", "google drive", "error",
+  ];
+  if (result.title && GOOGLE_JUNK_TITLES.includes(result.title.toLowerCase().trim())) {
+    result.title = undefined;
+  }
+
   // If og:title is just the service name (e.g. "Dropbox"), try to extract
   // a real filename from the URL path and use that instead.
   if (result.title && result.siteName &&

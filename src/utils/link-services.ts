@@ -5,7 +5,8 @@
 
 import type { ComponentType, SVGProps } from "react";
 import {
-  SiGoogledrive, SiDropbox, SiBox, SiIcloud, SiWetransfer,
+  SiGoogledrive, SiGoogledocs, SiGooglesheets, SiGoogleslides, SiGoogleforms,
+  SiDropbox, SiBox, SiIcloud, SiWetransfer,
   SiGithub, SiGitlab, SiBitbucket, SiCodesandbox, SiStackblitz,
   SiNpm, SiVercel, SiNetlify,
   SiFigma, SiMiro, SiSketch,
@@ -45,7 +46,7 @@ interface ServicePattern {
 const SERVICES: ServicePattern[] = [
   // ── Cloud Storage ──────────────────────────────────────────
   {
-    hosts: ["drive.google.com", "docs.google.com", "sheets.google.com", "slides.google.com", "forms.google.com"],
+    hosts: ["drive.google.com"],
     service: {
       name: "Google Drive",
       badge: "GD",
@@ -54,6 +55,54 @@ const SERVICES: ServicePattern[] = [
       badgeText: "text-yellow-400",
       cardGradient: "from-yellow-900/30 to-orange-900/20",
       cardBorder: "border-yellow-700/30",
+    },
+  },
+  {
+    hosts: ["docs.google.com"],
+    service: {
+      name: "Google Docs",
+      badge: "GD",
+      icon: SiGoogledocs,
+      badgeBg: "bg-blue-500/20",
+      badgeText: "text-blue-400",
+      cardGradient: "from-blue-900/40 to-blue-800/20",
+      cardBorder: "border-blue-600/30",
+    },
+  },
+  {
+    hosts: ["sheets.google.com"],
+    service: {
+      name: "Google Sheets",
+      badge: "GS",
+      icon: SiGooglesheets,
+      badgeBg: "bg-green-500/20",
+      badgeText: "text-green-400",
+      cardGradient: "from-green-900/40 to-green-800/20",
+      cardBorder: "border-green-600/30",
+    },
+  },
+  {
+    hosts: ["slides.google.com"],
+    service: {
+      name: "Google Slides",
+      badge: "GS",
+      icon: SiGoogleslides,
+      badgeBg: "bg-yellow-500/20",
+      badgeText: "text-yellow-400",
+      cardGradient: "from-yellow-900/30 to-orange-900/20",
+      cardBorder: "border-yellow-700/30",
+    },
+  },
+  {
+    hosts: ["forms.google.com"],
+    service: {
+      name: "Google Forms",
+      badge: "GF",
+      icon: SiGoogleforms,
+      badgeBg: "bg-purple-500/20",
+      badgeText: "text-purple-400",
+      cardGradient: "from-purple-900/40 to-purple-800/20",
+      cardBorder: "border-purple-600/30",
     },
   },
   {
