@@ -1,4 +1,4 @@
-import { Loader2, CheckCircle, Bell, BellOff, Archive } from "lucide-react";
+import { Loader2, CheckCircle, Bell, BellOff, Archive, EllipsisVertical, ShieldBan } from "lucide-react";
 import { useStore } from "../store";
 import {
   ChatType,
@@ -185,6 +185,8 @@ export const MessagingApp: FC = () => {
     timestamp: string;
   } | null>(null);
   const [hiddenMessageIds, setHiddenMessageIds] = useState<Set<string>>(new Set());
+  const [dmMenuOpen, setDmMenuOpen] = useState(false);
+  const [blockConfirm, setBlockConfirm] = useState<{ conversationKey: string; publicKey: string; name: string } | null>(null);
   const { isMobile } = useMobile();
 
   // Message search
@@ -1992,6 +1994,37 @@ export const MessagingApp: FC = () => {
                         >
                           <Archive className="w-5 h-5 text-gray-400" />
                         </button>
+                        {/* Three-dot menu for DM actions (block, etc.) */}
+                        <div className="relative">
+                          <button
+                            onClick={() => setDmMenuOpen(!dmMenuOpen)}
+                            className="p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                            title="More options"
+                          >
+                            <EllipsisVertical className="w-5 h-5 text-gray-400" />
+                          </button>
+                          {dmMenuOpen && (
+                            <>
+                              <div className="fixed inset-0 z-40" onClick={() => setDmMenuOpen(false)} />
+                              <div className="absolute right-0 top-full mt-1 z-50 bg-[#141c2b] border border-white/10 rounded-lg shadow-xl py-1 min-w-[160px]">
+                                <button
+                                  onClick={() => {
+                                    setDmMenuOpen(false);
+                                    setBlockConfirm({
+                                      conversationKey: selectedConversationPublicKey,
+                                      publicKey: selectedConversation.firstMessagePublicKey,
+                                      name: activeChatUsersMap[selectedConversation.firstMessagePublicKey] || "this user",
+                                    });
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-red-400 hover:bg-white/5 cursor-pointer transition-colors"
+                                >
+                                  <ShieldBan className="w-4 h-4" />
+                                  Block user
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
                         <MessagingDisplayAvatar
                           username={
                             activeChatUsersMap[
@@ -2476,6 +2509,35 @@ export const MessagingApp: FC = () => {
             </div>
           </div>
         )}
+      {/* Block confirmation dialog */}
+      {blockConfirm && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setBlockConfirm(null)} />
+          <div className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#141c2b] border border-white/10 rounded-xl shadow-2xl p-6 w-[320px] max-w-[90vw]">
+            <h3 className="text-white font-bold text-base mb-2">Block {blockConfirm.name}?</h3>
+            <p className="text-gray-400 text-sm mb-5">
+              They won't be able to message you. You can unblock them later from the Requests tab.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setBlockConfirm(null)}
+                className="flex-1 py-2.5 rounded-lg bg-white/5 text-gray-300 text-sm font-medium hover:bg-white/10 cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  handleBlockRequest(blockConfirm.conversationKey, blockConfirm.publicKey);
+                  setBlockConfirm(null);
+                }}
+                className="flex-1 py-2.5 rounded-lg bg-red-500/20 text-red-400 text-sm font-bold hover:bg-red-500/30 cursor-pointer transition-colors"
+              >
+                Block
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
