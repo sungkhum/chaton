@@ -80,6 +80,7 @@ import {
   addPendingMessage,
   removePendingMessage,
   getPendingMessages,
+  clearPendingMessages,
   type PendingMessage,
 } from "../services/pending-messages.service";
 import {
@@ -522,7 +523,10 @@ export const MessagingApp: FC = () => {
   const retryPendingMessage = useCallback(
     async (pending: PendingMessage) => {
       if (!appUser) return;
-      const { localId, conversationKey, messageText, recipientPublicKey, recipientAccessGroupKeyName, extraData } = pending;
+      const { localId, conversationKey, messageText, recipientPublicKey, recipientAccessGroupKeyName, extraData, senderPublicKey } = pending;
+
+      // Don't retry messages from a different account
+      if (senderPublicKey && senderPublicKey !== appUser.PublicKeyBase58Check) return;
 
       // Guard against concurrent retries for the same message
       if (retryingIds.current.has(localId)) return;
@@ -639,6 +643,15 @@ export const MessagingApp: FC = () => {
           };
         });
       } catch (e: any) {
+        const errorStr = e?.toString() || "Unknown error";
+
+        // Permanent errors that will never succeed on retry — remove from
+        // IndexedDB so the app doesn't keep retrying on every startup.
+        const isPermanent = /TxnTooBig|TxnTooLarge|MaxMessageLength/i.test(errorStr);
+        if (isPermanent) {
+          removePendingMessage(appUser.PublicKeyBase58Check, localId);
+        }
+
         setConversations((prev) => {
           if (!prev[conversationKey]) return prev;
           return {
@@ -651,7 +664,11 @@ export const MessagingApp: FC = () => {
             },
           };
         });
-        toast.error(`Failed to send message: ${e?.toString() || "Unknown error"}`);
+        toast.error(
+          isPermanent
+            ? "Message too large to send. It has been removed."
+            : `Failed to send message: ${errorStr}`
+        );
       } finally {
         retryingIds.current.delete(localId);
       }
@@ -668,7 +685,31 @@ export const MessagingApp: FC = () => {
 
     getPendingMessages(appUser.PublicKeyBase58Check).then((pendingMsgs) => {
       if (pendingMsgs.length === 0) return;
-      toast.info(`Retrying ${pendingMsgs.length} unsent message${pendingMsgs.length > 1 ? "s" : ""}…`);
+      toast.info(
+        `Retrying ${pendingMsgs.length} unsent message${pendingMsgs.length > 1 ? "s" : ""}…`,
+        {
+          action: {
+            label: "Clear all",
+            onClick: () => {
+              clearPendingMessages(appUser.PublicKeyBase58Check);
+              // Remove all optimistic messages from every conversation
+              setConversations((prev) => {
+                const localIds = new Set(pendingMsgs.map((m) => m.localId));
+                const next = { ...prev };
+                for (const key of Object.keys(next)) {
+                  const c = next[key];
+                  const filtered = c.messages.filter((m: any) => !m._localId || !localIds.has(m._localId));
+                  if (filtered.length !== c.messages.length) {
+                    next[key] = { ...c, messages: filtered };
+                  }
+                }
+                return next;
+              });
+              toast.success("Cleared all pending messages");
+            },
+          },
+        }
+      );
       for (const pending of pendingMsgs) {
         retryPendingMessage(pending);
       }
@@ -681,8 +722,26 @@ export const MessagingApp: FC = () => {
     getHiddenMessageIds(appUser.PublicKeyBase58Check).then(setHiddenMessageIds);
   }, [appUser]);
 
+  // Reset account-scoped state and rehydrate when the user changes.
+  // The clear MUST happen before rehydrate starts so stale data from
+  // the previous account is gone before new data arrives.
+  const prevRehydrateUserRef = useRef(appUser?.PublicKeyBase58Check);
   useEffect(() => {
     if (!appUser) return;
+
+    const currentKey = appUser.PublicKeyBase58Check;
+    const switched = prevRehydrateUserRef.current && prevRehydrateUserRef.current !== currentKey;
+    prevRehydrateUserRef.current = currentKey;
+
+    if (switched) {
+      setConversations({});
+      setUsernameByPublicKeyBase58Check({});
+      setProfilePicByPublicKey({});
+      setMembersByGroupKey({});
+      setHiddenMessageIds(new Set());
+      setPubKeyPlusGroupName("");
+    }
+
     if (hasSetupMessaging(appUser)) {
       // If the app was opened from a push notification, navigate to that conversation
       const pending = useStore.getState().pendingConversationKey;

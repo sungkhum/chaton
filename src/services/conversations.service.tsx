@@ -7,6 +7,7 @@ import {
   deleteUserAssociation,
   getAllAccessGroups,
   getAllMessageThreads,
+  getBulkAccessGroups,
   getFollowersForUser,
   getUserAssociations,
   identity,
@@ -193,6 +194,87 @@ export const decryptAccessGroupMessagesWithRetry = async (
       messages,
       accessGroups
     );
+  }
+
+  // Fallback for "incorrect MAC" on group messages: the sender's app may
+  // have recorded their base public key in SenderInfo instead of their
+  // default-key messaging public key. Fetch the actual default-key and
+  // retry decryption with a patched SenderInfo.
+  const macErrors = decryptedMessageEntries.filter(
+    (msg) =>
+      msg.error?.includes("incorrect MAC") &&
+      !msg.DecryptedMessage &&
+      msg.ChatType === ChatType.GROUPCHAT
+  );
+  if (macErrors.length > 0) {
+    // Collect unique sender keys that failed
+    const failedSenderKeys = [
+      ...new Set(macErrors.map((m) => m.SenderInfo.OwnerPublicKeyBase58Check)),
+    ];
+
+    // Fetch each sender's default-key access group to get their real messaging public key
+    const senderDefaultKeyMap = new Map<string, string>();
+    try {
+      const { AccessGroupEntries } = await getBulkAccessGroups({
+        GroupOwnerAndGroupKeyNamePairs: failedSenderKeys.map((pk) => ({
+          GroupOwnerPublicKeyBase58Check: pk,
+          GroupKeyName: "default-key",
+        })),
+      });
+      for (const entry of AccessGroupEntries || []) {
+        senderDefaultKeyMap.set(
+          entry.AccessGroupOwnerPublicKeyBase58Check,
+          entry.AccessGroupPublicKeyBase58Check
+        );
+      }
+    } catch {
+      // Non-fatal — fall through with whatever we have
+    }
+
+    if (senderDefaultKeyMap.size > 0) {
+      // Build patched messages: swap the sender's stated public key with
+      // their actual default-key public key, then re-decrypt.
+      const indicesToRetry: number[] = [];
+      const patchedMessages: NewMessageEntryResponse[] = [];
+      for (let i = 0; i < decryptedMessageEntries.length; i++) {
+        const msg = decryptedMessageEntries[i];
+        if (
+          !msg.error?.includes("incorrect MAC") ||
+          msg.DecryptedMessage ||
+          msg.ChatType !== ChatType.GROUPCHAT
+        )
+          continue;
+
+        const realKey = senderDefaultKeyMap.get(
+          msg.SenderInfo.OwnerPublicKeyBase58Check
+        );
+        // Skip if we don't have the default key, or it's the same as what was tried
+        if (!realKey || realKey === msg.SenderInfo.AccessGroupPublicKeyBase58Check)
+          continue;
+
+        indicesToRetry.push(i);
+        patchedMessages.push({
+          ...messages[i],
+          SenderInfo: {
+            ...messages[i].SenderInfo,
+            AccessGroupPublicKeyBase58Check: realKey,
+            AccessGroupKeyName: "default-key",
+          },
+        } as NewMessageEntryResponse);
+      }
+
+      if (patchedMessages.length > 0) {
+        const retried = await decryptAccessGroupMessages(
+          patchedMessages,
+          accessGroups
+        );
+        for (let j = 0; j < indicesToRetry.length; j++) {
+          if (retried[j].DecryptedMessage) {
+            decryptedMessageEntries[indicesToRetry[j]] = retried[j];
+          }
+        }
+      }
+    }
   }
 
   return {

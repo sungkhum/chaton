@@ -11,6 +11,7 @@ import { ReplyBanner } from "./compose/reply-banner";
 import { LinkAttachmentPanel } from "./compose/link-attachment-panel";
 import { useDraftMessages } from "../hooks/useDraftMessages";
 import { buildExtraData, MentionEntry, MSG_MENTIONS } from "../utils/extra-data";
+import { useStore } from "../store";
 import { OgData } from "../services/og.service";
 
 export interface SendMessageButtonAndInputProps {
@@ -46,7 +47,8 @@ export const SendMessageButtonAndInput = ({
   const [showLinkPanel, setShowLinkPanel] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputBarRef = useRef<HTMLDivElement>(null);
-  const { getDraft, setDraft, clearDraft } = useDraftMessages();
+  const publicKey = useStore((s) => s.appUser?.PublicKeyBase58Check || "");
+  const { getDraft, setDraft, clearDraft } = useDraftMessages(publicKey);
 
   // Draft persistence
   const [messageToSend, setMessageToSend] = useState(() =>

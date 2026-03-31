@@ -8,6 +8,7 @@ import {
   cacheMutedConversations,
   cachePrivacyMode,
   cacheUserProfile,
+  clearActiveServiceWorkerKeys,
 } from "../services/cache.service";
 import type { PrivacyMode } from "../utils/extra-data";
 
@@ -201,7 +202,12 @@ export const useStore = create<ChatOnState>((set) => ({
       return { mutedConversations: next };
     }),
 
-  setMutedConversations: (muted) => set({ mutedConversations: muted }),
+  setMutedConversations: (muted) =>
+    set((state) => {
+      const publicKey = state.appUser?.PublicKeyBase58Check;
+      if (publicKey) cacheMutedConversations(publicKey, muted);
+      return { mutedConversations: muted };
+    }),
 
   // Chat Requests
   mutualFollows: EMPTY_SET,
@@ -371,7 +377,9 @@ export const useStore = create<ChatOnState>((set) => ({
       return { archivedGroupAssociationIds: nextIds };
     }),
 
-  resetChatRequestState: () =>
+  resetChatRequestState: () => {
+    if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
+    clearActiveServiceWorkerKeys();
     set({
       mutualFollows: EMPTY_SET,
       approvedUsers: EMPTY_SET,
@@ -385,5 +393,8 @@ export const useStore = create<ChatOnState>((set) => ({
       mutedConversations: EMPTY_SET,
       privacyMode: "full" as PrivacyMode,
       privacyModeAssociationId: null,
-    }),
+      unreadByConversation: new Map(),
+      totalUnread: 0,
+    });
+  },
 }));

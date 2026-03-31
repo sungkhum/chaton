@@ -1,26 +1,44 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
-const STORAGE_KEY = "chaton:drafts";
+const STORAGE_PREFIX = "chaton:drafts:";
 
-function loadDrafts(): Record<string, string> {
+function storageKey(publicKey: string): string {
+  return STORAGE_PREFIX + publicKey;
+}
+
+function loadDrafts(publicKey: string): Record<string, string> {
+  if (!publicKey) return {};
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(storageKey(publicKey));
     return stored ? JSON.parse(stored) : {};
   } catch {
     return {};
   }
 }
 
-function saveDrafts(drafts: Record<string, string>) {
+function saveDrafts(publicKey: string, drafts: Record<string, string>) {
+  if (!publicKey) return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
+    localStorage.setItem(storageKey(publicKey), JSON.stringify(drafts));
   } catch {
     // localStorage might be full or disabled
   }
 }
 
-export function useDraftMessages() {
-  const [drafts, setDrafts] = useState<Record<string, string>>(loadDrafts);
+export function useDraftMessages(publicKey: string) {
+  // rerender-lazy-state-init: pass initializer function to avoid parsing on every render
+  const [drafts, setDrafts] = useState<Record<string, string>>(() =>
+    loadDrafts(publicKey)
+  );
+
+  // Reload drafts when the active account changes
+  const prevKeyRef = useRef(publicKey);
+  useEffect(() => {
+    if (publicKey !== prevKeyRef.current) {
+      prevKeyRef.current = publicKey;
+      setDrafts(loadDrafts(publicKey));
+    }
+  }, [publicKey]);
 
   const getDraft = useCallback(
     (conversationKey: string): string => {
@@ -38,11 +56,11 @@ export function useDraftMessages() {
         } else {
           delete next[conversationKey];
         }
-        saveDrafts(next);
+        saveDrafts(publicKey, next);
         return next;
       });
     },
-    []
+    [publicKey]
   );
 
   const clearDraft = useCallback(

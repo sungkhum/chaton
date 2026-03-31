@@ -17,6 +17,9 @@ export function useWebSocket(callbacks: WsCallbacks) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttempt = useRef(0);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Set to false during cleanup so the old onclose handler doesn't schedule
+  // a reconnect with a stale appUser after an account switch.
+  const activeRef = useRef(true);
   const { appUser } = useStore();
 
   // Keep callbacks in a ref so the WebSocket message handler always calls
@@ -70,14 +73,14 @@ export function useWebSocket(callbacks: WsCallbacks) {
 
       ws.onclose = () => {
         wsRef.current = null;
-        scheduleReconnect();
+        if (activeRef.current) scheduleReconnect();
       };
 
       ws.onerror = () => {
         ws.close();
       };
     } catch {
-      scheduleReconnect();
+      if (activeRef.current) scheduleReconnect();
     }
   }, [appUser]);
 
@@ -167,8 +170,11 @@ export function useWebSocket(callbacks: WsCallbacks) {
   }, [appUser, connect]);
 
   useEffect(() => {
+    activeRef.current = true;
+    reconnectAttempt.current = 0;
     connect();
     return () => {
+      activeRef.current = false;
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
       wsRef.current?.close();
     };

@@ -356,6 +356,16 @@ export function syncUnreadConversations(keys: string[]): void {
   idbSet("unreadConversations:active", keys);
 }
 
+/**
+ * Clear the global "active" IDB keys that the service worker reads.
+ * Called on account switch so stale mute/unread data from the previous
+ * account doesn't affect notifications for the new account.
+ */
+export function clearActiveServiceWorkerKeys(): void {
+  idbSet("mutedConversations:active", []);
+  idbSet("unreadConversations:active", []);
+}
+
 export function addUnreadConversation(key: string): void {
   // Read-modify-write; fire-and-forget
   if (!idbStore) return;
@@ -411,6 +421,8 @@ export async function clearCacheForUser(publicKey: string): Promise<void> {
   for (const t of lsTypes) {
     lsDel(publicKey, t);
   }
+  // Draft messages use a separate prefix
+  try { localStorage.removeItem(`chaton:drafts:${publicKey}`); } catch { /* ignore */ }
 
   // IndexedDB — remove all keys starting with publicKey + global active mute key
   if (!idbStore) return;
