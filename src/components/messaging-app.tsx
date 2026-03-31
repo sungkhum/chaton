@@ -17,7 +17,7 @@ import { useMessageSearch } from "../hooks/useMessageSearch";
 import { useMobile } from "../hooks/useMobile";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { useTypingIndicator, useTypingDisplay } from "../hooks/useTypingIndicator";
-import { ensurePermissions } from "../utils/with-auth";
+import { needsPermissionUpgrade, requestFullPermissions } from "../utils/with-auth";
 import {
   classifyConversation,
   createApprovalAssociation,
@@ -928,9 +928,21 @@ export const MessagingApp: FC = () => {
       const pending = useStore.getState().pendingConversationKey;
       if (pending) useStore.getState().setPendingConversationKey(null);
 
-      // Ensure derived key has all permissions upfront (non-blocking).
-      // This avoids per-action re-auth prompts for users with stale derived keys.
-      ensurePermissions().catch(() => {});
+      // Check if the derived key needs upgrading (new association types, etc.).
+      // Show a toast with a click action — must be user gesture to avoid popup blockers.
+      if (needsPermissionUpgrade()) {
+        toast("Update permissions to use new features", {
+          duration: 15000,
+          action: {
+            label: "Update now",
+            onClick: () => {
+              requestFullPermissions().then((ok) => {
+                if (ok) toast.success("Permissions updated!");
+              });
+            },
+          },
+        });
+      }
 
       setLoading(true);
       setAutoFetchConversations(true);
