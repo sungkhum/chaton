@@ -27,8 +27,10 @@ export const getTransactionSpendingLimits = (
     TransactionCountLimitMap: {
       AUTHORIZE_DERIVED_KEY: 1,
       NEW_MESSAGE: UNLIMITED,
-      UPDATE_PROFILE: 1,
-      FOLLOW: 10,
+      ACCESS_GROUP: UNLIMITED,
+      ACCESS_GROUP_MEMBERS: UNLIMITED,
+      UPDATE_PROFILE: 5,
+      FOLLOW: UNLIMITED,
       CREATE_USER_ASSOCIATION: UNLIMITED,
       DELETE_USER_ASSOCIATION: UNLIMITED,
     },
