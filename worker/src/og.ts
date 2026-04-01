@@ -74,6 +74,65 @@ function decodeHtmlEntities(str: string): string {
     .replace(/&#x2F;/g, "/");
 }
 
+const MAX_REDIRECTS = 5;
+const FETCH_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (compatible; ChatOnBot/1.0; +https://chaton.app)",
+  Accept: "text/html,application/xhtml+xml",
+};
+
+/**
+ * Fetch a URL following redirects manually so we can check each hop
+ * against private IP ranges (prevents SSRF via redirect chains).
+ */
+async function safeFetch(url: string, signal: AbortSignal): Promise<Response | null> {
+  let current = url;
+  for (let i = 0; i < MAX_REDIRECTS; i++) {
+    const parsed = new URL(current);
+    if (isPrivateHost(parsed.hostname)) return null;
+
+    const res = await fetch(current, {
+      signal,
+      headers: FETCH_HEADERS,
+      redirect: "manual",
+    });
+
+    // Not a redirect — return the response
+    if (res.status < 300 || res.status >= 400) return res;
+
+    const location = res.headers.get("Location");
+    if (!location) return res;
+
+    // Resolve relative redirect URLs
+    try {
+      current = new URL(location, current).href;
+    } catch {
+      return null;
+    }
+  }
+  return null; // Too many redirects
+}
+
+/** Read up to 50KB of a response body, stopping early after </head>. */
+async function readHead(res: Response): Promise<string> {
+  const reader = res.body?.getReader();
+  if (!reader) return "";
+
+  const decoder = new TextDecoder();
+  let html = "";
+  let bytesRead = 0;
+  const MAX_BYTES = 50_000;
+
+  while (bytesRead < MAX_BYTES) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    html += decoder.decode(value, { stream: true });
+    bytesRead += value.length;
+    if (html.includes("</head>")) break;
+  }
+  reader.cancel();
+  return html;
+}
+
 export async function handleOgFetch(request: Request): Promise<Response> {
   let body: { url?: string };
   try {
@@ -112,40 +171,13 @@ export async function handleOgFetch(request: Request): Promise<Response> {
 
   let html = "";
   try {
-    const res = await fetch(targetUrl, {
-      signal: controller.signal,
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; ChatOnBot/1.0; +https://chaton.app)",
-        Accept: "text/html,application/xhtml+xml",
-      },
-      redirect: "follow",
-    });
-
-    if (!res.ok || !res.headers.get("content-type")?.includes("text/html")) {
+    const res = await safeFetch(targetUrl, controller.signal);
+    if (!res || !res.ok || !res.headers.get("content-type")?.includes("text/html")) {
       clearTimeout(timeout);
       return cacheAndReturn(cache, cacheKey, {});
     }
 
-    // Read up to 50KB — OG tags are in <head>
-    const reader = res.body?.getReader();
-    if (!reader) {
-      clearTimeout(timeout);
-      return cacheAndReturn(cache, cacheKey, {});
-    }
-
-    const decoder = new TextDecoder();
-    let bytesRead = 0;
-    const MAX_BYTES = 50_000;
-
-    while (bytesRead < MAX_BYTES) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      html += decoder.decode(value, { stream: true });
-      bytesRead += value.length;
-      // Stop early if we've passed </head>
-      if (html.includes("</head>")) break;
-    }
-    reader.cancel();
+    html = await readHead(res);
   } catch {
     clearTimeout(timeout);
     return cacheAndReturn(cache, cacheKey, {});
@@ -173,30 +205,10 @@ export async function handleOgFetch(request: Request): Promise<Response> {
         const controller2 = new AbortController();
         const timeout2 = setTimeout(() => controller2.abort(), 5000);
         try {
-          const res2 = await fetch(refreshUrl, {
-            signal: controller2.signal,
-            headers: {
-              "User-Agent": "Mozilla/5.0 (compatible; ChatOnBot/1.0; +https://chaton.app)",
-              Accept: "text/html,application/xhtml+xml",
-            },
-            redirect: "follow",
-          });
-          if (res2.ok && res2.headers.get("content-type")?.includes("text/html")) {
-            const reader2 = res2.body?.getReader();
-            if (reader2) {
-              const decoder2 = new TextDecoder();
-              let html2 = "";
-              let bytes2 = 0;
-              while (bytes2 < 50_000) {
-                const { done, value } = await reader2.read();
-                if (done) break;
-                html2 += decoder2.decode(value, { stream: true });
-                bytes2 += value.length;
-                if (html2.includes("</head>")) break;
-              }
-              reader2.cancel();
-              result = parseOgTags(html2);
-            }
+          const res2 = await safeFetch(refreshUrl, controller2.signal);
+          if (res2 && res2.ok && res2.headers.get("content-type")?.includes("text/html")) {
+            const html2 = await readHead(res2);
+            result = parseOgTags(html2);
           }
         } catch {
           // ignore — return empty result

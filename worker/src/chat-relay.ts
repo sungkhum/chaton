@@ -1,9 +1,11 @@
 import { DurableObject } from "cloudflare:workers";
 import { sendPushNotification, PushSubscriptionData } from "./web-push";
+import { validateDesoJwt } from "./jwt";
 
 interface WsMessage {
   type: "notify" | "typing" | "read" | "register";
   publicKey?: string;
+  jwt?: string;
   threadId?: string;
   recipients?: string[];
   from?: string;
@@ -21,17 +23,12 @@ interface ConnectedClient {
 export interface RelayEnv {
   VAPID_PRIVATE_KEY: string;
   VAPID_SUBJECT: string;
+  DESO_NODE_URL: string;
 }
 
-export class ChatRelay extends DurableObject {
+export class ChatRelay extends DurableObject<RelayEnv> {
   private clients: Map<string, ConnectedClient[]> = new Map();
-  private env: RelayEnv;
   private dbReady = false;
-
-  constructor(ctx: DurableObjectState, env: RelayEnv) {
-    super(ctx, env);
-    this.env = env;
-  }
 
   private ensureDb() {
     if (this.dbReady) return;
@@ -138,7 +135,7 @@ export class ChatRelay extends DurableObject {
 
       switch (message.type) {
         case "register":
-          this.handleRegister(ws, message);
+          await this.handleRegister(ws, message);
           break;
         case "notify":
           this.handleNotify(message);
@@ -163,9 +160,15 @@ export class ChatRelay extends DurableObject {
     this.removeClient(ws);
   }
 
-  private handleRegister(ws: WebSocket, message: WsMessage) {
-    const { publicKey } = message;
+  private async handleRegister(ws: WebSocket, message: WsMessage) {
+    const { publicKey, jwt } = message;
     if (!publicKey) return;
+
+    // Verify the caller owns this public key
+    if (!jwt || !(await validateDesoJwt(this.env.DESO_NODE_URL, publicKey, jwt))) {
+      try { ws.send(JSON.stringify({ type: "error", message: "Invalid JWT" })); } catch { /* ignore */ }
+      return;
+    }
 
     const existing = this.clients.get(publicKey) || [];
     existing.push({ ws, publicKey, lastSeen: Date.now() });

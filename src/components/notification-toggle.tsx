@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell, BellOff, BellRing } from "lucide-react";
 import { toast } from "sonner";
+import { identity } from "deso-protocol";
 import { useStore } from "../store";
 import {
   isPushSupported,
@@ -27,10 +28,11 @@ async function registerWithServer(publicKey: string, subscription: PushSubscript
   }
   try {
     console.log("[push] Registering subscription with server...");
+    const jwt = await identity.jwt();
     const res = await fetch(`${RELAY_URL}/push/subscribe`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ publicKey, subscription: subscription.toJSON() }),
+      body: JSON.stringify({ publicKey, jwt, subscription: subscription.toJSON() }),
     });
     console.log("[push] Server registration response:", res.status);
   } catch (err) {
@@ -42,10 +44,11 @@ async function registerWithServer(publicKey: string, subscription: PushSubscript
 async function unregisterFromServer(publicKey: string, endpoint: string) {
   if (!RELAY_URL) return;
   try {
+    const jwt = await identity.jwt();
     await fetch(`${RELAY_URL}/push/unsubscribe`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ publicKey, endpoint }),
+      body: JSON.stringify({ publicKey, endpoint, jwt }),
     });
   } catch {
     // Best-effort

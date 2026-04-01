@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { marked } from "marked";
+import DOMPurify from "dompurify";
 import { MentionEntry } from "../../utils/extra-data";
 import { useStore } from "../../store";
 
@@ -73,7 +74,17 @@ export function FormattedMessage({
     if (mentions && mentions.length > 0) {
       raw = highlightMentions(raw, mentions);
     }
-    return raw;
+    return DOMPurify.sanitize(raw, {
+      ALLOWED_TAGS: [
+        "a", "b", "i", "em", "strong", "code", "pre", "br", "p", "ul", "ol",
+        "li", "blockquote", "del", "s", "span", "h1", "h2", "h3", "h4", "h5",
+        "h6", "hr", "table", "thead", "tbody", "tr", "th", "td",
+      ],
+      ALLOWED_ATTR: [
+        "href", "target", "rel", "class", "data-join-code",
+      ],
+      ALLOW_DATA_ATTR: false,
+    });
   }, [children, mentions]);
 
   // Intercept clicks on internal join links — open as in-app modal

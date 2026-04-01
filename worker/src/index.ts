@@ -12,6 +12,7 @@ import {
   resetFailureCount,
 } from "./db";
 import { sendPushNotification, type PushSubscriptionData } from "./web-push";
+import { validateDesoJwt } from "./jwt";
 
 export interface Env {
   CHAT_RELAY: DurableObjectNamespace;
@@ -19,6 +20,7 @@ export interface Env {
   VAPID_SUBJECT: string;
   ALLOWED_ORIGINS: string;
   DESO_NODE_URL: string;
+  KLIPY_API_KEY: string;
   DB: D1Database;
   PUSH_QUEUE: Queue<PushJob>;
 }
@@ -102,6 +104,13 @@ export default {
       return withCors(res, origin!);
     }
 
+    // KLIPY API proxy — keeps the API key server-side
+    if (url.pathname.startsWith("/klipy/")) {
+      if (!isOriginAllowed(origin, allowed)) return forbidden();
+      const res = await handleKlipyProxy(url, request, env);
+      return withCors(res, origin!);
+    }
+
     if (url.pathname === "/push/unsubscribe" && request.method === "POST") {
       if (!isOriginAllowed(origin, allowed)) return forbidden();
       const res = await handlePushUnsubscribe(request, env);
@@ -140,13 +149,19 @@ async function handlePushSubscribe(
   env: Env
 ): Promise<Response> {
   try {
-    const { publicKey, subscription } = await request.json<{
+    const { publicKey, subscription, jwt } = await request.json<{
       publicKey: string;
+      jwt?: string;
       subscription: { endpoint: string; keys: { p256dh: string; auth: string } };
     }>();
 
     if (!publicKey || !subscription?.endpoint || !subscription?.keys) {
       return new Response("Missing fields", { status: 400 });
+    }
+
+    // Verify the caller owns this public key
+    if (!jwt || !(await validateDesoJwt(env.DESO_NODE_URL, publicKey, jwt))) {
+      return new Response("Invalid or missing JWT", { status: 401 });
     }
 
     // Write to D1 (primary store for cron-based push)
@@ -188,10 +203,16 @@ async function handlePushUnsubscribe(
   env: Env
 ): Promise<Response> {
   try {
-    const { publicKey, endpoint } = await request.json<{
+    const { publicKey, endpoint, jwt } = await request.json<{
       publicKey: string;
       endpoint: string;
+      jwt?: string;
     }>();
+
+    // Verify the caller owns this public key
+    if (!jwt || !(await validateDesoJwt(env.DESO_NODE_URL, publicKey, jwt))) {
+      return new Response("Invalid or missing JWT", { status: 401 });
+    }
 
     // Remove from D1
     await removeSubscription(env.DB, publicKey, endpoint);
@@ -277,5 +298,44 @@ async function deliverPush(env: Env, job: PushJob): Promise<void> {
         }
         break;
     }
+  }
+}
+
+// ── KLIPY API proxy ──
+
+const KLIPY_BASE = "https://api.klipy.com/api/v1";
+
+/**
+ * Proxy KLIPY API requests so the API key stays server-side.
+ * Client requests: /klipy/gifs/search?q=hello
+ * Proxied to:      https://api.klipy.com/api/v1/{API_KEY}/gifs/search?q=hello
+ */
+async function handleKlipyProxy(
+  url: URL,
+  request: Request,
+  env: Env
+): Promise<Response> {
+  if (!env.KLIPY_API_KEY) {
+    return new Response("KLIPY not configured", { status: 503 });
+  }
+
+  // Strip "/klipy/" prefix to get the KLIPY path (e.g. "gifs/search")
+  const klipyPath = url.pathname.slice("/klipy/".length);
+  if (!klipyPath) {
+    return new Response("Bad request", { status: 400 });
+  }
+
+  const target = new URL(`${KLIPY_BASE}/${env.KLIPY_API_KEY}/${klipyPath}`);
+  // Forward query params from original request
+  url.searchParams.forEach((v, k) => target.searchParams.set(k, v));
+
+  try {
+    const res = await fetch(target.toString(), { method: request.method });
+    return new Response(res.body, {
+      status: res.status,
+      headers: { "Content-Type": res.headers.get("Content-Type") || "application/json" },
+    });
+  } catch {
+    return new Response("KLIPY request failed", { status: 502 });
   }
 }

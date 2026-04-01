@@ -1,5 +1,9 @@
+const RELAY_URL = import.meta.env.VITE_RELAY_URL || "";
+
+// Use the relay proxy to keep the API key server-side.
+// Falls back to direct KLIPY access if no relay is configured (local dev).
 const KLIPY_API_KEY = import.meta.env.VITE_KLIPY_API_KEY || "";
-const KLIPY_BASE_URL = "https://api.klipy.com/api/v1";
+const KLIPY_DIRECT_BASE = "https://api.klipy.com/api/v1";
 
 /** A single format variant (e.g. gif, webp, mp4) */
 export interface KlipyFormat {
@@ -95,7 +99,11 @@ export function getMessageUrl(item: KlipyItem): {
 }
 
 function buildUrl(content: ContentType, action: string, params?: Record<string, string>): string {
-  const url = new URL(`${KLIPY_BASE_URL}/${KLIPY_API_KEY}/${content}/${action}`);
+  // Prefer relay proxy (keeps API key server-side)
+  const base = RELAY_URL
+    ? `${RELAY_URL}/klipy/${content}/${action}`
+    : `${KLIPY_DIRECT_BASE}/${KLIPY_API_KEY}/${content}/${action}`;
+  const url = new URL(base);
   if (params) {
     for (const [k, v] of Object.entries(params)) {
       if (v) url.searchParams.set(k, v);
@@ -105,7 +113,7 @@ function buildUrl(content: ContentType, action: string, params?: Record<string, 
 }
 
 async function fetchKlipy<T>(url: string): Promise<T | null> {
-  if (!KLIPY_API_KEY) return null;
+  if (!RELAY_URL && !KLIPY_API_KEY) return null;
   try {
     const response = await fetch(url);
     if (!response.ok) return null;
@@ -206,8 +214,11 @@ export async function getSearchSuggestions(
   query: string,
   limit = 8
 ): Promise<string[]> {
-  if (!KLIPY_API_KEY || !query.trim()) return [];
-  const url = `${KLIPY_BASE_URL}/${KLIPY_API_KEY}/search-suggestions/${encodeURIComponent(query)}?limit=${limit}`;
+  if ((!RELAY_URL && !KLIPY_API_KEY) || !query.trim()) return [];
+  const base = RELAY_URL
+    ? `${RELAY_URL}/klipy/search-suggestions/${encodeURIComponent(query)}`
+    : `${KLIPY_DIRECT_BASE}/${KLIPY_API_KEY}/search-suggestions/${encodeURIComponent(query)}`;
+  const url = `${base}?limit=${limit}`;
   const resp = await fetchKlipy<KlipySuggestionsResponse>(url);
   return resp?.result ? resp.data : [];
 }
@@ -215,7 +226,7 @@ export async function getSearchSuggestions(
 // ── Share tracking (call when user sends a GIF/sticker) ──
 
 export function trackShare(content: ContentType, slug: string): void {
-  if (!KLIPY_API_KEY) return;
+  if (!RELAY_URL && !KLIPY_API_KEY) return;
   // Fire-and-forget POST
   fetch(buildUrl(content, `share/${slug}`), { method: "POST" }).catch(() => {});
 }

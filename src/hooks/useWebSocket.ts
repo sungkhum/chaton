@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
+import { identity } from "deso-protocol";
 import { useStore } from "../store";
 import { isPushSupported, getExistingSubscription } from "../utils/push-notifications";
 
@@ -36,15 +37,27 @@ export function useWebSocket(callbacks: WsCallbacks) {
       const ws = new WebSocket(`${RELAY_URL}/ws`);
       wsRef.current = ws;
 
-      ws.onopen = () => {
+      ws.onopen = async () => {
         reconnectAttempt.current = 0;
-        // Register this connection with our public key
-        ws.send(
-          JSON.stringify({
-            type: "register",
-            publicKey: appUser.PublicKeyBase58Check,
-          })
-        );
+        // Register this connection with our public key + JWT proof
+        try {
+          const jwt = await identity.jwt();
+          ws.send(
+            JSON.stringify({
+              type: "register",
+              publicKey: appUser.PublicKeyBase58Check,
+              jwt,
+            })
+          );
+        } catch {
+          // If JWT fails, register without it (server will reject)
+          ws.send(
+            JSON.stringify({
+              type: "register",
+              publicKey: appUser.PublicKeyBase58Check,
+            })
+          );
+        }
         // Register push subscription for offline notifications
         refreshPushSubscription(appUser.PublicKeyBase58Check);
       };
@@ -195,11 +208,13 @@ async function refreshPushSubscription(publicKey: string) {
     const subscription = await getExistingSubscription();
     if (!subscription) return;
 
+    const jwt = await identity.jwt();
     await fetch(`${RELAY_URL}/push/subscribe`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         publicKey,
+        jwt,
         subscription: subscription.toJSON(),
       }),
     });
