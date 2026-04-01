@@ -49,7 +49,7 @@ export const GifPicker = ({
   // the primary UI — search stays visible even when the keyboard opens.
   // On desktop: absolute popover above the compose bar.
   const PICKER_CONTAINER = isMobile
-    ? "fixed inset-0 bg-[#0a1628] z-50 flex flex-col"
+    ? "fixed inset-x-0 top-14 bottom-0 bg-[#0a1628] z-50 flex flex-col"
     : "absolute bottom-full mb-2 left-0 w-[400px] bg-[#0a1628] border border-blue-800/40 rounded-xl shadow-xl z-50 overflow-hidden";
 
   // Click-outside to close (desktop only — mobile is full-screen with close button)
