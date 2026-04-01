@@ -68,11 +68,12 @@ export const GifPicker = ({
     setQuery("");
     setSuggestions([]);
     setSelectedGif(null);
-    inputRef.current?.focus();
+    // Only auto-focus search on desktop — on mobile it would reopen the keyboard
+    if (!isMobile) inputRef.current?.focus();
   }, [tab]);
 
   useEffect(() => {
-    if (selectedGif) captionRef.current?.focus();
+    if (selectedGif && !isMobile) captionRef.current?.focus();
   }, [selectedGif]);
 
   const loadTrending = useCallback(async () => {
@@ -154,7 +155,7 @@ export const GifPicker = ({
   const handleBack = () => {
     setSelectedGif(null);
     setCaption("");
-    requestAnimationFrame(() => inputRef.current?.focus());
+    if (!isMobile) requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   const handleSend = () => {

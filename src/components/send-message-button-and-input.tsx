@@ -481,9 +481,12 @@ export const SendMessageButtonAndInput = ({
         {/* GIF button */}
         <button
           onClick={() => {
-            setShowGifPicker((v) => !v);
+            const opening = !showGifPicker;
+            setShowGifPicker(opening);
             setShowLinkPanel(false);
             if (pendingImage) cancelImage();
+            // Dismiss keyboard on mobile so the picker has room
+            if (opening) textareaRef.current?.blur();
           }}
           className="px-1.5 py-2 text-gray-500 hover:text-[#34F080] cursor-pointer font-extrabold text-[11px] tracking-wide transition-colors shrink-0"
           type="button"
