@@ -101,10 +101,11 @@ export const JoinGroupPage = () => {
 
         const ownerProfile =
           profileRes.UserList?.[0]?.ProfileEntryResponse ?? null;
-        // Member count + 1 for the owner (who is not in the members list).
-        // If the API returned the max (50), the real count may be higher.
-        const rawMemberCount = membersRes?.AccessGroupMembersBase58Check?.length ?? 0;
-        const memberCount = rawMemberCount + 1;
+        // Add 1 for the owner only if the API didn't already include them.
+        const membersList = membersRes?.AccessGroupMembersBase58Check ?? [];
+        const rawMemberCount = membersList.length;
+        const ownerIncluded = membersList.includes(ownerKey);
+        const memberCount = rawMemberCount + (ownerIncluded ? 0 : 1);
         const groupEntry = groupRes.AccessGroupEntries?.[0];
         const groupImageUrl = groupEntry?.ExtraData?.[GROUP_IMAGE_URL] || undefined;
 

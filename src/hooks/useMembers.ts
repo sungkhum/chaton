@@ -3,16 +3,59 @@ import {
   getBulkAccessGroups,
   getPaginatedAccessGroupMembers,
   getUsersStateless,
+  PublicKeyToProfileEntryResponseMap,
 } from "deso-protocol";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import {
-  DEFAULT_KEY_MESSAGING_GROUP_NAME,
-  MAX_MEMBERS_IN_GROUP_SUMMARY_SHOWN,
-  MAX_MEMBERS_TO_REQUEST_IN_GROUP,
-} from "utils/constants";
+import { DEFAULT_KEY_MESSAGING_GROUP_NAME } from "utils/constants";
 import { nameOrFormattedKey, SearchMenuItem } from "../components/search-users";
 import { Conversation } from "../utils/types";
+
+const PAGE_SIZE = 50;
+
+/**
+ * Fetch all group members across pages using cursor-based pagination.
+ * Returns merged member keys and profile map.
+ */
+async function fetchAllGroupMembers(
+  ownerKey: string,
+  groupKeyName: string,
+  cancelled: () => boolean
+): Promise<{
+  memberKeys: string[];
+  profiles: PublicKeyToProfileEntryResponseMap;
+}> {
+  const allKeys: string[] = [];
+  const allProfiles: PublicKeyToProfileEntryResponseMap = {};
+  let cursor = "";
+
+  while (true) {
+    const res = await getPaginatedAccessGroupMembers({
+      AccessGroupOwnerPublicKeyBase58Check: ownerKey,
+      AccessGroupKeyName: groupKeyName,
+      MaxMembersToFetch: PAGE_SIZE,
+      ...(cursor
+        ? { StartingAccessGroupMemberPublicKeyBase58Check: cursor }
+        : {}),
+    });
+
+    if (cancelled()) return { memberKeys: allKeys, profiles: allProfiles };
+
+    const pageKeys = res.AccessGroupMembersBase58Check ?? [];
+    const pageProfiles = res.PublicKeyToProfileEntryResponse ?? {};
+
+    allKeys.push(...pageKeys);
+    Object.assign(allProfiles, pageProfiles);
+
+    // Last page — fewer results than requested
+    if (pageKeys.length < PAGE_SIZE) break;
+
+    // Cursor = last key on this page
+    cursor = pageKeys[pageKeys.length - 1];
+  }
+
+  return { memberKeys: allKeys, profiles: allProfiles };
+}
 
 export function useMembers(
   setLoading: (l: boolean) => void,
@@ -39,22 +82,17 @@ export function useMembers(
     let cancelled = false;
     setLoading(true);
 
-    const ownerKey = conversation.messages[0].RecipientInfo.OwnerPublicKeyBase58Check;
+    const ownerKey =
+      conversation.messages[0].RecipientInfo.OwnerPublicKeyBase58Check;
+    const groupKeyName =
+      conversation.messages[0].RecipientInfo.AccessGroupKeyName;
 
-    getPaginatedAccessGroupMembers({
-      AccessGroupOwnerPublicKeyBase58Check: ownerKey,
-      AccessGroupKeyName:
-        conversation.messages[0].RecipientInfo.AccessGroupKeyName,
-      MaxMembersToFetch:
-        MAX_MEMBERS_TO_REQUEST_IN_GROUP + MAX_MEMBERS_IN_GROUP_SUMMARY_SHOWN,
-    })
-      .then(async (res) => {
+    fetchAllGroupMembers(ownerKey, groupKeyName, () => cancelled)
+      .then(async ({ memberKeys, profiles }) => {
         if (cancelled) return;
-        const memberKeys = res.AccessGroupMembersBase58Check ?? [];
-        const profiles = res.PublicKeyToProfileEntryResponse;
 
-        // The members API doesn't include the group owner — fetch their
-        // profile and insert them if missing.
+        // The members API may or may not include the group owner —
+        // insert them if missing.
         if (!memberKeys.includes(ownerKey)) {
           memberKeys.push(ownerKey);
           if (!profiles[ownerKey]) {
@@ -64,7 +102,8 @@ export function useMembers(
                 SkipForLeaderboard: true,
               });
               if (cancelled) return;
-              const ownerProfile = ownerRes.UserList?.[0]?.ProfileEntryResponse;
+              const ownerProfile =
+                ownerRes.UserList?.[0]?.ProfileEntryResponse;
               if (ownerProfile) profiles[ownerKey] = ownerProfile;
             } catch {
               // Non-fatal — will show formatted key as fallback
@@ -94,9 +133,13 @@ export function useMembers(
           }))
         );
       })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [open, appUser]);
 
   const onPairMissing = () => {
@@ -112,7 +155,6 @@ export function useMembers(
     onAdded?: () => void
   ) => {
     if (!member || members.find((e) => e.id === member.id)) {
-      // do not add member if already added
       return;
     }
 

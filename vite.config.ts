@@ -16,6 +16,7 @@ export default defineConfig({
       globDirectory: "dist",
       injectionPoint: "self.__SW_MANIFEST",
       rollupFormat: "iife",
+      globIgnores: ["join-invite.html"],
     }),
   ],
   server: {
