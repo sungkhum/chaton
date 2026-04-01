@@ -111,7 +111,8 @@ export function useMessageSearch(
               userPublicKey,
               searchTerm,
               currentConversations,
-              currentUsernameMap
+              currentUsernameMap,
+              accessGroupsRef.current
             );
 
           setResults(cacheResults);

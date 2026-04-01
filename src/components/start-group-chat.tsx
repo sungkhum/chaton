@@ -15,7 +15,7 @@ import { useMobile } from "../hooks/useMobile";
 import { encryptAndSendNewMessage } from "../services/conversations.service";
 import { withAuth } from "../utils/with-auth";
 import { DEFAULT_KEY_MESSAGING_GROUP_NAME } from "../utils/constants";
-import { GROUP_IMAGE_URL } from "../utils/extra-data";
+import { GROUP_DISPLAY_NAME, GROUP_IMAGE_URL } from "../utils/extra-data";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { GroupImagePicker } from "./group-image-picker";
 import { MyInput } from "./form/my-input";
@@ -90,6 +90,7 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange }
       const accessGroupKeys = await identity.accessGroupStandardDerivation(groupName);
 
       const extraData: Record<string, string> = {};
+      extraData[GROUP_DISPLAY_NAME] = groupName;
       if (imageUrl) extraData[GROUP_IMAGE_URL] = imageUrl;
 
       await withAuth(() =>

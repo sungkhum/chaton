@@ -15,7 +15,7 @@ import {
   waitForTransactionFound,
 } from "deso-protocol";
 import { withAuth } from "../utils/with-auth";
-import { Check, CheckCheck, Copy, Globe, Link2, Loader2, LogOut, Share2, Trash2, UserPlus, Users, X } from "lucide-react";
+import { Check, CheckCheck, Copy, Globe, Link2, Loader2, LogOut, Pencil, Share2, Trash2, UserPlus, Users, X } from "lucide-react";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import useKeyDown from "../hooks/useKeyDown";
@@ -25,7 +25,7 @@ import {
   ASSOCIATION_TYPE_GROUP_JOIN_REQUEST,
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
 } from "../utils/constants";
-import { GROUP_IMAGE_URL, getGroupImageUrl } from "../utils/extra-data";
+import { GROUP_DISPLAY_NAME, GROUP_IMAGE_URL, getGroupDisplayName, getGroupImageUrl } from "../utils/extra-data";
 import {
   fetchPendingJoinRequests,
   JoinRequestEntry,
@@ -44,6 +44,7 @@ import {
   unlistGroupFromCommunity,
   updateCommunityListing,
 } from "../services/community.service";
+import { clearCommunityCache } from "./community-tab";
 import { GroupImagePicker } from "./group-image-picker";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { nameOrFormattedKey, SearchUsers } from "./search-users";
@@ -134,10 +135,21 @@ export const ManageMembersDialog = ({
   const currentGroupImageUrl = getGroupImageUrl(allAccessGroups, groupOwnerKey, groupName) || "";
   const [groupImageUrl, setGroupImageUrl] = useState(currentGroupImageUrl);
 
+  const currentDisplayName = getGroupDisplayName(allAccessGroups, groupOwnerKey, groupName) || groupName;
+  const [editingName, setEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState(currentDisplayName);
+  const [savingName, setSavingName] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const nameSaveInFlightRef = useRef(false);
+
   // Sync local state when the dialog opens or the store value changes
   useEffect(() => {
-    if (open) setGroupImageUrl(currentGroupImageUrl);
-  }, [open, currentGroupImageUrl]);
+    if (open) {
+      setGroupImageUrl(currentGroupImageUrl);
+      setEditNameValue(currentDisplayName);
+      setEditingName(false);
+    }
+  }, [open, currentGroupImageUrl, currentDisplayName]);
 
   // Badge: fetch join requests AND current members independently, then filter.
   // currentMemberKeys is empty when the dialog is closed, so we fetch members
@@ -323,6 +335,76 @@ export const ManageMembersDialog = ({
     }
   };
 
+  const handleGroupNameSave = async () => {
+    if (nameSaveInFlightRef.current) return;
+    const trimmed = editNameValue.trim();
+    if (!trimmed || trimmed === currentDisplayName || !appUser || !isGroupOwner) {
+      setEditingName(false);
+      setEditNameValue(currentDisplayName);
+      return;
+    }
+
+    const group = allAccessGroups.find(
+      (g) =>
+        g.AccessGroupOwnerPublicKeyBase58Check === groupOwnerKey &&
+        g.AccessGroupKeyName === groupName
+    );
+    if (!group) {
+      toast.error("Could not find access group info");
+      return;
+    }
+
+    const oldDisplayName = currentDisplayName;
+    nameSaveInFlightRef.current = true;
+    setSavingName(true);
+    setEditingName(false);
+
+    // Optimistic update
+    const updatedGroups = allAccessGroups.map((g) => {
+      if (
+        g.AccessGroupOwnerPublicKeyBase58Check === groupOwnerKey &&
+        g.AccessGroupKeyName === groupName
+      ) {
+        return { ...g, ExtraData: { ...(g.ExtraData || {}), [GROUP_DISPLAY_NAME]: trimmed } };
+      }
+      return g;
+    });
+    useStore.setState({ allAccessGroups: updatedGroups });
+
+    try {
+      const mergedExtraData = { ...(group.ExtraData || {}), [GROUP_DISPLAY_NAME]: trimmed };
+
+      await withAuth(() =>
+        updateAccessGroup({
+          AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+          AccessGroupKeyName: groupName,
+          AccessGroupPublicKeyBase58Check: group.AccessGroupPublicKeyBase58Check,
+          MinFeeRateNanosPerKB: 1000,
+          ExtraData: mergedExtraData,
+        })
+      );
+      toast.success("Group name updated");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update group name");
+      // Rollback
+      setEditNameValue(oldDisplayName);
+      const rollbackGroups = allAccessGroups.map((g) => {
+        if (
+          g.AccessGroupOwnerPublicKeyBase58Check === groupOwnerKey &&
+          g.AccessGroupKeyName === groupName
+        ) {
+          return { ...g, ExtraData: { ...(g.ExtraData || {}), [GROUP_DISPLAY_NAME]: oldDisplayName } };
+        }
+        return g;
+      });
+      useStore.setState({ allAccessGroups: rollbackGroups });
+    } finally {
+      nameSaveInFlightRef.current = false;
+      setSavingName(false);
+    }
+  };
+
   useKeyDown(() => {
     if (open) setOpen(false);
   }, ["Escape"]);
@@ -504,7 +586,7 @@ export const ManageMembersDialog = ({
     if (!inviteCode) return;
     const url = buildInviteUrl(inviteCode);
     try {
-      await navigator.share({ title: `Join ${groupName}`, url });
+      await navigator.share({ title: `Join ${currentDisplayName}`, url });
     } catch {
       // User cancelled or share not supported — fall back to copy
       handleCopyInviteLink();
@@ -545,6 +627,7 @@ export const ManageMembersDialog = ({
         setCommunityAssociationId(null);
         setCommunityDescription("");
         setSavedDescription("");
+        clearCommunityCache();
         toast.success("Removed from community directory");
       } else {
         const associationId = await listGroupInCommunity(
@@ -554,6 +637,7 @@ export const ManageMembersDialog = ({
         );
         setCommunityAssociationId(associationId);
         setSavedDescription(communityDescription);
+        clearCommunityCache();
         toast.success("Listed in community directory");
       }
     } catch {
@@ -581,6 +665,7 @@ export const ManageMembersDialog = ({
       );
       setCommunityAssociationId(newId);
       setSavedDescription(communityDescription);
+      clearCommunityCache();
       toast.success("Description updated");
     } catch {
       toast.error("Failed to update description");
@@ -733,26 +818,70 @@ export const ManageMembersDialog = ({
               {/* Sticky header */}
               <div className="text-blue-100 p-5 border-b border-blue-600/20 flex-shrink-0">
                 <div className="flex justify-between w-full items-center">
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 min-w-0 flex-1">
                     {isGroupOwner ? (
                       <GroupImagePicker
                         imageUrl={groupImageUrl}
                         onImageChange={handleGroupImageSave}
-                        groupName={groupName}
+                        groupName={currentDisplayName}
                         diameter={56}
                       />
                     ) : (
                       <MessagingDisplayAvatar
-                        publicKey={groupName}
+                        publicKey={currentDisplayName}
                         groupChat
                         groupImageUrl={currentGroupImageUrl}
                         diameter={56}
                       />
                     )}
-                    <div>
-                      <span id="manage-members-title" className="text-xl font-semibold">
-                        {groupName}
-                      </span>
+                    <div className="min-w-0 flex-1">
+                      {editingName ? (
+                        <input
+                          ref={nameInputRef}
+                          type="text"
+                          value={editNameValue}
+                          maxLength={64}
+                          onChange={(e) => setEditNameValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleGroupNameSave();
+                            if (e.key === "Escape") {
+                              e.stopPropagation();
+                              setEditingName(false);
+                              setEditNameValue(currentDisplayName);
+                            }
+                          }}
+                          onBlur={handleGroupNameSave}
+                          className="text-xl font-semibold bg-blue-900/20 border border-blue-600/30 rounded-md px-2 py-0.5 outline-none text-blue-100 w-full"
+                          autoFocus
+                        />
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            id="manage-members-title"
+                            className={`text-xl font-semibold truncate ${isGroupOwner ? "cursor-pointer" : ""}`}
+                            onClick={isGroupOwner && !savingName ? () => {
+                              setEditingName(true);
+                              setTimeout(() => nameInputRef.current?.select(), 0);
+                            } : undefined}
+                          >
+                            {savingName ? editNameValue : currentDisplayName}
+                          </span>
+                          {isGroupOwner && !savingName && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingName(true);
+                                setTimeout(() => nameInputRef.current?.select(), 0);
+                              }}
+                              className="p-1 text-blue-300/50 hover:text-blue-200 cursor-pointer shrink-0"
+                              aria-label="Rename group"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {savingName && <Loader2 className="w-4 h-4 animate-spin text-blue-300/60 shrink-0" />}
+                        </div>
+                      )}
                       <div className="text-sm text-blue-300/60">
                         {loading ? (
                           <Loader2 className="w-4 h-4 inline animate-spin" />
@@ -765,7 +894,7 @@ export const ManageMembersDialog = ({
                   <button
                     type="button"
                     onClick={() => setOpen(false)}
-                    className="pl-2 cursor-pointer"
+                    className="pl-2 cursor-pointer shrink-0"
                     aria-label="Close dialog"
                   >
                     <X className="w-6 h-6" />
@@ -853,24 +982,33 @@ export const ManageMembersDialog = ({
                       type="button"
                       onClick={handleCommunityToggle}
                       disabled={communityToggling}
-                      className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 ${
+                      className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-[#34F080]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050e1d] ${
                         isCommunityListed ? "bg-[#34F080]" : "bg-blue-900/40 border border-blue-600/30"
                       }`}
                       aria-label={isCommunityListed ? "Remove from community directory" : "List in community directory"}
                     >
                       {communityToggling ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin absolute top-[5px] left-[5px] text-white" />
+                        <Loader2 className={`w-3.5 h-3.5 animate-spin absolute top-[5px] text-white ${
+                          isCommunityListed ? "right-[5px]" : "left-[5px]"
+                        }`} />
                       ) : (
-                        <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${
-                          isCommunityListed ? "translate-x-[22px]" : "translate-x-1"
+                        <div className={`w-[18px] h-[18px] rounded-full bg-white absolute top-[3px] transition-transform ${
+                          isCommunityListed ? "translate-x-[21px]" : "translate-x-[3px]"
                         }`} />
                       )}
                     </button>
                   </div>
 
+                  {/* Friendly content guideline */}
+                  {isCommunityListed && (
+                    <p className="mt-2 text-[11px] text-blue-300/40">
+                      Community listings are visible to everyone. Please keep your group name and description welcoming and appropriate for all audiences.
+                    </p>
+                  )}
+
                   {/* Description field (shown when listed) */}
                   {isCommunityListed && (
-                    <div className="mt-3 space-y-2">
+                    <div className="mt-2 space-y-2">
                       <textarea
                         value={communityDescription}
                         onChange={(e) => setCommunityDescription(e.target.value.slice(0, 200))}

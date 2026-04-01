@@ -29,7 +29,7 @@ Sign in with a DeSo identity or an Ethereum wallet (MetaMask), and message anyon
 ### Messaging
 - **End-to-end encrypted DMs** — private conversations between any two DeSo or Ethereum users
 - **Full metadata encryption** — media URLs, reactions, file names, and reply previews are encrypted by default, not just message text
-- **Encrypted group chats** — create named groups, add members, manage access
+- **Encrypted group chats** — create named groups, add members, manage access, rename groups
 - **Cross-chain messaging** — message DeSo usernames, public keys, ETH addresses, or ENS names
 - **Optimistic UI** — messages appear instantly; blockchain confirmation happens in the background
 - **Message replies** — reply to specific messages with quoted preview
@@ -417,6 +417,7 @@ Group metadata uses the `group:` namespace, stored via `createAccessGroup` / `up
 
 | Key | Value | Description |
 |-----|-------|-------------|
+| `group:displayName` | `string` | Human-readable group name. The `AccessGroupKeyName` is immutable on-chain, so this allows owners to rename groups after creation. Falls back to `AccessGroupKeyName` if unset. |
 | `group:imageUrl` | URL | Group profile image |
 
 ### On-Chain Associations

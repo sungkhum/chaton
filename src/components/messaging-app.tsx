@@ -1077,7 +1077,8 @@ export const MessagingApp: FC = () => {
     if (conversations[selectedConversationPublicKey]) {
       const chatName = getChatNameFromConversation(
         conversations[selectedConversationPublicKey],
-        usernameByPublicKeyBase58Check
+        usernameByPublicKeyBase58Check,
+        allAccessGroups
       );
 
       if (chatName) {
@@ -1092,6 +1093,7 @@ export const MessagingApp: FC = () => {
     selectedConversationPublicKey,
     conversations,
     usernameByPublicKeyBase58Check,
+    allAccessGroups,
   ]);
 
   useInterval(
@@ -1690,7 +1692,8 @@ export const MessagingApp: FC = () => {
 
     const name = getChatNameFromConversation(
       selectedConversation,
-      activeChatUsersMap
+      activeChatUsersMap,
+      allAccessGroups
     );
     return (
       name ||
@@ -1874,7 +1877,7 @@ export const MessagingApp: FC = () => {
         !isLoadingUser &&
         !loading && (
           <div className="flex h-full">
-            <div className="w-full md:w-[340px] border-r border-white/5 bg-[#080d16] shrink-0">
+            <div className="w-full md:w-[340px] lg:w-[380px] xl:w-[420px] border-r border-white/5 bg-[#080d16] shrink-0">
               <MessagingConversationAccount
                 rehydrateConversation={rehydrateConversation}
                 onClick={async (key: string) => {

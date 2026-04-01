@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { useStore } from "../store";
 import { extractInviteCode, resolveInviteCode } from "../utils/invite-link";
 import { cleanupOwnJoinRequests, createJoinRequest, hasExistingJoinRequest } from "../services/conversations.service";
-import { GROUP_IMAGE_URL } from "../utils/extra-data";
+import { GROUP_DISPLAY_NAME, GROUP_IMAGE_URL } from "../utils/extra-data";
 import { PreSignupTutorial } from "./onboarding/pre-signup-tutorial";
 
 type PageState =
@@ -29,6 +29,7 @@ type PageState =
 interface GroupInfo {
   ownerKey: string;
   groupKeyName: string;
+  groupDisplayName?: string;
   groupImageUrl?: string;
   ownerProfile: ProfileEntryResponse | null;
   memberCount: number;
@@ -108,6 +109,7 @@ export const JoinGroupPage = () => {
         const memberCount = rawMemberCount + (ownerIncluded ? 0 : 1);
         const groupEntry = groupRes.AccessGroupEntries?.[0];
         const groupImageUrl = groupEntry?.ExtraData?.[GROUP_IMAGE_URL] || undefined;
+        const groupDisplayName = groupEntry?.ExtraData?.[GROUP_DISPLAY_NAME] || undefined;
 
         // Preload the group image immediately — don't wait for React render cycle.
         // The browser will cache it, so the <img> renders instantly when the card appears.
@@ -121,6 +123,7 @@ export const JoinGroupPage = () => {
         const info: GroupInfo = {
           ownerKey,
           groupKeyName,
+          groupDisplayName,
           groupImageUrl,
           ownerProfile,
           memberCount,
@@ -238,7 +241,7 @@ export const JoinGroupPage = () => {
     window.location.href = `/?conversation=${encodeURIComponent(conversationKey)}`;
   };
 
-  const groupName = groupInfo?.groupKeyName ?? "";
+  const groupName = groupInfo?.groupDisplayName ?? groupInfo?.groupKeyName ?? "";
   const ownerUsername = groupInfo
     ? groupInfo.ownerProfile?.Username ?? groupInfo.ownerKey.slice(0, 12) + "..."
     : "";

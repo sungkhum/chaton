@@ -113,14 +113,15 @@ export async function searchCachedMessages(
   userPublicKey: string,
   query: string,
   conversations: ConversationMap,
-  usernameMap: Record<string, string>
+  usernameMap: Record<string, string>,
+  allAccessGroups?: AccessGroupEntryResponse[]
 ): Promise<{ results: MessageSearchResult[]; searchedTimestamps: Set<string> }> {
   const queryLower = query.toLowerCase();
   const results: MessageSearchResult[] = [];
   const searchedTimestamps = new Set<string>();
 
   for (const [key, convo] of Object.entries(conversations)) {
-    const convoName = getChatNameFromConversation(convo, usernameMap);
+    const convoName = getChatNameFromConversation(convo, usernameMap, allAccessGroups);
 
     // Merge in-memory messages with any extra messages from IndexedDB cache
     let allMessages = [...convo.messages];
@@ -167,7 +168,7 @@ export async function deepSearchConversation(
   onResult: (result: MessageSearchResult) => void
 ): Promise<void> {
   const queryLower = query.toLowerCase();
-  const convoName = getChatNameFromConversation(conversation, usernameMap);
+  const convoName = getChatNameFromConversation(conversation, usernameMap, allAccessGroups);
 
   // Find the oldest timestamp we've already searched so we can start from there
   let oldestTimestamp: string | undefined;

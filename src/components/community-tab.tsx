@@ -1,7 +1,6 @@
-import { ChevronRight, Loader2, RefreshCw, Search, Users, X } from "lucide-react";
+import { ChevronRight, RefreshCw, Search, Users, X } from "lucide-react";
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  CommunityListing,
   EnrichedCommunityListing,
   enrichCommunityListings,
   fetchCommunityListings,
@@ -44,6 +43,15 @@ function setCachedListings(listings: EnrichedCommunityListing[]) {
   }
 }
 
+/** Clear the community cache. Call after the user lists/unlists their own group. */
+export function clearCommunityCache() {
+  try {
+    sessionStorage.removeItem(CACHE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * Reusable community listings component. Used by both the sidebar tab
  * and the public /community page.
@@ -75,37 +83,58 @@ export const CommunityTab: FC<{
       }
     }
 
+    let cancelled = false;
+
     try {
       // Phase 1: Fetch raw listings (names + profiles + descriptions)
       const raw = await fetchCommunityListings();
+      if (cancelled) return;
 
-      // Filter profanity before enrichment to avoid wasted API calls
-      const clean = raw.filter((l) => !containsProfanity(l.groupKeyName));
+      // Filter profanity on display — check both group name and description
+      const clean = raw.filter(
+        (l) => !containsProfanity(l.groupKeyName) && !containsProfanity(l.description)
+      );
 
       if (clean.length === 0) {
         setListings([]);
-        setLoading(false);
-        loadingRef.current = false;
         setCachedListings([]);
         return;
       }
 
       // Phase 2+3: Enrich with images, invite codes, member counts
       const enriched = await enrichCommunityListings(clean);
+      if (cancelled) return;
 
-      setListings(enriched);
-      setCachedListings(enriched);
+      // Post-enrichment profanity check on display names (owners can rename groups)
+      const safeEnriched = enriched.filter(
+        (l) => !l.groupDisplayName || !containsProfanity(l.groupDisplayName)
+      );
+
+      setListings(safeEnriched);
+      setCachedListings(safeEnriched);
     } catch (err) {
+      if (cancelled) return;
       console.error("Failed to load community listings:", err);
       setError("Could not load communities");
     } finally {
-      setLoading(false);
+      if (!cancelled) setLoading(false);
       loadingRef.current = false;
     }
+
+    // Return cleanup function for cancellation
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    loadListings();
+    let cleanup: (() => void) | undefined;
+    loadListings().then((fn) => {
+      cleanup = fn;
+    });
+    return () => {
+      cleanup?.();
+    };
   }, [loadListings]);
 
   // Client-side search filtering
@@ -113,7 +142,7 @@ export const CommunityTab: FC<{
     const q = searchQuery.trim().toLowerCase();
     if (!q) return listings;
     return listings.filter((l) => {
-      const name = l.groupKeyName.toLowerCase();
+      const name = (l.groupDisplayName ?? l.groupKeyName).toLowerCase();
       const owner = (l.ownerProfile?.Username ?? "").toLowerCase();
       const desc = l.description.toLowerCase();
       return name.includes(q) || owner.includes(q) || desc.includes(q);
@@ -126,8 +155,15 @@ export const CommunityTab: FC<{
     }
   };
 
+  const handleCardKeyDown = (e: React.KeyboardEvent, listing: EnrichedCommunityListing) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleCardClick(listing);
+    }
+  };
+
   return (
-    <div className={`flex flex-col ${fullPage ? "h-full" : "h-full"}`}>
+    <div className="flex flex-col h-full">
       {/* Search bar */}
       <div className={fullPage ? "px-4 sm:px-6 pt-4 pb-3" : "px-4 pt-2 pb-3"}>
         <div className="relative">
@@ -135,6 +171,7 @@ export const CommunityTab: FC<{
           <input
             type="text"
             placeholder="Search communities..."
+            aria-label="Search communities"
             spellCheck={false}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -145,7 +182,8 @@ export const CommunityTab: FC<{
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-white/10 cursor-pointer"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-white/10 cursor-pointer"
+              aria-label="Clear search"
             >
               <X className="w-3.5 h-3.5 text-gray-400" />
             </button>
@@ -197,7 +235,7 @@ export const CommunityTab: FC<{
             <h3 className="text-white font-semibold text-base mb-1.5">
               {searchQuery ? "No matches" : "No communities yet"}
             </h3>
-            <p className="text-gray-500 text-sm max-w-[240px]">
+            <p className="text-gray-500 text-sm max-w-[280px]">
               {searchQuery
                 ? "Try a different search term"
                 : "Group owners can list their chats here for others to discover and join"}
@@ -213,8 +251,11 @@ export const CommunityTab: FC<{
             return (
               <div key={listing.associationId}>
                 <div
+                  role="link"
+                  tabIndex={0}
                   onClick={() => handleCardClick(listing)}
-                  className="px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer"
+                  onKeyDown={(e) => handleCardKeyDown(e, listing)}
+                  className="px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer focus-visible:bg-white/5 outline-none"
                 >
                   <div className="flex items-center gap-3">
                     <MessagingDisplayAvatar
@@ -224,14 +265,11 @@ export const CommunityTab: FC<{
                       diameter={48}
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1 min-w-0 mb-0.5">
-                        <Users className="w-3.5 h-3.5 shrink-0 text-gray-500" />
-                        <span className="truncate text-sm text-white font-medium">
-                          {listing.groupKeyName}
-                        </span>
-                      </div>
+                      <span className="truncate text-sm text-white font-medium block mb-0.5">
+                        {listing.groupDisplayName ?? listing.groupKeyName}
+                      </span>
                       {listing.description && (
-                        <p className="truncate text-xs text-gray-400 mb-0.5">
+                        <p className="text-xs text-gray-400 mb-0.5 line-clamp-2">
                           {listing.description}
                         </p>
                       )}
@@ -242,10 +280,10 @@ export const CommunityTab: FC<{
                         {listing.memberCount === 1 ? "member" : "members"}
                       </p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-gray-600 shrink-0" />
+                    <span className="text-[#34F080] text-xs font-bold shrink-0">Join</span>
                   </div>
                 </div>
-                <div className="ml-[72px] border-b border-white/5" />
+                <div className="ml-[76px] border-b border-white/5" />
               </div>
             );
           })}

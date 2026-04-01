@@ -113,6 +113,8 @@ field. This is a shared convention any DeSo messaging app can adopt:
 Group metadata uses `group:` namespaced keys in the access group's `ExtraData` field.
 Stored via `createAccessGroup` / `updateAccessGroup`. Any DeSo messaging app can read these:
 
+- `group:displayName` — human-readable display name for the group (owner can rename;
+  `AccessGroupKeyName` remains the immutable on-chain identifier)
 - `group:imageUrl` — URL of the group's profile image (uploaded via DeSo image upload)
 
 ## Tech stack

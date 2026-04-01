@@ -61,6 +61,7 @@ export function getEncryptedExtraDataKeys(mode: PrivacyMode): readonly string[] 
 
 // Generic DeSo access group ExtraData keys — any messaging app can adopt these
 export const GROUP_IMAGE_URL = "group:imageUrl";
+export const GROUP_DISPLAY_NAME = "group:displayName";
 
 export type RichMessageType =
   | "text"
@@ -163,6 +164,23 @@ export function getGroupImageUrl(
       g.AccessGroupKeyName === groupKeyName
   );
   return group?.ExtraData?.[GROUP_IMAGE_URL] || undefined;
+}
+
+/**
+ * Look up the group display name from an access group's ExtraData.
+ * Returns the display name string or undefined if not set (falls back to AccessGroupKeyName).
+ */
+export function getGroupDisplayName(
+  allAccessGroups: AccessGroupEntryResponse[],
+  ownerPublicKey: string,
+  groupKeyName: string
+): string | undefined {
+  const group = allAccessGroups.find(
+    (g) =>
+      g.AccessGroupOwnerPublicKeyBase58Check === ownerPublicKey &&
+      g.AccessGroupKeyName === groupKeyName
+  );
+  return group?.ExtraData?.[GROUP_DISPLAY_NAME] || undefined;
 }
 
 export function buildExtraData(

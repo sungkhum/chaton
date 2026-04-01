@@ -9,10 +9,10 @@ import {
 import { withAuth } from "../utils/with-auth";
 import {
   ASSOCIATION_TYPE_COMMUNITY_LISTED,
-  ASSOCIATION_TYPE_GROUP_INVITE_CODE,
   CHATON_DONATION_PUBLIC_KEY,
 } from "../utils/constants";
-import { GROUP_IMAGE_URL } from "../utils/extra-data";
+import { GROUP_DISPLAY_NAME, GROUP_IMAGE_URL } from "../utils/extra-data";
+import { fetchInviteCode } from "../utils/invite-link";
 
 export interface CommunityListing {
   ownerKey: string;
@@ -23,6 +23,7 @@ export interface CommunityListing {
 }
 
 export interface EnrichedCommunityListing extends CommunityListing {
+  groupDisplayName?: string;
   groupImageUrl?: string;
   inviteCode: string | null;
   memberCount: number;
@@ -125,53 +126,53 @@ export async function unlistGroupFromCommunity(
 }
 
 /**
- * Check if a specific group is community-listed. Returns the association ID
+ * Check if a specific group is community-listed. Uses direct AssociationValue
+ * filter for O(1) lookup instead of pagination. Returns the association ID
  * and description if found, or null.
  */
 export async function fetchCommunityListing(
   ownerPublicKey: string,
   groupKeyName: string
 ): Promise<{ associationId: string; description: string } | null> {
-  let lastId = "";
-  const maxPages = 10;
-
-  for (let page = 0; page < maxPages; page++) {
+  try {
     const res = await getUserAssociations({
       TransactorPublicKeyBase58Check: ownerPublicKey,
       TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
       AssociationType: ASSOCIATION_TYPE_COMMUNITY_LISTED,
-      Limit: 100,
-      ...(lastId ? { LastSeenAssociationID: lastId } : {}),
+      AssociationValue: groupKeyName,
+      Limit: 1,
     });
-
-    const associations = res.Associations ?? [];
-    for (const a of associations) {
-      if (a.AssociationValue === groupKeyName) {
-        return {
-          associationId: a.AssociationID,
-          description: a.ExtraData?.["community:description"] ?? "",
-        };
-      }
-    }
-
-    if (associations.length < 100) break;
-    lastId = associations[associations.length - 1].AssociationID;
+    const a = res.Associations?.[0];
+    if (!a) return null;
+    return {
+      associationId: a.AssociationID,
+      description: a.ExtraData?.["community:description"] ?? "",
+    };
+  } catch {
+    return null;
   }
-  return null;
 }
 
 /**
- * Update a community listing's description by deleting and recreating the
- * association (DeSo associations are immutable). Returns the new association ID.
+ * Update a community listing's description. Creates the new association first,
+ * then deletes the old one — safe against partial failure (create-before-delete).
+ * If the create succeeds but delete fails, we have a harmless duplicate that
+ * the next fetchCommunityListing call will pick up. Returns the new association ID.
  */
 export async function updateCommunityListing(
   ownerPublicKey: string,
-  associationId: string,
+  oldAssociationId: string,
   groupKeyName: string,
   description: string
 ): Promise<string> {
-  await unlistGroupFromCommunity(ownerPublicKey, associationId);
-  return listGroupInCommunity(ownerPublicKey, groupKeyName, description);
+  const newId = await listGroupInCommunity(ownerPublicKey, groupKeyName, description);
+  // Best-effort delete of the old association
+  try {
+    await unlistGroupFromCommunity(ownerPublicKey, oldAssociationId);
+  } catch {
+    // Non-fatal: old association will be superseded by the new one
+  }
+  return newId;
 }
 
 /**
@@ -194,8 +195,9 @@ export async function enrichCommunityListings(
     return true;
   });
 
-  // 1. Batch fetch group metadata (images) via getBulkAccessGroups
+  // 1. Batch fetch group metadata (images, display names) via getBulkAccessGroups
   let groupImageMap = new Map<string, string>();
+  let groupDisplayNameMap = new Map<string, string>();
   try {
     const groupRes = await getBulkAccessGroups({
       GroupOwnerAndGroupKeyNamePairs: deduped.map((l) => ({
@@ -211,38 +213,25 @@ export async function enrichCommunityListings(
         entry.AccessGroupKeyName;
       const imageUrl = entry.ExtraData?.[GROUP_IMAGE_URL];
       if (imageUrl) groupImageMap.set(key, imageUrl);
+      const displayName = entry.ExtraData?.[GROUP_DISPLAY_NAME];
+      if (displayName) groupDisplayNameMap.set(key, displayName);
     }
   } catch {
     // Non-fatal: cards render without images
   }
 
-  // 2. Fetch all invite codes from registry and match to listings client-side
-  const inviteCodeMap = new Map<string, string>(); // ownerKey|groupKeyName → code
-  try {
-    let lastId = "";
-    while (true) {
-      const res = await getUserAssociations({
-        TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
-        AssociationType: ASSOCIATION_TYPE_GROUP_INVITE_CODE,
-        Limit: 100,
-        ...(lastId ? { LastSeenAssociationID: lastId } : {}),
-      });
-
-      const associations = res.Associations ?? [];
-      for (const a of associations) {
-        const groupKeyName = a.ExtraData?.["group:keyName"];
-        if (groupKeyName) {
-          const key = a.TransactorPublicKeyBase58Check + "|" + groupKeyName;
-          inviteCodeMap.set(key, a.AssociationValue);
-        }
-      }
-
-      if (associations.length < 100) break;
-      lastId = associations[associations.length - 1].AssociationID;
+  // 2. Fetch invite codes per-owner (scoped queries, not global scan).
+  // Uses existing fetchInviteCode which queries by Transactor+Target+Type.
+  const inviteCodeResults = await Promise.allSettled(
+    deduped.map((l) => fetchInviteCode(l.ownerKey, l.groupKeyName))
+  );
+  const inviteCodeMap = new Map<string, string>();
+  deduped.forEach((l, i) => {
+    const result = inviteCodeResults[i];
+    if (result.status === "fulfilled" && result.value) {
+      inviteCodeMap.set(uniqueKey(l), result.value.code);
     }
-  } catch {
-    // Non-fatal: listings without invite codes will be filtered out
-  }
+  });
 
   // 3. Fetch member counts in parallel (capped at 50 per group)
   const memberCountResults = await Promise.allSettled(
@@ -279,6 +268,7 @@ export async function enrichCommunityListings(
       };
       return {
         ...l,
+        groupDisplayName: groupDisplayNameMap.get(key),
         groupImageUrl: groupImageMap.get(key),
         inviteCode: inviteCodeMap.get(key) ?? null,
         memberCount: memberInfo.count,

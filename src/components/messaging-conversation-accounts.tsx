@@ -232,7 +232,8 @@ export const MessagingConversationAccount: FC<{
                         const isGroupChat = value.ChatType === ChatType.GROUPCHAT;
                         const chatName = getChatNameFromConversation(
                           value,
-                          getUsernameByPublicKeyBase58Check
+                          getUsernameByPublicKeyBase58Check,
+                          allAccessGroups
                         );
                         const timestamp = value.messages[0]
                           ? formatRelativeTimestamp(value.messages[0].MessageInfo.TimestampNanos)
@@ -336,7 +337,8 @@ export const MessagingConversationAccount: FC<{
                   : value.messages[0].RecipientInfo.OwnerPublicKeyBase58Check;
                 const chatName = getChatNameFromConversation(
                   value,
-                  getUsernameByPublicKeyBase58Check
+                  getUsernameByPublicKeyBase58Check,
+                  allAccessGroups
                 );
                 const isSelected = key === selectedConversationPublicKey;
                 const selectedConversationStyle = isSelected
@@ -568,7 +570,8 @@ export const MessagingConversationAccount: FC<{
                       const publicKey = value.firstMessagePublicKey;
                       const chatName = getChatNameFromConversation(
                         value,
-                        getUsernameByPublicKeyBase58Check
+                        getUsernameByPublicKeyBase58Check,
+                        allAccessGroups
                       );
                       const selectedConversationStyle =
                         key === selectedConversationPublicKey
@@ -687,8 +690,8 @@ export const MessagingConversationAccount: FC<{
         )}
       </div>
 
-      {/* Bottom actions — Invite + Compose */}
-      <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
+      {/* Bottom actions — Invite + Compose (hidden on Community tab) */}
+      <div className={`absolute bottom-0 left-0 right-0 z-20 pointer-events-none ${activeTab === "community" ? "hidden" : ""}`}>
         <div className="flex items-end justify-between p-4 md:p-3">
           {/* Invite Friends pill */}
           <button

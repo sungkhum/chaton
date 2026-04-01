@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { useStore } from "../store";
 import { resolveInviteCode } from "../utils/invite-link";
 import { createJoinRequest, hasExistingJoinRequest } from "../services/conversations.service";
-import { GROUP_IMAGE_URL } from "../utils/extra-data";
+import { GROUP_DISPLAY_NAME, GROUP_IMAGE_URL } from "../utils/extra-data";
 
 type ModalState =
   | "loading"
@@ -25,6 +25,7 @@ type ModalState =
 interface GroupInfo {
   ownerKey: string;
   groupKeyName: string;
+  groupDisplayName?: string;
   groupImageUrl?: string;
   ownerProfile: ProfileEntryResponse | null;
   memberCount: number;
@@ -73,6 +74,7 @@ export function JoinGroupModal({ code, onClose }: { code: string; onClose: () =>
         const memberCount = rawMemberCount + (ownerIncluded ? 0 : 1);
         const groupEntry = groupRes.AccessGroupEntries?.[0];
         const groupImageUrl = groupEntry?.ExtraData?.[GROUP_IMAGE_URL] || undefined;
+        const groupDisplayName = groupEntry?.ExtraData?.[GROUP_DISPLAY_NAME] || undefined;
 
         // Preload image
         if (groupImageUrl) {
@@ -82,7 +84,7 @@ export function JoinGroupModal({ code, onClose }: { code: string; onClose: () =>
         }
 
         setGroupInfo({
-          ownerKey, groupKeyName, groupImageUrl, ownerProfile,
+          ownerKey, groupKeyName, groupDisplayName, groupImageUrl, ownerProfile,
           memberCount, memberCountCapped: rawMemberCount >= 50,
         });
 
@@ -144,7 +146,7 @@ export function JoinGroupModal({ code, onClose }: { code: string; onClose: () =>
     setTimeout(() => window.dispatchEvent(new Event("join-navigate")), 50);
   };
 
-  const groupName = groupInfo?.groupKeyName ?? "";
+  const groupName = groupInfo?.groupDisplayName ?? groupInfo?.groupKeyName ?? "";
   const ownerUsername = groupInfo
     ? groupInfo.ownerProfile?.Username ?? groupInfo.ownerKey.slice(0, 12) + "..."
     : "";

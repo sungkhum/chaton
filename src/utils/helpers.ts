@@ -1,11 +1,12 @@
 import { shortenLongWord } from "components/search-users";
 import { AppUser } from "../store";
-import { ChatType, User } from "deso-protocol";
+import { AccessGroupEntryResponse, ChatType, User } from "deso-protocol";
 import {
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
   PUBLIC_KEY_LENGTH,
   PUBLIC_KEY_PREFIX,
 } from "./constants";
+import { getGroupDisplayName } from "./extra-data";
 import { Conversation } from "./types";
 
 export const copyTextToClipboard = async (text: string) => {
@@ -36,12 +37,22 @@ export const scrollContainerToElement = (
 
 export const getChatNameFromConversation = (
   conversation: Conversation,
-  getUsernameByPublicKeyBase58Check: { [key: string]: string }
+  getUsernameByPublicKeyBase58Check: { [key: string]: string },
+  allAccessGroups?: AccessGroupEntryResponse[]
 ) => {
-  return conversation.ChatType === ChatType.DM
-    ? getUsernameByPublicKeyBase58Check[conversation.firstMessagePublicKey] ??
-        null
-    : conversation.messages[0].RecipientInfo.AccessGroupKeyName;
+  if (conversation.ChatType === ChatType.DM) {
+    return getUsernameByPublicKeyBase58Check[conversation.firstMessagePublicKey] ?? null;
+  }
+  const recipientInfo = conversation.messages[0].RecipientInfo;
+  if (allAccessGroups) {
+    const displayName = getGroupDisplayName(
+      allAccessGroups,
+      recipientInfo.OwnerPublicKeyBase58Check,
+      recipientInfo.AccessGroupKeyName
+    );
+    if (displayName) return displayName;
+  }
+  return recipientInfo.AccessGroupKeyName;
 };
 
 export const isMaybeDeSoPublicKey = (query: string): boolean => {
