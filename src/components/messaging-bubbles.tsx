@@ -61,11 +61,7 @@ export interface MessagingBubblesProps {
 }
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
-const POPULAR_EMOJI = [
-  "😀", "😂", "🥹", "❤️", "🔥", "👍", "👎", "🙏",
-  "😭", "😍", "🥰", "😘", "😎", "🤔", "😱", "😡",
-  "👀", "💯", "🎉", "✨", "💀", "🤣", "😊", "🥺",
-];
+
 const GROUP_TIME_GAP_NS = 5 * 60 * 1e9; // 5 minutes in nanoseconds
 
 function convertTstampToDateTime(tstampNanos: number) {
@@ -230,51 +226,42 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   const [mobileActionFor, setMobileActionFor] = useState<string | null>(null);
   const [deleteMenuFor, setDeleteMenuFor] = useState<string | null>(null);
   const [actionBarFlipped, setActionBarFlipped] = useState(false);
-  const [showFullPicker, setShowFullPicker] = useState(false);
   const actionBarRef = useRef<HTMLDivElement>(null);
   const activeBubbleRef = useRef<HTMLElement | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
 
-  // Reset full picker mode when reaction picker closes
-  useEffect(() => {
-    if (!reactionPickerFor) setShowFullPicker(false);
-  }, [reactionPickerFor]);
-
-  // Reposition desktop emoji picker if it overflows the viewport
-  useEffect(() => {
-    const el = pickerRef.current;
-    if (!el) return;
-    el.style.top = "";
-    el.style.bottom = "";
-    el.style.left = "";
-    el.style.right = "";
-    el.style.marginTop = "";
-    el.style.marginBottom = "";
-
-    requestAnimationFrame(() => {
-      const rect = el.getBoundingClientRect();
-      const scrollArea = messageAreaRef.current;
-      const topBound = scrollArea ? scrollArea.getBoundingClientRect().top : 0;
-      if (rect.top < topBound) {
-        el.style.bottom = "auto";
-        el.style.top = "100%";
-        el.style.marginTop = "4px";
-        el.style.marginBottom = "0";
-      }
-      const viewportWidth = window.innerWidth;
-      if (rect.right > viewportWidth - 8) {
-        el.style.left = "auto";
-        el.style.right = "0";
-      }
-      if (rect.left < 8) {
-        el.style.right = "auto";
-        el.style.left = "0";
-      }
-    });
-  }, [reactionPickerFor]);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressPosRef = useRef<{ x: number; y: number } | null>(null);
   const { isMobile } = useMobile();
+
+  // Position desktop emoji picker (portaled to body) near the action bar
+  useLayoutEffect(() => {
+    const el = pickerRef.current;
+    const bubble = activeBubbleRef.current;
+    if (!el || !bubble || isMobile) return;
+
+    const bubbleRect = bubble.getBoundingClientRect();
+    const scrollArea = messageAreaRef.current;
+    const topBound = scrollArea ? scrollArea.getBoundingClientRect().top : 0;
+    const elHeight = el.offsetHeight;
+    const elWidth = el.offsetWidth;
+
+    // Vertical: above the action bar area, or below if not enough space
+    const spaceAbove = bubbleRect.top - topBound;
+    if (spaceAbove < elHeight + 60) {
+      el.style.top = `${bubbleRect.bottom + 4}px`;
+      el.style.bottom = "auto";
+    } else {
+      el.style.bottom = `${window.innerHeight - bubbleRect.top + 60}px`;
+      el.style.top = "auto";
+    }
+
+    // Horizontal: align with bubble edge, clamped to viewport
+    const isSender = bubbleRect.left + bubbleRect.width / 2 > window.innerWidth / 2;
+    let left = isSender ? bubbleRect.right - elWidth : bubbleRect.left;
+    left = Math.max(8, Math.min(left, window.innerWidth - elWidth - 8));
+    el.style.left = `${left}px`;
+  }, [reactionPickerFor, isMobile]);
 
   // Close reaction picker / delete menu / desktop action bar on click outside
   useEffect(() => {
@@ -327,13 +314,18 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     setActionBarFlipped(spaceAbove < 200);
   }, []);
 
-  // Position the mobile action bar (portal) near the active message bubble
+  // Position the action bar (portal) near the active message bubble
   useLayoutEffect(() => {
     const bar = actionBarRef.current;
     const bubble = activeBubbleRef.current;
-    if (!bar || !bubble || !isMobile || !mobileActionFor) return;
+    if (!bar || !bubble) return;
+    // Mobile needs mobileActionFor; desktop needs hoveredMessage
+    if (isMobile && !mobileActionFor) return;
+    if (!isMobile && !hoveredMessage) return;
 
+    // Guard against stale ref (e.g. message list re-rendered)
     const bubbleRect = bubble.getBoundingClientRect();
+    if (bubbleRect.width === 0 && bubbleRect.height === 0) return;
     const barWidth = bar.offsetWidth;
     const pad = 12;
 
@@ -351,7 +343,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     let left = isSenderMsg ? bubbleRect.right - barWidth : bubbleRect.left;
     left = Math.max(pad, Math.min(left, window.innerWidth - barWidth - pad));
     bar.style.left = `${left}px`;
-  }, [mobileActionFor, isMobile, actionBarFlipped]);
+  }, [mobileActionFor, hoveredMessage, isMobile, actionBarFlipped]);
 
   // Clean up timer on unmount
   useEffect(() => {
@@ -567,6 +559,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
       {isMobile && mobileActionFor && createPortal(
         <div
           className="fixed inset-0 bg-black/40 z-40"
+          onClick={closeMobileAction}
           onTouchStart={(e) => {
             e.preventDefault();
             closeMobileAction();
@@ -579,50 +572,26 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
       {isMobile && reactionPickerFor && createPortal(
         <div
           ref={pickerRef}
-          className="fixed inset-x-0 bottom-0 z-[60] bg-[#141c2b] rounded-t-2xl border-t border-white/10 pb-[env(safe-area-inset-bottom)]"
+          className="fixed inset-x-0 bottom-0 z-[65] bg-[#141c2b] rounded-t-2xl border-t border-white/10 pb-[env(safe-area-inset-bottom)]"
         >
           <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-2 mb-1" />
-          {showFullPicker ? (
-            <ChunkErrorBoundary>
-              <Suspense fallback={
-                <div className="w-full h-[320px] flex items-center justify-center text-blue-400/40 text-sm">Loading...</div>
-              }>
-                <LazyReactionEmojiPicker
-                  onSelect={(emoji) => {
-                    onReact?.(reactionPickerFor, emoji);
-                    closeMobileAction();
-                  }}
-                  className="w-full h-[320px] flex flex-col overflow-hidden bg-transparent [--frimousse-bg:transparent] [--frimousse-border-color:theme(colors.white/10%)]"
-                  searchClassName="mx-3 mt-1 mb-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-base placeholder:text-white/30 outline-none focus:border-[#34F080]/50"
-                  emojiSize="w-11 h-11 text-2xl"
-                  categoryBg="bg-[#141c2b]"
-                />
-              </Suspense>
-            </ChunkErrorBoundary>
-          ) : (
-            <div className="px-3 py-2">
-              <div className="grid grid-cols-8 gap-1 justify-items-center">
-                {POPULAR_EMOJI.map((emoji) => (
-                  <button
-                    key={emoji}
-                    onClick={() => {
-                      onReact?.(reactionPickerFor, emoji);
-                      closeMobileAction();
-                    }}
-                    className="flex items-center justify-center w-11 h-11 rounded-md hover:bg-white/10 cursor-pointer transition-colors"
-                  >
-                    <AnimatedEmoji emoji={emoji} size={28} eager />
-                  </button>
-                ))}
-              </div>
-              <button
-                onClick={() => setShowFullPicker(true)}
-                className="w-full mt-2 py-2 text-sm text-gray-400 hover:text-white transition-colors text-center cursor-pointer"
-              >
-                Search all emoji...
-              </button>
-            </div>
-          )}
+          <ChunkErrorBoundary>
+            <Suspense fallback={
+              <div className="w-full h-[320px] flex items-center justify-center text-blue-400/40 text-sm">Loading...</div>
+            }>
+              <LazyReactionEmojiPicker
+                onSelect={(emoji) => {
+                  onReact?.(reactionPickerFor, emoji);
+                  closeMobileAction();
+                }}
+                className="w-full h-[320px] flex flex-col overflow-hidden bg-transparent [--frimousse-bg:transparent] [--frimousse-border-color:theme(colors.white/10%)]"
+                searchClassName="mx-3 mt-1 mb-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-base placeholder:text-white/30 outline-none focus:border-[#34F080]/50"
+                emojiSize="w-11 h-11 text-2xl"
+                categoryBg="bg-[#141c2b]"
+                autoFocusSearch={false}
+              />
+            </Suspense>
+          </ChunkErrorBoundary>
         </div>,
         document.body
       )}
@@ -719,7 +688,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
           );
 
           const showActionBar = isMobile
-            ? mobileActionFor === messageKey
+            ? mobileActionFor === messageKey && !reactionPickerFor
             : hoveredMessage === messageKey || reactionPickerFor === messageKey;
 
           return (
@@ -742,9 +711,13 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
               onTouchEnd={isMobile ? handleTouchEnd : undefined}
               onContextMenu={(e) => {
                 e.preventDefault();
-                if (!isMobile) {
-                  const bubble = (e.currentTarget as HTMLElement).querySelector<HTMLElement>(".relative.inline-block");
-                  computeFlip(bubble);
+                const bubble = (e.currentTarget as HTMLElement).querySelector<HTMLElement>(".relative.inline-block");
+                computeFlip(bubble);
+                activeBubbleRef.current = bubble;
+                if (isMobile) {
+                  setReactionPickerFor(null);
+                  setMobileActionFor(messageKey);
+                } else {
                   setHoveredMessage(messageKey);
                 }
               }}
@@ -819,9 +792,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                   {showActionBar && !parsed.deleted && (() => {
                     const actionBar = (
                       <div ref={actionBarRef} className={
-                        isMobile
-                          ? `fixed z-50 flex ${actionBarFlipped ? "flex-col-reverse" : "flex-col"} items-stretch`
-                          : `absolute ${IsSender ? "right-0" : "left-0"} ${actionBarFlipped ? "top-full mt-1" : "bottom-full mb-1"} z-30 flex ${actionBarFlipped ? "flex-col-reverse" : "flex-col"} items-stretch`
+                        `fixed z-50 flex ${actionBarFlipped ? "flex-col-reverse" : "flex-col"} items-stretch`
                       }>
                       {/* Quick reactions row */}
                       {onReact && (
@@ -933,59 +904,32 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                       </div>
                     </div>
                     );
-                    return isMobile ? createPortal(actionBar, document.body) : actionBar;
+                    return createPortal(actionBar, document.body);
                   })()}
 
-                  {/* Emoji picker (desktop: absolute popup) */}
-                  {reactionPickerFor === messageKey && !isMobile && (
+                  {/* Desktop emoji picker — portaled to escape [contain:layout_style] */}
+                  {reactionPickerFor === messageKey && !isMobile && createPortal(
                     <div
                       ref={pickerRef}
-                      className={`absolute z-50 ${IsSender ? "right-0" : "left-0"} bottom-full mb-10`}
+                      className="fixed z-[65]"
                     >
-                      {showFullPicker ? (
-                        <ChunkErrorBoundary>
-                          <Suspense fallback={
-                            <div className="w-[352px] h-[300px] flex items-center justify-center bg-[#141c2b] rounded-xl border border-white/10 text-blue-400/40 text-sm">Loading...</div>
-                          }>
-                            <LazyReactionEmojiPicker
-                              onSelect={(emoji) => {
-                                onReact?.(
-                                  message.MessageInfo.TimestampNanosString,
-                                  emoji
-                                );
-                                setReactionPickerFor(null);
-                              }}
-                            />
-                          </Suspense>
-                        </ChunkErrorBoundary>
-                      ) : (
-                        <div className="bg-[#141c2b] rounded-xl border border-white/10 p-2">
-                          <div className="grid grid-cols-8 gap-0.5">
-                            {POPULAR_EMOJI.map((emoji) => (
-                              <button
-                                key={emoji}
-                                onClick={() => {
-                                  onReact?.(
-                                    message.MessageInfo.TimestampNanosString,
-                                    emoji
-                                  );
-                                  setReactionPickerFor(null);
-                                }}
-                                className="flex items-center justify-center w-[33px] h-[33px] rounded-md hover:bg-white/10 cursor-pointer transition-colors"
-                              >
-                                <AnimatedEmoji emoji={emoji} size={22} eager />
-                              </button>
-                            ))}
-                          </div>
-                          <button
-                            onClick={() => setShowFullPicker(true)}
-                            className="w-full mt-1.5 py-1.5 text-xs text-gray-400 hover:text-white transition-colors text-center cursor-pointer"
-                          >
-                            Search all emoji...
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                      <ChunkErrorBoundary>
+                        <Suspense fallback={
+                          <div className="w-[352px] h-[300px] flex items-center justify-center bg-[#141c2b] rounded-xl border border-white/10 text-blue-400/40 text-sm">Loading...</div>
+                        }>
+                          <LazyReactionEmojiPicker
+                            onSelect={(emoji) => {
+                              onReact?.(
+                                message.MessageInfo.TimestampNanosString,
+                                emoji
+                              );
+                              setReactionPickerFor(null);
+                            }}
+                          />
+                        </Suspense>
+                      </ChunkErrorBoundary>
+                    </div>,
+                    document.body
                   )}
                 </div>
 
