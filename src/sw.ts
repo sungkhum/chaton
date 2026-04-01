@@ -179,18 +179,17 @@ self.addEventListener("notificationclick", (event) => {
   );
 });
 
-// Serve index.html (the SPA shell) for /join/* navigation requests.
-// Without this, Serwist's precache routing matches join-invite.html
-// and issues a 308 redirect that strips the invite code from the URL.
+// Let /join/* navigation requests pass through to the network.
+// Cloudflare Pages' _redirects serves join-invite.html (same app JS
+// bundles) which keeps the invite code in the URL. Without this,
+// Serwist's precache routing would 308-redirect and strip the code.
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (
     event.request.mode === "navigate" &&
     (url.pathname.startsWith("/join/") || url.pathname === "/join")
   ) {
-    event.respondWith(
-      caches.match("/index.html").then((cached) => cached || fetch("/index.html"))
-    );
+    event.respondWith(fetch(event.request));
   }
 });
 
