@@ -45,13 +45,16 @@ export const GifPicker = ({
   const suggestTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // Mobile: full-width anchored to compose bar. Desktop: fixed 400px.
-  const PICKER_CONTAINER = `absolute bottom-full mb-2 ${
-    isMobile ? "left-0 right-0" : "left-0 w-[400px]"
-  } bg-[#0a1628] border border-blue-800/40 rounded-xl shadow-xl z-50 overflow-hidden`;
+  // On mobile: full-screen fixed overlay (like Telegram). The picker becomes
+  // the primary UI — search stays visible even when the keyboard opens.
+  // On desktop: absolute popover above the compose bar.
+  const PICKER_CONTAINER = isMobile
+    ? "fixed inset-0 bg-[#0a1628] z-50 flex flex-col"
+    : "absolute bottom-full mb-2 left-0 w-[400px] bg-[#0a1628] border border-blue-800/40 rounded-xl shadow-xl z-50 overflow-hidden";
 
-  // Click-outside to close
+  // Click-outside to close (desktop only — mobile is full-screen with close button)
   useEffect(() => {
+    if (isMobile) return;
     const handler = (e: MouseEvent) => {
       if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
         onClose();
@@ -59,7 +62,7 @@ export const GifPicker = ({
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [onClose]);
+  }, [onClose, isMobile]);
 
   // Load trending + categories on mount and tab switch
   useEffect(() => {
@@ -201,12 +204,12 @@ export const GifPicker = ({
           </button>
         </div>
 
-        <div className="flex items-center justify-center p-4 max-h-[260px] overflow-hidden">
+        <div className="flex-1 min-h-0 flex items-center justify-center p-4 overflow-hidden">
           {preview && (
             <img
               src={preview.url}
               alt={selectedGif.title}
-              className="max-h-[230px] w-auto rounded-lg object-contain"
+              className="max-h-full w-auto rounded-lg object-contain"
             />
           )}
         </div>
@@ -312,7 +315,7 @@ export const GifPicker = ({
       ) : null}
 
       {/* Content grid */}
-      <div ref={gridRef} className="h-[250px] md:h-[300px] overflow-y-auto custom-scrollbar p-2">
+      <div ref={gridRef} className="flex-1 min-h-0 md:h-[300px] md:flex-none overflow-y-auto custom-scrollbar p-2">
         {loading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
