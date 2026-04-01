@@ -64,21 +64,6 @@ export const GifPicker = ({
     return () => document.removeEventListener("mousedown", handler);
   }, [onClose, isMobile]);
 
-  // Load trending + categories on mount and tab switch
-  useEffect(() => {
-    loadTrending();
-    loadCategories();
-    setQuery("");
-    setSuggestions([]);
-    setSelectedGif(null);
-    // Only auto-focus search on desktop — on mobile it would reopen the keyboard
-    if (!isMobile) inputRef.current?.focus();
-  }, [tab]);
-
-  useEffect(() => {
-    if (selectedGif && !isMobile) captionRef.current?.focus();
-  }, [selectedGif]);
-
   const loadTrending = useCallback(async () => {
     setLoading(true);
     const fetcher = tab === "gifs" ? trendingGifs : trendingStickers;
@@ -91,6 +76,29 @@ export const GifPicker = ({
     const cats = await getCategories(tab);
     setCategories(cats.slice(0, 20));
   }, [tab]);
+
+  // Load trending + categories on mount and tab switch
+  useEffect(() => {
+    loadTrending();
+    loadCategories();
+    setQuery("");
+    setSuggestions([]);
+    setSelectedGif(null);
+    // Only auto-focus search on desktop — on mobile it would reopen the keyboard
+    if (!isMobile) inputRef.current?.focus();
+  }, [tab, loadTrending, loadCategories]);
+
+  // Clean up debounce timers on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+      if (suggestTimer.current) clearTimeout(suggestTimer.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (selectedGif && !isMobile) captionRef.current?.focus();
+  }, [selectedGif]);
 
   const handleSearch = (q: string) => {
     setQuery(q);
@@ -144,7 +152,7 @@ export const GifPicker = ({
     })();
   };
 
-  const handleItemClick = (item: KlipyItem) => {
+  const handleItemClick = useCallback((item: KlipyItem) => {
     if (tab === "stickers") {
       // Stickers send immediately (like Telegram)
       onSelectSticker(item);
@@ -153,7 +161,7 @@ export const GifPicker = ({
       // GIFs go to preview/caption screen
       setSelectedGif(item);
     }
-  };
+  }, [tab, onSelectSticker, onClose]);
 
   const handleBack = () => {
     setSelectedGif(null);
@@ -193,13 +201,14 @@ export const GifPicker = ({
         <div className="flex items-center gap-2 p-3 border-b border-blue-800/30">
           <button
             onClick={handleBack}
+            aria-label="Back to search"
             className="cursor-pointer text-blue-400/60 hover:text-blue-300 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <span className="text-sm text-blue-100 font-medium">Send GIF</span>
           <div className="flex-1" />
-          <button onClick={onClose} className="cursor-pointer">
+          <button onClick={onClose} aria-label="Close" className="cursor-pointer">
             <X className="w-4 h-4 text-blue-400/60" />
           </button>
         </div>
@@ -239,7 +248,7 @@ export const GifPicker = ({
 
   // ── Browse/search view ──
   return (
-    <div className={PICKER_CONTAINER}>
+    <div ref={pickerRef} className={PICKER_CONTAINER}>
       {/* Tabs */}
       <div className="flex border-b border-blue-800/30">
         <TabButton
@@ -253,7 +262,7 @@ export const GifPicker = ({
           onClick={() => setTab("stickers")}
         />
         <div className="flex-1" />
-        <button onClick={onClose} className="cursor-pointer px-3">
+        <button onClick={onClose} aria-label="Close" className="cursor-pointer px-3">
           <X className="w-4 h-4 text-blue-400/60" />
         </button>
       </div>
@@ -279,6 +288,7 @@ export const GifPicker = ({
                 loadTrending();
                 inputRef.current?.focus();
               }}
+              aria-label="Clear search"
               className="cursor-pointer"
             >
               <X className="w-3.5 h-3.5 text-blue-400/40" />

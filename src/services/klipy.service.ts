@@ -59,12 +59,15 @@ export function getDisplayUrl(
   item: KlipyItem,
   size: "hd" | "md" | "sm" | "xs" = "md"
 ): { url: string; width: number; height: number } | null {
-  const sizeData = item.file[size];
-  if (!sizeData) return getDisplayUrl(item, size === "sm" ? "md" : "sm");
-
-  const format = sizeData.webp || sizeData.gif || sizeData.mp4;
-  if (!format) return null;
-  return { url: format.url, width: format.width, height: format.height };
+  // Try the requested size, then fall through all sizes to find any available format
+  const sizes: Array<"hd" | "md" | "sm" | "xs"> = [size, "md", "sm", "hd", "xs"];
+  for (const s of sizes) {
+    const sizeData = item.file[s];
+    if (!sizeData) continue;
+    const format = sizeData.webp || sizeData.gif || sizeData.mp4;
+    if (format) return { url: format.url, width: format.width, height: format.height };
+  }
+  return null;
 }
 
 /** Get a small thumbnail URL for the picker grid */
