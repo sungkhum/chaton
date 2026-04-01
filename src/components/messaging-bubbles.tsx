@@ -697,8 +697,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                   borderBottomRightRadius: R,
                 };
 
-          const messagingDisplayAvatarAndTimestamp = (
-            <div className={`w-[36px] shrink-0 ${IsSender ? "ml-3" : "mr-3"} relative`}>
+          const messagingDisplayAvatar = (
+            <div className={`w-[36px] shrink-0 ${IsSender ? "ml-3" : "mr-3"}`}>
               <MessagingDisplayAvatar
                 username={
                   getUsernameByPublicKey[message.SenderInfo.OwnerPublicKeyBase58Check]
@@ -708,9 +708,6 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                 diameter={36}
                 classNames="relative"
               />
-              <div className="whitespace-nowrap text-[10px] text-gray-500 mt-1 text-center">
-                {convertTstampToDateTime(message.MessageInfo.TimestampNanos)}
-              </div>
             </div>
           );
 
@@ -750,7 +747,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                 }
               }}
             >
-              {!IsSender && (isLastInGroup ? messagingDisplayAvatarAndTimestamp : avatarSpacer)}
+              {!IsSender && (isLastInGroup ? messagingDisplayAvatar : avatarSpacer)}
               <div className={`w-full ${IsSender ? "text-right" : "text-left"}`}>
                 {isFirstInGroup && !IsSender && (
                   <header className="flex items-center flex-row-reverse justify-end mb-[3px]">
@@ -775,16 +772,31 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                 {/* Message bubble */}
                 <div className="relative inline-block">
                   <div
-                    className={`${senderStyles} mt-auto py-2.5 px-3 md:px-4 break-words inline-flex text-left relative items-center gap-1.5`}
+                    className={`${senderStyles} mt-auto py-2.5 px-3 md:px-4 break-words inline-flex text-left relative items-end gap-1.5`}
                     style={bubbleRadiusStyle}
                   >
                     <MessageContent message={message} />
-                    {parsed.edited && !parsed.deleted && (
-                      <span className="text-gray-500 text-[10px] self-end whitespace-nowrap leading-none">
-                        (edited)
+                    {!isMedia && !isEmojiOnly && (
+                      <span
+                        className="text-gray-500 text-[10px] whitespace-nowrap leading-none shrink-0 ml-2"
+                        title={new Date(message.MessageInfo.TimestampNanos / 1e6).toLocaleString()}
+                      >
+                        {parsed.edited && !parsed.deleted ? "(edited) " : ""}
+                        {convertTstampToDateTime(message.MessageInfo.TimestampNanos)}
                       </span>
                     )}
                   </div>
+
+                  {/* Timestamp for media/emoji messages */}
+                  {(isMedia || isEmojiOnly) && (
+                    <div
+                      className={`text-[10px] text-gray-500 mt-0.5 ${IsSender ? "text-right" : "text-left"}`}
+                      title={new Date(message.MessageInfo.TimestampNanos / 1e6).toLocaleString()}
+                    >
+                      {parsed.edited && !parsed.deleted ? "(edited) " : ""}
+                      {convertTstampToDateTime(message.MessageInfo.TimestampNanos)}
+                    </div>
+                  )}
 
                   {/* Status indicator – absolutely positioned so it never shifts layout */}
                   {IsSender && (message as any)._status && (
