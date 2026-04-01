@@ -34,6 +34,7 @@ import {
   fetchArchivedGroups,
   fetchAssociationsByType,
   fetchChatAssociations,
+  fetchJoinRequestCountsForOwner,
   fetchMutualFollows,
   fetchPrivacyMode,
   getConversations,
@@ -162,6 +163,7 @@ export const MessagingApp: FC = () => {
     unblockUser, rollbackUnblock,
     unreadByConversation, clearUnread, initializeUnread,
     mutedConversations, toggleMute,
+    setJoinRequestCounts,
   } = useStore();
   const [usernameByPublicKeyBase58Check, setUsernameByPublicKeyBase58Check] =
     useState<{ [key: string]: string }>({});
@@ -1046,6 +1048,11 @@ export const MessagingApp: FC = () => {
             dismissedSet, assoc.dismissed
           );
         }).catch(() => {});
+
+        // Refresh join request counts for owned groups
+        fetchJoinRequestCountsForOwner(publicKey)
+          .then(setJoinRequestCounts)
+          .catch(() => {});
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -1377,6 +1384,11 @@ export const MessagingApp: FC = () => {
     // Self-cleanup: delete any of our own stale join request associations
     // for groups we've since been added to. Uses fresh access groups, fire-and-forget.
     cleanupOwnJoinRequests(publicKey, updatedAllAccessGroups).catch(() => {});
+
+    // Fetch join request counts for groups this user owns (fire-and-forget)
+    fetchJoinRequestCountsForOwner(publicKey)
+      .then(setJoinRequestCounts)
+      .catch(() => {});
     let conversationsResponse = freshConversations || {};
     const keyToUse =
       selectedKey ||

@@ -20,6 +20,7 @@ const LandingPage = lazy(() => import("./components/landing-page").then(m => ({ 
 const LegalPage = lazy(() => import("./components/legal-page").then(m => ({ default: m.LegalPage })));
 const SupportPage = lazy(() => import("./components/support-page").then(m => ({ default: m.SupportPage })));
 const JoinGroupPage = lazy(() => import("./components/join-group-page"));
+const CommunityPage = lazy(() => import("./components/community-page"));
 import { AppUser, useStore } from "./store";
 import { withAuth } from "./utils/with-auth";
 import {
@@ -337,7 +338,7 @@ function App() {
 
   // Remove splash once content is ready (not during loading)
   const isJoinRoute = path === "/join" || path.startsWith("/join/");
-  const contentReady = !isLoadingUser || !!appUser || path === "/privacy" || path === "/terms" || path === "/support" || isJoinRoute;
+  const contentReady = !isLoadingUser || !!appUser || path === "/privacy" || path === "/terms" || path === "/support" || path === "/community" || isJoinRoute;
   useEffect(() => {
     if (!contentReady || splashRemovedRef.current) return;
     splashRemovedRef.current = true;
@@ -388,6 +389,17 @@ function App() {
       <RouteErrorBoundary>
         <Suspense fallback={routeFallback}>
           <SupportPage />
+          <Toaster position="top-right" theme="dark" />
+        </Suspense>
+      </RouteErrorBoundary>
+    );
+  }
+
+  if (path === "/community") {
+    return (
+      <RouteErrorBoundary>
+        <Suspense fallback={routeFallback}>
+          <CommunityPage />
           <Toaster position="top-right" theme="dark" />
         </Suspense>
       </RouteErrorBoundary>

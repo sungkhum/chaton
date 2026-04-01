@@ -85,6 +85,13 @@ on-chain follows and User Associations (no backend needed).
   code to a group chat. Transactor = group owner, Target = `CHATON_DONATION_PUBLIC_KEY`
   (well-known registry key). `ExtraData["group:keyName"]` stores the AccessGroupKeyName.
   Resolve via `getUserAssociations` by target + type + value. Owner can delete to revoke.
+- `chaton:community-listed` / value `<AccessGroupKeyName>` — opts a group into the
+  public community directory. Transactor = group owner, Target = `CHATON_DONATION_PUBLIC_KEY`.
+  `ExtraData["group:keyName"]` stores the AccessGroupKeyName,
+  `ExtraData["community:description"]` stores an optional short description.
+  Independent of invite codes — listing persists across invite link rotations.
+  A group appears in the community directory only if BOTH a community-listed association
+  AND an active invite code exist.
 
 ## ExtraData conventions
 

@@ -925,6 +925,38 @@ export async function hasExistingJoinRequest(
   }
 }
 
+/**
+ * Fetch join request counts for all groups owned by the current user.
+ * Returns a Map<conversationKey, count> for groups with pending requests.
+ * Lightweight: no profile data fetched.
+ */
+export async function fetchJoinRequestCountsForOwner(
+  ownerPublicKey: string
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  let lastId = "";
+
+  while (true) {
+    const res = await getUserAssociations({
+      TargetUserPublicKeyBase58Check: ownerPublicKey,
+      AssociationType: ASSOCIATION_TYPE_GROUP_JOIN_REQUEST,
+      Limit: 100,
+      ...(lastId ? { LastSeenAssociationID: lastId } : {}),
+    });
+
+    const associations = res.Associations ?? [];
+    for (const a of associations) {
+      const conversationKey = ownerPublicKey + a.AssociationValue;
+      counts.set(conversationKey, (counts.get(conversationKey) || 0) + 1);
+    }
+
+    if (associations.length < 100) break;
+    lastId = associations[associations.length - 1].AssociationID;
+  }
+
+  return counts;
+}
+
 export interface JoinRequestEntry {
   requesterPublicKey: string;
   associationId: string;

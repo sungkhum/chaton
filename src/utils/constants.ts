@@ -33,6 +33,12 @@ export const ASSOCIATION_TYPE_GROUP_JOIN_REQUEST = "chaton:group-join-request";
 export const ASSOCIATION_TYPE_GROUP_INVITE_CODE = "chaton:group-invite-code";
 export const INVITE_CODE_LENGTH = 8;
 
+// Community listing — opts a group into the public community directory.
+// Transactor = group owner, Target = CHATON_DONATION_PUBLIC_KEY,
+// Value = access group key name, ExtraData["group:keyName"] = key name,
+// ExtraData["community:description"] = optional short description.
+export const ASSOCIATION_TYPE_COMMUNITY_LISTED = "chaton:community-listed";
+
 // Privacy mode: self-association (target = self) storing the user's encryption preference.
 // Value is "full" (encrypt all metadata) or "standard" (encrypt only reactions).
 export const ASSOCIATION_TYPE_PRIVACY_MODE = "chaton:privacy-mode";

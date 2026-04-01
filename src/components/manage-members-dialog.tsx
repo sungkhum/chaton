@@ -15,7 +15,7 @@ import {
   waitForTransactionFound,
 } from "deso-protocol";
 import { withAuth } from "../utils/with-auth";
-import { Check, CheckCheck, Copy, Link2, Loader2, LogOut, Share2, Trash2, UserPlus, Users, X } from "lucide-react";
+import { Check, CheckCheck, Copy, Globe, Link2, Loader2, LogOut, Share2, Trash2, UserPlus, Users, X } from "lucide-react";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import useKeyDown from "../hooks/useKeyDown";
@@ -38,6 +38,12 @@ import {
   revokeInviteCode,
 } from "../utils/invite-link";
 import { Conversation } from "../utils/types";
+import {
+  fetchCommunityListing,
+  listGroupInCommunity,
+  unlistGroupFromCommunity,
+  updateCommunityListing,
+} from "../services/community.service";
 import { GroupImagePicker } from "./group-image-picker";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { nameOrFormattedKey, SearchUsers } from "./search-users";
@@ -57,7 +63,7 @@ export const ManageMembersDialog = ({
   conversationKey,
   isGroupOwner,
 }: ManageMembersDialogProps) => {
-  const { appUser, allAccessGroups } = useStore();
+  const { appUser, allAccessGroups, decrementJoinRequestCount } = useStore();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -102,6 +108,14 @@ export const ManageMembersDialog = ({
   const [inviteAssociationId, setInviteAssociationId] = useState<string | null>(null);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
+
+  // Community listing state
+  const [isCommunityListed, setIsCommunityListed] = useState(false);
+  const [communityAssociationId, setCommunityAssociationId] = useState<string | null>(null);
+  const [communityDescription, setCommunityDescription] = useState("");
+  const [communityToggling, setCommunityToggling] = useState(false);
+  const [communitySaving, setCommunitySaving] = useState(false);
+  const [savedDescription, setSavedDescription] = useState("");
 
   // Join requests state
   const [joinRequests, setJoinRequests] = useState<JoinRequestEntry[]>([]);
@@ -185,6 +199,24 @@ export const ManageMembersDialog = ({
         if (result) {
           setInviteCode(result.code);
           setInviteAssociationId(result.associationId);
+        }
+      })
+      .catch(() => {});
+
+    // Fetch community listing status
+    fetchCommunityListing(appUser.PublicKeyBase58Check, groupName)
+      .then((result) => {
+        if (cancelled) return;
+        if (result) {
+          setIsCommunityListed(true);
+          setCommunityAssociationId(result.associationId);
+          setCommunityDescription(result.description);
+          setSavedDescription(result.description);
+        } else {
+          setIsCommunityListed(false);
+          setCommunityAssociationId(null);
+          setCommunityDescription("");
+          setSavedDescription("");
         }
       })
       .catch(() => {});
@@ -495,6 +527,68 @@ export const ManageMembersDialog = ({
     }
   };
 
+  // ── Community Listing Handlers ──
+
+  const handleCommunityToggle = async () => {
+    if (!appUser || communityToggling) return;
+    setCommunityToggling(true);
+    const wasListed = isCommunityListed;
+    const prevAssociationId = communityAssociationId;
+    const prevDescription = communityDescription;
+
+    // Optimistic update
+    setIsCommunityListed(!wasListed);
+
+    try {
+      if (wasListed && prevAssociationId) {
+        await unlistGroupFromCommunity(appUser.PublicKeyBase58Check, prevAssociationId);
+        setCommunityAssociationId(null);
+        setCommunityDescription("");
+        setSavedDescription("");
+        toast.success("Removed from community directory");
+      } else {
+        const associationId = await listGroupInCommunity(
+          appUser.PublicKeyBase58Check,
+          groupName,
+          communityDescription
+        );
+        setCommunityAssociationId(associationId);
+        setSavedDescription(communityDescription);
+        toast.success("Listed in community directory");
+      }
+    } catch {
+      // Rollback
+      setIsCommunityListed(wasListed);
+      setCommunityAssociationId(prevAssociationId);
+      setCommunityDescription(prevDescription);
+      setSavedDescription(prevDescription);
+      toast.error("Failed to update community listing");
+    } finally {
+      setCommunityToggling(false);
+    }
+  };
+
+  const handleSaveDescription = async () => {
+    if (!appUser || !communityAssociationId || communitySaving) return;
+    if (communityDescription === savedDescription) return;
+    setCommunitySaving(true);
+    try {
+      const newId = await updateCommunityListing(
+        appUser.PublicKeyBase58Check,
+        communityAssociationId,
+        groupName,
+        communityDescription
+      );
+      setCommunityAssociationId(newId);
+      setSavedDescription(communityDescription);
+      toast.success("Description updated");
+    } catch {
+      toast.error("Failed to update description");
+    } finally {
+      setCommunitySaving(false);
+    }
+  };
+
   // ── Join Request Handlers ──
 
   const handleApproveRequests = async (keysToApprove: string[]) => {
@@ -513,6 +607,7 @@ export const ManageMembersDialog = ({
       );
       setSelectedRequests(new Set());
       setJoinRequestBadge((prev) => Math.max(0, prev - keysToApprove.length));
+      decrementJoinRequestCount(conversationKey, keysToApprove.length);
 
       // Optimistically add approved users to the members list
       for (const req of approvedRequests) {
@@ -562,6 +657,7 @@ export const ManageMembersDialog = ({
       return next;
     });
     setJoinRequestBadge((prev) => Math.max(0, prev - 1));
+    decrementJoinRequestCount(conversationKey, 1);
   };
 
   const toggleRequestSelection = (key: string) => {
@@ -738,6 +834,69 @@ export const ManageMembersDialog = ({
                       )}
                       Create Invite Link
                     </button>
+                  )}
+                </div>
+              )}
+
+              {/* Community Listing Toggle (owner only, when invite link exists) */}
+              {isGroupOwner && inviteCode && (
+                <div className="px-5 py-3 border-b border-blue-600/20 flex-shrink-0">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Globe className="w-4 h-4 text-blue-300 shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-sm text-blue-200 font-medium">List in Community</span>
+                        <p className="text-xs text-blue-300/50">Let others discover this group</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCommunityToggle}
+                      disabled={communityToggling}
+                      className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 ${
+                        isCommunityListed ? "bg-[#34F080]" : "bg-blue-900/40 border border-blue-600/30"
+                      }`}
+                      aria-label={isCommunityListed ? "Remove from community directory" : "List in community directory"}
+                    >
+                      {communityToggling ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin absolute top-[5px] left-[5px] text-white" />
+                      ) : (
+                        <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${
+                          isCommunityListed ? "translate-x-[22px]" : "translate-x-1"
+                        }`} />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Description field (shown when listed) */}
+                  {isCommunityListed && (
+                    <div className="mt-3 space-y-2">
+                      <textarea
+                        value={communityDescription}
+                        onChange={(e) => setCommunityDescription(e.target.value.slice(0, 200))}
+                        placeholder="Add a short description..."
+                        rows={2}
+                        className="w-full rounded-lg px-3 py-2 text-sm text-blue-200 placeholder:text-blue-300/30 bg-blue-900/20 border border-blue-600/20 focus:border-blue-400/40 outline-none resize-none"
+                      />
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-blue-300/40">{communityDescription.length}/200</span>
+                        {communityDescription !== savedDescription && (
+                          <button
+                            type="button"
+                            onClick={handleSaveDescription}
+                            disabled={communitySaving}
+                            className="flex items-center gap-1 px-3 py-1 rounded-lg bg-[#34F080]/15 text-[#34F080] text-xs font-medium hover:bg-[#34F080]/25 cursor-pointer disabled:opacity-50"
+                          >
+                            {communitySaving ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Check className="w-3 h-3" />
+                            )}
+                            Save
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
               )}

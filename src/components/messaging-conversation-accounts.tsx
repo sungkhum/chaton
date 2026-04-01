@@ -1,5 +1,5 @@
 import { ChatType, identity, ProfileEntryResponse } from "deso-protocol";
-import { Archive, ArrowLeft, BellOff, Check, ChevronDown, ChevronRight, MessageSquarePlus, Pencil, RotateCcw, Search, Share2, ShieldOff, Users, X } from "lucide-react";
+import { Archive, ArrowLeft, BellOff, Check, ChevronDown, ChevronRight, Globe, MessageSquarePlus, Pencil, RotateCcw, Search, Share2, ShieldOff, UserPlus, Users, X } from "lucide-react";
 import { FC, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../store";
@@ -12,6 +12,7 @@ import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { SearchMessageResults } from "./search-message-results";
 import { shortenLongWord } from "./search-users";
 import { StartGroupChat } from "./start-group-chat";
+import { CommunityTab } from "./community-tab";
 
 const sortConversations = (
   entries: [string, Conversation][],
@@ -85,8 +86,8 @@ export const MessagingConversationAccount: FC<{
   onSearchResultClick,
   searchClearTrigger,
 }) => {
-  const { allAccessGroups } = useStore();
-  const [activeTab, setActiveTab] = useState<"chats" | "requests">("chats");
+  const { allAccessGroups, appUser, joinRequestCounts } = useStore();
+  const [activeTab, setActiveTab] = useState<"chats" | "requests" | "community">("chats");
   const [groupChatOpen, setGroupChatOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [archiveExpanded, setArchiveExpanded] = useState(false);
@@ -159,7 +160,7 @@ export const MessagingConversationAccount: FC<{
           />
         ) : (
         <>
-        {/* Tab Header — Two tabs only: Chats and Requests */}
+        {/* Tab Header */}
         <div className="flex border-b border-white/10">
           <button
             onClick={() => setActiveTab("chats")}
@@ -185,6 +186,16 @@ export const MessagingConversationAccount: FC<{
                 {requestCount}
               </span>
             )}
+          </button>
+          <button
+            onClick={() => setActiveTab("community")}
+            className={`flex-1 py-3 text-sm font-bold transition-colors cursor-pointer border-b-2 ${
+              activeTab === "community"
+                ? "border-[#34F080] text-[#34F080]"
+                : "border-transparent text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            Community
           </button>
         </div>
 
@@ -346,6 +357,9 @@ export const MessagingConversationAccount: FC<{
                       value.messages[0].RecipientInfo.AccessGroupKeyName
                     )
                   : undefined;
+                const isGroupOwner = isGroupChat &&
+                  appUser?.PublicKeyBase58Check === value.messages[0].RecipientInfo.OwnerPublicKeyBase58Check;
+                const joinReqCount = isGroupOwner ? (joinRequestCounts.get(key) || 0) : 0;
 
                 return (
                   <div key={`message-thread-${key}`}>
@@ -396,7 +410,7 @@ export const MessagingConversationAccount: FC<{
                           </div>
                         </div>
 
-                        {/* Line 2: Preview + Unread badge */}
+                        {/* Line 2: Preview + Badges */}
                         <div className="flex items-center justify-between">
                           <p
                             className={`truncate text-sm ${
@@ -409,11 +423,22 @@ export const MessagingConversationAccount: FC<{
                               ? value.messages[0].DecryptedMessage.slice(0, 60)
                               : ""}
                           </p>
-                          {hasUnread && (
-                            <span className="bg-[#34F080] text-black text-[11px] font-bold rounded-full min-w-[22px] h-[22px] flex items-center justify-center px-1.5 shrink-0 ml-2">
-                              {unreadCount > 99 ? "99+" : unreadCount}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                            {joinReqCount > 0 && (
+                              <span
+                                className="bg-blue-500 text-white text-[10px] font-bold rounded-full h-[20px] flex items-center gap-0.5 px-1.5"
+                                aria-label={`${joinReqCount} pending join ${joinReqCount === 1 ? "request" : "requests"}`}
+                              >
+                                <UserPlus className="w-3 h-3" />
+                                {joinReqCount > 99 ? "99+" : joinReqCount}
+                              </span>
+                            )}
+                            {hasUnread && (
+                              <span className="bg-[#34F080] text-black text-[11px] font-bold rounded-full min-w-[22px] h-[22px] flex items-center justify-center px-1.5">
+                                {unreadCount > 99 ? "99+" : unreadCount}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -649,6 +674,12 @@ export const MessagingConversationAccount: FC<{
                   )}
                 </>
               )}
+            </div>
+          )}
+
+          {activeTab === "community" && (
+            <div className="h-full overflow-hidden">
+              <CommunityTab />
             </div>
           )}
         </div>

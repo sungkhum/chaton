@@ -71,6 +71,11 @@ interface ChatOnState {
   dismissedUsers: Set<string>;
   dismissedAssociationIds: Map<string, string>;
 
+  // Join request badges (for group owners in chat list)
+  joinRequestCounts: Map<string, number>;
+  setJoinRequestCounts: (counts: Map<string, number>) => void;
+  decrementJoinRequestCount: (conversationKey: string, by?: number) => void;
+
   // Privacy mode — controls which ExtraData fields are encrypted
   privacyMode: PrivacyMode;
   privacyModeAssociationId: string | null;
@@ -289,6 +294,21 @@ export const useStore = create<ChatOnState>((set) => ({
   // Dismissed requests
   dismissedUsers: EMPTY_SET,
   dismissedAssociationIds: EMPTY_MAP,
+
+  // Join request badges
+  joinRequestCounts: new Map(),
+
+  setJoinRequestCounts: (counts) => set({ joinRequestCounts: counts }),
+
+  decrementJoinRequestCount: (conversationKey, by = 1) =>
+    set((state) => {
+      const next = new Map(state.joinRequestCounts);
+      const current = next.get(conversationKey) || 0;
+      const updated = Math.max(0, current - by);
+      if (updated === 0) next.delete(conversationKey);
+      else next.set(conversationKey, updated);
+      return { joinRequestCounts: next };
+    }),
 
   // Privacy mode
   privacyMode: "full" as PrivacyMode,
@@ -538,6 +558,7 @@ export const useStore = create<ChatOnState>((set) => ({
       dismissedAssociationIds: EMPTY_MAP,
       chatRequestsLoaded: false,
       mutedConversations: EMPTY_SET,
+      joinRequestCounts: new Map(),
       privacyMode: "full" as PrivacyMode,
       privacyModeAssociationId: null,
       unreadByConversation: new Map(),
