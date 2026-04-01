@@ -12,12 +12,14 @@ import { Toaster } from "sonner";
 import { Header } from "./components/header";
 import { InstallPrompt } from "./components/install-prompt";
 import { MessagingApp } from "./components/messaging-app";
+import { RouteErrorBoundary } from "./components/route-error-boundary";
 
 // bundle-dynamic-imports: Lazy-load route pages so GSAP and page code
 // stay out of the main chunk. Logged-in users never download landing page code.
 const LandingPage = lazy(() => import("./components/landing-page").then(m => ({ default: m.LandingPage })));
 const LegalPage = lazy(() => import("./components/legal-page").then(m => ({ default: m.LegalPage })));
 const SupportPage = lazy(() => import("./components/support-page").then(m => ({ default: m.SupportPage })));
+const JoinGroupPage = lazy(() => import("./components/join-group-page"));
 import { AppUser, useStore } from "./store";
 import { withAuth } from "./utils/with-auth";
 import {
@@ -330,7 +332,8 @@ function App() {
   const splashRemovedRef = useRef(false);
 
   // Remove splash once content is ready (not during loading)
-  const contentReady = !isLoadingUser || !!appUser || path === "/privacy" || path === "/terms" || path === "/support";
+  const isJoinRoute = path === "/join" || path.startsWith("/join/");
+  const contentReady = !isLoadingUser || !!appUser || path === "/privacy" || path === "/terms" || path === "/support" || isJoinRoute;
   useEffect(() => {
     if (!contentReady || splashRemovedRef.current) return;
     splashRemovedRef.current = true;
@@ -371,17 +374,30 @@ function App() {
 
   // Legal pages are always accessible regardless of auth state
   if (path === "/privacy") {
-    return <Suspense fallback={routeFallback}><LegalPage type="privacy" /></Suspense>;
+    return <RouteErrorBoundary><Suspense fallback={routeFallback}><LegalPage type="privacy" /></Suspense></RouteErrorBoundary>;
   }
   if (path === "/terms") {
-    return <Suspense fallback={routeFallback}><LegalPage type="terms" /></Suspense>;
+    return <RouteErrorBoundary><Suspense fallback={routeFallback}><LegalPage type="terms" /></Suspense></RouteErrorBoundary>;
   }
   if (path === "/support") {
     return (
-      <Suspense fallback={routeFallback}>
-        <SupportPage />
-        <Toaster position="top-right" theme="dark" />
-      </Suspense>
+      <RouteErrorBoundary>
+        <Suspense fallback={routeFallback}>
+          <SupportPage />
+          <Toaster position="top-right" theme="dark" />
+        </Suspense>
+      </RouteErrorBoundary>
+    );
+  }
+
+  if (isJoinRoute) {
+    return (
+      <RouteErrorBoundary>
+        <Suspense fallback={routeFallback}>
+          <JoinGroupPage />
+          <Toaster position="top-right" theme="dark" />
+        </Suspense>
+      </RouteErrorBoundary>
     );
   }
 
@@ -389,10 +405,12 @@ function App() {
 
   if (showLanding) {
     return (
-      <Suspense fallback={routeFallback}>
-        <LandingPage />
-        <Toaster position="top-right" theme="dark" />
-      </Suspense>
+      <RouteErrorBoundary>
+        <Suspense fallback={routeFallback}>
+          <LandingPage />
+          <Toaster position="top-right" theme="dark" />
+        </Suspense>
+      </RouteErrorBoundary>
     );
   }
 

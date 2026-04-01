@@ -78,6 +78,13 @@ on-chain follows and User Associations (no backend needed).
 - `chat:group-archived` / value `<AccessGroupKeyName>` — user left/archived a group chat
   (generic `chat:` prefix — any DeSo messaging app can query this to check if a user
   has left a group. Target = group owner's public key, Value = group key name.)
+- `chaton:group-join-request` / value `<AccessGroupKeyName>` — user requests to join a
+  group via invite link. Transactor = requesting user, Target = group owner. Stays
+  on-chain as a receipt after approval; admin panel filters by current membership.
+- `chaton:group-invite-code` / value `<short_code>` — maps an 8-char alphanumeric invite
+  code to a group chat. Transactor = group owner, Target = `CHATON_DONATION_PUBLIC_KEY`
+  (well-known registry key). `ExtraData["group:keyName"]` stores the AccessGroupKeyName.
+  Resolve via `getUserAssociations` by target + type + value. Owner can delete to revoke.
 
 ## ExtraData conventions
 

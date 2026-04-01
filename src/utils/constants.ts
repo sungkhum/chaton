@@ -23,6 +23,16 @@ export const ASSOCIATION_VALUE_ARCHIVED = "archived";
 export const ASSOCIATION_TYPE_DISMISSED = "chaton:chat-dismissed";
 export const ASSOCIATION_VALUE_DISMISSED = "dismissed";
 
+// Join request — a user requests to join a group chat via an invite link.
+// TargetUser = group owner's public key, Value = access group key name.
+export const ASSOCIATION_TYPE_GROUP_JOIN_REQUEST = "chaton:group-join-request";
+
+// Invite code registry — maps a short alphanumeric code to a group chat.
+// Transactor = group owner, Target = CHATON_REGISTRY_PUBLIC_KEY,
+// Value = short code, ExtraData["group:keyName"] = access group key name.
+export const ASSOCIATION_TYPE_GROUP_INVITE_CODE = "chaton:group-invite-code";
+export const INVITE_CODE_LENGTH = 8;
+
 // Privacy mode: self-association (target = self) storing the user's encryption preference.
 // Value is "full" (encrypt all metadata) or "standard" (encrypt only reactions).
 export const ASSOCIATION_TYPE_PRIVACY_MODE = "chaton:privacy-mode";

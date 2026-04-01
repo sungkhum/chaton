@@ -27,6 +27,7 @@ import {
   ASSOCIATION_TYPE_CHAT_ARCHIVED,
   ASSOCIATION_TYPE_DISMISSED,
   ASSOCIATION_TYPE_GROUP_ARCHIVED,
+  ASSOCIATION_TYPE_GROUP_JOIN_REQUEST,
   ASSOCIATION_TYPE_PRIVACY_MODE,
   ASSOCIATION_VALUE_APPROVED,
   ASSOCIATION_VALUE_ARCHIVED,
@@ -877,4 +878,92 @@ export async function setPrivacyModeOnChain(
   });
 
   return res.Associations?.[0]?.AssociationID || "";
+}
+
+// ─── Group Join Requests ─────────────────────────────────────────────
+
+/**
+ * Create a join request association (requester → group owner).
+ */
+export async function createJoinRequest(
+  myPublicKey: string,
+  groupOwnerPublicKey: string,
+  groupKeyName: string
+): Promise<void> {
+  await withAuth(() =>
+    createUserAssociation(
+      {
+        TransactorPublicKeyBase58Check: myPublicKey,
+        TargetUserPublicKeyBase58Check: groupOwnerPublicKey,
+        AssociationType: ASSOCIATION_TYPE_GROUP_JOIN_REQUEST,
+        AssociationValue: groupKeyName,
+      },
+      { checkPermissions: false }
+    )
+  );
+}
+
+/**
+ * Check whether the current user already has a pending join request for a group.
+ */
+export async function hasExistingJoinRequest(
+  myPublicKey: string,
+  groupOwnerPublicKey: string,
+  groupKeyName: string
+): Promise<boolean> {
+  try {
+    const res = await getUserAssociations({
+      TransactorPublicKeyBase58Check: myPublicKey,
+      TargetUserPublicKeyBase58Check: groupOwnerPublicKey,
+      AssociationType: ASSOCIATION_TYPE_GROUP_JOIN_REQUEST,
+      AssociationValue: groupKeyName,
+      Limit: 1,
+    });
+    return (res.Associations?.length ?? 0) > 0;
+  } catch {
+    return false;
+  }
+}
+
+export interface JoinRequestEntry {
+  requesterPublicKey: string;
+  associationId: string;
+  profile: import("deso-protocol").ProfileEntryResponse | null;
+}
+
+/**
+ * Fetch all pending join requests for a group owned by `ownerPublicKey`.
+ * Returns requester public keys, association IDs, and profiles.
+ */
+export async function fetchPendingJoinRequests(
+  ownerPublicKey: string,
+  groupKeyName: string
+): Promise<JoinRequestEntry[]> {
+  const results: JoinRequestEntry[] = [];
+  let lastId = "";
+
+  while (true) {
+    const res = await getUserAssociations({
+      TargetUserPublicKeyBase58Check: ownerPublicKey,
+      AssociationType: ASSOCIATION_TYPE_GROUP_JOIN_REQUEST,
+      AssociationValue: groupKeyName,
+      IncludeTransactorProfile: true,
+      Limit: 100,
+      ...(lastId ? { LastSeenAssociationID: lastId } : {}),
+    });
+
+    const associations = res.Associations ?? [];
+    for (const a of associations) {
+      results.push({
+        requesterPublicKey: a.TransactorPublicKeyBase58Check,
+        associationId: a.AssociationID,
+        profile: a.TransactorProfile ?? null,
+      });
+    }
+
+    if (associations.length < 100) break;
+    lastId = associations[associations.length - 1].AssociationID;
+  }
+
+  return results;
 }
