@@ -281,7 +281,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     return () => document.removeEventListener("mousedown", handleClick);
   }, [reactionPickerFor, deleteMenuFor, hoveredMessage]);
 
-  // Close mobile action bar on scroll
+  // Close mobile action bar on scroll or viewport resize (keyboard open/close)
   useEffect(() => {
     if (!mobileActionFor || !messageAreaRef.current) return;
     const scrollArea = messageAreaRef.current;
@@ -290,7 +290,13 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
       setReactionPickerFor(null);
     };
     scrollArea.addEventListener("scroll", dismiss, { passive: true });
-    return () => scrollArea.removeEventListener("scroll", dismiss);
+    // iOS: keyboard open/close changes visualViewport but not scroll events
+    const vv = window.visualViewport;
+    if (vv) vv.addEventListener("resize", dismiss);
+    return () => {
+      scrollArea.removeEventListener("scroll", dismiss);
+      if (vv) vv.removeEventListener("resize", dismiss);
+    };
   }, [mobileActionFor]);
 
   const clearLongPressTimer = useCallback(() => {
@@ -326,17 +332,27 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     // Guard against stale ref (e.g. message list re-rendered)
     const bubbleRect = bubble.getBoundingClientRect();
     if (bubbleRect.width === 0 && bubbleRect.height === 0) return;
-    const barWidth = bar.offsetWidth;
-    const pad = 12;
 
-    // Vertical: above or below the bubble
+    const scrollArea = messageAreaRef.current;
+    const scrollRect = scrollArea?.getBoundingClientRect();
+    const barWidth = bar.offsetWidth;
+    const barHeight = bar.offsetHeight;
+    const pad = 12;
+    // Minimum top = below the scroll container top (never behind the header)
+    const minTop = scrollRect ? scrollRect.top : 0;
+    const maxBottom = scrollRect ? scrollRect.bottom : window.innerHeight;
+
+    // Vertical: above or below the bubble, clamped to visible area
+    let top: number;
     if (actionBarFlipped) {
-      bar.style.top = `${bubbleRect.bottom + 4}px`;
-      bar.style.bottom = "auto";
+      top = bubbleRect.bottom + 4;
     } else {
-      bar.style.bottom = `${window.innerHeight - bubbleRect.top + 4}px`;
-      bar.style.top = "auto";
+      top = bubbleRect.top - barHeight - 4;
     }
+    // Clamp: never above the scroll area, never below it
+    top = Math.max(minTop, Math.min(top, maxBottom - barHeight));
+    bar.style.top = `${top}px`;
+    bar.style.bottom = "auto";
 
     // Horizontal: align with bubble edge, clamped to viewport
     const isSenderMsg = bubbleRect.left + bubbleRect.width / 2 > window.innerWidth / 2;
