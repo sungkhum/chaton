@@ -3,7 +3,6 @@ import {
   AccessGroupEntryResponse,
   AccessGroupPrivateInfo,
   addAccessGroupMembers,
-  countUserAssociation,
   deleteUserAssociation,
   encrypt,
   getAllAccessGroupsMemberOnly,
@@ -40,7 +39,7 @@ import {
 import { Conversation } from "../utils/types";
 import { GroupImagePicker } from "./group-image-picker";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
-import { SearchUsers } from "./search-users";
+import { nameOrFormattedKey, SearchUsers } from "./search-users";
 
 export interface ManageMembersDialogProps {
   onSuccess: () => void;
@@ -61,7 +60,7 @@ export const ManageMembersDialog = ({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
-  const { members, addMember, removeMember, onPairMissing, currentMemberKeys } =
+  const { members, addMember, addMemberDirect, removeMember, onPairMissing, currentMemberKeys } =
     useMembers(setLoading, open, conversation);
   const membersAreaRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -124,18 +123,21 @@ export const ManageMembersDialog = ({
     if (open) setGroupImageUrl(currentGroupImageUrl);
   }, [open, currentGroupImageUrl]);
 
-  // Badge: count pending join requests.
-  // Refetch on mount AND every time the dialog closes (so it picks up new requests).
+  // Badge: fetch actual pending requests and filter by membership.
+  // Runs on mount and every time the dialog closes (to pick up new requests).
   const [badgeTrigger, setBadgeTrigger] = useState(0);
   useEffect(() => {
     if (!isGroupOwner || !appUser) return;
-    countUserAssociation({
-      TargetUserPublicKeyBase58Check: appUser.PublicKeyBase58Check,
-      AssociationType: ASSOCIATION_TYPE_GROUP_JOIN_REQUEST,
-      AssociationValue: groupName,
-    })
-      .then((res) => setJoinRequestBadge(res.Count ?? 0))
+    let cancelled = false;
+    fetchPendingJoinRequests(appUser.PublicKeyBase58Check, groupName)
+      .then((requests) => {
+        if (cancelled) return;
+        const memberSet = new Set(currentMemberKeys);
+        const pending = requests.filter((r) => !memberSet.has(r.requesterPublicKey));
+        setJoinRequestBadge(pending.length);
+      })
       .catch(() => {});
+    return () => { cancelled = true; };
   }, [isGroupOwner, appUser, groupName, badgeTrigger]);
 
   // When dialog closes, bump the trigger so badge refetches
@@ -472,15 +474,24 @@ export const ManageMembersDialog = ({
     try {
       await addMembersAction(groupName, keysToApprove);
 
-      // Remove approved from the local list
+      // Remove approved from the join requests list
       const approvedSet = new Set(keysToApprove);
       const approvedRequests = joinRequests.filter((r) => approvedSet.has(r.requesterPublicKey));
       setJoinRequests((prev) =>
         prev.filter((r) => !approvedSet.has(r.requesterPublicKey))
       );
       setSelectedRequests(new Set());
-      // Update badge count
       setJoinRequestBadge((prev) => Math.max(0, prev - keysToApprove.length));
+
+      // Optimistically add approved users to the members list
+      for (const req of approvedRequests) {
+        addMemberDirect({
+          id: req.requesterPublicKey,
+          text: nameOrFormattedKey(req.profile, req.requesterPublicKey),
+          profile: req.profile,
+        });
+      }
+
       toast.success(
         keysToApprove.length === 1
           ? "Member approved"

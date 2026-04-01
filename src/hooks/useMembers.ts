@@ -134,9 +134,17 @@ export function useMembers(
     setMembers((state) => state.filter((e) => e.id !== id));
   };
 
+  /** Add a member directly without validation — for use after on-chain approval. */
+  const addMemberDirect = (member: SearchMenuItem) => {
+    if (members.find((e) => e.id === member.id)) return;
+    setMembers((state) => [...state, member]);
+    setCurrentMemberKeys((state) => [...state, member.id]);
+  };
+
   return {
     members,
     addMember,
+    addMemberDirect,
     removeMember,
     onPairMissing,
     currentMemberKeys,
