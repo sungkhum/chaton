@@ -563,19 +563,20 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
       ref={messageAreaRef}
       id="scrollableArea"
     >
-      {/* Mobile long-press backdrop */}
-      {isMobile && mobileActionFor && (
+      {/* Mobile long-press backdrop — portaled to body to escape [contain:layout_style] stacking context */}
+      {isMobile && mobileActionFor && createPortal(
         <div
           className="fixed inset-0 bg-black/40 z-40"
           onTouchStart={(e) => {
             e.preventDefault();
             closeMobileAction();
           }}
-        />
+        />,
+        document.body
       )}
 
-      {/* Mobile emoji bottom sheet */}
-      {isMobile && reactionPickerFor && (
+      {/* Mobile emoji bottom sheet — portaled to body to escape [contain:layout_style] stacking context */}
+      {isMobile && reactionPickerFor && createPortal(
         <div
           ref={pickerRef}
           className="fixed inset-x-0 bottom-0 z-[60] bg-[#141c2b] rounded-t-2xl border-t border-white/10 pb-[env(safe-area-inset-bottom)]"
@@ -622,7 +623,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
               </button>
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
 
       <div className="flex flex-col-reverse">
