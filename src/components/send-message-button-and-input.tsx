@@ -1,4 +1,4 @@
-import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { KeyboardEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Send, Image, Loader2, Pencil, X, Check, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 import { EmojiPickerButton } from "./compose/emoji-picker-button";
@@ -45,6 +45,7 @@ export const SendMessageButtonAndInput = ({
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [pendingImage, setPendingImage] = useState<{ file: File; previewUrl: string } | null>(null);
   const [showLinkPanel, setShowLinkPanel] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputBarRef = useRef<HTMLDivElement>(null);
   const publicKey = useStore((s) => s.appUser?.PublicKeyBase58Check || "");
@@ -340,15 +341,20 @@ export const SendMessageButtonAndInput = ({
     setShowLinkPanel(false);
   };
 
-  // Auto-grow textarea
+  // Auto-size textarea whenever messageToSend changes — covers both typing and
+  // programmatic updates (send, cancel edit, conversation switch).
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 150)}px`;
+  }, [messageToSend]);
+
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setMessageToSend(value);
     onKeystroke?.();
-    const textarea = e.target;
-    textarea.style.height = "auto";
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 150)}px`;
-    updateMentionState(value, textarea.selectionStart);
+    updateMentionState(value, e.target.selectionStart);
   };
 
   const typingLabel =
@@ -359,6 +365,7 @@ export const SendMessageButtonAndInput = ({
         : null;
 
   const showMentionPicker = mentionQuery !== null && filteredMentions.length > 0;
+  const isExpanded = isFocused || messageToSend.length > 0;
 
   return (
     <div ref={inputBarRef} className="w-full px-3 pb-3 md:px-6 md:pb-4">
@@ -388,8 +395,8 @@ export const SendMessageButtonAndInput = ({
         </div>
       )}
 
-      <div className="relative flex items-center gap-1 bg-[#0a1019] rounded-2xl border border-white/8 px-2 py-1.5">
-        {/* Mention picker dropdown */}
+      <div className="relative flex flex-wrap md:flex-nowrap items-center gap-x-1 bg-[#0a1019] rounded-2xl border border-white/8 px-2 py-1.5">
+        {/* Absolutely-positioned overlays */}
         {showMentionPicker && (
           <MentionPicker
             candidates={filteredMentions}
@@ -398,8 +405,6 @@ export const SendMessageButtonAndInput = ({
             onSelect={selectMention}
           />
         )}
-
-        {/* Link attachment panel */}
         {showLinkPanel && (
           <LinkAttachmentPanel
             onSend={handleLinkSend}
@@ -407,8 +412,6 @@ export const SendMessageButtonAndInput = ({
             isSending={isSending}
           />
         )}
-
-        {/* Image preview panel */}
         {pendingImage && (
           <ImagePreviewPanel
             file={pendingImage.file}
@@ -419,39 +422,6 @@ export const SendMessageButtonAndInput = ({
             initialCaption={stagedCaption}
           />
         )}
-
-        {/* Link attachment button */}
-        <button
-          onClick={() => {
-            setShowLinkPanel((v) => !v);
-            setShowGifPicker(false);
-            if (pendingImage) cancelImage();
-          }}
-          aria-label="Attach a link"
-          title="Share a link"
-          className="p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors"
-          type="button"
-        >
-          <Paperclip className="w-[18px] h-[18px]" />
-        </button>
-
-        {/* Image button */}
-        <label className={`p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors ${isUploading ? "opacity-50 pointer-events-none" : ""}`}>
-          {isUploading ? (
-            <Loader2 className="w-[18px] h-[18px] animate-spin" />
-          ) : (
-            <Image className="w-[18px] h-[18px]" />
-          )}
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleImageSelect}
-            disabled={isUploading}
-          />
-        </label>
-
-        {/* GIF/Sticker picker */}
         {showGifPicker && (
           <GifPicker
             onSelectGif={handleGifSelect}
@@ -461,34 +431,69 @@ export const SendMessageButtonAndInput = ({
           />
         )}
 
-        {/* GIF button */}
-        <button
-          onClick={() => {
-            const opening = !showGifPicker;
-            setShowGifPicker(opening);
-            setShowLinkPanel(false);
-            if (pendingImage) cancelImage();
-            // Dismiss keyboard on mobile so the picker has room
-            if (opening) textareaRef.current?.blur();
-          }}
-          className="px-1.5 py-2 text-gray-500 hover:text-[#34F080] cursor-pointer font-extrabold text-[11px] tracking-wide transition-colors shrink-0"
-          type="button"
-        >
-          GIF
-        </button>
+        {/* Toolbar icons — own row on mobile when input is active, inline on desktop */}
+        <div className={`flex items-center gap-1 shrink-0 ${
+          isExpanded
+            ? "w-full pb-1 mb-0.5 border-b border-white/5 md:w-auto md:pb-0 md:mb-0 md:border-b-0"
+            : ""
+        }`}>
+          <button
+            onClick={() => {
+              setShowLinkPanel((v) => !v);
+              setShowGifPicker(false);
+              if (pendingImage) cancelImage();
+            }}
+            aria-label="Attach a link"
+            title="Share a link"
+            className="p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors"
+            type="button"
+          >
+            <Paperclip className="w-[18px] h-[18px]" />
+          </button>
 
-        {/* Emoji button */}
-        <div className="shrink-0">
-          <EmojiPickerButton onEmojiSelect={insertAtCursor} />
+          <label className={`p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors ${isUploading ? "opacity-50 pointer-events-none" : ""}`}>
+            {isUploading ? (
+              <Loader2 className="w-[18px] h-[18px] animate-spin" />
+            ) : (
+              <Image className="w-[18px] h-[18px]" />
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageSelect}
+              disabled={isUploading}
+            />
+          </label>
+
+          <button
+            onClick={() => {
+              const opening = !showGifPicker;
+              setShowGifPicker(opening);
+              setShowLinkPanel(false);
+              if (pendingImage) cancelImage();
+              if (opening) textareaRef.current?.blur();
+            }}
+            className="px-1.5 py-2 text-gray-500 hover:text-[#34F080] cursor-pointer font-extrabold text-[11px] tracking-wide transition-colors shrink-0"
+            type="button"
+          >
+            GIF
+          </button>
+
+          <div className="shrink-0">
+            <EmojiPickerButton onEmojiSelect={insertAtCursor} />
+          </div>
         </div>
 
         {/* Auto-growing textarea */}
         <textarea
           ref={textareaRef}
-          className="flex-1 bg-transparent text-white text-[15px] outline-none resize-none min-h-[36px] max-h-[150px] py-[7px] placeholder:text-gray-600 leading-snug"
+          className="flex-1 min-w-0 bg-transparent text-white text-[15px] outline-none resize-none min-h-[36px] max-h-[150px] py-[7px] placeholder:text-gray-600 leading-snug"
           placeholder="Message..."
           value={messageToSend}
           onChange={handleTextareaChange}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           onKeyDown={async (e) => {
             if (e.key === "Escape" && editingMessage) {
               e.preventDefault();
@@ -496,7 +501,6 @@ export const SendMessageButtonAndInput = ({
               setMessageToSend(conversationKey ? getDraft(conversationKey) : "");
               return;
             }
-            // Mention picker keyboard navigation
             if (showMentionPicker) {
               if (e.key === "ArrowDown") {
                 e.preventDefault();
