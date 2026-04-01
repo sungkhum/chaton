@@ -329,8 +329,26 @@ export const MessagingApp: FC = () => {
       wsFetchingRef.current = true;
 
       getConversations(appUser.PublicKeyBase58Check, allAccessGroups).then(
-        async ({ conversations: updated, updatedAllAccessGroups }) => {
+        async ({ conversations: updated, updatedAllAccessGroups, publicKeyToProfileEntryResponseMap }) => {
           setAllAccessGroups(updatedAllAccessGroups);
+
+          // Update username + profile pic maps from fresh profile data
+          const freshUsernames: Record<string, string> = {};
+          const freshPics: Record<string, string> = {};
+          for (const [pk, profile] of Object.entries(publicKeyToProfileEntryResponseMap)) {
+            if (profile?.Username) freshUsernames[pk] = profile.Username;
+            const ed = profile?.ExtraData;
+            if (ed) {
+              const picUrl = ed.NFTProfilePictureUrl || ed.LargeProfilePicURL;
+              if (picUrl) freshPics[pk] = picUrl;
+            }
+          }
+          if (Object.keys(freshUsernames).length) {
+            setUsernameByPublicKeyBase58Check((s) => ({ ...s, ...freshUsernames }));
+          }
+          if (Object.keys(freshPics).length) {
+            setProfilePicByPublicKey((s) => ({ ...s, ...freshPics }));
+          }
 
           const currentSelectedKey = selectedConversationPublicKeyRef.current;
 
@@ -916,6 +934,13 @@ export const MessagingApp: FC = () => {
       setPubKeyPlusGroupName("");
     }
 
+    // Seed the current user's own username so it's always available for
+    // notifications and display, even before conversations are fetched.
+    const ownUsername = appUser.ProfileEntryResponse?.Username;
+    if (ownUsername) {
+      setUsernameByPublicKeyBase58Check((s) => ({ ...s, [currentKey]: ownUsername }));
+    }
+
     if (hasSetupMessaging(appUser)) {
       // New users who haven't completed onboarding see the wizard first.
       // Existing users are auto-graduated: anyone with cached data OR an
@@ -1064,11 +1089,29 @@ export const MessagingApp: FC = () => {
       }
       pollingRef.current = true;
       try {
-        const { conversations, updatedAllAccessGroups } = await getConversations(
+        const { conversations, updatedAllAccessGroups, publicKeyToProfileEntryResponseMap: pollProfiles } = await getConversations(
           appUser.PublicKeyBase58Check,
           allAccessGroups
         );
         setAllAccessGroups(updatedAllAccessGroups);
+
+        // Update username + profile pic maps from fresh profile data
+        const pollUsernames: Record<string, string> = {};
+        const pollPics: Record<string, string> = {};
+        for (const [pk, profile] of Object.entries(pollProfiles)) {
+          if (profile?.Username) pollUsernames[pk] = profile.Username;
+          const ed = profile?.ExtraData;
+          if (ed) {
+            const picUrl = ed.NFTProfilePictureUrl || ed.LargeProfilePicURL;
+            if (picUrl) pollPics[pk] = picUrl;
+          }
+        }
+        if (Object.keys(pollUsernames).length) {
+          setUsernameByPublicKeyBase58Check((s) => ({ ...s, ...pollUsernames }));
+        }
+        if (Object.keys(pollPics).length) {
+          setProfilePicByPublicKey((s) => ({ ...s, ...pollPics }));
+        }
         const { updatedConversations, pubKeyPlusGroupName } =
           await getConversation(selectedConversationPublicKey, {
             ...conversations,
@@ -1110,7 +1153,7 @@ export const MessagingApp: FC = () => {
     }
 
     return getUsersStateless({
-      PublicKeysBase58Check: Array.from(newPublicKeysToGet),
+      PublicKeysBase58Check: diff,
       SkipForLeaderboard: true,
     }).then((usersStatelessResponse) => {
       const newPublicKeyToUsernames: { [k: string]: string } = {};
@@ -1667,21 +1710,30 @@ export const MessagingApp: FC = () => {
   const chatMembers = membersByGroupKey[selectedConversationPublicKey];
   const activeChatUsersMap: { [k: string]: string } = isGroupChat
     ? Object.keys(chatMembers || {}).reduce<{ [k: string]: string }>(
-        (acc, curr) => ({ ...acc, [curr]: chatMembers[curr]?.Username || "" }),
-        {}
+        (acc, curr) => ({
+          ...acc,
+          [curr]: chatMembers[curr]?.Username || usernameByPublicKeyBase58Check[curr] || "",
+        }),
+        { ...usernameByPublicKeyBase58Check }
       )
     : usernameByPublicKeyBase58Check;
 
   // For group chats, notify ALL members (relay skips the sender).
   // For DMs, notify just the other participant.
+  // Always resolves the sender's username from available sources so callers don't need to pass it.
   const notifyConversation = (convKey: string, dmRecipient: string, fromUsername?: string) => {
+    const resolvedUsername = fromUsername
+      || usernameByPublicKeyBase58Check[appUser?.PublicKeyBase58Check ?? ""]
+      || appUser?.ProfileEntryResponse?.Username
+      || appUser?.PublicKeyBase58Check
+      || "Someone";
     const conv = conversations[convKey];
     const members = membersByGroupKey[convKey];
     if (conv?.ChatType === ChatType.GROUPCHAT && members) {
       const groupName = conv.messages[0]?.RecipientInfo?.AccessGroupKeyName;
-      sendNotify(convKey, Object.keys(members), fromUsername, groupName);
+      sendNotify(convKey, Object.keys(members), resolvedUsername, groupName);
     } else {
-      sendNotify(convKey, [dmRecipient], fromUsername);
+      sendNotify(convKey, [dmRecipient], resolvedUsername);
     }
   };
   return (
