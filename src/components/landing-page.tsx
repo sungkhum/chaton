@@ -265,14 +265,14 @@ export const LandingPage = () => {
 
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-[#0F1520]/90 backdrop-blur-2xl border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-6 md:px-12 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-4 md:px-12 h-16 md:h-20 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 md:gap-4">
             <img
               src="/ChatOn-Logo-Small.png"
               alt="ChatOn"
-              className="w-10 h-10 rounded-xl"
+              className="w-8 h-8 md:w-10 md:h-10 rounded-xl"
             />
-            <span className="text-2xl font-black tracking-tighter">ChatOn</span>
+            <span className="text-xl md:text-2xl font-black tracking-tighter">ChatOn</span>
           </div>
           <div className="hidden md:flex items-center gap-12 text-xs font-bold tracking-[0.2em] uppercase text-gray-400">
             <a href="#features" className="hover:text-[#34F080] transition-colors">Features</a>
@@ -282,25 +282,25 @@ export const LandingPage = () => {
               Donate
             </a>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             <button
               onClick={() => identity.login()}
-              className="px-5 py-2.5 text-gray-300 hover:text-white text-xs font-black transition-colors cursor-pointer"
+              className="px-3 md:px-5 py-2 md:py-2.5 text-gray-400 hover:text-white text-[11px] md:text-xs font-bold md:font-black tracking-wide transition-colors cursor-pointer"
             >
-              LOG IN
+              Log in
             </button>
             <button
               onClick={() => setShowTutorial(true)}
-              className="px-6 py-2.5 landing-btn-vivid text-white text-xs font-black rounded-full transition-all cursor-pointer"
+              className="px-4 md:px-6 py-2 md:py-2.5 landing-btn-vivid text-white text-[11px] md:text-xs font-black rounded-full transition-all cursor-pointer"
             >
-              CREATE ACCOUNT
+              Sign up
             </button>
           </div>
         </div>
       </nav>
 
       {/* Hero */}
-      <section className="relative pt-24 pb-4 md:pt-32 md:pb-28 px-4 md:px-6">
+      <section className="relative pt-22 pb-4 md:pt-32 md:pb-28 px-4 md:px-6">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-20 items-center">
           <div className="lg:col-span-7 text-left">
             <div className="hero-badge inline-flex items-center gap-3 px-4 md:px-6 py-2 rounded-full bg-[#34F080]/8 border border-[#34F080]/20 text-[#34F080] text-[10px] font-black tracking-[0.3em] uppercase mb-6 md:mb-10">
