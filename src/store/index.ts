@@ -34,6 +34,8 @@ interface ChatOnState {
   setLockRefresh: (lock: boolean) => void;
   pendingConversationKey: string | null;
   setPendingConversationKey: (key: string | null) => void;
+  pendingJoinCode: string | null;
+  setPendingJoinCode: (code: string | null) => void;
 
   // Unread badges
   unreadByConversation: Map<string, number>;
@@ -196,6 +198,8 @@ export const useStore = create<ChatOnState>((set) => ({
   setLockRefresh: (lockRefresh) => set({ lockRefresh }),
   pendingConversationKey: null,
   setPendingConversationKey: (pendingConversationKey) => set({ pendingConversationKey }),
+  pendingJoinCode: null,
+  setPendingJoinCode: (pendingJoinCode) => set({ pendingJoinCode }),
 
   // Unread badges
   unreadByConversation: new Map(),

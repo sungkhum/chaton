@@ -78,6 +78,7 @@ import {
 } from "../utils/helpers";
 import { Conversation, ConversationMap } from "../utils/types";
 import { buildExtraData, getGroupImageUrl, MSG_REPLY_TO, MSG_REPLY_PREVIEW } from "../utils/extra-data";
+import { JoinGroupModal } from "./join-group-modal";
 import { ManageMembersDialog } from "./manage-members-dialog";
 import { MessagingBubblesAndAvatar } from "./messaging-bubbles";
 import { MessagingConversationAccount } from "./messaging-conversation-accounts";
@@ -2607,8 +2608,23 @@ export const MessagingApp: FC = () => {
           </div>
         </>
       )}
+
+      {/* In-app join group modal — triggered by clicking a join link in a chat */}
+      <JoinGroupModalWrapper />
     </div>
   );
 };
+
+/** Wrapper that subscribes to the pendingJoinCode store value */
+function JoinGroupModalWrapper() {
+  const code = useStore((s) => s.pendingJoinCode);
+  if (!code) return null;
+  return (
+    <JoinGroupModal
+      code={code}
+      onClose={() => useStore.getState().setPendingJoinCode(null)}
+    />
+  );
+}
 
 

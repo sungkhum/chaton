@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { marked } from "marked";
 import { MentionEntry } from "../../utils/extra-data";
+import { useStore } from "../../store";
 
 // Configure marked for chat messages
 marked.setOptions({
@@ -75,7 +76,7 @@ export function FormattedMessage({
     return raw;
   }, [children, mentions]);
 
-  // Intercept clicks on internal join links — navigate in-app instead of new tab
+  // Intercept clicks on internal join links — open as in-app modal
   const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     const anchor = target.closest<HTMLAnchorElement>("a[data-join-code]");
@@ -83,7 +84,7 @@ export function FormattedMessage({
       e.preventDefault();
       const code = anchor.dataset.joinCode;
       if (code) {
-        window.location.href = `/join/${code}`;
+        useStore.getState().setPendingJoinCode(code);
       }
     }
   }, []);
