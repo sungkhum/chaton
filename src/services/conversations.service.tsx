@@ -9,6 +9,7 @@ import {
   getAllMessageThreads,
   getBulkAccessGroups,
   getFollowersForUser,
+  getPaginatedAccessGroupMembers,
   getUserAssociations,
   identity,
   NewMessageEntryResponse,
@@ -933,7 +934,8 @@ export async function hasExistingJoinRequest(
 export async function fetchJoinRequestCountsForOwner(
   ownerPublicKey: string
 ): Promise<Map<string, number>> {
-  const counts = new Map<string, number>();
+  // First pass: collect all associations and requester keys per group
+  const groupRequesters = new Map<string, Set<string>>(); // groupKeyName → requester keys
   let lastId = "";
 
   while (true) {
@@ -946,13 +948,48 @@ export async function fetchJoinRequestCountsForOwner(
 
     const associations = res.Associations ?? [];
     for (const a of associations) {
-      const conversationKey = ownerPublicKey + a.AssociationValue;
-      counts.set(conversationKey, (counts.get(conversationKey) || 0) + 1);
+      const groupKeyName = a.AssociationValue;
+      if (!groupRequesters.has(groupKeyName)) {
+        groupRequesters.set(groupKeyName, new Set());
+      }
+      groupRequesters.get(groupKeyName)!.add(a.TransactorPublicKeyBase58Check);
     }
 
     if (associations.length < 100) break;
     lastId = associations[associations.length - 1].AssociationID;
   }
+
+  if (groupRequesters.size === 0) return new Map();
+
+  // Second pass: fetch members for each group and filter out already-members
+  const counts = new Map<string, number>();
+  await Promise.all(
+    Array.from(groupRequesters.entries()).map(
+      async ([groupKeyName, requesterKeys]) => {
+        const conversationKey = ownerPublicKey + groupKeyName;
+        try {
+          const membersRes = await getPaginatedAccessGroupMembers({
+            AccessGroupOwnerPublicKeyBase58Check: ownerPublicKey,
+            AccessGroupKeyName: groupKeyName,
+            MaxMembersToFetch: 200,
+          });
+          const memberSet = new Set([
+            ...(membersRes?.AccessGroupMembersBase58Check ?? []),
+            ownerPublicKey, // owner isn't returned by the members API
+          ]);
+          const pendingCount = Array.from(requesterKeys).filter(
+            (k) => !memberSet.has(k)
+          ).length;
+          if (pendingCount > 0) {
+            counts.set(conversationKey, pendingCount);
+          }
+        } catch {
+          // Fallback to raw count if member fetch fails
+          counts.set(conversationKey, requesterKeys.size);
+        }
+      }
+    )
+  );
 
   return counts;
 }
