@@ -968,15 +968,22 @@ export async function fetchJoinRequestCountsForOwner(
       async ([groupKeyName, requesterKeys]) => {
         const conversationKey = ownerPublicKey + groupKeyName;
         try {
-          const membersRes = await getPaginatedAccessGroupMembers({
-            AccessGroupOwnerPublicKeyBase58Check: ownerPublicKey,
-            AccessGroupKeyName: groupKeyName,
-            MaxMembersToFetch: 200,
-          });
-          const memberSet = new Set([
-            ...(membersRes?.AccessGroupMembersBase58Check ?? []),
-            ownerPublicKey, // owner isn't returned by the members API
-          ]);
+          const memberSet = new Set<string>([ownerPublicKey]);
+          let cursor = "";
+          while (true) {
+            const membersRes = await getPaginatedAccessGroupMembers({
+              AccessGroupOwnerPublicKeyBase58Check: ownerPublicKey,
+              AccessGroupKeyName: groupKeyName,
+              MaxMembersToFetch: 100,
+              ...(cursor
+                ? { StartingAccessGroupMemberPublicKeyBase58Check: cursor }
+                : {}),
+            });
+            const pageKeys = membersRes?.AccessGroupMembersBase58Check ?? [];
+            for (const k of pageKeys) memberSet.add(k);
+            if (pageKeys.length < 100) break;
+            cursor = pageKeys[pageKeys.length - 1];
+          }
           const pendingCount = Array.from(requesterKeys).filter(
             (k) => !memberSet.has(k)
           ).length;
