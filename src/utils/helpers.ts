@@ -13,7 +13,7 @@ export const copyTextToClipboard = async (text: string) => {
 };
 
 export const getProfileURL = (username: string | undefined): string => {
-  return username ? `${import.meta.env.VITE_PROFILE_URL}/u/${username}` : "";
+  return username ? `${import.meta.env.VITE_PROFILE_URL}/${username}` : "";
 };
 
 export const desoNanosToDeso = (nanos: number | string | bigint) => {
