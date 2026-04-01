@@ -953,11 +953,15 @@ export async function fetchPendingJoinRequests(
     });
 
     const associations = res.Associations ?? [];
+    const profileMap = res.PublicKeyToProfileEntryResponse ?? {};
     for (const a of associations) {
       results.push({
         requesterPublicKey: a.TransactorPublicKeyBase58Check,
         associationId: a.AssociationID,
-        profile: a.TransactorProfile ?? null,
+        profile:
+          a.TransactorProfile ??
+          profileMap[a.TransactorPublicKeyBase58Check] ??
+          null,
       });
     }
 
