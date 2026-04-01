@@ -7,6 +7,7 @@
 
 :root {
   --app-height: 100%;
+  --app-offset: 0px;
 }
 
 @keyframes splash-pulse {
@@ -50,6 +51,7 @@ body {
 .App {
   height: 100dvh;
   height: var(--app-height);
+  transform: translateY(var(--app-offset, 0px));
   -webkit-overflow-scrolling: touch !important;
 }
 
@@ -62,6 +64,7 @@ body {
   .App {
     height: 100dvh;
     height: var(--app-height);
+    transform: translateY(var(--app-offset, 0px));
   }
 }
 
