@@ -6,7 +6,7 @@ import {
   ProfileEntryResponse,
 } from "deso-protocol";
 import { Loader2, LogIn, UserPlus, CheckCircle2, MessageSquare, AlertCircle, Users, Clock } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../store";
 import { extractInviteCode, resolveInviteCode } from "../utils/invite-link";
@@ -39,6 +39,8 @@ export const JoinGroupPage = () => {
   const [pageState, setPageState] = useState<PageState>("loading");
   const [groupInfo, setGroupInfo] = useState<GroupInfo | null>(null);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const preloadRef = useRef<HTMLImageElement | null>(null);
 
   // Stable key for the main data-loading effect — avoid re-fetching when
   // allAccessGroups array reference changes (membership check is separate).
@@ -102,6 +104,15 @@ export const JoinGroupPage = () => {
           (membersRes?.AccessGroupMembersBase58Check?.length ?? 0) + 1;
         const groupEntry = groupRes.AccessGroupEntries?.[0];
         const groupImageUrl = groupEntry?.ExtraData?.[GROUP_IMAGE_URL] || undefined;
+
+        // Preload the group image immediately — don't wait for React render cycle.
+        // The browser will cache it, so the <img> renders instantly when the card appears.
+        if (groupImageUrl && !cancelled) {
+          const img = new Image();
+          img.src = groupImageUrl;
+          img.onload = () => { if (!cancelled) setImageLoaded(true); };
+          preloadRef.current = img;
+        }
 
         const info: GroupInfo = {
           ownerKey,
@@ -269,15 +280,18 @@ export const JoinGroupPage = () => {
             groupInfo && (
               <div className="landing-glass-card rounded-2xl md:rounded-3xl p-8 md:p-10 border border-[#34F080]/10 flex flex-col items-center gap-6 !transform-none hover:!transform-none">
                 {/* Group avatar */}
-                <div className="w-20 h-20 rounded-full overflow-hidden bg-[#1a2235] flex items-center justify-center border-2 border-[#34F080]/20">
-                  {groupInfo.groupImageUrl ? (
+                <div className="w-20 h-20 rounded-full overflow-hidden bg-[#1a2235] flex items-center justify-center border-2 border-[#34F080]/20 relative">
+                  {/* Always render the fallback icon as a base layer */}
+                  <Users className="w-9 h-9 text-[#34F080]/60" />
+                  {/* Overlay the image on top with a fade-in once loaded */}
+                  {groupInfo.groupImageUrl && (
                     <img
                       src={groupInfo.groupImageUrl}
                       alt={groupName}
-                      className="w-full h-full object-cover"
+                      className="absolute inset-0 w-full h-full object-cover transition-opacity duration-300"
+                      style={{ opacity: imageLoaded ? 1 : 0 }}
+                      onLoad={() => setImageLoaded(true)}
                     />
-                  ) : (
-                    <Users className="w-9 h-9 text-[#34F080]/60" />
                   )}
                 </div>
 
