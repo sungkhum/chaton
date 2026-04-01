@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { marked } from "marked";
 import { MentionEntry } from "../../utils/extra-data";
 
@@ -8,9 +8,17 @@ marked.setOptions({
   gfm: true, // GitHub-flavored markdown (tables, strikethrough, etc.)
 });
 
+// Match internal join links: getchaton.com/join/<code> or localhost:*/join/<code>
+const JOIN_LINK_RE = /^https?:\/\/(?:(?:www\.)?getchaton\.com|localhost:\d+)\/join\/([A-Za-z0-9]+)$/;
+
 // Custom renderer to style links and add security attrs
 const renderer = new marked.Renderer();
 renderer.link = ({ href, text }) => {
+  const joinMatch = href.match(JOIN_LINK_RE);
+  if (joinMatch) {
+    // Internal join link — handle in-app instead of opening a new tab
+    return `<a href="${href}" data-join-code="${joinMatch[1]}" class="internal-join-link">${text}</a>`;
+  }
   return `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
 };
 
@@ -67,10 +75,24 @@ export function FormattedMessage({
     return raw;
   }, [children, mentions]);
 
+  // Intercept clicks on internal join links — navigate in-app instead of new tab
+  const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const anchor = target.closest<HTMLAnchorElement>("a[data-join-code]");
+    if (anchor) {
+      e.preventDefault();
+      const code = anchor.dataset.joinCode;
+      if (code) {
+        window.location.href = `/join/${code}`;
+      }
+    }
+  }, []);
+
   return (
     <div
       className="text-md break-words formatted-message"
       dangerouslySetInnerHTML={{ __html: html }}
+      onClick={handleClick}
     />
   );
 }
