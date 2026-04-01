@@ -197,6 +197,18 @@ export const MessagingApp: FC = () => {
     setBlockConfirm(null);
   }, [selectedConversationPublicKey]);
 
+  // Respond to service worker asking which conversation is active, so it can
+  // suppress push notifications for the conversation the user is viewing.
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === "get-active-conversation" && event.ports[0]) {
+        event.ports[0].postMessage(selectedConversationPublicKeyRef.current || null);
+      }
+    };
+    navigator.serviceWorker?.addEventListener("message", handler);
+    return () => navigator.serviceWorker?.removeEventListener("message", handler);
+  }, []);
+
   // Message search
   const {
     query: searchQuery,

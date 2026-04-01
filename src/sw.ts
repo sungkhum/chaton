@@ -81,6 +81,37 @@ self.addEventListener("push", (event) => {
         }
       }
 
+      // Suppress if user is actively viewing this conversation.
+      // Ask the visible client directly via MessageChannel — no stale IDB data.
+      if (!isMuted && localConvKey) {
+        try {
+          const windowClients = await self.clients.matchAll({ type: "window", includeUncontrolled: false });
+          const visibleClient = windowClients.find((c) => c.visibilityState === "visible");
+          if (visibleClient) {
+            const activeConv = await new Promise<string | null>((resolve) => {
+              let settled = false;
+              const ch = new MessageChannel();
+              ch.port1.onmessage = (e) => {
+                if (!settled) { settled = true; ch.port1.close(); resolve(e.data); }
+              };
+              setTimeout(() => {
+                if (!settled) { settled = true; ch.port1.close(); resolve(null); }
+              }, 500);
+              visibleClient.postMessage({ type: "get-active-conversation" }, [ch.port2]);
+            });
+            if (activeConv === localConvKey) {
+              return self.registration.showNotification("ChatOn", {
+                tag: "chaton-muted",
+                silent: true,
+                data: { url: "/" },
+              });
+            }
+          }
+        } catch {
+          // Clients API unavailable — fall through to normal notification
+        }
+      }
+
       if (isMuted) {
         // iOS requires showNotification() on every push — show a silent,
         // self-replacing notification that disappears quickly.
