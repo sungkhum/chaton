@@ -33,8 +33,8 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "theme_color": "#0F1520",
-  "background_color": "#0F1520",
+  "theme_color": "#040609",
+  "background_color": "#040609",
   "orientation": "portrait-primary",
   "categories": ["social", "communication"]
 }
