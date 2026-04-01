@@ -239,6 +239,21 @@ export const MessagingApp: FC = () => {
     [clearSearch]
   );
 
+  // Ref that always reflects the latest accumulated username map.
+  // React state updates are batched, so reading `usernameByPublicKeyBase58Check`
+  // inside an async callback gives a stale value. This ref is updated alongside
+  // every `setUsernameByPublicKeyBase58Check` call so dedup checks in
+  // `fetchUsersStateless` never re-fetch keys we already resolved.
+  const usernameMapRef = useRef<Record<string, string>>({});
+
+  // Helper: update both state and ref in one call.
+  // The ref is mutated in-place (never rendered directly) to avoid
+  // O(n) shallow-copies when called multiple times in a row.
+  const mergeUsernames = (patch: Record<string, string>) => {
+    Object.assign(usernameMapRef.current, patch);
+    setUsernameByPublicKeyBase58Check((s) => ({ ...s, ...patch }));
+  };
+
   // Refs for accessing latest state inside callbacks without causing re-renders
   const lockRefreshRef = useRef(lockRefresh);
   lockRefreshRef.current = lockRefresh;
@@ -359,7 +374,7 @@ export const MessagingApp: FC = () => {
             }
           }
           if (Object.keys(freshUsernames).length) {
-            setUsernameByPublicKeyBase58Check((s) => ({ ...s, ...freshUsernames }));
+            mergeUsernames(freshUsernames);
           }
           if (Object.keys(freshPics).length) {
             setProfilePicByPublicKey((s) => ({ ...s, ...freshPics }));
@@ -942,6 +957,7 @@ export const MessagingApp: FC = () => {
 
     if (switched) {
       setConversations({});
+      usernameMapRef.current = {};
       setUsernameByPublicKeyBase58Check({});
       setProfilePicByPublicKey({});
       setMembersByGroupKey({});
@@ -953,7 +969,7 @@ export const MessagingApp: FC = () => {
     // notifications and display, even before conversations are fetched.
     const ownUsername = appUser.ProfileEntryResponse?.Username;
     if (ownUsername) {
-      setUsernameByPublicKeyBase58Check((s) => ({ ...s, [currentKey]: ownUsername }));
+      mergeUsernames({ [currentKey]: ownUsername });
     }
 
     if (hasSetupMessaging(appUser)) {
@@ -1129,7 +1145,7 @@ export const MessagingApp: FC = () => {
           }
         }
         if (Object.keys(pollUsernames).length) {
-          setUsernameByPublicKeyBase58Check((s) => ({ ...s, ...pollUsernames }));
+          mergeUsernames(pollUsernames);
         }
         if (Object.keys(pollPics).length) {
           setProfilePicByPublicKey((s) => ({ ...s, ...pollPics }));
@@ -1167,11 +1183,12 @@ export const MessagingApp: FC = () => {
   );
 
   const fetchUsersStateless = async (newPublicKeysToGet: Array<string>) => {
-    const existingKeys = Object.keys(usernameByPublicKeyBase58Check);
-    const diff = newPublicKeysToGet.filter((k) => !existingKeys.includes(k));
+    // Use the ref (always current) instead of state (stale in async callbacks)
+    const known = usernameMapRef.current;
+    const diff = newPublicKeysToGet.filter((k) => !(k in known));
 
     if (diff.length === 0) {
-      return Promise.resolve(usernameByPublicKeyBase58Check);
+      return Promise.resolve(known);
     }
 
     return getUsersStateless({
@@ -1185,11 +1202,8 @@ export const MessagingApp: FC = () => {
           u.ProfileEntryResponse?.Username || "";
       });
 
-      setUsernameByPublicKeyBase58Check((state) => ({
-        ...state,
-        ...newPublicKeyToUsernames,
-      }));
-      return usernameByPublicKeyBase58Check;
+      mergeUsernames(newPublicKeyToUsernames);
+      return usernameMapRef.current;
     });
   };
 
@@ -1239,10 +1253,7 @@ export const MessagingApp: FC = () => {
         if (picUrl) groupProfilePics[pk] = picUrl;
       }
     });
-    setUsernameByPublicKeyBase58Check((state) => ({
-      ...state,
-      ...usernamesByPublicKeyFromGroup,
-    }));
+    mergeUsernames(usernamesByPublicKeyFromGroup);
     setProfilePicByPublicKey((state) => ({
       ...state,
       ...groupProfilePics,
@@ -1307,7 +1318,7 @@ export const MessagingApp: FC = () => {
       }
 
       if (cachedUsernames) {
-        setUsernameByPublicKeyBase58Check((state) => ({ ...state, ...cachedUsernames }));
+        mergeUsernames(cachedUsernames);
       }
 
       const cachedKeyToUse =
@@ -1428,19 +1439,19 @@ export const MessagingApp: FC = () => {
         }
       }
     );
-    setUsernameByPublicKeyBase58Check((state) => ({
-      ...state,
-      ...publicKeyToUsername,
-    }));
+    mergeUsernames(publicKeyToUsername);
     setProfilePicByPublicKey((state) => ({
       ...state,
       ...profilePicUrls,
     }));
-    await updateUsernameToPublicKeyMapFromConversations(DMChats);
-    await Promise.all(GroupChats.map((e) => fetchGroupMembers(e)));
+    // Fetch remaining DM + group member profiles in parallel
+    await Promise.all([
+      updateUsernameToPublicKeyMapFromConversations(DMChats),
+      ...GroupChats.map((e) => fetchGroupMembers(e)),
+    ]);
 
-    // Cache the username map
-    cacheUsernameMap(publicKey, { ...usernameByPublicKeyBase58Check, ...publicKeyToUsername });
+    // Cache the username map using the ref (always current, unlike state)
+    cacheUsernameMap(publicKey, usernameMapRef.current);
 
     // Only force-select if user hasn't already navigated to a different conversation
     if (selectConversation && (!selectedConversationPublicKeyRef.current || selectedConversationPublicKeyRef.current === keyToUse)) {
