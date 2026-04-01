@@ -28,7 +28,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, "index.html"),
-        join: resolve(__dirname, "join.html"),
+        join: resolve(__dirname, "join-invite.html"),
       },
       output: {
         manualChunks: {

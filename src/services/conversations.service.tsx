@@ -971,3 +971,59 @@ export async function fetchPendingJoinRequests(
 
   return results;
 }
+
+/**
+ * Self-cleanup: delete the current user's own join request associations
+ * for groups they are already a member of. The requester is the transactor,
+ * so they CAN delete their own associations. Call on app startup or when
+ * the user visits a join page and is already a member.
+ */
+export async function cleanupOwnJoinRequests(
+  myPublicKey: string,
+  myAccessGroups: import("deso-protocol").AccessGroupEntryResponse[]
+): Promise<void> {
+  // Fetch all join request associations created by this user
+  let lastId = "";
+  const toDelete: string[] = [];
+
+  while (true) {
+    const res = await getUserAssociations({
+      TransactorPublicKeyBase58Check: myPublicKey,
+      AssociationType: ASSOCIATION_TYPE_GROUP_JOIN_REQUEST,
+      Limit: 100,
+      ...(lastId ? { LastSeenAssociationID: lastId } : {}),
+    });
+
+    const associations = res.Associations ?? [];
+    for (const a of associations) {
+      // Check if the user is now a member of this group
+      const isMember = myAccessGroups.some(
+        (g) =>
+          g.AccessGroupOwnerPublicKeyBase58Check ===
+            a.TargetUserPublicKeyBase58Check &&
+          g.AccessGroupKeyName === a.AssociationValue
+      );
+      if (isMember) {
+        toDelete.push(a.AssociationID);
+      }
+    }
+
+    if (associations.length < 100) break;
+    lastId = associations[associations.length - 1].AssociationID;
+  }
+
+  // Delete resolved join requests (best-effort, fire-and-forget)
+  if (toDelete.length > 0) {
+    await Promise.allSettled(
+      toDelete.map((id) =>
+        deleteUserAssociation(
+          {
+            TransactorPublicKeyBase58Check: myPublicKey,
+            AssociationID: id,
+          },
+          { checkPermissions: false }
+        )
+      )
+    );
+  }
+}

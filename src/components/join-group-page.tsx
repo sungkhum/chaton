@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../store";
 import { extractInviteCode, resolveInviteCode } from "../utils/invite-link";
-import { createJoinRequest, hasExistingJoinRequest } from "../services/conversations.service";
+import { cleanupOwnJoinRequests, createJoinRequest, hasExistingJoinRequest } from "../services/conversations.service";
 import { GROUP_IMAGE_URL } from "../utils/extra-data";
 import { PreSignupTutorial } from "./onboarding/pre-signup-tutorial";
 
@@ -42,6 +42,7 @@ export const JoinGroupPage = () => {
   const [showTutorial, setShowTutorial] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const preloadRef = useRef<HTMLImageElement | null>(null);
+  const submittingRef = useRef(false);
 
   // Stable key for the main data-loading effect — avoid re-fetching when
   // allAccessGroups array reference changes (membership check is separate).
@@ -184,11 +185,14 @@ export const JoinGroupPage = () => {
     );
     if (isMember) {
       setPageState("already-member");
+      // Self-cleanup: delete our own stale join request association
+      cleanupOwnJoinRequests(userKey, allAccessGroups).catch(() => {});
     }
   }, [allAccessGroups, groupInfo, userKey]);
 
   const handleRequestJoin = async () => {
-    if (!appUser || !groupInfo) return;
+    if (!appUser || !groupInfo || submittingRef.current) return;
+    submittingRef.current = true;
     setPageState("submitting");
     try {
       await createJoinRequest(
@@ -201,6 +205,8 @@ export const JoinGroupPage = () => {
       console.error("Join request failed:", err);
       toast.error("Failed to send join request. Please try again.");
       setPageState("can-request");
+    } finally {
+      submittingRef.current = false;
     }
   };
 

@@ -26,6 +26,7 @@ import {
   createBlockAssociation,
   createDismissAssociation,
   decryptAccessGroupMessagesWithRetry,
+  cleanupOwnJoinRequests,
   deleteArchiveAssociation,
   deleteAssociationById,
   encryptAndSendNewMessage,
@@ -1014,9 +1015,15 @@ export const MessagingApp: FC = () => {
   }, [appUser]);
 
   useEffect(() => {
-    setSelectedConversationPublicKey("");
     setLockRefresh(isLoadingUser);
-    if (isLoadingUser && appUser) {
+    // Only blank the screen during initial login (no conversations yet).
+    // During same-user re-auth (derived key upgrade), conversations are
+    // already visible — don't reset selection or show loading spinner.
+    const hasConversations = Object.keys(conversations).length > 0;
+    if (!hasConversations) {
+      setSelectedConversationPublicKey("");
+    }
+    if (isLoadingUser && appUser && !hasConversations) {
       setLoading(true);
     }
   }, [isLoadingUser, appUser]);
@@ -1310,6 +1317,10 @@ export const MessagingApp: FC = () => {
       updatedAllAccessGroups,
     } = conversationResult;
     setAllAccessGroups(updatedAllAccessGroups);
+
+    // Self-cleanup: delete any of our own stale join request associations
+    // for groups we've since been added to. Uses fresh access groups, fire-and-forget.
+    cleanupOwnJoinRequests(publicKey, updatedAllAccessGroups).catch(() => {});
     let conversationsResponse = freshConversations || {};
     const keyToUse =
       selectedKey ||

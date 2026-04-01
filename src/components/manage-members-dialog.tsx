@@ -7,6 +7,7 @@ import {
   encrypt,
   getAllAccessGroupsMemberOnly,
   getBulkAccessGroups,
+  getPaginatedAccessGroupMembers,
   identity,
   publicKeyToBase58Check,
   removeAccessGroupMembers,
@@ -124,26 +125,41 @@ export const ManageMembersDialog = ({
     if (open) setGroupImageUrl(currentGroupImageUrl);
   }, [open, currentGroupImageUrl]);
 
-  // Badge: fetch actual pending requests and filter by membership.
-  // Runs on mount and every time the dialog closes (to pick up new requests).
+  // Badge: fetch join requests AND current members independently, then filter.
+  // currentMemberKeys is empty when the dialog is closed, so we fetch members
+  // directly to get an accurate count.
   const [badgeTrigger, setBadgeTrigger] = useState(0);
   useEffect(() => {
     if (!isGroupOwner || !appUser) return;
     let cancelled = false;
-    fetchPendingJoinRequests(appUser.PublicKeyBase58Check, groupName)
-      .then((requests) => {
+    Promise.all([
+      fetchPendingJoinRequests(appUser.PublicKeyBase58Check, groupName),
+      getPaginatedAccessGroupMembers({
+        AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+        AccessGroupKeyName: groupName,
+        MaxMembersToFetch: 200,
+      }).catch(() => null),
+    ])
+      .then(([requests, membersRes]) => {
         if (cancelled) return;
-        const memberSet = new Set(currentMemberKeys);
+        const memberKeys = membersRes?.AccessGroupMembersBase58Check ?? [];
+        // Include the owner (not returned by the members API)
+        const memberSet = new Set([...memberKeys, appUser.PublicKeyBase58Check]);
         const pending = requests.filter((r) => !memberSet.has(r.requesterPublicKey));
         setJoinRequestBadge(pending.length);
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [isGroupOwner, appUser, groupName, badgeTrigger, currentMemberKeys]);
+  }, [isGroupOwner, appUser, groupName, badgeTrigger]);
 
-  // Refresh badge when dialog closes or tab becomes visible
+  // Refresh badge when dialog closes (skip the initial mount where open=false)
+  const dialogOpenedRef = useRef(false);
   useEffect(() => {
-    if (!open) setBadgeTrigger((n) => n + 1);
+    if (open) {
+      dialogOpenedRef.current = true;
+    } else if (dialogOpenedRef.current) {
+      setBadgeTrigger((n) => n + 1);
+    }
   }, [open]);
 
   useEffect(() => {

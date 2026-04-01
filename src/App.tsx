@@ -104,7 +104,11 @@ function App() {
           event === NOTIFICATION_EVENTS.AUTHORIZE_DERIVED_KEY_START &&
           currentUser
         ) {
-          setIsLoadingUser(true);
+          // Only show loading for initial login, not for permission upgrades.
+          // User is already viewing conversations — don't blank the screen.
+          if (!store.appUser) {
+            setIsLoadingUser(true);
+          }
           return;
         }
 

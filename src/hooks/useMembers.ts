@@ -31,62 +31,72 @@ export function useMembers(
 
     if (!open) {
       setMembers([]);
-    } else if (conversation) {
-      setLoading(true);
+      return;
+    }
 
-      const ownerKey = conversation.messages[0].RecipientInfo.OwnerPublicKeyBase58Check;
+    if (!conversation) return;
 
-      getPaginatedAccessGroupMembers({
-        AccessGroupOwnerPublicKeyBase58Check: ownerKey,
-        AccessGroupKeyName:
-          conversation.messages[0].RecipientInfo.AccessGroupKeyName,
-        MaxMembersToFetch:
-          MAX_MEMBERS_TO_REQUEST_IN_GROUP + MAX_MEMBERS_IN_GROUP_SUMMARY_SHOWN,
-      })
-        .then(async (res) => {
-          const memberKeys = res.AccessGroupMembersBase58Check ?? [];
-          const profiles = res.PublicKeyToProfileEntryResponse;
+    let cancelled = false;
+    setLoading(true);
 
-          // The members API doesn't include the group owner — fetch their
-          // profile and insert them if missing.
-          if (!memberKeys.includes(ownerKey)) {
-            memberKeys.push(ownerKey);
-            if (!profiles[ownerKey]) {
-              try {
-                const ownerRes = await getUsersStateless({
-                  PublicKeysBase58Check: [ownerKey],
-                  SkipForLeaderboard: true,
-                });
-                const ownerProfile = ownerRes.UserList?.[0]?.ProfileEntryResponse;
-                if (ownerProfile) profiles[ownerKey] = ownerProfile;
-              } catch {
-                // Non-fatal — will show formatted key as fallback
-              }
+    const ownerKey = conversation.messages[0].RecipientInfo.OwnerPublicKeyBase58Check;
+
+    getPaginatedAccessGroupMembers({
+      AccessGroupOwnerPublicKeyBase58Check: ownerKey,
+      AccessGroupKeyName:
+        conversation.messages[0].RecipientInfo.AccessGroupKeyName,
+      MaxMembersToFetch:
+        MAX_MEMBERS_TO_REQUEST_IN_GROUP + MAX_MEMBERS_IN_GROUP_SUMMARY_SHOWN,
+    })
+      .then(async (res) => {
+        if (cancelled) return;
+        const memberKeys = res.AccessGroupMembersBase58Check ?? [];
+        const profiles = res.PublicKeyToProfileEntryResponse;
+
+        // The members API doesn't include the group owner — fetch their
+        // profile and insert them if missing.
+        if (!memberKeys.includes(ownerKey)) {
+          memberKeys.push(ownerKey);
+          if (!profiles[ownerKey]) {
+            try {
+              const ownerRes = await getUsersStateless({
+                PublicKeysBase58Check: [ownerKey],
+                SkipForLeaderboard: true,
+              });
+              if (cancelled) return;
+              const ownerProfile = ownerRes.UserList?.[0]?.ProfileEntryResponse;
+              if (ownerProfile) profiles[ownerKey] = ownerProfile;
+            } catch {
+              // Non-fatal — will show formatted key as fallback
             }
           }
+        }
 
-          // Sort: owner first, then current user, then everyone else
-          const isOwner = appUser.PublicKeyBase58Check === ownerKey;
-          const sorted = [ownerKey];
-          if (!isOwner) {
-            const myIdx = memberKeys.indexOf(appUser.PublicKeyBase58Check);
-            if (myIdx !== -1) sorted.push(appUser.PublicKeyBase58Check);
-          }
-          for (const pk of memberKeys) {
-            if (!sorted.includes(pk)) sorted.push(pk);
-          }
+        if (cancelled) return;
 
-          setCurrentMemberKeys(sorted);
-          setMembers(
-            sorted.map((publicKey) => ({
-              id: publicKey,
-              profile: profiles[publicKey] ?? null,
-              text: nameOrFormattedKey(profiles[publicKey], publicKey),
-            }))
-          );
-        })
-        .finally(() => setLoading(false));
-    }
+        // Sort: owner first, then current user, then everyone else
+        const isOwner = appUser.PublicKeyBase58Check === ownerKey;
+        const sorted = [ownerKey];
+        if (!isOwner) {
+          const myIdx = memberKeys.indexOf(appUser.PublicKeyBase58Check);
+          if (myIdx !== -1) sorted.push(appUser.PublicKeyBase58Check);
+        }
+        for (const pk of memberKeys) {
+          if (!sorted.includes(pk)) sorted.push(pk);
+        }
+
+        setCurrentMemberKeys(sorted);
+        setMembers(
+          sorted.map((publicKey) => ({
+            id: publicKey,
+            profile: profiles[publicKey] ?? null,
+            text: nameOrFormattedKey(profiles[publicKey], publicKey),
+          }))
+        );
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; };
   }, [open, appUser]);
 
   const onPairMissing = () => {
