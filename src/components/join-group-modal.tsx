@@ -223,7 +223,7 @@ export function JoinGroupModal({ code, onClose }: { code: string; onClose: () =>
                 </div>
 
                 {state === "can-request" && (
-                  <div className="w-full flex flex-col gap-2">
+                  <div className="w-full flex flex-col gap-3">
                     <button
                       onClick={handleRequestJoin}
                       className="w-full px-5 py-3 landing-btn-vivid text-white font-black rounded-xl flex items-center justify-center gap-2 cursor-pointer text-sm"
@@ -231,9 +231,12 @@ export function JoinGroupModal({ code, onClose }: { code: string; onClose: () =>
                       <UserPlus className="w-4 h-4" />
                       Request to Join
                     </button>
-                    <p className="text-gray-500 text-xs text-center">
-                      The group admin will review your request.
-                    </p>
+                    <div className="bg-white/5 rounded-lg px-3 py-2.5">
+                      <p className="text-gray-400 text-xs text-center leading-relaxed">
+                        The group owner will be notified and can approve your request.
+                        You'll see this group in your chats once approved.
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -245,12 +248,18 @@ export function JoinGroupModal({ code, onClose }: { code: string; onClose: () =>
                 )}
 
                 {state === "submitted" && (
-                  <div className="w-full flex flex-col items-center gap-3">
+                  <div className="w-full flex flex-col items-center gap-4">
                     <CheckCircle2 className="w-8 h-8 text-[#34F080]" />
-                    <p className="text-gray-300 text-sm text-center">
-                      Request sent! The group admin will review it shortly.
-                    </p>
-                    <button onClick={onClose} className="mt-1 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold rounded-xl text-sm transition-colors cursor-pointer">
+                    <div className="text-center">
+                      <p className="text-white text-sm font-semibold mb-1">
+                        Request sent!
+                      </p>
+                      <p className="text-gray-400 text-xs leading-relaxed">
+                        The group owner has been notified. Once they approve
+                        your request, this group will appear in your chats automatically.
+                      </p>
+                    </div>
+                    <button onClick={onClose} className="px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold rounded-xl text-sm transition-colors cursor-pointer">
                       Back to Chat
                     </button>
                   </div>
@@ -259,7 +268,13 @@ export function JoinGroupModal({ code, onClose }: { code: string; onClose: () =>
                 {state === "request-pending" && (
                   <div className="w-full flex flex-col items-center gap-3 bg-white/5 rounded-xl p-4">
                     <Clock className="w-7 h-7 text-yellow-400/80" />
-                    <p className="text-gray-300 text-sm text-center">Your request is pending approval.</p>
+                    <div className="text-center">
+                      <p className="text-gray-300 text-sm font-medium mb-1">Waiting for approval</p>
+                      <p className="text-gray-500 text-xs leading-relaxed">
+                        The group owner has your request. This group will appear
+                        in your chats once they approve it.
+                      </p>
+                    </div>
                     <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-xs cursor-pointer transition-colors">
                       Back to Chat
                     </button>

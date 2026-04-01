@@ -370,9 +370,12 @@ export const JoinGroupPage = () => {
                       <UserPlus className="w-4 h-4" />
                       Request to Join
                     </button>
-                    <p className="text-gray-500 text-xs text-center">
-                      The group admin will review your request.
-                    </p>
+                    <div className="bg-white/5 rounded-lg px-4 py-3">
+                      <p className="text-gray-400 text-xs text-center leading-relaxed">
+                        The group owner will be notified and can approve your request.
+                        You'll see this group in your chats once approved.
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -386,20 +389,30 @@ export const JoinGroupPage = () => {
                 )}
 
                 {pageState === "submitted" && (
-                  <div className="w-full flex flex-col items-center gap-3 mt-2">
+                  <div className="w-full flex flex-col items-center gap-4 mt-2">
                     <CheckCircle2 className="w-10 h-10 text-[#34F080]" />
-                    <p className="text-gray-300 text-sm text-center">
-                      Request sent! The group admin will review it shortly.
-                    </p>
+                    <div className="text-center">
+                      <p className="text-white text-sm font-semibold mb-1">
+                        Request sent!
+                      </p>
+                      <p className="text-gray-400 text-xs leading-relaxed">
+                        The group owner has been notified. Once they approve
+                        your request, this group will appear in your chats automatically.
+                      </p>
+                    </div>
                   </div>
                 )}
 
                 {pageState === "request-pending" && (
                   <div className="w-full flex flex-col items-center gap-3 mt-2 bg-white/5 rounded-xl p-4">
                     <Clock className="w-8 h-8 text-yellow-400/80" />
-                    <p className="text-gray-300 text-sm text-center">
-                      Your request is pending approval.
-                    </p>
+                    <div className="text-center">
+                      <p className="text-gray-300 text-sm font-medium mb-1">Waiting for approval</p>
+                      <p className="text-gray-500 text-xs leading-relaxed">
+                        The group owner has your request. This group will appear
+                        in your chats once they approve it.
+                      </p>
+                    </div>
                     <button
                       onClick={handleRequestJoin}
                       className="text-gray-500 hover:text-gray-300 text-xs cursor-pointer transition-colors"
