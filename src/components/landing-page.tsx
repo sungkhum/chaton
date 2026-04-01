@@ -51,7 +51,7 @@ export const LandingPage = () => {
           .from(".hero-badge", { x: -30, autoAlpha: 0 })
           .from(".hero-title", { y: 40, autoAlpha: 0, duration: 1 }, "<0.15")
           .from(".hero-desc", { x: -20, autoAlpha: 0 }, "<0.2")
-          .from(".hero-cta > *", { y: 24, autoAlpha: 0, stagger: 0.12 }, "<0.15")
+          .from(".hero-cta", { y: 24, autoAlpha: 0 }, "<0.15")
           .from(
             ".hero-mockup",
             { x: 60, autoAlpha: 0, rotateY: -8, duration: 1.2, ease: "power2.out" },
@@ -190,6 +190,29 @@ export const LandingPage = () => {
           }
         );
 
+        // ── Community section ──
+        const communityTl = gsap.timeline({
+          defaults: { ease: "power3.out", duration: 0.8 },
+          scrollTrigger: {
+            trigger: ".community-section",
+            start: "top 80%",
+            toggleActions: "play none none none",
+          },
+        });
+
+        communityTl
+          .fromTo(".community-heading", { y: 30, opacity: 0 }, { y: 0, opacity: 1 })
+          .fromTo(".community-cta", { y: 20, opacity: 0 }, { y: 0, opacity: 1 }, "<0.3");
+
+        ScrollTrigger.batch(".community-card", {
+          onEnter: (elements) =>
+            gsap.fromTo(elements,
+              { y: 30, opacity: 0 },
+              { y: 0, opacity: 1, duration: 0.7, stagger: 0.15, ease: "power3.out" }
+            ),
+          start: "top 92%",
+        });
+
         // ── Final CTA section ──
         const ctaTl = gsap.timeline({
           defaults: { ease: "power3.out", duration: 0.9 },
@@ -240,11 +263,13 @@ export const LandingPage = () => {
       // Reduced motion: just make everything visible
       mm.add("(prefers-reduced-motion: reduce)", () => {
         gsap.set(
-          ".hero-badge, .hero-title, .hero-desc, .hero-cta > *, .hero-mockup, " +
+          ".hero-badge, .hero-title, .hero-desc, .hero-cta, .hero-mockup, " +
           ".features-heading, .feature-card, " +
           ".showcase-heading, .showcase-feature > *, .showcase-mini, " +
           ".tech-heading, .tech-subhead, " +
-          ".tech-code, .tech-card, .tech-footer, .cta-heading, .cta-button, " +
+          ".tech-code, .tech-card, .tech-footer, " +
+          ".community-heading, .community-card, .community-cta, " +
+          ".cta-heading, .cta-button, " +
           ".cta-badge, .support-icon, .support-heading, .support-desc, " +
           ".support-btn, .landing-footer",
           { autoAlpha: 1, y: 0, x: 0, scale: 1 }
@@ -258,10 +283,10 @@ export const LandingPage = () => {
   return (
     <div ref={root} className="min-h-screen bg-[#0F1520] text-white selection:bg-[#34F080]/30 selection:text-white relative overflow-x-clip">
       {/* Atmospheric Orbs */}
-      <div className="landing-orb w-[1000px] h-[1000px] bg-[#34F080] bottom-[20%] -left-[400px] opacity-[0.08]" />
-      <div className="landing-orb w-[800px] h-[800px] bg-[#20E0AA] top-[40%] left-[15%] opacity-[0.05]" />
-      <div className="landing-orb w-[1100px] h-[1100px] bg-[#40B8E0] top-[5%] left-[20%] opacity-[0.06]" />
-      <div className="landing-orb w-[900px] h-[900px] bg-[#3090D0] -top-[200px] -right-[200px] opacity-[0.08]" />
+      <div className="landing-orb w-[1000px] h-[1000px] bg-[#34F080] bottom-[20%] -left-[400px] opacity-[0.10]" />
+      <div className="landing-orb w-[800px] h-[800px] bg-[#20E0AA] top-[40%] left-[15%] opacity-[0.07]" />
+      <div className="landing-orb w-[1100px] h-[1100px] bg-[#40B8E0] top-[5%] left-[20%] opacity-[0.08]" />
+      <div className="landing-orb w-[900px] h-[900px] bg-[#3090D0] -top-[200px] -right-[200px] opacity-[0.10]" />
 
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-[#0F1520]/90 backdrop-blur-2xl border-b border-white/5">
@@ -277,6 +302,10 @@ export const LandingPage = () => {
           <div className="hidden md:flex items-center gap-12 text-xs font-bold tracking-[0.2em] uppercase text-gray-400">
             <a href="#features" className="hover:text-[#34F080] transition-colors">Features</a>
             <a href="#technology" className="hover:text-[#34F080] transition-colors">Technology</a>
+            <a href="/community" className="hover:text-[#34F080] transition-colors flex items-center gap-1.5">
+              <Users className="w-3 h-3" />
+              Community
+            </a>
             <a href="/support" className="hover:text-[#34F080] transition-colors flex items-center gap-1.5">
               <Heart className="w-3 h-3" />
               Donate
@@ -319,20 +348,20 @@ export const LandingPage = () => {
               to everyone except you and your recipients.{" "}
               <span className="text-white">Built to scale. Impossible to censor.</span>
             </p>
-            <div className="hero-cta flex flex-col sm:flex-row gap-4 md:gap-8">
+            <div className="hero-cta flex flex-col sm:flex-row gap-4 md:gap-6">
               <button
                 onClick={() => setShowTutorial(true)}
-                className="px-8 py-4 md:px-12 md:py-6 landing-btn-vivid text-white font-black rounded-2xl flex items-center justify-center gap-3 md:gap-4 text-lg md:text-xl group cursor-pointer"
+                className="px-8 py-4 md:px-10 md:py-5 landing-btn-vivid text-white font-black rounded-2xl flex items-center justify-center gap-3 text-lg md:text-xl group cursor-pointer"
               >
-                Start Messaging for Free
-                <ArrowRight className="w-7 h-7 group-hover:translate-x-2 transition-transform" />
+                Start Messaging
+                <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
               </button>
               <a
-                href="#technology"
-                className="flex items-center justify-center gap-3 px-8 text-gray-400 hover:text-[#34F080] font-bold text-lg transition-all group"
+                href="/community"
+                className="px-8 py-4 md:px-10 md:py-5 flex items-center justify-center gap-3 bg-white/5 border border-white/10 hover:border-[#34F080]/40 hover:bg-[#34F080]/5 text-gray-300 hover:text-white font-black text-lg md:text-xl rounded-2xl transition-all group"
               >
-                See how it works
-                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <Users className="w-5 h-5 text-[#34F080]" />
+                Explore Communities
               </a>
             </div>
           </div>
@@ -357,26 +386,26 @@ export const LandingPage = () => {
                 <div className="space-y-3 lg:space-y-6">
                   <div className="relative bg-[#34F080]/8 border border-[#34F080]/20 p-4 lg:p-6 rounded-2xl lg:rounded-[30px] rounded-tr-none ml-4 lg:ml-8">
                     <p className="text-xs lg:text-sm font-semibold text-[#34F080] text-left">
-                      Messages stored on-chain, encrypted with your private key. Only we can read them.
+                      Messages stored on-chain, encrypted with your keys. No one else can read them.
                     </p>
-                    <span className="absolute -bottom-3 right-4 bg-[#1a2233] border border-white/10 rounded-full px-2 py-0.5 text-xs">
-                      🔒
+                    <span className="absolute -bottom-3 right-4 bg-[#1a2233] border border-white/10 rounded-full px-1.5 py-0.5 flex items-center justify-center">
+                      <AnimatedEmoji emoji="🔒" size={18} />
                     </span>
                   </div>
                   <div className="relative bg-white/5 border border-white/10 p-4 lg:p-6 rounded-2xl lg:rounded-[30px] rounded-tl-none mr-4 lg:mr-8">
                     <p className="text-xs lg:text-sm font-semibold text-gray-300 text-left">
                       The blockchain knows we talked. But only we know what we said.
                     </p>
-                    <span className="absolute -bottom-3 left-4 bg-[#1a2233] border border-white/10 rounded-full px-2 py-0.5 text-xs">
-                      🤝
+                    <span className="absolute -bottom-3 left-4 bg-[#1a2233] border border-white/10 rounded-full px-1.5 py-0.5 flex items-center justify-center">
+                      <AnimatedEmoji emoji="🤝" size={18} />
                     </span>
                   </div>
                   <div className="relative bg-[#40B8E0]/10 border border-[#40B8E0]/20 p-4 lg:p-6 rounded-2xl lg:rounded-[30px] rounded-tr-none ml-4 lg:ml-8">
                     <p className="text-xs lg:text-sm font-semibold text-[#40B8E0] text-left">
                       Exactly how messaging should work.
                     </p>
-                    <span className="absolute -bottom-3 right-4 bg-[#1a2233] border border-white/10 rounded-full px-2 py-0.5 text-xs">
-                      🔥
+                    <span className="absolute -bottom-3 right-4 bg-[#1a2233] border border-white/10 rounded-full px-1.5 py-0.5 flex items-center justify-center">
+                      <AnimatedEmoji emoji="🔥" size={18} />
                     </span>
                   </div>
                 </div>
@@ -395,7 +424,7 @@ export const LandingPage = () => {
       <section id="features" className="py-12 md:py-28 px-4 md:px-6 relative">
         <div className="max-w-7xl mx-auto">
           <div className="features-heading text-center mb-10 md:mb-24">
-            <h2 className="text-3xl md:text-7xl font-black tracking-tight mb-5 md:mb-8 max-w-4xl mx-auto leading-tight">
+            <h2 className="text-3xl md:text-7xl font-black tracking-tight mb-5 md:mb-8 max-w-4xl mx-auto leading-tight landing-heading-glow">
               No single company should{" "}
               <span className="text-[#40B8E0]">control your conversations.</span>
             </h2>
@@ -409,7 +438,14 @@ export const LandingPage = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
             <div className="feature-card landing-glass-card p-7 md:p-12 rounded-3xl md:rounded-[48px] group">
-              <h3 className="text-2xl font-black mb-6 text-white group-hover:text-[#34F080] transition-colors text-left">
+              <div className="relative w-14 h-14 md:w-16 md:h-16 mb-6 md:mb-8">
+                <div className="absolute inset-0 rounded-2xl bg-[#34F080]/[0.08] group-hover:bg-[#34F080]/[0.12] transition-all duration-700" />
+                <div className="absolute -inset-3 rounded-3xl bg-[#34F080]/[0.06] blur-xl group-hover:bg-[#34F080]/[0.12] group-hover:-inset-5 group-hover:blur-2xl transition-all duration-700" />
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <Eye className="w-7 h-7 md:w-8 md:h-8 text-[#34F080] drop-shadow-[0_0_8px_rgba(52,240,128,0.4)]" />
+                </div>
+              </div>
+              <h3 className="text-2xl font-black mb-4 text-white group-hover:text-[#34F080] transition-colors text-left">
                 Content Stays Private
               </h3>
               <p className="text-gray-500 font-medium leading-relaxed text-left">
@@ -420,7 +456,14 @@ export const LandingPage = () => {
               </p>
             </div>
             <div className="feature-card landing-glass-card p-7 md:p-12 rounded-3xl md:rounded-[48px] group">
-              <h3 className="text-2xl font-black mb-6 text-white group-hover:text-[#20E0AA] transition-colors text-left">
+              <div className="relative w-14 h-14 md:w-16 md:h-16 mb-6 md:mb-8">
+                <div className="absolute inset-0 rounded-2xl bg-[#20E0AA]/[0.08] group-hover:bg-[#20E0AA]/[0.12] transition-all duration-700" />
+                <div className="absolute -inset-3 rounded-3xl bg-[#20E0AA]/[0.06] blur-xl group-hover:bg-[#20E0AA]/[0.12] group-hover:-inset-5 group-hover:blur-2xl transition-all duration-700" />
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <ShieldCheck className="w-7 h-7 md:w-8 md:h-8 text-[#20E0AA] drop-shadow-[0_0_8px_rgba(32,224,170,0.4)]" />
+                </div>
+              </div>
+              <h3 className="text-2xl font-black mb-4 text-white group-hover:text-[#20E0AA] transition-colors text-left">
                 No Single Point of Failure
               </h3>
               <p className="text-gray-500 font-medium leading-relaxed text-left">
@@ -429,7 +472,14 @@ export const LandingPage = () => {
               </p>
             </div>
             <div className="feature-card landing-glass-card p-7 md:p-12 rounded-3xl md:rounded-[48px] group">
-              <h3 className="text-2xl font-black mb-6 text-white group-hover:text-[#40B8E0] transition-colors text-left">
+              <div className="relative w-14 h-14 md:w-16 md:h-16 mb-6 md:mb-8">
+                <div className="absolute inset-0 rounded-2xl bg-[#40B8E0]/[0.08] group-hover:bg-[#40B8E0]/[0.12] transition-all duration-700" />
+                <div className="absolute -inset-3 rounded-3xl bg-[#40B8E0]/[0.06] blur-xl group-hover:bg-[#40B8E0]/[0.12] group-hover:-inset-5 group-hover:blur-2xl transition-all duration-700" />
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <Ban className="w-7 h-7 md:w-8 md:h-8 text-[#40B8E0] drop-shadow-[0_0_8px_rgba(64,184,224,0.4)]" />
+                </div>
+              </div>
+              <h3 className="text-2xl font-black mb-4 text-white group-hover:text-[#40B8E0] transition-colors text-left">
                 Censorship Resistant
               </h3>
               <p className="text-gray-500 font-medium leading-relaxed text-left">
@@ -438,7 +488,14 @@ export const LandingPage = () => {
               </p>
             </div>
             <div className="feature-card landing-glass-card p-7 md:p-12 rounded-3xl md:rounded-[48px] group">
-              <h3 className="text-2xl font-black mb-6 text-white group-hover:text-[#3090D0] transition-colors text-left">
+              <div className="relative w-14 h-14 md:w-16 md:h-16 mb-6 md:mb-8">
+                <div className="absolute inset-0 rounded-2xl bg-[#3090D0]/[0.08] group-hover:bg-[#3090D0]/[0.12] transition-all duration-700" />
+                <div className="absolute -inset-3 rounded-3xl bg-[#3090D0]/[0.06] blur-xl group-hover:bg-[#3090D0]/[0.12] group-hover:-inset-5 group-hover:blur-2xl transition-all duration-700" />
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <Globe className="w-7 h-7 md:w-8 md:h-8 text-[#3090D0] drop-shadow-[0_0_8px_rgba(48,144,208,0.4)]" />
+                </div>
+              </div>
+              <h3 className="text-2xl font-black mb-4 text-white group-hover:text-[#3090D0] transition-colors text-left">
                 Full Portability
               </h3>
               <p className="text-gray-500 font-medium leading-relaxed text-left">
@@ -456,7 +513,7 @@ export const LandingPage = () => {
       <section className="showcase-section py-12 md:py-28 px-4 md:px-6 relative">
         <div className="max-w-7xl mx-auto">
           <div className="showcase-heading text-center mb-12 md:mb-24">
-            <h2 className="text-3xl md:text-7xl font-black tracking-tight mb-5 md:mb-8 max-w-5xl mx-auto leading-tight">
+            <h2 className="text-3xl md:text-7xl font-black tracking-tight mb-5 md:mb-8 max-w-5xl mx-auto leading-tight landing-heading-glow">
               A full-featured messenger.{" "}
               <span className="landing-text-logo-gradient">On the blockchain.</span>
             </h2>
@@ -577,19 +634,12 @@ export const LandingPage = () => {
                       </div>
                     </div>
                   </div>
-                  {/* GIF message from sender */}
+                  {/* Big emoji reply */}
                   <div className="flex gap-2 items-end">
                     <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#20E0AA]/30 to-[#20E0AA]/10 shrink-0" />
-                    <div>
-                      <div className="rounded-2xl rounded-bl-sm overflow-hidden border border-white/8 max-w-[180px]">
-                        <img
-                          src="https://static.klipy.com/gifs/thumbs-up-okay-658/sm.gif"
-                          alt="Thumbs up GIF"
-                          className="w-[180px] h-auto block"
-                          loading="lazy"
-                        />
-                      </div>
-                      <div className="text-[10px] text-blue-300/40 mt-1 px-1">via KLIPY</div>
+                    <div className="flex items-center gap-1 py-1">
+                      <AnimatedEmoji emoji="👍" size={48} />
+                      <AnimatedEmoji emoji="💯" size={48} />
                     </div>
                   </div>
                 </div>
@@ -730,7 +780,7 @@ export const LandingPage = () => {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-24 items-start mb-10 md:mb-24">
             <div className="text-left">
-              <h2 className="tech-heading text-4xl md:text-8xl font-black tracking-tight mb-5 md:mb-10 leading-[1.05]">
+              <h2 className="tech-heading text-4xl md:text-8xl font-black tracking-tight mb-5 md:mb-10 leading-[1.05] landing-heading-glow">
                 Math is the{" "}
                 <span className="landing-text-logo-gradient">new trust.</span>
               </h2>
@@ -833,6 +883,97 @@ export const LandingPage = () => {
               message content is stored as ciphertext, and that no one (including
               ChatOn) can decrypt it without your private key. This is how we
               prove our privacy claims instead of just asking you to believe them.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div className="landing-divider mx-auto max-w-5xl" />
+
+      {/* Community Section */}
+      <section className="community-section py-12 md:py-28 px-4 md:px-6 relative">
+        <div className="max-w-7xl mx-auto">
+          <div className="community-heading text-center mb-10 md:mb-20">
+            <div className="inline-flex items-center gap-2 text-[10px] font-black tracking-[0.3em] uppercase text-[#34F080] mb-5 md:mb-8">
+              <Globe className="w-4 h-4" />
+              Open Communities
+            </div>
+            <h2 className="text-3xl md:text-7xl font-black tracking-tight mb-5 md:mb-8 max-w-5xl mx-auto leading-tight landing-heading-glow">
+              Find your people.{" "}
+              <span className="landing-text-logo-gradient">Join the conversation.</span>
+            </h2>
+            <p className="text-base md:text-xl text-gray-400 max-w-3xl mx-auto font-medium leading-relaxed">
+              Explore public group chats created by the community — from crypto
+              trading to design, development to DeFi. Every group is encrypted,
+              decentralized, and free to join.
+            </p>
+          </div>
+
+          {/* Community preview cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10 md:mb-16">
+            {[
+              {
+                name: "DeSo Builders",
+                desc: "Building the future of decentralized social. Share projects, get feedback, collaborate.",
+                members: 128,
+                color: "#34F080",
+                initials: "DB",
+              },
+              {
+                name: "Crypto Trading Hub",
+                desc: "Market analysis, trade setups, and real-time discussion. All skill levels welcome.",
+                members: 256,
+                color: "#20E0AA",
+                initials: "CT",
+              },
+              {
+                name: "Web3 Design Studio",
+                desc: "UI/UX designers working on decentralized products. Portfolio reviews, job leads, inspiration.",
+                members: 89,
+                color: "#40B8E0",
+                initials: "WD",
+              },
+            ].map((group) => (
+              <div
+                key={group.name}
+                className="community-card landing-glass-card rounded-3xl p-6 md:p-8 text-left"
+              >
+                <div className="flex items-center gap-3.5 mb-4">
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-black text-black shrink-0"
+                    style={{ background: `linear-gradient(135deg, ${group.color}, ${group.color}80)` }}
+                  >
+                    {group.initials}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-base font-bold text-white truncate">{group.name}</h4>
+                    <p className="text-[11px] text-gray-500">{group.members} members</p>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-400 leading-relaxed mb-5 line-clamp-2">
+                  {group.desc}
+                </p>
+                <div
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-black text-black"
+                  style={{ background: `linear-gradient(135deg, ${group.color}, ${group.color}90)` }}
+                >
+                  Join
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="community-cta text-center">
+            <a
+              href="/community"
+              className="inline-flex items-center gap-3 px-8 py-4 md:px-10 md:py-5 landing-glass-card rounded-2xl text-white font-black text-base md:text-lg hover:border-[#34F080]/25 transition-all group"
+            >
+              Browse All Communities
+              <ArrowRight className="w-5 h-5 text-[#34F080] group-hover:translate-x-2 transition-transform" />
+            </a>
+            <p className="mt-5 text-xs text-gray-600 font-medium">
+              Or list your own group for others to discover
             </p>
           </div>
         </div>
