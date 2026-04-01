@@ -11,21 +11,30 @@ interface ImageMessageProps {
 
 export const ImageMessage = ({ imageUrl, alt, width, height, caption }: ImageMessageProps) => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const aspectRatio = width && height ? width / height : undefined;
 
   return (
     <>
       <div className="max-w-[300px]">
         <div
-          className="cursor-pointer rounded-lg overflow-hidden"
+          className="cursor-pointer rounded-lg overflow-hidden relative"
           onClick={() => setLightboxOpen(true)}
+          style={aspectRatio ? { aspectRatio } : undefined}
         >
+          {!loaded && (
+            <div
+              className="absolute inset-0 bg-white/10 animate-pulse rounded-lg"
+              style={aspectRatio ? { aspectRatio } : { minHeight: 200 }}
+            />
+          )}
           <img
             src={imageUrl}
             alt={alt || "Image"}
-            className="w-full h-auto object-cover"
+            className={`w-full h-auto object-cover transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"}`}
             style={aspectRatio ? { aspectRatio } : undefined}
             loading="lazy"
+            onLoad={() => setLoaded(true)}
           />
         </div>
         {caption && (

@@ -43,7 +43,7 @@ export const SendMessageButtonAndInput = ({
   const [isSending, setIsSending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
-  const [pendingImage, setPendingImage] = useState<{ file: File; previewUrl: string } | null>(null);
+  const [pendingImage, setPendingImage] = useState<{ file: File; previewUrl: string; width?: number; height?: number } | null>(null);
   const [showLinkPanel, setShowLinkPanel] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -272,7 +272,18 @@ export const SendMessageButtonAndInput = ({
     // Capture current text as the image caption and clear the main input
     setStagedCaption(messageToSend);
     setMessageToSend("");
-    setPendingImage({ file, previewUrl: URL.createObjectURL(file) });
+    const previewUrl = URL.createObjectURL(file);
+    // Read image dimensions from the file for layout reservation
+    const img = new window.Image();
+    img.onload = () => {
+      setPendingImage({ file, previewUrl, width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.onerror = () => {
+      setPendingImage({ file, previewUrl });
+    };
+    img.src = previewUrl;
+    // Set immediately without dimensions; onload will update with dimensions
+    setPendingImage({ file, previewUrl });
     setShowLinkPanel(false);
     setShowGifPicker(false);
   };
@@ -295,6 +306,7 @@ export const SendMessageButtonAndInput = ({
       await sendMessage(caption || pendingImage.file.name, buildExtraData({
         type: "image",
         imageUrl: result.ImageURL,
+        ...(pendingImage.width && pendingImage.height ? { mediaWidth: pendingImage.width, mediaHeight: pendingImage.height } : {}),
       }));
       URL.revokeObjectURL(pendingImage.previewUrl);
       setPendingImage(null);
