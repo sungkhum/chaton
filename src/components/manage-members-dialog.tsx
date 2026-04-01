@@ -625,16 +625,17 @@ export const ManageMembersDialog = ({
       {open && (
         <>
           <div className="fixed inset-0 bg-black/60 z-50" onClick={() => setOpen(false)} role="presentation" />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
             <div
               ref={dialogRef}
               role="dialog"
               aria-modal="true"
               aria-labelledby="manage-members-title"
               tabIndex={-1}
-              className="bg-[#050e1d] text-blue-100 border border-blue-900 w-full max-w-[480px] md:max-w-lg rounded-lg max-h-[90vh] overflow-y-auto custom-scrollbar outline-none"
+              className="bg-[#050e1d] text-blue-100 border border-blue-900 w-full sm:max-w-[480px] md:max-w-lg rounded-t-2xl sm:rounded-lg max-h-[92vh] sm:max-h-[90vh] flex flex-col outline-none"
             >
-              <div className="text-blue-100 p-5 border-b border-blue-600/20">
+              {/* Sticky header */}
+              <div className="text-blue-100 p-5 border-b border-blue-600/20 flex-shrink-0">
                 <div className="flex justify-between w-full items-center">
                   <div className="flex items-center gap-4">
                     {isGroupOwner ? (
@@ -678,7 +679,7 @@ export const ManageMembersDialog = ({
 
               {/* Invite Link Section (owner only) */}
               {isGroupOwner && (
-                <div className="px-5 py-3 border-b border-blue-600/20">
+                <div className="px-5 py-3 border-b border-blue-600/20 flex-shrink-0">
                   {inviteCode ? (
                     <div className="space-y-2">
                       <div className="bg-blue-900/20 border border-blue-600/20 rounded-lg px-3 py-2 text-sm text-blue-200 truncate font-mono">
@@ -741,8 +742,9 @@ export const ManageMembersDialog = ({
                 </div>
               )}
 
-              <form name="start-group-chat-form" onSubmit={formSubmit}>
-                <div className="p-5 pb-0">
+              <form name="start-group-chat-form" onSubmit={formSubmit} className="flex flex-col min-h-0 flex-1">
+                {/* Scrollable body */}
+                <div className="p-5 pb-0 overflow-y-auto overflow-x-hidden flex-1 min-h-0 custom-scrollbar">
                   <div className="mb-0">
                     {/* Join Requests Section (owner only) */}
                     {isGroupOwner && joinRequests.length > 0 && (
@@ -902,7 +904,7 @@ export const ManageMembersDialog = ({
                     )}
 
                     <div
-                      className="max-h-[400px] mt-3 pr-3 overflow-y-auto overflow-x-hidden custom-scrollbar"
+                      className="mt-3 pr-1"
                       ref={membersAreaRef}
                     >
                       {loading ? (
@@ -946,7 +948,8 @@ export const ManageMembersDialog = ({
                   </div>
                 </div>
 
-                <div className="flex justify-between p-5 border-t border-blue-600/20 gap-3">
+                {/* Sticky footer */}
+                <div className="flex justify-between p-5 border-t border-blue-600/20 gap-3 flex-shrink-0">
                   {!isGroupOwner && (
                     <button
                       onClick={() => {
