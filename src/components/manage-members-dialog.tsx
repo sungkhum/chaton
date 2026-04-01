@@ -124,7 +124,9 @@ export const ManageMembersDialog = ({
     if (open) setGroupImageUrl(currentGroupImageUrl);
   }, [open, currentGroupImageUrl]);
 
-  // Badge: count pending join requests (runs before dialog opens)
+  // Badge: count pending join requests.
+  // Refetch on mount AND every time the dialog closes (so it picks up new requests).
+  const [badgeTrigger, setBadgeTrigger] = useState(0);
   useEffect(() => {
     if (!isGroupOwner || !appUser) return;
     countUserAssociation({
@@ -134,7 +136,12 @@ export const ManageMembersDialog = ({
     })
       .then((res) => setJoinRequestBadge(res.Count ?? 0))
       .catch(() => {});
-  }, [isGroupOwner, appUser, groupName]);
+  }, [isGroupOwner, appUser, groupName, badgeTrigger]);
+
+  // When dialog closes, bump the trigger so badge refetches
+  useEffect(() => {
+    if (!open) setBadgeTrigger((n) => n + 1);
+  }, [open]);
 
   // Fetch invite code and join requests when dialog opens (owner only)
   useEffect(() => {
@@ -828,6 +835,13 @@ export const ManageMembersDialog = ({
                       <div className="flex items-center gap-2 text-sm text-blue-300/60 mb-3">
                         <Loader2 className="w-4 h-4 animate-spin" />
                         Checking for join requests...
+                      </div>
+                    )}
+
+                    {isGroupOwner && !joinRequestsLoading && joinRequests.length === 0 && (
+                      <div className="text-sm text-blue-300/40 mb-3 flex items-center gap-1.5">
+                        <UserPlus className="w-4 h-4" />
+                        No pending join requests
                       </div>
                     )}
 

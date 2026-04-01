@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1200">
+    <title>Join Group Chat — ChatOn OG Image</title>
+    <style>
+        @import url('https://api.fontshare.com/v2/css?f[]=satoshi@700,900&display=swap');
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --teal-deep:   #0D3D3A;
+            --teal-mid:    #1A8A6E;
+            --aqua:        #20E0AA;
+            --cyan:        #40D8C8;
+            --blue-brand:  #0085FF;
+            --blue-light:  #7EC0FF;
+            --blue-ice:    #CEEAFF;
+            --green-pop:   #34F080;
+            --bg:          #0A1118;
+        }
+
+        body {
+            width: 1200px;
+            height: 630px;
+            overflow: hidden;
+            font-family: 'Satoshi', -apple-system, sans-serif;
+            background: var(--bg);
+            position: relative;
+        }
+
+        /* ── Atmospheric background ── */
+        .bg-base {
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 70% at 35% 55%, rgba(32, 224, 170, 0.07) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 70% 40%, rgba(0, 133, 255, 0.05) 0%, transparent 55%),
+                radial-gradient(ellipse 100% 80% at 50% 110%, rgba(52, 240, 128, 0.04) 0%, transparent 50%),
+                var(--bg);
+        }
+
+        .bg-grain {
+            position: absolute;
+            inset: 0;
+            opacity: 0.35;
+            mix-blend-mode: overlay;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            background-size: 200px 200px;
+        }
+
+        .orb-center {
+            position: absolute;
+            width: 700px;
+            height: 400px;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: radial-gradient(
+                ellipse at center,
+                rgba(32, 224, 170, 0.12) 0%,
+                rgba(0, 133, 255, 0.06) 40%,
+                transparent 70%
+            );
+            filter: blur(60px);
+        }
+
+        .orb-floor {
+            position: absolute;
+            width: 900px;
+            height: 200px;
+            bottom: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: radial-gradient(
+                ellipse at center,
+                rgba(52, 240, 128, 0.04) 0%,
+                transparent 70%
+            );
+            filter: blur(40px);
+        }
+
+        .streak {
+            position: absolute;
+            width: 1400px;
+            height: 1px;
+            top: 52%;
+            left: -100px;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(32, 224, 170, 0.08) 25%,
+                rgba(32, 224, 170, 0.18) 50%,
+                rgba(0, 133, 255, 0.08) 75%,
+                transparent 100%
+            );
+        }
+
+        .streak-soft {
+            position: absolute;
+            width: 1400px;
+            height: 80px;
+            top: calc(52% - 40px);
+            left: -100px;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(32, 224, 170, 0.02) 25%,
+                rgba(32, 224, 170, 0.04) 50%,
+                rgba(0, 133, 255, 0.02) 75%,
+                transparent 100%
+            );
+            filter: blur(25px);
+        }
+
+        .vignette {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse 75% 65% at 50% 48%, transparent 35%, var(--bg) 100%);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* ── Content ── */
+        .content {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+        }
+
+        /* ── Group avatar cluster ── */
+        .avatar-cluster {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 36px;
+            position: relative;
+        }
+
+        .avatar {
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            border: 3px solid var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .avatar:not(:first-child) {
+            margin-left: -18px;
+        }
+
+        .avatar-1 {
+            background: linear-gradient(135deg, rgba(32, 224, 170, 0.25), rgba(32, 224, 170, 0.08));
+            z-index: 3;
+        }
+        .avatar-2 {
+            background: linear-gradient(135deg, rgba(0, 133, 255, 0.25), rgba(0, 133, 255, 0.08));
+            z-index: 2;
+        }
+        .avatar-3 {
+            background: linear-gradient(135deg, rgba(52, 240, 128, 0.25), rgba(52, 240, 128, 0.08));
+            z-index: 1;
+        }
+
+        .avatar svg {
+            width: 28px;
+            height: 28px;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+        }
+        .avatar-1 svg { stroke: rgba(32, 224, 170, 0.55); }
+        .avatar-2 svg { stroke: rgba(0, 133, 255, 0.55); }
+        .avatar-3 svg { stroke: rgba(52, 240, 128, 0.55); }
+
+        /* Plus badge on last avatar */
+        .avatar-plus {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--green-pop);
+            border: 3px solid var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 5;
+        }
+        .avatar-plus svg {
+            width: 12px;
+            height: 12px;
+            stroke: var(--bg);
+            stroke-width: 3;
+        }
+
+        /* ── Headline ── */
+        .headline {
+            font-size: 82px;
+            font-weight: 900;
+            letter-spacing: -3px;
+            line-height: 1;
+            background: linear-gradient(
+                135deg,
+                #CEEAFF 0%,
+                #ffffff 15%,
+                #ffffff 35%,
+                #40D8C8 60%,
+                #20E0AA 80%,
+                #34F080 100%
+            );
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 0 50px rgba(32, 224, 170, 0.12));
+            margin-bottom: 18px;
+            text-align: center;
+        }
+
+        .tagline {
+            font-size: 28px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.40);
+            letter-spacing: -0.3px;
+            text-align: center;
+            line-height: 1.3;
+        }
+
+        .tagline strong {
+            color: rgba(255, 255, 255, 0.75);
+            font-weight: 900;
+        }
+
+        /* ── Branding row ── */
+        .brand-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-top: 32px;
+        }
+
+        .brand-logo {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            object-fit: contain;
+            box-shadow:
+                0 0 30px rgba(32, 224, 170, 0.15),
+                0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .brand-name {
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: -1px;
+            color: rgba(255, 255, 255, 0.55);
+        }
+
+        .brand-divider {
+            width: 1px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px;
+            background: rgba(32, 224, 170, 0.05);
+            border: 1px solid rgba(32, 224, 170, 0.10);
+            border-radius: 100px;
+        }
+
+        .badge svg {
+            width: 14px;
+            height: 14px;
+            fill: none;
+            stroke: rgba(32, 224, 170, 0.50);
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .badge span {
+            font-size: 11px;
+            font-weight: 800;
+            color: rgba(32, 224, 170, 0.45);
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+        }
+
+        /* ── Corner marks ── */
+        .corner {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            z-index: 15;
+            opacity: 0.12;
+        }
+        .corner::before, .corner::after {
+            content: '';
+            position: absolute;
+            background: var(--aqua);
+        }
+        .corner.tl { top: 32px; left: 32px; }
+        .corner.tl::before { top: 0; left: 0; width: 1px; height: 100%; }
+        .corner.tl::after  { top: 0; left: 0; width: 100%; height: 1px; }
+
+        .corner.tr { top: 32px; right: 32px; }
+        .corner.tr::before { top: 0; right: 0; width: 1px; height: 100%; }
+        .corner.tr::after  { top: 0; right: 0; width: 100%; height: 1px; }
+
+        .corner.bl { bottom: 32px; left: 32px; }
+        .corner.bl::before { bottom: 0; left: 0; width: 1px; height: 100%; }
+        .corner.bl::after  { bottom: 0; left: 0; width: 100%; height: 1px; }
+
+        .corner.br { bottom: 32px; right: 32px; }
+        .corner.br::before { bottom: 0; right: 0; width: 1px; height: 100%; }
+        .corner.br::after  { bottom: 0; right: 0; width: 100%; height: 1px; }
+
+        .watermark {
+            position: absolute;
+            bottom: 36px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.12);
+            z-index: 15;
+        }
+
+        /* ── Decorative chat bubbles (subtler, pushed to edges) ── */
+        .bubble {
+            position: absolute;
+            border-radius: 18px;
+            z-index: 5;
+        }
+
+        .dot-row {
+            display: flex;
+            gap: 7px;
+            padding: 14px 20px;
+        }
+
+        .dot {
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .bubble-l1 {
+            width: 160px;
+            left: 45px;
+            top: 120px;
+            background: rgba(32, 224, 170, 0.05);
+            border: 1px solid rgba(32, 224, 170, 0.08);
+            border-bottom-left-radius: 5px;
+            transform: rotate(-2deg);
+        }
+        .bubble-l1 .dot { width: 8px; background: rgba(32, 224, 170, 0.18); }
+
+        .bubble-l2 {
+            width: 130px;
+            left: 70px;
+            bottom: 130px;
+            background: rgba(52, 240, 128, 0.04);
+            border: 1px solid rgba(52, 240, 128, 0.06);
+            border-bottom-left-radius: 5px;
+            transform: rotate(1.5deg);
+        }
+        .bubble-l2 .dot { width: 8px; background: rgba(52, 240, 128, 0.14); }
+
+        .bubble-r1 {
+            width: 150px;
+            right: 50px;
+            top: 155px;
+            background: rgba(0, 133, 255, 0.05);
+            border: 1px solid rgba(0, 133, 255, 0.08);
+            border-bottom-right-radius: 5px;
+            transform: rotate(2deg);
+        }
+        .bubble-r1 .dot { width: 8px; background: rgba(0, 133, 255, 0.18); }
+
+        .bubble-r2 {
+            width: 170px;
+            right: 65px;
+            bottom: 115px;
+            background: rgba(126, 192, 255, 0.03);
+            border: 1px solid rgba(126, 192, 255, 0.06);
+            border-bottom-right-radius: 5px;
+            transform: rotate(-1.5deg);
+        }
+        .bubble-r2 .dot { width: 8px; background: rgba(126, 192, 255, 0.12); }
+    </style>
+</head>
+<body>
+    <!-- Background layers -->
+    <div class="bg-base"></div>
+    <div class="bg-grain"></div>
+    <div class="orb-center"></div>
+    <div class="orb-floor"></div>
+    <div class="streak-soft"></div>
+    <div class="streak"></div>
+    <div class="vignette"></div>
+
+    <!-- Decorative chat bubbles -->
+    <div class="bubble bubble-l1">
+        <div class="dot-row">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        </div>
+    </div>
+    <div class="bubble bubble-r1">
+        <div class="dot-row">
+            <div class="dot" style="width:20px;border-radius:5px"></div>
+            <div class="dot"></div><div class="dot"></div>
+        </div>
+    </div>
+    <div class="bubble bubble-l2">
+        <div class="dot-row">
+            <div class="dot"></div>
+            <div class="dot" style="width:18px;border-radius:5px"></div>
+        </div>
+    </div>
+    <div class="bubble bubble-r2">
+        <div class="dot-row">
+            <div class="dot" style="width:16px;border-radius:5px"></div>
+            <div class="dot"></div>
+            <div class="dot" style="width:12px;border-radius:5px"></div>
+        </div>
+    </div>
+
+    <!-- Corner marks -->
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+
+    <!-- Main content -->
+    <div class="content">
+        <!-- Avatar cluster representing group members -->
+        <div class="avatar-cluster">
+            <div class="avatar avatar-1">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+            </div>
+            <div class="avatar avatar-2">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+            </div>
+            <div class="avatar avatar-3">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+                <div class="avatar-plus">
+                    <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="headline">You're invited</div>
+        <div class="tagline">Join a <strong>private group</strong> on ChatOn</div>
+
+        <!-- Brand row: logo + name + E2E badge -->
+        <div class="brand-row">
+            <img src="ChatOn-Logo-Small.png" alt="ChatOn" class="brand-logo">
+            <span class="brand-name">ChatOn</span>
+            <div class="brand-divider"></div>
+            <div class="badge">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <polyline points="9 12 11 14 15 10"/>
+                </svg>
+                <span>End-to-End Encrypted</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Watermark -->
+    <div class="watermark">Built on DeSo</div>
+</body>
+</html>
