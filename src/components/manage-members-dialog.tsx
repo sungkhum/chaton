@@ -107,6 +107,7 @@ export const ManageMembersDialog = ({
   const [joinRequestsLoading, setJoinRequestsLoading] = useState(false);
   const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
   const [approvingKeys, setApprovingKeys] = useState<Set<string>>(new Set());
+  const approvingRef = useRef(false);
 
   // Badge: count pending join requests (initialized below after groupName)
   const [joinRequestBadge, setJoinRequestBadge] = useState(0);
@@ -138,12 +139,23 @@ export const ManageMembersDialog = ({
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [isGroupOwner, appUser, groupName, badgeTrigger]);
+  }, [isGroupOwner, appUser, groupName, badgeTrigger, currentMemberKeys]);
 
-  // When dialog closes, bump the trigger so badge refetches
+  // Refresh badge when dialog closes or tab becomes visible
   useEffect(() => {
     if (!open) setBadgeTrigger((n) => n + 1);
   }, [open]);
+
+  useEffect(() => {
+    if (!isGroupOwner) return;
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        setBadgeTrigger((n) => n + 1);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [isGroupOwner]);
 
   // Fetch invite code and join requests when dialog opens (owner only)
   useEffect(() => {
@@ -283,18 +295,20 @@ export const ManageMembersDialog = ({
     const memberKeysToAdd = memberKeys.filter((k) => !currentSet.has(k));
     const memberKeysToRemove = currentMemberKeys.filter((k) => !memberSet.has(k));
 
+    if (updating) return;
     setUpdating(true);
     try {
       // Sequential: add members first, then remove. These are irreversible
       // blockchain transactions — if add fails we must not have already removed.
       await addMembersAction(groupName, memberKeysToAdd);
       await removeMembersAction(groupName, memberKeysToRemove);
+      onSuccess();
+      handleOpen();
+    } catch {
+      // Errors already toasted by updateMembers
     } finally {
       setUpdating(false);
     }
-
-    onSuccess();
-    handleOpen();
   };
 
   const addMembersAction = async (groupName: string, memberKeys: Array<string>) => {
@@ -468,7 +482,8 @@ export const ManageMembersDialog = ({
   // ── Join Request Handlers ──
 
   const handleApproveRequests = async (keysToApprove: string[]) => {
-    if (!appUser || keysToApprove.length === 0) return;
+    if (!appUser || keysToApprove.length === 0 || approvingRef.current) return;
+    approvingRef.current = true;
 
     setApprovingKeys(new Set(keysToApprove));
     try {
@@ -518,6 +533,7 @@ export const ManageMembersDialog = ({
     } catch {
       toast.error("Failed to approve members");
     } finally {
+      approvingRef.current = false;
       setApprovingKeys(new Set());
     }
   };

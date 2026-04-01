@@ -6,7 +6,7 @@ import {
   ProfileEntryResponse,
 } from "deso-protocol";
 import { Loader2, LogIn, UserPlus, CheckCircle2, MessageSquare, AlertCircle, Users, Clock } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../store";
 import { extractInviteCode, resolveInviteCode } from "../utils/invite-link";
@@ -32,6 +32,7 @@ interface GroupInfo {
   groupImageUrl?: string;
   ownerProfile: ProfileEntryResponse | null;
   memberCount: number;
+  memberCountCapped: boolean;
 }
 
 export const JoinGroupPage = () => {
@@ -99,9 +100,10 @@ export const JoinGroupPage = () => {
 
         const ownerProfile =
           profileRes.UserList?.[0]?.ProfileEntryResponse ?? null;
-        // Member count + 1 for the owner (who is not in the members list)
-        const memberCount =
-          (membersRes?.AccessGroupMembersBase58Check?.length ?? 0) + 1;
+        // Member count + 1 for the owner (who is not in the members list).
+        // If the API returned the max (50), the real count may be higher.
+        const rawMemberCount = membersRes?.AccessGroupMembersBase58Check?.length ?? 0;
+        const memberCount = rawMemberCount + 1;
         const groupEntry = groupRes.AccessGroupEntries?.[0];
         const groupImageUrl = groupEntry?.ExtraData?.[GROUP_IMAGE_URL] || undefined;
 
@@ -120,6 +122,7 @@ export const JoinGroupPage = () => {
           groupImageUrl,
           ownerProfile,
           memberCount,
+          memberCountCapped: rawMemberCount >= 50,
         };
         setGroupInfo(info);
 
@@ -146,13 +149,18 @@ export const JoinGroupPage = () => {
           return;
         }
 
-        // Check for existing join request
+        // Check for existing join request — but only block if the user
+        // hasn't been a member before. If they were approved, left, and
+        // came back, the old association still exists on-chain but they
+        // should be allowed to re-request.
         const hasPending = await hasExistingJoinRequest(
           userKey,
           ownerKey,
           groupKeyName
         );
         if (cancelled) return;
+        // Show "request-pending" only if there's an existing request.
+        // The user can always submit again (DeSo allows duplicate associations).
         setPageState(hasPending ? "request-pending" : "can-request");
       } catch (err) {
         console.error("Failed to load join page:", err);
@@ -165,19 +173,19 @@ export const JoinGroupPage = () => {
     };
   }, [userKey, isLoadingUser]);
 
-  // Separate memo for membership — re-evaluates when allAccessGroups changes
+  // Separate effect for membership — re-evaluates when allAccessGroups changes
   // without re-triggering the entire data-loading effect.
-  useMemo(() => {
+  useEffect(() => {
     if (!groupInfo || !userKey || userKey === groupInfo.ownerKey) return;
     const isMember = allAccessGroups.some(
       (g) =>
         g.AccessGroupOwnerPublicKeyBase58Check === groupInfo.ownerKey &&
         g.AccessGroupKeyName === groupInfo.groupKeyName
     );
-    if (isMember && pageState !== "already-member") {
+    if (isMember) {
       setPageState("already-member");
     }
-  }, [allAccessGroups, groupInfo, userKey, pageState]);
+  }, [allAccessGroups, groupInfo, userKey]);
 
   const handleRequestJoin = async () => {
     if (!appUser || !groupInfo) return;
@@ -197,16 +205,14 @@ export const JoinGroupPage = () => {
   };
 
   const handleLogin = () => {
-    identity.login();
+    identity.login().catch(() => {});
   };
 
   const handleOpenChat = () => {
     if (!groupInfo) return;
     const conversationKey =
       groupInfo.ownerKey + groupInfo.groupKeyName;
-    // Use store to set pending conversation key then navigate — avoids full reload
-    useStore.getState().setPendingConversationKey(conversationKey);
-    window.location.href = "/";
+    window.location.href = `/?conversation=${encodeURIComponent(conversationKey)}`;
   };
 
   const groupName = groupInfo?.groupKeyName ?? "";
@@ -304,8 +310,8 @@ export const JoinGroupPage = () => {
                     Created by{" "}
                     <span className="text-[#34F080]">@{ownerUsername}</span>
                     {" \u00b7 "}
-                    {groupInfo.memberCount}{" "}
-                    {groupInfo.memberCount === 1 ? "member" : "members"}
+                    {groupInfo.memberCountCapped ? "50+" : groupInfo.memberCount}{" "}
+                    members
                   </p>
                 </div>
 
@@ -371,6 +377,12 @@ export const JoinGroupPage = () => {
                     <p className="text-gray-300 text-sm text-center">
                       Your request is pending approval.
                     </p>
+                    <button
+                      onClick={handleRequestJoin}
+                      className="text-gray-500 hover:text-gray-300 text-xs cursor-pointer transition-colors"
+                    >
+                      Request again
+                    </button>
                   </div>
                 )}
 
