@@ -202,9 +202,25 @@ export const JoinGroupPage = () => {
         groupInfo.groupKeyName
       );
       setPageState("submitted");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Join request failed:", err);
-      toast.error("Failed to send join request. Please try again.");
+      const msg = err?.message || err?.toString?.() || "";
+      // withAuth already toasts for auth-related errors (cancelled, re-auth failed).
+      // Only show our own toast for non-auth errors to avoid double-toasting.
+      const isAuthError =
+        msg.includes("cancelled") ||
+        msg.includes("WINDOW_CLOSED") ||
+        msg.includes("Re-authorization") ||
+        msg.includes("derived key");
+      if (!isAuthError) {
+        if (msg.includes("RuleError")) {
+          // DeSo blockchain rule error — show the specific reason
+          const ruleMsg = msg.replace(/^.*RuleError/i, "").replace(/['"]/g, "").trim();
+          toast.error(`Request failed: ${ruleMsg || "blockchain rejected the transaction"}`);
+        } else {
+          toast.error("Failed to send join request. Please try again.");
+        }
+      }
       setPageState("can-request");
     } finally {
       submittingRef.current = false;
