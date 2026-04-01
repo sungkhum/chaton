@@ -179,18 +179,4 @@ self.addEventListener("notificationclick", (event) => {
   );
 });
 
-// Let /join/* navigation requests pass through to the network.
-// Cloudflare Pages' _redirects serves join-invite.html (same app JS
-// bundles) which keeps the invite code in the URL. Without this,
-// Serwist's precache routing would 308-redirect and strip the code.
-self.addEventListener("fetch", (event) => {
-  const url = new URL(event.request.url);
-  if (
-    event.request.mode === "navigate" &&
-    (url.pathname.startsWith("/join/") || url.pathname === "/join")
-  ) {
-    event.respondWith(fetch(event.request));
-  }
-});
-
 serwist.addEventListeners();

@@ -1,7 +1,6 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { serwist } from "@serwist/vite";
-import { resolve } from "path";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
@@ -16,7 +15,6 @@ export default defineConfig({
       globDirectory: "dist",
       injectionPoint: "self.__SW_MANIFEST",
       rollupFormat: "iife",
-      globIgnores: ["join-invite.html"],
     }),
   ],
   server: {
@@ -27,10 +25,6 @@ export default defineConfig({
     outDir: "dist",
     sourcemap: true,
     rollupOptions: {
-      input: {
-        main: resolve(__dirname, "index.html"),
-        join: resolve(__dirname, "join-invite.html"),
-      },
       output: {
         manualChunks: {
           "deso": ["deso-protocol"],
