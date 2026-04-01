@@ -135,7 +135,7 @@ export const ManageMembersDialog = ({
   const currentGroupImageUrl = getGroupImageUrl(allAccessGroups, groupOwnerKey, groupName) || "";
   const [groupImageUrl, setGroupImageUrl] = useState(currentGroupImageUrl);
 
-  const currentDisplayName = getGroupDisplayName(allAccessGroups, groupOwnerKey, groupName) || groupName;
+  const currentDisplayName = getGroupDisplayName(allAccessGroups, groupOwnerKey, groupName) || groupName.replace(/\0/g, "");
   const [editingName, setEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState(currentDisplayName);
   const [savingName, setSavingName] = useState(false);

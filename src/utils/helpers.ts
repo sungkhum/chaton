@@ -52,7 +52,7 @@ export const getChatNameFromConversation = (
     );
     if (displayName) return displayName;
   }
-  return recipientInfo.AccessGroupKeyName;
+  return recipientInfo.AccessGroupKeyName.replace(/\0/g, "");
 };
 
 export const isMaybeDeSoPublicKey = (query: string): boolean => {

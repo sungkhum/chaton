@@ -241,7 +241,7 @@ export const JoinGroupPage = () => {
     window.location.href = `/?conversation=${encodeURIComponent(conversationKey)}`;
   };
 
-  const groupName = groupInfo?.groupDisplayName ?? groupInfo?.groupKeyName ?? "";
+  const groupName = groupInfo?.groupDisplayName ?? groupInfo?.groupKeyName?.replace(/\0/g, "") ?? "";
   const ownerUsername = groupInfo
     ? groupInfo.ownerProfile?.Username ?? groupInfo.ownerKey.slice(0, 12) + "..."
     : "";

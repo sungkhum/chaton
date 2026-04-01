@@ -196,8 +196,10 @@ export async function enrichCommunityListings(
   });
 
   // 1. Batch fetch group metadata (images, display names) via getBulkAccessGroups
+  //    Also tracks which groups actually exist on-chain to filter out fakes.
   let groupImageMap = new Map<string, string>();
   let groupDisplayNameMap = new Map<string, string>();
+  const groupsNotFound = new Set<string>();
   try {
     const groupRes = await getBulkAccessGroups({
       GroupOwnerAndGroupKeyNamePairs: deduped.map((l) => ({
@@ -216,8 +218,14 @@ export async function enrichCommunityListings(
       const displayName = entry.ExtraData?.[GROUP_DISPLAY_NAME];
       if (displayName) groupDisplayNameMap.set(key, displayName);
     }
+    // Mark groups that don't exist on-chain so we can exclude them
+    for (const pair of groupRes.PairsNotFound ?? []) {
+      groupsNotFound.add(
+        pair.GroupOwnerPublicKeyBase58Check + "|" + pair.GroupKeyName
+      );
+    }
   } catch {
-    // Non-fatal: cards render without images
+    // Non-fatal: cards render without images (but we can't validate existence)
   }
 
   // 2. Fetch invite codes per-owner (scoped queries, not global scan).
@@ -275,5 +283,5 @@ export async function enrichCommunityListings(
         memberCountCapped: memberInfo.capped,
       };
     })
-    .filter((l) => l.inviteCode !== null);
+    .filter((l) => l.inviteCode !== null && !groupsNotFound.has(l.ownerKey + "|" + l.groupKeyName));
 }

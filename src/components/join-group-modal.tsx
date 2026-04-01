@@ -146,7 +146,7 @@ export function JoinGroupModal({ code, onClose }: { code: string; onClose: () =>
     setTimeout(() => window.dispatchEvent(new Event("join-navigate")), 50);
   };
 
-  const groupName = groupInfo?.groupDisplayName ?? groupInfo?.groupKeyName ?? "";
+  const groupName = groupInfo?.groupDisplayName ?? groupInfo?.groupKeyName?.replace(/\0/g, "") ?? "";
   const ownerUsername = groupInfo
     ? groupInfo.ownerProfile?.Username ?? groupInfo.ownerKey.slice(0, 12) + "..."
     : "";
