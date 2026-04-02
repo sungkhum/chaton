@@ -41,240 +41,263 @@ export const LandingPage = () => {
     const ctx = gsap.context(() => {
       const mm = gsap.matchMedia();
 
-      mm.add("(prefers-reduced-motion: no-preference)", () => {
-        // ── Hero entrance timeline ──
-        const hero = gsap.timeline({
-          defaults: { ease: "power3.out", duration: 0.8 },
-        });
+      mm.add(
+        {
+          isDesktop: "(min-width: 768px) and (prefers-reduced-motion: no-preference)",
+          isMobile: "(max-width: 767px) and (prefers-reduced-motion: no-preference)",
+          isReduced: "(prefers-reduced-motion: reduce)",
+        },
+        (context) => {
+          const { isMobile, isReduced } = context.conditions!;
 
-        hero
-          .from(".hero-badge", { x: -30, autoAlpha: 0 })
-          .from(".hero-title", { y: 40, autoAlpha: 0, duration: 1 }, "<0.15")
-          .from(".hero-desc", { x: -20, autoAlpha: 0 }, "<0.2")
-          .from(".hero-cta", { y: 24, autoAlpha: 0 }, "<0.15")
-          .from(
-            ".hero-mockup",
-            { x: 60, autoAlpha: 0, rotateY: -8, duration: 1.2, ease: "power2.out" },
-            "<0.1"
-          );
-
-        // ── Floating mockup subtle bob ──
-        gsap.to(".hero-mockup", {
-          y: -12,
-          duration: 3,
-          ease: "sine.inOut",
-          repeat: -1,
-          yoyo: true,
-        });
-
-        // ── Dividers animate width on scroll ──
-        gsap.utils.toArray<HTMLElement>(".landing-divider").forEach((div) => {
-          gsap.fromTo(div,
-            { scaleX: 0 },
-            {
-              scaleX: 1,
-              duration: 1,
-              ease: "power2.inOut",
-              scrollTrigger: {
-                trigger: div,
-                start: "top 95%",
-                toggleActions: "play none none none",
-              },
-            }
-          );
-        });
-
-        // ── Features section ──
-        gsap.fromTo(".features-heading",
-          { y: 30, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.8,
-            ease: "power3.out",
-            scrollTrigger: {
-              trigger: ".features-heading",
-              start: "top 90%",
-              toggleActions: "play none none none",
-            },
+          // Reduced motion: just make everything visible
+          if (isReduced) {
+            gsap.set(
+              ".hero-badge, .hero-title, .hero-desc, .hero-cta, .hero-mockup, " +
+              ".features-heading, .feature-card, " +
+              ".showcase-heading, .showcase-feature > *, .showcase-mini, " +
+              ".tech-heading, .tech-subhead, " +
+              ".tech-code, .tech-card, .tech-footer, " +
+              ".community-heading, .community-card, .community-cta, " +
+              ".cta-heading, .cta-button, " +
+              ".cta-badge, .support-icon, .support-heading, .support-desc, " +
+              ".support-btn, .landing-footer",
+              { autoAlpha: 1, y: 0, x: 0, scale: 1 }
+            );
+            return;
           }
-        );
 
-        ScrollTrigger.batch(".feature-card", {
-          onEnter: (elements) =>
-            gsap.fromTo(elements,
-              { y: 30, opacity: 0 },
-              { y: 0, opacity: 1, duration: 0.7, stagger: 0.1, ease: "power3.out" }
-            ),
-          start: "top 92%",
-        });
+          // Shorter distances + durations on mobile to avoid jerky appearance
+          const d = isMobile
+            ? { sm: 10, md: 16, lg: 20, dur: 0.5, stagger: 0.06 }
+            : { sm: 20, md: 30, lg: 40, dur: 0.8, stagger: 0.1 };
 
-        // ── Feature Showcase section ──
-        gsap.fromTo(".showcase-heading",
-          { y: 30, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.8,
-            ease: "power3.out",
-            scrollTrigger: {
-              trigger: ".showcase-heading",
-              start: "top 90%",
-              toggleActions: "play none none none",
-            },
+          // Trigger earlier on mobile so animation completes before user scrolls past
+          const start = isMobile ? "top 88%" : "top 92%";
+          const startEarly = isMobile ? "top 82%" : "top 90%";
+
+          // ── Hero entrance timeline ──
+          const hero = gsap.timeline({
+            defaults: { ease: "power3.out", duration: d.dur },
+          });
+
+          hero
+            .from(".hero-badge", { x: isMobile ? -15 : -30, autoAlpha: 0 })
+            .from(".hero-title", { y: isMobile ? 20 : 40, autoAlpha: 0, duration: isMobile ? 0.6 : 1 }, "<0.15")
+            .from(".hero-desc", { x: isMobile ? -10 : -20, autoAlpha: 0 }, "<0.2")
+            .from(".hero-cta", { y: isMobile ? 14 : 24, autoAlpha: 0 }, "<0.15")
+            .from(
+              ".hero-mockup",
+              isMobile
+                ? { y: 20, autoAlpha: 0, duration: 0.7, ease: "power2.out" }
+                : { x: 60, autoAlpha: 0, rotateY: -8, duration: 1.2, ease: "power2.out" },
+              "<0.1"
+            );
+
+          // ── Floating mockup subtle bob (desktop only — saves GPU on mobile) ──
+          if (!isMobile) {
+            gsap.to(".hero-mockup", {
+              y: -12,
+              duration: 3,
+              ease: "sine.inOut",
+              repeat: -1,
+              yoyo: true,
+            });
           }
-        );
 
-        gsap.utils.toArray<HTMLElement>(".showcase-feature").forEach((el) => {
-          gsap.fromTo(el.children,
-            { y: 40, opacity: 0 },
+          // ── Dividers animate width on scroll ──
+          gsap.utils.toArray<HTMLElement>(".landing-divider").forEach((div) => {
+            gsap.fromTo(div,
+              { scaleX: 0 },
+              {
+                scaleX: 1,
+                duration: isMobile ? 0.6 : 1,
+                ease: "power2.inOut",
+                scrollTrigger: {
+                  trigger: div,
+                  start: start,
+                  toggleActions: "play none none none",
+                },
+              }
+            );
+          });
+
+          // ── Features section ──
+          gsap.fromTo(".features-heading",
+            { y: d.md, autoAlpha: 0 },
             {
               y: 0,
-              opacity: 1,
-              duration: 0.8,
-              stagger: 0.2,
+              autoAlpha: 1,
+              duration: d.dur,
               ease: "power3.out",
               scrollTrigger: {
-                trigger: el,
-                start: "top 85%",
+                trigger: ".features-heading",
+                start: startEarly,
                 toggleActions: "play none none none",
               },
             }
           );
-        });
 
-        ScrollTrigger.batch(".showcase-mini", {
-          onEnter: (elements) =>
-            gsap.fromTo(elements,
-              { y: 20, opacity: 0 },
-              { y: 0, opacity: 1, duration: 0.5, stagger: 0.06, ease: "power3.out" }
-            ),
-          start: "top 92%",
-        });
+          ScrollTrigger.batch(".feature-card", {
+            onEnter: (elements) =>
+              gsap.fromTo(elements,
+                { y: d.md, autoAlpha: 0 },
+                { y: 0, autoAlpha: 1, duration: isMobile ? 0.5 : 0.7, stagger: d.stagger, ease: "power3.out" }
+              ),
+            start,
+          });
 
-        // ── Technology section ──
-        const techTl = gsap.timeline({
-          defaults: { ease: "power3.out", duration: 0.8 },
-          scrollTrigger: {
-            trigger: ".tech-section",
-            start: "top 80%",
-            toggleActions: "play none none none",
-          },
-        });
+          // ── Feature Showcase section ──
+          gsap.fromTo(".showcase-heading",
+            { y: d.md, autoAlpha: 0 },
+            {
+              y: 0,
+              autoAlpha: 1,
+              duration: d.dur,
+              ease: "power3.out",
+              scrollTrigger: {
+                trigger: ".showcase-heading",
+                start: startEarly,
+                toggleActions: "play none none none",
+              },
+            }
+          );
 
-        techTl
-          .fromTo(".tech-heading", { y: 30, opacity: 0 }, { y: 0, opacity: 1 })
-          .fromTo(".tech-subhead", { y: 20, opacity: 0 }, { y: 0, opacity: 1 }, "<0.1")
-          .fromTo(".tech-code", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 1 }, "<0.15");
+          gsap.utils.toArray<HTMLElement>(".showcase-feature").forEach((el) => {
+            gsap.fromTo(el.children,
+              { y: d.lg, autoAlpha: 0 },
+              {
+                y: 0,
+                autoAlpha: 1,
+                duration: d.dur,
+                stagger: isMobile ? 0.1 : 0.2,
+                ease: "power3.out",
+                scrollTrigger: {
+                  trigger: el,
+                  start: isMobile ? "top 85%" : "top 85%",
+                  toggleActions: "play none none none",
+                },
+              }
+            );
+          });
 
-        ScrollTrigger.batch(".tech-card", {
-          onEnter: (elements) =>
-            gsap.fromTo(elements,
-              { y: 30, opacity: 0 },
-              { y: 0, opacity: 1, duration: 0.7, stagger: 0.15, ease: "power3.out" }
-            ),
-          start: "top 92%",
-        });
+          ScrollTrigger.batch(".showcase-mini", {
+            onEnter: (elements) =>
+              gsap.fromTo(elements,
+                { y: d.sm, autoAlpha: 0 },
+                { y: 0, autoAlpha: 1, duration: isMobile ? 0.35 : 0.5, stagger: d.stagger, ease: "power3.out" }
+              ),
+            start,
+          });
 
-        gsap.fromTo(".tech-footer",
-          { y: 20, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.8,
+          // ── Technology section ──
+          const techTl = gsap.timeline({
+            defaults: { ease: "power3.out", duration: d.dur },
             scrollTrigger: {
-              trigger: ".tech-footer",
-              start: "top 95%",
+              trigger: ".tech-section",
+              start: isMobile ? "top 82%" : "top 80%",
               toggleActions: "play none none none",
             },
-          }
-        );
+          });
 
-        // ── Community section ──
-        const communityTl = gsap.timeline({
-          defaults: { ease: "power3.out", duration: 0.8 },
-          scrollTrigger: {
-            trigger: ".community-section",
-            start: "top 80%",
-            toggleActions: "play none none none",
-          },
-        });
+          techTl
+            .fromTo(".tech-heading", { y: d.md, autoAlpha: 0 }, { y: 0, autoAlpha: 1 })
+            .fromTo(".tech-subhead", { y: d.sm, autoAlpha: 0 }, { y: 0, autoAlpha: 1 }, "<0.1")
+            .fromTo(".tech-code", { y: d.lg, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: isMobile ? 0.6 : 1 }, "<0.15");
 
-        communityTl
-          .fromTo(".community-heading", { y: 30, opacity: 0 }, { y: 0, opacity: 1 })
-          .fromTo(".community-cta", { y: 20, opacity: 0 }, { y: 0, opacity: 1 }, "<0.3");
+          ScrollTrigger.batch(".tech-card", {
+            onEnter: (elements) =>
+              gsap.fromTo(elements,
+                { y: d.md, autoAlpha: 0 },
+                { y: 0, autoAlpha: 1, duration: isMobile ? 0.5 : 0.7, stagger: isMobile ? 0.08 : 0.15, ease: "power3.out" }
+              ),
+            start,
+          });
 
-        ScrollTrigger.batch(".community-card", {
-          onEnter: (elements) =>
-            gsap.fromTo(elements,
-              { y: 30, opacity: 0 },
-              { y: 0, opacity: 1, duration: 0.7, stagger: 0.15, ease: "power3.out" }
-            ),
-          start: "top 92%",
-        });
+          gsap.fromTo(".tech-footer",
+            { y: d.sm, autoAlpha: 0 },
+            {
+              y: 0,
+              autoAlpha: 1,
+              duration: d.dur,
+              scrollTrigger: {
+                trigger: ".tech-footer",
+                start,
+                toggleActions: "play none none none",
+              },
+            }
+          );
 
-        // ── Final CTA section ──
-        const ctaTl = gsap.timeline({
-          defaults: { ease: "power3.out", duration: 0.9 },
-          scrollTrigger: {
-            trigger: ".cta-section",
-            start: "top 80%",
-            toggleActions: "play none none none",
-          },
-        });
-
-        ctaTl
-          .fromTo(".cta-heading", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 1 })
-          .fromTo(".cta-button", { scale: 0.9, opacity: 0 }, { scale: 1, opacity: 1 }, "<0.2")
-          .fromTo(".cta-badge", { y: 20, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.08 }, "<0.15");
-
-        // ── Support section ──
-        const supportTl = gsap.timeline({
-          defaults: { ease: "power3.out", duration: 0.8 },
-          scrollTrigger: {
-            trigger: ".support-section",
-            start: "top 85%",
-            toggleActions: "play none none none",
-          },
-        });
-
-        supportTl
-          .fromTo(".support-icon", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, ease: "back.out(1.7)" })
-          .fromTo(".support-heading", { y: 20, opacity: 0 }, { y: 0, opacity: 1 }, "<0.15")
-          .fromTo(".support-desc", { y: 15, opacity: 0 }, { y: 0, opacity: 1 }, "<0.1")
-          .fromTo(".support-btn", { y: 15, opacity: 0 }, { y: 0, opacity: 1 }, "<0.1");
-
-        // ── Footer ──
-        gsap.fromTo(".landing-footer",
-          { y: 20, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.8,
+          // ── Community section ──
+          const communityTl = gsap.timeline({
+            defaults: { ease: "power3.out", duration: d.dur },
             scrollTrigger: {
-              trigger: ".landing-footer",
-              start: "top 95%",
+              trigger: ".community-section",
+              start: isMobile ? "top 82%" : "top 80%",
               toggleActions: "play none none none",
             },
-          }
-        );
-      });
+          });
 
-      // Reduced motion: just make everything visible
-      mm.add("(prefers-reduced-motion: reduce)", () => {
-        gsap.set(
-          ".hero-badge, .hero-title, .hero-desc, .hero-cta, .hero-mockup, " +
-          ".features-heading, .feature-card, " +
-          ".showcase-heading, .showcase-feature > *, .showcase-mini, " +
-          ".tech-heading, .tech-subhead, " +
-          ".tech-code, .tech-card, .tech-footer, " +
-          ".community-heading, .community-card, .community-cta, " +
-          ".cta-heading, .cta-button, " +
-          ".cta-badge, .support-icon, .support-heading, .support-desc, " +
-          ".support-btn, .landing-footer",
-          { autoAlpha: 1, y: 0, x: 0, scale: 1 }
-        );
-      });
+          communityTl
+            .fromTo(".community-heading", { y: d.md, autoAlpha: 0 }, { y: 0, autoAlpha: 1 })
+            .fromTo(".community-cta", { y: d.sm, autoAlpha: 0 }, { y: 0, autoAlpha: 1 }, "<0.3");
+
+          ScrollTrigger.batch(".community-card", {
+            onEnter: (elements) =>
+              gsap.fromTo(elements,
+                { y: d.md, autoAlpha: 0 },
+                { y: 0, autoAlpha: 1, duration: isMobile ? 0.5 : 0.7, stagger: isMobile ? 0.08 : 0.15, ease: "power3.out" }
+              ),
+            start,
+          });
+
+          // ── Final CTA section ──
+          const ctaTl = gsap.timeline({
+            defaults: { ease: "power3.out", duration: isMobile ? 0.6 : 0.9 },
+            scrollTrigger: {
+              trigger: ".cta-section",
+              start: isMobile ? "top 82%" : "top 80%",
+              toggleActions: "play none none none",
+            },
+          });
+
+          ctaTl
+            .fromTo(".cta-heading", { y: d.lg, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: isMobile ? 0.6 : 1 })
+            .fromTo(".cta-button", { scale: 0.95, autoAlpha: 0 }, { scale: 1, autoAlpha: 1 }, "<0.2")
+            .fromTo(".cta-badge", { y: d.sm, autoAlpha: 0 }, { y: 0, autoAlpha: 1, stagger: 0.08 }, "<0.15");
+
+          // ── Support section ──
+          const supportTl = gsap.timeline({
+            defaults: { ease: "power3.out", duration: d.dur },
+            scrollTrigger: {
+              trigger: ".support-section",
+              start: isMobile ? "top 85%" : "top 85%",
+              toggleActions: "play none none none",
+            },
+          });
+
+          supportTl
+            .fromTo(".support-icon", { scale: 0, autoAlpha: 0 }, { scale: 1, autoAlpha: 1, ease: "back.out(1.7)" })
+            .fromTo(".support-heading", { y: d.sm, autoAlpha: 0 }, { y: 0, autoAlpha: 1 }, "<0.15")
+            .fromTo(".support-desc", { y: d.sm, autoAlpha: 0 }, { y: 0, autoAlpha: 1 }, "<0.1")
+            .fromTo(".support-btn", { y: d.sm, autoAlpha: 0 }, { y: 0, autoAlpha: 1 }, "<0.1");
+
+          // ── Footer ──
+          gsap.fromTo(".landing-footer",
+            { y: d.sm, autoAlpha: 0 },
+            {
+              y: 0,
+              autoAlpha: 1,
+              duration: d.dur,
+              scrollTrigger: {
+                trigger: ".landing-footer",
+                start,
+                toggleActions: "play none none none",
+              },
+            }
+          );
+        }
+      );
     }, root);
 
     return () => ctx.revert();
@@ -348,7 +371,7 @@ export const LandingPage = () => {
               to everyone except you and your recipients.{" "}
               <span className="text-white">Built to scale. Impossible to censor.</span>
             </p>
-            <div className="hero-cta flex flex-col sm:flex-row gap-4 md:gap-6">
+            <div className="hero-cta flex flex-col sm:flex-row gap-5 md:gap-6">
               <button
                 onClick={() => setShowTutorial(true)}
                 className="px-8 py-4 md:px-10 md:py-5 landing-btn-vivid text-white font-black rounded-2xl flex items-center justify-center gap-3 text-lg md:text-xl group cursor-pointer"
@@ -366,7 +389,7 @@ export const LandingPage = () => {
             </div>
           </div>
 
-          <div className="hero-mockup lg:col-span-5 -mt-2 lg:mt-0 landing-mockup-wrap">
+          <div className="hero-mockup lg:col-span-5 mt-8 lg:mt-0 landing-mockup-wrap">
             <div className="landing-mockup-inner relative">
               <div className="landing-glass-card rounded-3xl lg:rounded-[60px] p-5 lg:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.5)] lg:shadow-[0_40px_100px_rgba(0,0,0,0.7),0_0_60px_rgba(43,184,154,0.06)] border-white/5 bg-[#0F1520]/80">
                 <div className="flex items-center gap-3 lg:gap-5 mb-5 lg:mb-12">

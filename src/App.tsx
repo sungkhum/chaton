@@ -338,7 +338,7 @@ function App() {
 
   // Remove splash once content is ready (not during loading)
   const isJoinRoute = path === "/join" || path.startsWith("/join/");
-  const contentReady = !isLoadingUser || !!appUser || path === "/privacy" || path === "/terms" || path === "/support" || path === "/community" || isJoinRoute;
+  const contentReady = !isLoadingUser || !!appUser || path === "/" || path === "/privacy" || path === "/terms" || path === "/support" || path === "/community" || isJoinRoute;
   useEffect(() => {
     if (!contentReady || splashRemovedRef.current) return;
     splashRemovedRef.current = true;
@@ -417,7 +417,9 @@ function App() {
     );
   }
 
-  const showLanding = !appUser && !isLoadingUser;
+  // Show the landing page immediately on "/" even while identity is loading —
+  // avoids a long loading screen when navigating back from /community etc.
+  const showLanding = !appUser && (!isLoadingUser || path === "/");
 
   if (showLanding) {
     return (
