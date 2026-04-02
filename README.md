@@ -248,7 +248,7 @@ All keys use the `msg:` namespace. Set only the keys relevant to your message ty
 
 | Key | Value | Description |
 |-----|-------|-------------|
-| `msg:type` | `text` \| `image` \| `gif` \| `sticker` \| `video` \| `file` \| `reaction` | Message type. Omit for plain text. |
+| `msg:type` | `text` \| `image` \| `gif` \| `sticker` \| `video` \| `file` \| `reaction` \| `system` | Message type. Omit for plain text. |
 | `msg:replyTo` | `TimestampNanosString` | Timestamp of the message being replied to or reacted to |
 | `msg:replyPreview` | `string` | Truncated preview of the replied-to message (for display without lookup) |
 | `msg:emoji` | emoji character | The emoji for a reaction (encrypted — see below) |
@@ -272,6 +272,8 @@ All keys use the `msg:` namespace. Set only the keys relevant to your message ty
 | `msg:deleted` | `"true"` | Message has been soft-deleted |
 | `msg:mentions` | JSON array | User mentions: `[{"pk":"BC1Y...","un":"alice"}]` |
 | `msg:encrypted` | `"true"` | Flag indicating some ExtraData values are encrypted |
+| `msg:systemAction` | `member-joined` \| `member-left` | System event type (for `msg:type: "system"` messages) |
+| `msg:systemMembers` | JSON array | Users involved: `[{"pk":"BC1Y...","un":"alice"}]` |
 
 ### Captions
 
@@ -410,6 +412,39 @@ EncryptedMessageText: <encrypted "📎 ChatOn source code\nhttps://github.com/su
 ### Edit and Delete
 
 Edits and deletes use DeSo's `updateDMMessage` / `updateGroupChatMessage` with the original `TimestampNanosString`. Set `msg:edited: "true"` or `msg:deleted: "true"` in ExtraData.
+
+### System Messages
+
+System messages are group chat events (member joins, leaves, etc.) sent as regular encrypted messages with `msg:type: "system"`. No special blockchain primitives — they use the same `sendGroupChatMessage` call as any other message, with structured metadata in ExtraData.
+
+**Current actions:**
+
+| `msg:systemAction` | When sent | Sender |
+|---------------------|-----------|--------|
+| `member-joined` | Owner adds members or approves a join request | Group owner |
+| `member-left` | A member leaves the group | The leaving member (sent before the leave) |
+
+**ExtraData format:**
+
+```
+msg:type          = "system"
+msg:systemAction  = "member-joined"
+msg:systemMembers = [{"pk":"BC1Y...","un":"alice"},{"pk":"BC1Y...","un":"bob"}]
+```
+
+The `msg:systemMembers` value is a JSON-encoded array of `{"pk": "<publicKey>", "un": "<username>"}` objects — the same shape used by `msg:mentions`.
+
+**Encrypted message body** contains a human-readable fallback, e.g. `"alice and bob joined the group"`. Apps that don't understand `msg:type: "system"` will display this as a normal text message — still readable, just not styled as a system event.
+
+**Rendering:** System messages should render as centered, un-bubbled text (like Telegram). They are not attributed to a sender and don't show avatars, timestamps, or action bars. Example:
+
+```
+                     ┌──────────────────────────┐
+                     │ alice joined the group    │
+                     └──────────────────────────┘
+```
+
+**Extensibility:** New `msg:systemAction` values can be added for future events (e.g. `group-renamed`, `group-image-changed`) without changing the message structure. Unknown actions should fall back to displaying the message body text.
 
 ### Access Group ExtraData
 
