@@ -26,6 +26,12 @@ export const MSG_DELETED = "msg:deleted";
 export const MSG_MENTIONS = "msg:mentions";
 export const MSG_ENCRYPTED = "msg:encrypted";
 
+// Tip metadata — any DeSo messaging app can read these
+export const MSG_TIP_AMOUNT_NANOS = "msg:tipAmountNanos";
+export const MSG_TIP_TX_HASH = "msg:tipTxHash";
+export const MSG_TIP_REPLY_TO = "msg:tipReplyTo";
+export const MSG_TIP_RECIPIENT = "msg:tipRecipient";
+
 /** ExtraData keys always encrypted (reaction privacy — default). */
 export const STANDARD_ENCRYPTED_KEYS = [MSG_EMOJI, MSG_ACTION] as const;
 
@@ -50,6 +56,10 @@ export const FULL_ENCRYPTED_KEYS = [
   MSG_OG_IMAGE,
   MSG_REPLY_PREVIEW,
   MSG_MENTIONS,
+  MSG_TIP_AMOUNT_NANOS,
+  MSG_TIP_TX_HASH,
+  MSG_TIP_REPLY_TO,
+  MSG_TIP_RECIPIENT,
 ] as const;
 
 export type PrivacyMode = "standard" | "full";
@@ -70,7 +80,8 @@ export type RichMessageType =
   | "sticker"
   | "video"
   | "file"
-  | "reaction";
+  | "reaction"
+  | "tip";
 
 /** A user mentioned in a message. pk = publicKey, un = username. */
 export interface MentionEntry {
@@ -103,6 +114,10 @@ export interface ParsedMessage {
   edited?: boolean;
   deleted?: boolean;
   mentions?: MentionEntry[];
+  tipAmountNanos?: number;
+  tipTxHash?: string;
+  tipReplyTo?: string;
+  tipRecipient?: string;
 }
 
 export function parseMessageType(
@@ -146,6 +161,14 @@ export function parseMessageType(
     mentions: extra[MSG_MENTIONS]
       ? (JSON.parse(extra[MSG_MENTIONS]) as MentionEntry[])
       : undefined,
+    tipAmountNanos: extra[MSG_TIP_AMOUNT_NANOS]
+      ? (Number.isFinite(parseInt(extra[MSG_TIP_AMOUNT_NANOS], 10))
+          ? parseInt(extra[MSG_TIP_AMOUNT_NANOS], 10)
+          : undefined)
+      : undefined,
+    tipTxHash: extra[MSG_TIP_TX_HASH],
+    tipReplyTo: extra[MSG_TIP_REPLY_TO],
+    tipRecipient: extra[MSG_TIP_RECIPIENT],
   };
 }
 
@@ -216,6 +239,11 @@ export function buildExtraData(
   if (parsed.deleted) extra[MSG_DELETED] = "true";
   if (parsed.mentions && parsed.mentions.length > 0)
     extra[MSG_MENTIONS] = JSON.stringify(parsed.mentions);
+  if (parsed.tipAmountNanos !== undefined)
+    extra[MSG_TIP_AMOUNT_NANOS] = String(parsed.tipAmountNanos);
+  if (parsed.tipTxHash) extra[MSG_TIP_TX_HASH] = parsed.tipTxHash;
+  if (parsed.tipReplyTo) extra[MSG_TIP_REPLY_TO] = parsed.tipReplyTo;
+  if (parsed.tipRecipient) extra[MSG_TIP_RECIPIENT] = parsed.tipRecipient;
 
   return extra;
 }

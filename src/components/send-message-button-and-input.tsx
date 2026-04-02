@@ -1,5 +1,5 @@
 import { KeyboardEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Send, Image, Loader2, Pencil, X, Check, Paperclip } from "lucide-react";
+import { Send, Image, Loader2, Pencil, X, Check, Paperclip, CircleDollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { EmojiPickerButton } from "./compose/emoji-picker-button";
 import { GifPicker } from "./compose/gif-picker";
@@ -26,6 +26,8 @@ export interface SendMessageButtonAndInputProps {
   onSubmitEdit?: (newText: string, timestamp: string) => void;
   /** Group chat members for @mention autocomplete. When provided, enables mentions. */
   mentionCandidates?: MentionCandidate[];
+  /** Called when the user taps the $ tip button in the toolbar. */
+  onTipClick?: () => void;
 }
 
 export const SendMessageButtonAndInput = ({
@@ -39,6 +41,7 @@ export const SendMessageButtonAndInput = ({
   onCancelEdit,
   onSubmitEdit,
   mentionCandidates,
+  onTipClick,
 }: SendMessageButtonAndInputProps) => {
   const [isSending, setIsSending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -495,6 +498,22 @@ export const SendMessageButtonAndInput = ({
           <div className="shrink-0">
             <EmojiPickerButton onEmojiSelect={insertAtCursor} />
           </div>
+
+          {onTipClick && (
+            <button
+              onClick={() => {
+                setShowGifPicker(false);
+                setShowLinkPanel(false);
+                onTipClick();
+              }}
+              aria-label="Send a tip"
+              title="Send a tip"
+              className="p-2 text-[#34F080]/70 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors"
+              type="button"
+            >
+              <CircleDollarSign className="w-[18px] h-[18px]" />
+            </button>
+          )}
         </div>
 
         {/* Auto-growing textarea */}

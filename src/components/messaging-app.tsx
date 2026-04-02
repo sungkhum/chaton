@@ -9,9 +9,11 @@ import {
   getUsersStateless,
   NewMessageEntryResponse,
   PublicKeyToProfileEntryResponseMap,
+  sendDeso,
+  identity,
 } from "deso-protocol";
 import { useInterval } from "hooks/useInterval";
-import { FC, useContext, useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { FC, lazy, Suspense, useContext, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { useMessageSearch } from "../hooks/useMessageSearch";
 import { useMobile } from "../hooks/useMobile";
@@ -79,6 +81,15 @@ import {
 } from "../utils/helpers";
 import { Conversation, ConversationMap } from "../utils/types";
 import { buildExtraData, getGroupImageUrl, MSG_REPLY_TO, MSG_REPLY_PREVIEW } from "../utils/extra-data";
+const LazyTipConfirmDialog = lazy(() =>
+  import("./tip-confirm-dialog").then(m => ({ default: m.TipConfirmDialog }))
+);
+import { withAuth } from "../utils/with-auth";
+import { fetchExchangeRate, usdToNanos } from "../utils/exchange-rate";
+
+// Micro-tip cooldown (3 seconds between tips)
+let lastMicroTipTime = 0;
+const MICRO_TIP_COOLDOWN_MS = 3000;
 import { JoinGroupModal } from "./join-group-modal";
 import { ManageMembersDialog } from "./manage-members-dialog";
 import { MessagingBubblesAndAvatar } from "./messaging-bubbles";
@@ -189,53 +200,63 @@ export const MessagingApp: FC = () => {
     timestamp: string;
   } | null>(null);
   const [hiddenMessageIds, setHiddenMessageIds] = useState<Set<string>>(new Set());
+  const [tipTarget, setTipTarget] = useState<{
+    recipientPublicKey: string;
+    recipientUsername?: string;
+    tipReplyTo?: string;
+  } | null>(null);
   const [dmMenuOpen, setDmMenuOpen] = useState(false);
   const [blockConfirm, setBlockConfirm] = useState<{ conversationKey: string; publicKey: string; name: string } | null>(null);
   const { isMobile } = useMobile();
 
-  // Close DM menu and block dialog when switching conversations
+  // Close DM menu, block dialog, and tip dialog when switching conversations
   useEffect(() => {
     setDmMenuOpen(false);
     setBlockConfirm(null);
+    setTipTarget(null);
+    // Pre-warm exchange rate cache so micro-tips don't hit a cold fetch
+    fetchExchangeRate().catch(() => {});
   }, [selectedConversationPublicKey]);
 
   // Proactively tell the service worker which conversation is active so it can
   // suppress push notifications for the conversation the user is viewing.
-  // This replaces the old reactive MessageChannel pattern — no 500ms timeout,
-  // and if the SW restarts the variable resets to null (fail-open: all notifications show).
+  // Uses controller when available, falls back to registration.active for the
+  // first page load before clientsClaim takes effect (controller can be null).
+  // If the SW restarts, the variable resets to null (fail-open: all notifications show).
   useEffect(() => {
-    const sw = navigator.serviceWorker?.controller;
-    if (!sw) return;
-
-    sw.postMessage({
+    const msg = {
       type: "set-active-conversation",
       conversationKey: selectedConversationPublicKey || null,
-    });
+    };
+
+    if (navigator.serviceWorker?.controller) {
+      navigator.serviceWorker.controller.postMessage(msg);
+    } else {
+      navigator.serviceWorker?.ready.then((reg) => reg.active?.postMessage(msg));
+    }
   }, [selectedConversationPublicKey]);
 
   // Clear the active conversation when the tab loses focus or is closed,
   // so notifications resume immediately.
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      const sw = navigator.serviceWorker?.controller;
-      if (!sw) return;
-
-      if (document.visibilityState === "hidden") {
-        sw.postMessage({ type: "set-active-conversation", conversationKey: null });
-      } else if (selectedConversationPublicKeyRef.current) {
-        sw.postMessage({
-          type: "set-active-conversation",
-          conversationKey: selectedConversationPublicKeyRef.current,
-        });
+    const sendToSW = (conversationKey: string | null) => {
+      const msg = { type: "set-active-conversation", conversationKey };
+      if (navigator.serviceWorker?.controller) {
+        navigator.serviceWorker.controller.postMessage(msg);
+      } else {
+        navigator.serviceWorker?.ready.then((reg) => reg.active?.postMessage(msg));
       }
     };
 
-    const handleBeforeUnload = () => {
-      navigator.serviceWorker?.controller?.postMessage({
-        type: "set-active-conversation",
-        conversationKey: null,
-      });
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        sendToSW(null);
+      } else if (selectedConversationPublicKeyRef.current) {
+        sendToSW(selectedConversationPublicKeyRef.current);
+      }
     };
+
+    const handleBeforeUnload = () => sendToSW(null);
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -2428,6 +2449,129 @@ export const MessagingApp: FC = () => {
                             toast.error("Failed to send reaction");
                           }
                         }}
+                        onTip={(msg) => {
+                          if (!appUser) return;
+                          const senderPk = msg.SenderInfo.OwnerPublicKeyBase58Check;
+                          if (senderPk === appUser.PublicKeyBase58Check) {
+                            toast.info("You can't tip yourself");
+                            return;
+                          }
+                          const { blockedUsers, dismissedUsers } = useStore.getState();
+                          if (blockedUsers.has(senderPk) || dismissedUsers.has(senderPk)) return;
+                          setTipTarget({
+                            recipientPublicKey: senderPk,
+                            recipientUsername: activeChatUsersMap[senderPk],
+                            tipReplyTo: msg.MessageInfo.TimestampNanosString,
+                          });
+                        }}
+                        onMicroTip={async (msg) => {
+                          if (!appUser) return;
+                          const senderPk = msg.SenderInfo.OwnerPublicKeyBase58Check;
+                          if (senderPk === appUser.PublicKeyBase58Check) {
+                            toast.info("You can't tip yourself");
+                            return;
+                          }
+                          const { blockedUsers, dismissedUsers } = useStore.getState();
+                          if (blockedUsers.has(senderPk) || dismissedUsers.has(senderPk)) return;
+                          // Cooldown check
+                          const now = Date.now();
+                          if (now - lastMicroTipTime < MICRO_TIP_COOLDOWN_MS) {
+                            toast.info("Please wait a moment before sending another tip");
+                            return;
+                          }
+                          lastMicroTipTime = now;
+
+                          // Balance pre-check
+                          if (appUser.BalanceNanos <= 0) {
+                            toast.info("Add funds to your account to send tips");
+                            return;
+                          }
+
+                          try {
+                            // Get exchange rate and compute $0.01 in nanos
+                            const rate = await fetchExchangeRate();
+                            const amountNanos = usdToNanos(0.01, rate);
+                            if (amountNanos <= 0) {
+                              toast.error("Could not calculate tip amount");
+                              return;
+                            }
+                            if (amountNanos > appUser.BalanceNanos) {
+                              toast.info("Insufficient balance for this tip");
+                              return;
+                            }
+
+                            // Check permissions
+                            const hasPerms = identity.hasPermissions({
+                              GlobalDESOLimit: amountNanos,
+                              TransactionCountLimitMap: { BASIC_TRANSFER: 1 },
+                            });
+                            if (!hasPerms) {
+                              await identity.requestPermissions({
+                                GlobalDESOLimit: amountNanos + 1e7,
+                                TransactionCountLimitMap: {
+                                  AUTHORIZE_DERIVED_KEY: 1,
+                                  BASIC_TRANSFER: 1,
+                                },
+                              });
+                            }
+
+                            // Send DESO
+                            const result = await withAuth(() =>
+                              sendDeso({
+                                SenderPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+                                RecipientPublicKeyOrUsername: senderPk,
+                                AmountNanos: amountNanos,
+                                MinFeeRateNanosPerKB: 1000,
+                              })
+                            );
+                            const txHash =
+                              (result as any)?.TxnHashHex ||
+                              (result as any)?.TransactionIDBase58Check ||
+                              "";
+
+                            // Send tip message
+                            const convKey = selectedConversationPublicKey;
+                            const recipientPublicKey =
+                              selectedConversation.ChatType === ChatType.DM
+                                ? selectedConversation.firstMessagePublicKey
+                                : selectedConversation.messages[0].RecipientInfo
+                                    .OwnerPublicKeyBase58Check;
+                            const recipientKeyName =
+                              selectedConversation.ChatType === ChatType.DM
+                                ? DEFAULT_KEY_MESSAGING_GROUP_NAME
+                                : selectedConversation.messages[0].RecipientInfo
+                                    .AccessGroupKeyName;
+
+                            const senderUsername = activeChatUsersMap[senderPk];
+                            const fallback = `Tipped $0.01 to ${senderUsername ? `@${senderUsername}` : senderPk.slice(0, 8)}`;
+
+                            await encryptAndSendNewMessage(
+                              fallback,
+                              appUser.PublicKeyBase58Check,
+                              recipientPublicKey,
+                              recipientKeyName,
+                              DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                              buildExtraData({
+                                type: "tip",
+                                tipAmountNanos: amountNanos,
+                                tipTxHash: txHash,
+                                tipReplyTo: msg.MessageInfo.TimestampNanosString,
+                                tipRecipient: senderPk,
+                              })
+                            );
+                            notifyConversation(convKey, recipientPublicKey);
+                            useStore.getState().addSessionTip(amountNanos);
+                            toast.success(`Tipped $0.01 to ${senderUsername ? `@${senderUsername}` : "user"}`);
+                          } catch (error: any) {
+                            const errMsg = error?.message || error?.toString?.() || "";
+                            if (errMsg.includes("user cancelled") || errMsg.includes("WINDOW_CLOSED")) {
+                              toast.error("Transaction cancelled.");
+                            } else {
+                              toast.error("Tip failed.");
+                              console.error("Micro-tip error:", error);
+                            }
+                          }
+                        }}
                       />
                     )}
                   </div>
@@ -2529,6 +2673,21 @@ export const MessagingApp: FC = () => {
                             username: profile!.Username,
                           }))
                       : undefined}
+                    onTipClick={
+                      selectedConversation.ChatType === ChatType.DM
+                        ? () => {
+                            const recipientPk = selectedConversation.firstMessagePublicKey;
+                            if (recipientPk === appUser?.PublicKeyBase58Check) {
+                              toast.info("You can't tip yourself");
+                              return;
+                            }
+                            setTipTarget({
+                              recipientPublicKey: recipientPk,
+                              recipientUsername: activeChatUsersMap[recipientPk],
+                            });
+                          }
+                        : undefined
+                    }
                     onClick={async (messageToSend: string, extraData?: Record<string, string>) => {
                       // Merge reply data into extraData if replying
                       if (replyToMessage) {
@@ -2679,6 +2838,61 @@ export const MessagingApp: FC = () => {
             </div>
           </div>
         </>
+      )}
+
+      {/* Tip confirm dialog */}
+      {tipTarget && appUser && (
+        <Suspense fallback={null}>
+        <LazyTipConfirmDialog
+          appUser={appUser}
+          recipientPublicKey={tipTarget.recipientPublicKey}
+          recipientUsername={tipTarget.recipientUsername}
+          tipReplyTo={tipTarget.tipReplyTo}
+          onClose={() => setTipTarget(null)}
+          onTipSent={async (tipData) => {
+            // Track session spending
+            useStore.getState().addSessionTip(tipData.amountNanos);
+            // Send tip message to the conversation
+            try {
+              const convKey = selectedConversationPublicKey;
+              const conv = conversations[convKey];
+              if (!conv) return;
+              const recipientPublicKey =
+                conv.ChatType === ChatType.DM
+                  ? conv.firstMessagePublicKey
+                  : conv.messages[0].RecipientInfo.OwnerPublicKeyBase58Check;
+              const recipientKeyName =
+                conv.ChatType === ChatType.DM
+                  ? DEFAULT_KEY_MESSAGING_GROUP_NAME
+                  : conv.messages[0].RecipientInfo.AccessGroupKeyName;
+
+              const recipientName = tipData.recipientUsername
+                ? `@${tipData.recipientUsername}`
+                : tipData.recipientPublicKey.slice(0, 8);
+              const fallback = tipData.message || `Tipped ${recipientName}`;
+
+              await encryptAndSendNewMessage(
+                fallback,
+                appUser.PublicKeyBase58Check,
+                recipientPublicKey,
+                recipientKeyName,
+                DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                buildExtraData({
+                  type: "tip",
+                  tipAmountNanos: tipData.amountNanos,
+                  tipTxHash: tipData.txHash,
+                  tipReplyTo: tipData.tipReplyTo,
+                  tipRecipient: tipData.recipientPublicKey,
+                })
+              );
+              notifyConversation(convKey, recipientPublicKey);
+            } catch (e) {
+              toast.error("Tip sent but message failed. The recipient received the funds.");
+              console.error("Tip message error:", e);
+            }
+          }}
+        />
+        </Suspense>
       )}
 
       {/* In-app join group modal — triggered by clicking a join link in a chat */}

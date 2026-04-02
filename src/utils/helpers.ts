@@ -21,6 +21,14 @@ export const desoNanosToDeso = (nanos: number | string | bigint) => {
   return Number(nanos) / 1e9;
 };
 
+/** Format DESO nanos as a human-readable DESO string (e.g., "0.10 DESO"). */
+export const formatDesoAmount = (nanos: number): string => {
+  const deso = nanos / 1e9;
+  // Use up to 4 decimal places, but trim trailing zeros
+  const formatted = deso.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+  return `${formatted} DESO`;
+};
+
 export const scrollContainerToElement = (
   cointainerSelector: string,
   elementSelector: string

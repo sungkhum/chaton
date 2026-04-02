@@ -7,7 +7,7 @@ import {
   GetPaginatedMessagesForDmThreadResponse,
   GetPaginatedMessagesForGroupChatThreadResponse,
 } from "deso-protocol";
-import { Loader2, Lock, Reply, Plus, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Lock, Reply, Plus, Pencil, Trash2, CircleDollarSign } from "lucide-react";
 import { FC, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChunkErrorBoundary } from "./shared/chunk-error-boundary";
@@ -34,6 +34,8 @@ import { VideoMessage } from "./messages/video-message";
 import { FileMessage } from "./messages/file-message";
 import { ReplyPreview } from "./messages/reply-preview";
 import { ReactionPills } from "./messages/reaction-pills";
+import { TipMessage } from "./messages/tip-message";
+import { TipPills } from "./messages/tip-pills";
 import { FormattedMessage } from "./messages/formatted-message";
 import {
   AnimatedEmoji,
@@ -57,6 +59,8 @@ export interface MessagingBubblesProps {
   onEdit?: (message: DecryptedMessageEntryResponse) => void;
   onDeleteForMe?: (timestampNanosString: string) => void;
   onDeleteForEveryone?: (message: DecryptedMessageEntryResponse) => void;
+  onTip?: (message: DecryptedMessageEntryResponse) => void;
+  onMicroTip?: (message: DecryptedMessageEntryResponse) => void;
   hiddenMessageIds?: Set<string>;
 }
 
@@ -180,6 +184,16 @@ function MessageContent({ message }: { message: DecryptedMessageEntryResponse })
         />
       );
 
+    case "tip":
+      return (
+        <TipMessage
+          amountNanos={parsed.tipAmountNanos || 0}
+          message={messageToShow}
+          replyPreview={parsed.replyPreview}
+          isSender={message.IsSender}
+        />
+      );
+
     case "reaction":
       // Reactions are aggregated, not shown as standalone messages
       return null;
@@ -214,6 +228,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   onEdit,
   onDeleteForMe,
   onDeleteForEveryone,
+  onTip,
+  onMicroTip,
   hiddenMessageIds,
 }: MessagingBubblesProps) => {
   const messageAreaRef = useRef<HTMLDivElement>(null);
@@ -224,9 +240,23 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   const [hoveredMessage, setHoveredMessage] = useState<string | null>(null);
   const [reactionPickerFor, setReactionPickerFor] = useState<string | null>(null);
   const [mobileActionFor, setMobileActionFor] = useState<string | null>(null);
+  const [showTipTooltip, setShowTipTooltip] = useState(() => {
+    try { return !localStorage.getItem("hasSeenTipTooltip"); } catch { return false; }
+  });
+
+  // Auto-dismiss tip tooltip after 4 seconds
+  useEffect(() => {
+    if (!showTipTooltip) return;
+    const timer = setTimeout(() => {
+      setShowTipTooltip(false);
+      try { localStorage.setItem("hasSeenTipTooltip", "1"); } catch {}
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [showTipTooltip]);
   const [deleteMenuFor, setDeleteMenuFor] = useState<string | null>(null);
   const [actionBarFlipped, setActionBarFlipped] = useState(false);
   const actionBarRef = useRef<HTMLDivElement>(null);
+  const actionMenuRef = useRef<HTMLDivElement>(null);
   const activeBubbleRef = useRef<HTMLElement | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
 
@@ -273,6 +303,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
       }
       // Don't dismiss action bar when clicking inside it or its sub-menus
       if (actionBarRef.current && actionBarRef.current.contains(target)) return;
+      if (actionMenuRef.current && actionMenuRef.current.contains(target)) return;
       if (pickerRef.current && pickerRef.current.contains(target)) return;
       setDeleteMenuFor(null);
       setHoveredMessage(null);
@@ -320,45 +351,60 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     setActionBarFlipped(spaceAbove < 200);
   }, []);
 
-  // Position the action bar (portal) near the active message bubble
+  // Position reaction bar (above bubble) and action menu (below bubble) separately
   useLayoutEffect(() => {
-    const bar = actionBarRef.current;
     const bubble = activeBubbleRef.current;
-    if (!bar || !bubble) return;
-    // Mobile needs mobileActionFor; desktop needs hoveredMessage
+    if (!bubble) return;
     if (isMobile && !mobileActionFor) return;
     if (!isMobile && !hoveredMessage) return;
 
-    // Guard against stale ref (e.g. message list re-rendered)
     const bubbleRect = bubble.getBoundingClientRect();
     if (bubbleRect.width === 0 && bubbleRect.height === 0) return;
 
     const scrollArea = messageAreaRef.current;
     const scrollRect = scrollArea?.getBoundingClientRect();
-    const barWidth = bar.offsetWidth;
-    const barHeight = bar.offsetHeight;
     const pad = 12;
-    // Minimum top = below the scroll container top (never behind the header)
     const minTop = scrollRect ? scrollRect.top : 0;
     const maxBottom = scrollRect ? scrollRect.bottom : window.innerHeight;
-
-    // Vertical: above or below the bubble, clamped to visible area
-    let top: number;
-    if (actionBarFlipped) {
-      top = bubbleRect.bottom + 4;
-    } else {
-      top = bubbleRect.top - barHeight - 4;
-    }
-    // Clamp: never above the scroll area, never below it
-    top = Math.max(minTop, Math.min(top, maxBottom - barHeight));
-    bar.style.top = `${top}px`;
-    bar.style.bottom = "auto";
-
-    // Horizontal: align with bubble edge, clamped to viewport
     const isSenderMsg = bubbleRect.left + bubbleRect.width / 2 > window.innerWidth / 2;
-    let left = isSenderMsg ? bubbleRect.right - barWidth : bubbleRect.left;
-    left = Math.max(pad, Math.min(left, window.innerWidth - barWidth - pad));
-    bar.style.left = `${left}px`;
+
+    // Helper: position a portal element horizontally aligned with the bubble
+    const positionHorizontally = (el: HTMLElement) => {
+      const elWidth = el.offsetWidth;
+      let left = isSenderMsg ? bubbleRect.right - elWidth : bubbleRect.left;
+      left = Math.max(pad, Math.min(left, window.innerWidth - elWidth - pad));
+      el.style.left = `${left}px`;
+    };
+
+    // Reactions row — prefer above the bubble; fall back to below if no room
+    const bar = actionBarRef.current;
+    if (bar) {
+      const barHeight = bar.offsetHeight;
+      let top = bubbleRect.top - barHeight - 4; // above
+      if (top < minTop) {
+        // Not enough space above — place below the bubble instead
+        top = bubbleRect.bottom + 4;
+      }
+      top = Math.max(minTop, Math.min(top, maxBottom - barHeight));
+      bar.style.top = `${top}px`;
+      bar.style.bottom = "auto";
+      positionHorizontally(bar);
+    }
+
+    // Action menu — prefer below the bubble; fall back to above if no room
+    const menu = actionMenuRef.current;
+    if (menu) {
+      const menuHeight = menu.offsetHeight;
+      let top = bubbleRect.bottom + 4; // below
+      if (top + menuHeight > maxBottom) {
+        // Not enough space below — place above the bubble instead
+        top = bubbleRect.top - menuHeight - 4;
+      }
+      top = Math.max(minTop, Math.min(top, maxBottom - menuHeight));
+      menu.style.top = `${top}px`;
+      menu.style.bottom = "auto";
+      positionHorizontally(menu);
+    }
   }, [mobileActionFor, hoveredMessage, isMobile, actionBarFlipped]);
 
   // Clean up timer on unmount
@@ -439,6 +485,22 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
         map[parsed.replyTo][parsed.emoji].push(
           msg.SenderInfo.OwnerPublicKeyBase58Check
         );
+      }
+    }
+    return map;
+  }, [visibleMessages]);
+
+  // Aggregate tips from tip-type messages (for tip pills on tipped messages)
+  const tipsByTimestamp = useMemo(() => {
+    const map: Record<string, Array<{ senderPublicKey: string; amountNanos: number }>> = {};
+    for (const msg of visibleMessages) {
+      const parsed = parseMessageType(msg);
+      if (parsed.type === "tip" && parsed.tipReplyTo && parsed.tipAmountNanos) {
+        if (!map[parsed.tipReplyTo]) map[parsed.tipReplyTo] = [];
+        map[parsed.tipReplyTo].push({
+          senderPublicKey: msg.SenderInfo.OwnerPublicKeyBase58Check,
+          amountNanos: parsed.tipAmountNanos,
+        });
       }
     }
     return map;
@@ -638,6 +700,13 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
             senderStyles = "overflow-hidden";
           }
 
+          // Tip messages get a green-tinted bubble with accent left border
+          if (parsed.type === "tip") {
+            senderStyles = IsSender
+              ? "bg-[#082414] border border-[#34F080]/25 text-white border-l-2 border-l-[#34F080]"
+              : "bg-[#081a12] border border-[#34F080]/15 text-gray-200 border-l-2 border-l-[#34F080]";
+          }
+
           // Emoji-only messages float without a bubble
           const messageText = message.DecryptedMessage || "";
           const isEmojiOnly =
@@ -649,6 +718,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
           const messageKey = message.MessageInfo.TimestampNanosString || `msg-${i}`;
           const isHovered = hoveredMessage === messageKey;
           const reactions = reactionsByTimestamp[message.MessageInfo.TimestampNanosString];
+          const tips = tipsByTimestamp[message.MessageInfo.TimestampNanosString];
 
           // Message grouping: collapse consecutive messages from the same sender within 5 min
           const prevMessage = displayMessages[i + 1]; // older message (above on screen)
@@ -755,38 +825,37 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                   </header>
                 )}
 
-                {/* Reply preview if this message is a reply */}
-                {parsed.replyTo && parsed.replyPreview && (
-                  <ReplyPreview replyPreview={parsed.replyPreview} isSender={IsSender} />
-                )}
-
                 {/* Message bubble */}
                 <div className="relative inline-block">
                   <div
-                    className={`${senderStyles} mt-auto py-2.5 px-3 md:px-4 break-words ${isMedia || isEmojiOnly ? "inline-flex items-end gap-1.5" : "inline-block pb-4"} text-left relative`}
+                    className={`${senderStyles} mt-auto py-1.5 px-3 md:px-4 break-words ${isMedia || isEmojiOnly ? "inline-flex items-end gap-1.5" : "inline-block"} text-left relative`}
                     style={bubbleRadiusStyle}
                   >
+                    {/* Reply preview inside the bubble (Telegram-style) */}
+                    {parsed.replyTo && parsed.replyPreview && (
+                      <div className="mb-1.5 -mt-0.5">
+                        <ReplyPreview replyPreview={parsed.replyPreview} isSender={false} />
+                      </div>
+                    )}
                     <MessageContent message={message} />
+                    {/* Timestamp inside bubble, bottom-right */}
                     {!isMedia && !isEmojiOnly && (
-                      <>
-                        {/* Inline spacer to reserve room for timestamp on last line */}
-                        <span className="inline-block w-[60px] md:w-[68px]" />
-                        {/* Timestamp pinned to bottom-right of bubble */}
+                      <div className="flex justify-end -mb-0.5 mt-0.5">
                         <span
-                          className="absolute bottom-1.5 right-2.5 md:right-3.5 text-gray-500 text-[10px] whitespace-nowrap leading-none"
+                          className="text-gray-500 text-[10px] whitespace-nowrap leading-none"
                           title={new Date(message.MessageInfo.TimestampNanos / 1e6).toLocaleString()}
                         >
                           {parsed.edited && !parsed.deleted ? "(edited) " : ""}
                           {convertTstampToDateTime(message.MessageInfo.TimestampNanos)}
                         </span>
-                      </>
+                      </div>
                     )}
                   </div>
 
-                  {/* Timestamp for media/emoji messages */}
+                  {/* Timestamp for media/emoji messages (outside bubble) */}
                   {(isMedia || isEmojiOnly) && (
                     <div
-                      className={`text-[10px] text-gray-500 mt-0.5 ${IsSender ? "text-right" : "text-left"}`}
+                      className={`text-[10px] text-gray-500 mt-0.5 px-1 ${IsSender ? "text-right" : "text-left"}`}
                       title={new Date(message.MessageInfo.TimestampNanos / 1e6).toLocaleString()}
                     >
                       {parsed.edited && !parsed.deleted ? "(edited) " : ""}
@@ -809,17 +878,46 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                     </div>
                   )}
 
-                  {/* Telegram-style context menu (right-click on desktop, long-press on mobile) */}
+                  {/* Telegram-style split: reactions above bubble, action menu below */}
                   {showActionBar && !parsed.deleted && (() => {
-                    const actionBar = (
-                      <div ref={actionBarRef} className={
-                        `fixed z-50 flex ${actionBarFlipped ? "flex-col-reverse" : "flex-col"} items-stretch`
-                      }>
-                      {/* Quick reactions row */}
-                      {onReact && (
+                    // Reactions row — portaled above the bubble
+                    const reactionsRow = onReact ? createPortal(
+                      <div ref={actionBarRef} className="fixed z-50">
                         <div className={`flex items-center gap-0.5 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg ${
                           isMobile ? "px-1.5 py-1.5" : "px-1 py-1"
                         }`}>
+                          {/* Micro-tip button — first, before emoji reactions */}
+                          {onMicroTip && !IsSender && (
+                            <>
+                              <div className="relative">
+                                <button
+                                  onClick={() => {
+                                    if (showTipTooltip) {
+                                      setShowTipTooltip(false);
+                                      try { localStorage.setItem("hasSeenTipTooltip", "1"); } catch {}
+                                    }
+                                    if (navigator.vibrate) navigator.vibrate(10);
+                                    onMicroTip(message);
+                                    closeMobileAction();
+                                  }}
+                                  aria-label="Tip $0.01"
+                                  className={`${
+                                    isMobile ? "h-11 px-2" : "h-9 px-1.5"
+                                  } flex flex-col items-center justify-center bg-[#34F080]/10 border border-[#34F080]/20 rounded-lg cursor-pointer transition-colors hover:bg-[#34F080]/20`}
+                                  title="Tip $0.01"
+                                >
+                                  <CircleDollarSign className={`${isMobile ? "w-5 h-5" : "w-4 h-4"} text-[#34F080]`} />
+                                  <span className="text-[#34F080] text-[10px] font-semibold leading-none mt-0.5">$0.01</span>
+                                </button>
+                                {showTipTooltip && (
+                                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-max max-w-[180px] px-3 py-2 bg-[#1a2436] border border-[#34F080]/30 rounded-lg shadow-lg text-[11px] text-gray-300 text-center z-50 pointer-events-none">
+                                    <span className="text-[#34F080] font-semibold">Tip $0.01</span> — send a penny to show appreciation
+                                  </div>
+                                )}
+                              </div>
+                              <div className="w-px self-stretch my-1.5 mx-1 bg-white/10" />
+                            </>
+                          )}
                           {QUICK_REACTIONS.map((emoji) => (
                             <button
                               key={emoji}
@@ -860,10 +958,13 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                             <Plus className={`${isMobile ? "w-5 h-5" : "w-4 h-4"} text-gray-400`} />
                           </button>
                         </div>
-                      )}
+                      </div>,
+                      document.body
+                    ) : null;
 
-                      {/* Action menu */}
-                      <div className={`mt-1 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg ${
+                    // Action menu — portaled below the bubble
+                    const actionMenu = createPortal(
+                      <div ref={actionMenuRef} className={`fixed z-50 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg ${
                         isMobile ? "py-1.5 min-w-[200px]" : "py-1 min-w-[180px]"
                       }`}>
                         {onReply && (
@@ -878,6 +979,20 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                           >
                             <Reply className="w-4 h-4 text-gray-400 shrink-0" />
                             Reply
+                          </button>
+                        )}
+                        {onTip && !IsSender && !(message as any)._localId && (
+                          <button
+                            onClick={() => {
+                              onTip(message);
+                              closeMobileAction();
+                            }}
+                            className={`w-full flex items-center gap-3 ${
+                              isMobile ? "px-4 py-3" : "px-3 py-2"
+                            } text-sm text-[#34F080] hover:bg-white/8 cursor-pointer transition-colors`}
+                          >
+                            <CircleDollarSign className="w-4 h-4 text-[#34F080] shrink-0" />
+                            Tip
                           </button>
                         )}
                         {onEdit && IsSender && parsed.type === "text" && !(message as any)._localId && (
@@ -922,10 +1037,11 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                             Delete for everyone
                           </button>
                         )}
-                      </div>
-                    </div>
+                      </div>,
+                      document.body
                     );
-                    return createPortal(actionBar, document.body);
+
+                    return <>{reactionsRow}{actionMenu}</>;
                   })()}
 
                   {/* Desktop emoji picker — portaled to escape [contain:layout_style] */}
@@ -954,18 +1070,28 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                   )}
                 </div>
 
-                {/* Reaction pills */}
-                {reactions && (
-                  <div className={`mt-1 ${IsSender ? "flex justify-end" : ""}`}>
-                    <ReactionPills
-                      reactions={reactions}
-                      currentUserKey={appUser?.PublicKeyBase58Check}
-                      onReactionClick={(emoji) =>
-                        onReact?.(message.MessageInfo.TimestampNanosString, emoji)
-                      }
-                      getUsernameByPublicKey={getUsernameByPublicKey}
-                      profilePicByPublicKey={profilePicByPublicKey}
-                    />
+                {/* Reaction pills + Tip pills */}
+                {(reactions || tips) && (
+                  <div className={`mt-1 flex flex-wrap gap-1 ${IsSender ? "justify-end" : ""}`}>
+                    {reactions && (
+                      <ReactionPills
+                        reactions={reactions}
+                        currentUserKey={appUser?.PublicKeyBase58Check}
+                        onReactionClick={(emoji) =>
+                          onReact?.(message.MessageInfo.TimestampNanosString, emoji)
+                        }
+                        getUsernameByPublicKey={getUsernameByPublicKey}
+                        profilePicByPublicKey={profilePicByPublicKey}
+                      />
+                    )}
+                    {tips && (
+                      <TipPills
+                        tips={tips}
+                        currentUserKey={appUser?.PublicKeyBase58Check}
+                        getUsernameByPublicKey={getUsernameByPublicKey}
+                        profilePicByPublicKey={profilePicByPublicKey}
+                      />
+                    )}
                   </div>
                 )}
 
