@@ -82,15 +82,23 @@ function App() {
     () => {
       let pollingIntervalId = 0;
 
-      // Safety net: if loading takes longer than 15s, force to not-loading
-      // so the user can at least see the landing page and re-login.
+      // Fast-path: if localStorage has no DeSo identity data, the user is
+      // definitely logged out. Skip the identity iframe handshake entirely
+      // so the landing page renders instantly instead of waiting up to 15s.
+      const hasIdentity = !!localStorage.getItem("desoActivePublicKey");
+      if (!hasIdentity) {
+        setIsLoadingUser(false);
+      }
+
+      // Safety net: if loading takes longer than 5s (e.g. identity iframe
+      // hangs), force to not-loading so the user sees the landing page.
       const loadingTimeout = setTimeout(() => {
         const { isLoadingUser, appUser } = useStore.getState();
         if (isLoadingUser && !appUser) {
           console.warn("[ChatOn] Loading timed out — resetting to logged-out state");
           setIsLoadingUser(false);
         }
-      }, 15_000);
+      }, 5_000);
 
       identity.subscribe(({ event, currentUser, alternateUsers }) => {
         const store = useStore.getState();
