@@ -217,7 +217,17 @@ async function pollUserThreads(
     });
   }
 
-  // Batch-write thread state updates
+  // Enqueue push jobs BEFORE updating thread state so that a failed
+  // queue write causes the cron to retry on the next run.  If we
+  // updated thread_state first and sendBatch threw, the message would
+  // look "already processed" and the notification would be permanently lost.
+  if (pushJobs.length > 0) {
+    await env.PUSH_QUEUE.sendBatch(
+      pushJobs.map((job) => ({ body: job }))
+    );
+  }
+
+  // Now that pushes are safely enqueued, persist the new timestamps
   for (const update of stateUpdates) {
     await upsertThreadState(
       env.DB,
@@ -225,14 +235,6 @@ async function pollUserThreads(
       update.key,
       update.type,
       update.timestamp
-    );
-  }
-
-  // Enqueue push jobs
-  if (pushJobs.length > 0) {
-    // Queue accepts batches — send all jobs at once
-    await env.PUSH_QUEUE.sendBatch(
-      pushJobs.map((job) => ({ body: job }))
     );
   }
 }
