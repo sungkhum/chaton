@@ -30,6 +30,7 @@ export const GifMessage = ({ gifUrl, title, width, height, caption }: GifMessage
         style={aspectRatio ? { aspectRatio } : undefined}
         loading="lazy"
         onLoad={() => setLoaded(true)}
+        onError={() => setLoaded(true)}
       />
       {caption && (
         <p className="text-sm text-white mt-2 px-1 whitespace-pre-wrap break-words select-text">

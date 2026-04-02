@@ -29,6 +29,7 @@ export const StickerMessage = ({ stickerUrl, title, width, height }: StickerMess
         style={aspectRatio ? { aspectRatio } : undefined}
         loading="lazy"
         onLoad={() => setLoaded(true)}
+        onError={() => setLoaded(true)}
       />
     </div>
   );

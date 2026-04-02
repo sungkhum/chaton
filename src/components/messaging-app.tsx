@@ -1445,7 +1445,18 @@ export const MessagingApp: FC = () => {
         console.error("Failed to fetch privacy mode:", e);
       });
 
-    const [conversationResult] = await Promise.all([conversationPromise, classificationPromise, privacyPromise]);
+    let conversationResult;
+    try {
+      [conversationResult] = await Promise.all([conversationPromise, classificationPromise, privacyPromise]);
+    } catch (e) {
+      console.error("[ChatOn] Failed to fetch conversations:", e);
+      if (!renderedFromCache) {
+        toast.error("Couldn't load conversations — tap to retry");
+      }
+      setLoading(false);
+      setAutoFetchConversations(false);
+      return;
+    }
 
     const {
       conversations: freshConversations,
