@@ -4,6 +4,20 @@ import { test, expect } from "../fixtures";
 // The first load on a cold Vite server can be slow due to module compilation.
 test.describe("Landing page", () => {
   test.setTimeout(60_000);
+  test("renders visible content after splash (no black screen)", async ({
+    page,
+    waitForAppReady,
+  }) => {
+    await page.goto("/");
+    await waitForAppReady();
+
+    // Root must have visible content — catches blank/black screen regressions
+    // from routing or animation changes.
+    await expect(
+      page.getByRole("heading", { level: 1, name: /messaging that no one can shut down/i })
+    ).toBeVisible();
+  });
+
   test("displays hero content", async ({ page, waitForAppReady }) => {
     await page.goto("/");
     await waitForAppReady();

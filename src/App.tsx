@@ -338,7 +338,7 @@ function App() {
 
   // Remove splash once content is ready (not during loading)
   const isJoinRoute = path === "/join" || path.startsWith("/join/");
-  const contentReady = !isLoadingUser || !!appUser || path === "/" || path === "/privacy" || path === "/terms" || path === "/support" || path === "/community" || isJoinRoute;
+  const contentReady = !isLoadingUser || !!appUser || path === "/privacy" || path === "/terms" || path === "/support" || path === "/community" || isJoinRoute;
   useEffect(() => {
     if (!contentReady || splashRemovedRef.current) return;
     splashRemovedRef.current = true;

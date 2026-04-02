@@ -575,3 +575,8 @@ export const useStore = create<ChatOnState>((set) => ({
   sessionTipTotalNanos: 0,
   addSessionTip: (nanos) => set((s) => ({ sessionTipTotalNanos: s.sessionTipTotalNanos + nanos })),
 }));
+
+// Expose store for Playwright tests (dev/test only)
+if (import.meta.env.DEV) {
+  (window as any).__CHATON_STORE__ = useStore;
+}

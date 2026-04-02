@@ -53,6 +53,27 @@ test.describe("PWA", () => {
     await context.setOffline(false);
   });
 
+  test("renders visible content (no black screen)", async ({
+    page,
+    context,
+    waitForAppReady,
+  }) => {
+    const swPromise = context.waitForEvent("serviceworker", {
+      timeout: 30_000,
+    });
+
+    await page.goto("/");
+    await swPromise;
+    await waitForAppReady();
+
+    // After splash removal the page must have visible content — either the
+    // landing page hero or the loading indicator. A black screen means the
+    // routing/animation pipeline broke.
+    await expect(
+      page.getByRole("heading", { level: 1, name: /messaging that no one can shut down/i })
+    ).toBeVisible({ timeout: 10_000 });
+  });
+
   test("manifest.json is valid", async ({ page }) => {
     const response = await page.goto("/manifest.json");
     expect(response?.status()).toBe(200);
