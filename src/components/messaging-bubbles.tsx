@@ -272,26 +272,36 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   const longPressPosRef = useRef<{ x: number; y: number } | null>(null);
   const { isMobile } = useMobile();
 
-  // Position desktop emoji picker (portaled to body) near the action bar
+  // Position desktop emoji picker (portaled to body) near the reaction bar
   useLayoutEffect(() => {
     const el = pickerRef.current;
     const bubble = activeBubbleRef.current;
     if (!el || !bubble || isMobile) return;
 
     const bubbleRect = bubble.getBoundingClientRect();
+    const bar = actionBarRef.current;
+    const barRect = bar?.getBoundingClientRect();
     const scrollArea = messageAreaRef.current;
-    const topBound = scrollArea ? scrollArea.getBoundingClientRect().top : 0;
+    const scrollRect = scrollArea?.getBoundingClientRect();
+    const topBound = scrollRect ? scrollRect.top : 0;
+    const bottomBound = scrollRect ? scrollRect.bottom : window.innerHeight;
     const elHeight = el.offsetHeight;
     const elWidth = el.offsetWidth;
 
-    // Vertical: above the action bar area, or below if not enough space
-    const spaceAbove = bubbleRect.top - topBound;
-    if (spaceAbove < elHeight + 60) {
-      el.style.top = `${bubbleRect.bottom + 4}px`;
+    // Use the reaction bar position if available, otherwise fall back to bubble
+    const anchorTop = barRect ? barRect.top : bubbleRect.top;
+    const anchorBottom = barRect ? barRect.bottom : bubbleRect.bottom;
+
+    // Vertical: prefer above the anchor; fall back to below
+    const spaceAbove = anchorTop - topBound;
+    if (spaceAbove >= elHeight + 8) {
+      el.style.top = `${anchorTop - elHeight - 8}px`;
       el.style.bottom = "auto";
     } else {
-      el.style.bottom = `${window.innerHeight - bubbleRect.top + 60}px`;
-      el.style.top = "auto";
+      let top = anchorBottom + 8;
+      top = Math.min(top, bottomBound - elHeight);
+      el.style.top = `${Math.max(topBound, top)}px`;
+      el.style.bottom = "auto";
     }
 
     // Horizontal: align with bubble edge, clamped to viewport
@@ -359,7 +369,9 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     setActionBarFlipped(spaceAbove < 200);
   }, []);
 
-  // Position reaction bar (above bubble) and action menu (below bubble) separately
+  // Position reaction bar and action menu as a coordinated pair so they never overlap.
+  // Preferred layout: reactions above bubble, menu below.
+  // If one side runs out of space, both stack on the side that has room.
   useLayoutEffect(() => {
     const bubble = activeBubbleRef.current;
     if (!bubble) return;
@@ -384,32 +396,52 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
       el.style.left = `${left}px`;
     };
 
-    // Reactions row — prefer above the bubble; fall back to below if no room
     const bar = actionBarRef.current;
-    if (bar) {
-      const barHeight = bar.offsetHeight;
-      let top = bubbleRect.top - barHeight - 4; // above
-      if (top < minTop) {
-        // Not enough space above — place below the bubble instead
-        top = bubbleRect.bottom + 4;
-      }
-      top = Math.max(minTop, Math.min(top, maxBottom - barHeight));
-      bar.style.top = `${top}px`;
+    const menu = actionMenuRef.current;
+    const gap = 4;
+
+    const barHeight = bar?.offsetHeight ?? 0;
+    const menuHeight = menu?.offsetHeight ?? 0;
+
+    const spaceAbove = bubbleRect.top - minTop;
+    const spaceBelow = maxBottom - bubbleRect.bottom;
+
+    const barFitsAbove = spaceAbove >= barHeight + gap;
+    const menuFitsBelow = spaceBelow >= menuHeight + gap;
+    const bothFitAbove = spaceAbove >= barHeight + menuHeight + gap * 3;
+    const bothFitBelow = spaceBelow >= barHeight + menuHeight + gap * 3;
+
+    let barTop: number | undefined;
+    let menuTop: number | undefined;
+
+    if (barFitsAbove && menuFitsBelow) {
+      // Ideal split: reactions above bubble, menu below bubble
+      if (bar) barTop = bubbleRect.top - barHeight - gap;
+      if (menu) menuTop = bubbleRect.bottom + gap;
+    } else if (bothFitAbove) {
+      // Stack both above: reactions adjacent to bubble, menu above reactions
+      if (bar) barTop = bubbleRect.top - barHeight - gap;
+      if (menu) menuTop = bubbleRect.top - barHeight - gap * 2 - menuHeight;
+    } else if (bothFitBelow) {
+      // Stack both below: reactions adjacent to bubble, menu below reactions
+      if (bar) barTop = bubbleRect.bottom + gap;
+      if (menu) menuTop = bubbleRect.bottom + gap + barHeight + gap;
+    } else {
+      // Tight space — place each on their best side, clamped to viewport
+      if (bar) barTop = bubbleRect.top - barHeight - gap;
+      if (menu) menuTop = bubbleRect.bottom + gap;
+    }
+
+    if (bar && barTop !== undefined) {
+      barTop = Math.max(minTop, Math.min(barTop, maxBottom - barHeight));
+      bar.style.top = `${barTop}px`;
       bar.style.bottom = "auto";
       positionHorizontally(bar);
     }
 
-    // Action menu — prefer below the bubble; fall back to above if no room
-    const menu = actionMenuRef.current;
-    if (menu) {
-      const menuHeight = menu.offsetHeight;
-      let top = bubbleRect.bottom + 4; // below
-      if (top + menuHeight > maxBottom) {
-        // Not enough space below — place above the bubble instead
-        top = bubbleRect.top - menuHeight - 4;
-      }
-      top = Math.max(minTop, Math.min(top, maxBottom - menuHeight));
-      menu.style.top = `${top}px`;
+    if (menu && menuTop !== undefined) {
+      menuTop = Math.max(minTop, Math.min(menuTop, maxBottom - menuHeight));
+      menu.style.top = `${menuTop}px`;
       menu.style.bottom = "auto";
       positionHorizontally(menu);
     }
