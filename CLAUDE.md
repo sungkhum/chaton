@@ -81,6 +81,9 @@ on-chain follows and User Associations (no backend needed).
 - `chaton:group-join-request` / value `<AccessGroupKeyName>` — user requests to join a
   group via invite link. Transactor = requesting user, Target = group owner. Stays
   on-chain as a receipt after approval; admin panel filters by current membership.
+- `chaton:group-join-rejected` / value `<AccessGroupKeyName>` — owner rejects a join
+  request. Transactor = group owner, Target = requester's public key. Used to filter
+  rejected requests from the pending list on subsequent loads.
 - `chaton:group-invite-code` / value `<short_code>` — maps an 8-char alphanumeric invite
   code to a group chat. Transactor = group owner, Target = `CHATON_DONATION_PUBLIC_KEY`
   (well-known registry key). `ExtraData["group:keyName"]` stores the AccessGroupKeyName.

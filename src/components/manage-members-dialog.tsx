@@ -29,7 +29,9 @@ import {
 } from "../utils/constants";
 import { GROUP_DISPLAY_NAME, GROUP_IMAGE_URL, getGroupDisplayName, getGroupImageUrl } from "../utils/extra-data";
 import {
+  createRejectAssociation,
   fetchPendingJoinRequests,
+  fetchRejectedJoinRequestKeys,
   JoinRequestEntry,
   sendSystemMessage,
 } from "../services/conversations.service";
@@ -133,6 +135,7 @@ export const ManageMembersDialog = ({
   const [joinRequestsLoading, setJoinRequestsLoading] = useState(false);
   const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
   const [approvingKeys, setApprovingKeys] = useState<Set<string>>(new Set());
+  const [rejectingKeys, setRejectingKeys] = useState<Set<string>>(new Set());
   const approvingRef = useRef(false);
 
   // Badge: count pending join requests (initialized below after groupName)
@@ -175,13 +178,16 @@ export const ManageMembersDialog = ({
         AccessGroupKeyName: groupName,
         MaxMembersToFetch: 200,
       }).catch(() => null),
+      fetchRejectedJoinRequestKeys(appUser.PublicKeyBase58Check, groupName),
     ])
-      .then(([requests, membersRes]) => {
+      .then(([requests, membersRes, rejectedKeys]) => {
         if (cancelled) return;
         const memberKeys = membersRes?.AccessGroupMembersBase58Check ?? [];
         // Include the owner (not returned by the members API)
         const memberSet = new Set([...memberKeys, appUser.PublicKeyBase58Check]);
-        const pending = requests.filter((r) => !memberSet.has(r.requesterPublicKey));
+        const pending = requests.filter(
+          (r) => !memberSet.has(r.requesterPublicKey) && !rejectedKeys.has(r.requesterPublicKey)
+        );
         setJoinRequestBadge(pending.length);
       })
       .catch(() => {});
@@ -243,15 +249,20 @@ export const ManageMembersDialog = ({
       })
       .catch(() => {});
 
-    // Fetch pending join requests
+    // Fetch pending join requests + rejected keys in parallel, then filter
     setJoinRequestsLoading(true);
-    fetchPendingJoinRequests(appUser.PublicKeyBase58Check, groupName)
-      .then((requests) => {
+    Promise.all([
+      fetchPendingJoinRequests(appUser.PublicKeyBase58Check, groupName),
+      fetchRejectedJoinRequestKeys(appUser.PublicKeyBase58Check, groupName),
+    ])
+      .then(([requests, rejectedKeys]) => {
         if (cancelled) return;
-        // Filter out users who are already members
+        // Filter out users who are already members or previously rejected
         const memberSet = new Set(currentMemberKeys);
         const pending = requests.filter(
-          (r) => !memberSet.has(r.requesterPublicKey)
+          (r) =>
+            !memberSet.has(r.requesterPublicKey) &&
+            !rejectedKeys.has(r.requesterPublicKey)
         );
         setJoinRequests(pending);
         // Sync badge with actual filtered count
@@ -752,15 +763,60 @@ export const ManageMembersDialog = ({
     }
   };
 
-  const handleDismissRequest = (key: string) => {
-    setJoinRequests((prev) => prev.filter((r) => r.requesterPublicKey !== key));
-    setSelectedRequests((prev) => {
-      const next = new Set(prev);
-      next.delete(key);
-      return next;
+  const handleRejectRequests = async (keysToReject: string[]) => {
+    if (!appUser || keysToReject.length === 0) return;
+
+    const rejectSet = new Set(keysToReject);
+    const rejectedRequests = joinRequests.filter((r) =>
+      rejectSet.has(r.requesterPublicKey)
+    );
+
+    // Optimistic: remove from UI immediately
+    setRejectingKeys(new Set(keysToReject));
+    setJoinRequests((prev) =>
+      prev.filter((r) => !rejectSet.has(r.requesterPublicKey))
+    );
+    setSelectedRequests(new Set());
+    setJoinRequestBadge((prev) => Math.max(0, prev - keysToReject.length));
+    decrementJoinRequestCount(conversationKey, keysToReject.length);
+
+    // Create on-chain rejection associations so they stay filtered on reload
+    const ownerKey = appUser.PublicKeyBase58Check;
+    const results = await Promise.allSettled(
+      keysToReject.map((requesterKey) =>
+        createRejectAssociation(ownerKey, requesterKey, groupName)
+      )
+    );
+
+    // Check if any failed and roll back those
+    const failedKeys = new Set<string>();
+    results.forEach((result, i) => {
+      if (result.status === "rejected") {
+        failedKeys.add(keysToReject[i]);
+      }
     });
-    setJoinRequestBadge((prev) => Math.max(0, prev - 1));
-    decrementJoinRequestCount(conversationKey, 1);
+    const failedRequests = rejectedRequests.filter((r) =>
+      failedKeys.has(r.requesterPublicKey)
+    );
+
+    if (failedRequests.length > 0) {
+      // Roll back failed rejections
+      setJoinRequests((prev) => [...prev, ...failedRequests]);
+      setJoinRequestBadge((prev) => prev + failedRequests.length);
+      toast.error(
+        failedRequests.length === 1
+          ? "Failed to reject request"
+          : `Failed to reject ${failedRequests.length} requests`
+      );
+    } else {
+      toast.success(
+        keysToReject.length === 1
+          ? "Request rejected"
+          : `${keysToReject.length} requests rejected`
+      );
+    }
+
+    setRejectingKeys(new Set());
   };
 
   const toggleRequestSelection = (key: string) => {
@@ -810,15 +866,17 @@ export const ManageMembersDialog = ({
         onClick={handleOpen}
         className="text-gray-400 hover:text-[#34F080] bg-transparent p-0 flex items-center cursor-pointer relative overflow-visible transition-colors"
       >
-        <Users className="mr-1.5 w-5 h-5" />
-        <span className="hidden items-center md:flex font-medium text-sm">
+        <span className="relative">
+          <Users className="w-5 h-5" />
+          {joinRequestBadge > 0 && (
+            <span className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] rounded-full bg-green-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
+              {joinRequestBadge > 99 ? "99+" : joinRequestBadge}
+            </span>
+          )}
+        </span>
+        <span className="hidden items-center md:flex font-medium text-sm ml-1.5">
           Members
         </span>
-        {joinRequestBadge > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 md:-top-1 md:right-auto md:-left-0.5 min-w-[18px] h-[18px] rounded-full bg-green-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
-            {joinRequestBadge > 99 ? "99+" : joinRequestBadge}
-          </span>
-        )}
       </button>
 
       {open && (
@@ -1082,23 +1140,42 @@ export const ManageMembersDialog = ({
                                     : "Select all"}
                                 </button>
                                 {selectedRequests.size > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      handleApproveRequests(
-                                        Array.from(selectedRequests)
-                                      )
-                                    }
-                                    disabled={approvingKeys.size > 0}
-                                    className="text-xs px-3 py-1 rounded-full bg-green-500/20 border border-green-500/30 text-green-400 hover:bg-green-500/30 cursor-pointer disabled:opacity-50 flex items-center gap-1"
-                                  >
-                                    {approvingKeys.size > 0 ? (
-                                      <Loader2 className="w-3 h-3 animate-spin" />
-                                    ) : (
-                                      <CheckCheck className="w-3 h-3" />
-                                    )}
-                                    Approve ({selectedRequests.size})
-                                  </button>
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleApproveRequests(
+                                          Array.from(selectedRequests)
+                                        )
+                                      }
+                                      disabled={approvingKeys.size > 0}
+                                      className="text-xs px-3 py-1 rounded-full bg-green-500/20 border border-green-500/30 text-green-400 hover:bg-green-500/30 cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                                    >
+                                      {approvingKeys.size > 0 ? (
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                      ) : (
+                                        <CheckCheck className="w-3 h-3" />
+                                      )}
+                                      Approve ({selectedRequests.size})
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleRejectRequests(
+                                          Array.from(selectedRequests)
+                                        )
+                                      }
+                                      disabled={rejectingKeys.size > 0}
+                                      className="text-xs px-3 py-1 rounded-full bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                                    >
+                                      {rejectingKeys.size > 0 ? (
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                      ) : (
+                                        <X className="w-3 h-3" />
+                                      )}
+                                      Reject ({selectedRequests.size})
+                                    </button>
+                                  </>
                                 )}
                               </>
                             )}
@@ -1108,8 +1185,11 @@ export const ManageMembersDialog = ({
                           {joinRequests.map((req) => {
                             const username =
                               req.profile?.Username ||
-                              req.requesterPublicKey.slice(0, 12) + "...";
+                              req.requesterPublicKey.slice(0, 18) + "...";
                             const isApproving = approvingKeys.has(
+                              req.requesterPublicKey
+                            );
+                            const isRejecting = rejectingKeys.has(
                               req.requesterPublicKey
                             );
                             const isSelected = selectedRequests.has(
@@ -1148,12 +1228,12 @@ export const ManageMembersDialog = ({
                                   diameter={isMobile ? 36 : 42}
                                   classNames="mx-0"
                                 />
-                                <div className="flex-1 ml-2 md:ml-3 min-w-0">
+                                <div className="ml-2 min-w-0 shrink text-left">
                                   <div className="font-medium text-sm truncate">
                                     {username}
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
                                   <button
                                     type="button"
                                     onClick={(e) => {
@@ -1176,12 +1256,17 @@ export const ManageMembersDialog = ({
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleDismissRequest(req.requesterPublicKey);
+                                      handleRejectRequests([req.requesterPublicKey]);
                                     }}
-                                    className="rounded-full p-1.5 text-gray-500 hover:text-gray-300 hover:bg-white/5 cursor-pointer"
-                                    title="Dismiss"
+                                    disabled={isRejecting}
+                                    className="rounded-full px-3 py-1.5 bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-medium hover:bg-red-500/30 cursor-pointer disabled:opacity-50 flex items-center gap-1"
                                   >
-                                    <X className="w-3.5 h-3.5" />
+                                    {isRejecting ? (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <X className="w-3 h-3" />
+                                    )}
+                                    <span className="hidden sm:inline">Reject</span>
                                   </button>
                                 </div>
                               </div>
@@ -1231,7 +1316,7 @@ export const ManageMembersDialog = ({
                           const memberPresence = getPresence(member.id);
                           return (
                           <div
-                            className="flex p-1.5 md:p-4 items-center cursor-pointer text-white bg-blue-900/20 border border-blue-600/20 rounded-md my-2"
+                            className="grid grid-cols-[auto_1fr_auto] gap-x-2 p-2 md:p-3 items-center cursor-pointer text-white bg-blue-900/20 border border-blue-600/20 rounded-md my-2"
                             key={member.id}
                           >
                             <MessagingDisplayAvatar
@@ -1241,9 +1326,8 @@ export const ManageMembersDialog = ({
                               classNames="mx-0"
                               showOnlineDot={memberPresence.status === "online"}
                             />
-                            <div className="flex justify-between items-center flex-1 overflow-auto">
-                              <div className="mx-2 md:ml-4 max-w-[calc(100%-105px)]">
-                                <div className="font-medium truncate">{member.text}</div>
+                            <div className="min-w-0 text-left">
+                              <div className="font-medium truncate">{member.text}</div>
                                 {isGroupOwner && currentMemberKeys.includes(member.id) ? (
                                   <div className="text-xs md:text-sm text-blue-300/80 mt-1">
                                     Already in the chat
@@ -1254,15 +1338,16 @@ export const ManageMembersDialog = ({
                                   <div className="text-xs text-gray-500 mt-0.5">{formatLastSeen(memberPresence.timestamp)}</div>
                                 ) : null}
                               </div>
-                              {isGroupOwner && member.id !== appUser?.PublicKeyBase58Check && (
-                                <button
-                                  className="rounded-full mr-1 md:mr-3 px-3 py-2 border text-white bg-red-400/20 hover:bg-red-400/30 border-red-600/60 text-sm md:px-4 cursor-pointer"
-                                  onClick={() => removeMember(member.id)}
-                                >
-                                  Remove
-                                </button>
-                              )}
-                            </div>
+                            {isGroupOwner && member.id !== appUser?.PublicKeyBase58Check ? (
+                              <button
+                                className="rounded-full px-3 py-2 border text-white bg-red-400/20 hover:bg-red-400/30 border-red-600/60 text-sm md:px-4 cursor-pointer"
+                                onClick={() => removeMember(member.id)}
+                              >
+                                Remove
+                              </button>
+                            ) : (
+                              <span />
+                            )}
                           </div>
                           );
                         })

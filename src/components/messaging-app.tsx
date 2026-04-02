@@ -2232,9 +2232,11 @@ export const MessagingApp: FC = () => {
                           if (isGroupChat) {
                             const memberKeys = chatMembers ? Object.keys(chatMembers) : [];
                             const online = getOnlineCount(memberKeys);
+                            const total = memberKeys.length;
+                            if (total === 0) return null;
                             return (
-                              <span className="text-gray-500 text-xs">
-                                {online > 0 ? `${online} online` : memberKeys.length > 0 ? `${memberKeys.length} members` : ""}
+                              <span className="text-gray-500 text-xs whitespace-nowrap">
+                                {total} {total === 1 ? "member" : "members"}{online > 0 ? `, ${online} online` : ""}
                               </span>
                             );
                           }
@@ -2252,22 +2254,30 @@ export const MessagingApp: FC = () => {
                   className="text-gray-400 items-center hidden md:block"
                 >
                   {isGroupOwner ? (
-                    <div className="flex items-center gap-2">
-                      <span>You're the<strong> owner of this group</strong></span>
-                      {(() => {
-                        const memberKeys = chatMembers ? Object.keys(chatMembers) : [];
-                        const online = getOnlineCount(memberKeys);
-                        if (online > 0) return <span className="text-gray-500 text-xs">· {online} online</span>;
-                        return null;
-                      })()}
-                    </div>
+                    (() => {
+                      const memberKeys = chatMembers ? Object.keys(chatMembers) : [];
+                      const online = getOnlineCount(memberKeys);
+                      const total = memberKeys.length;
+                      return (
+                        <div className="flex items-center gap-2">
+                          <span>You're the<strong> owner of this group</strong></span>
+                          {total > 0 && (
+                            <span className="text-gray-500 text-xs">
+                              · {total} {total === 1 ? "member" : "members"}{online > 0 ? `, ${online} online` : ""}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()
                   ) : isGroupChat ? (
                     (() => {
                       const memberKeys = chatMembers ? Object.keys(chatMembers) : [];
                       const online = getOnlineCount(memberKeys);
+                      const total = memberKeys.length;
+                      if (total === 0) return null;
                       return (
                         <span className="text-gray-500 text-sm">
-                          {online > 0 ? `${online} online` : memberKeys.length > 0 ? `${memberKeys.length} members` : ""}
+                          {total} {total === 1 ? "member" : "members"}{online > 0 ? `, ${online} online` : ""}
                         </span>
                       );
                     })()

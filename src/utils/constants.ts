@@ -27,6 +27,11 @@ export const ASSOCIATION_VALUE_DISMISSED = "dismissed";
 // TargetUser = group owner's public key, Value = access group key name.
 export const ASSOCIATION_TYPE_GROUP_JOIN_REQUEST = "chaton:group-join-request";
 
+// Join rejected — owner rejects a join request.
+// Transactor = group owner, Target = requester's public key,
+// Value = access group key name.
+export const ASSOCIATION_TYPE_GROUP_JOIN_REJECTED = "chaton:group-join-rejected";
+
 // Invite code registry — maps a short alphanumeric code to a group chat.
 // Transactor = group owner, Target = CHATON_REGISTRY_PUBLIC_KEY,
 // Value = short code, ExtraData["group:keyName"] = access group key name.
