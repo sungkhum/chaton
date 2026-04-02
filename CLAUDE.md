@@ -140,6 +140,27 @@ when writing or modifying tests.
   - Full suite when changes are broad: `npm run test:e2e`
 - **PWA/offline changes** require a build first: `npm run test:e2e:ci`
 
+### Critical: routing, loading, and splash screen changes
+
+Any change to `App.tsx` routing logic (`contentReady`, `showLanding`, route guards),
+splash screen removal, or the Zustand `isLoadingUser`/`appUser` state **must** pass
+these tests before committing:
+
+```
+npx playwright test e2e/tests/logged-in-shell.spec.ts e2e/tests/landing-page.spec.ts
+```
+
+- `logged-in-shell.spec.ts` — injects a mock user via `__CHATON_STORE__` (exposed in
+  dev mode) and verifies: (1) the messaging header renders, (2) the loading state
+  (`isLoadingUser: true`) shows the spinner, not the landing page. The landing page
+  starts all elements at GSAP `autoAlpha: 0`, so rendering it during loading = black
+  screen.
+- `landing-page.spec.ts` — verifies hero content is visible after splash removal for
+  logged-out users.
+
+For PWA builds, also run `npm run test:e2e:ci` which includes `pwa.spec.ts` with its
+own visible-content smoke test.
+
 ### Running tests
 
 ```
