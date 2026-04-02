@@ -28,6 +28,7 @@ import {
   ASSOCIATION_TYPE_CHAT_ARCHIVED,
   ASSOCIATION_TYPE_DISMISSED,
   ASSOCIATION_TYPE_GROUP_ARCHIVED,
+  ASSOCIATION_TYPE_GROUP_JOIN_REJECTED,
   ASSOCIATION_TYPE_GROUP_JOIN_REQUEST,
   ASSOCIATION_TYPE_PRIVACY_MODE,
   ASSOCIATION_VALUE_APPROVED,
@@ -1119,12 +1120,33 @@ export async function fetchJoinRequestCountsForOwner(
 
   if (groupRequesters.size === 0) return new Map();
 
-  // Second pass: fetch members for each group and filter out already-members
+  // Bulk-fetch all rejection associations so we can exclude rejected users
+  const groupRejected = new Map<string, Set<string>>(); // groupKeyName → rejected keys
+  let rejLastId = "";
+  while (true) {
+    const res = await getUserAssociations({
+      TransactorPublicKeyBase58Check: ownerPublicKey,
+      AssociationType: ASSOCIATION_TYPE_GROUP_JOIN_REJECTED,
+      Limit: 100,
+      ...(rejLastId ? { LastSeenAssociationID: rejLastId } : {}),
+    });
+    const associations = res.Associations ?? [];
+    for (const a of associations) {
+      const gkn = a.AssociationValue;
+      if (!groupRejected.has(gkn)) groupRejected.set(gkn, new Set());
+      groupRejected.get(gkn)!.add(a.TargetUserPublicKeyBase58Check);
+    }
+    if (associations.length < 100) break;
+    rejLastId = associations[associations.length - 1].AssociationID;
+  }
+
+  // Second pass: fetch members for each group and filter out already-members + rejected
   const counts = new Map<string, number>();
   await Promise.all(
     Array.from(groupRequesters.entries()).map(
       async ([groupKeyName, requesterKeys]) => {
         const conversationKey = ownerPublicKey + groupKeyName;
+        const rejectedSet = groupRejected.get(groupKeyName) ?? new Set();
         try {
           const memberSet = new Set<string>([ownerPublicKey]);
           let cursor = "";
@@ -1143,14 +1165,19 @@ export async function fetchJoinRequestCountsForOwner(
             cursor = pageKeys[pageKeys.length - 1];
           }
           const pendingCount = Array.from(requesterKeys).filter(
-            (k) => !memberSet.has(k)
+            (k) => !memberSet.has(k) && !rejectedSet.has(k)
           ).length;
           if (pendingCount > 0) {
             counts.set(conversationKey, pendingCount);
           }
         } catch {
-          // Fallback to raw count if member fetch fails
-          counts.set(conversationKey, requesterKeys.size);
+          // Fallback: still filter rejected even if member fetch fails
+          const pendingCount = Array.from(requesterKeys).filter(
+            (k) => !rejectedSet.has(k)
+          ).length;
+          if (pendingCount > 0) {
+            counts.set(conversationKey, pendingCount);
+          }
         }
       }
     )
@@ -1204,6 +1231,59 @@ export async function fetchPendingJoinRequests(
   }
 
   return results;
+}
+
+/**
+ * Fetch the set of public keys the owner has rejected for a given group.
+ */
+export async function fetchRejectedJoinRequestKeys(
+  ownerPublicKey: string,
+  groupKeyName: string
+): Promise<Set<string>> {
+  const rejected = new Set<string>();
+  let lastId = "";
+
+  while (true) {
+    const res = await getUserAssociations({
+      TransactorPublicKeyBase58Check: ownerPublicKey,
+      AssociationType: ASSOCIATION_TYPE_GROUP_JOIN_REJECTED,
+      AssociationValue: groupKeyName,
+      Limit: 100,
+      ...(lastId ? { LastSeenAssociationID: lastId } : {}),
+    });
+
+    const associations = res.Associations ?? [];
+    for (const a of associations) {
+      rejected.add(a.TargetUserPublicKeyBase58Check);
+    }
+
+    if (associations.length < 100) break;
+    lastId = associations[associations.length - 1].AssociationID;
+  }
+
+  return rejected;
+}
+
+/**
+ * Create an on-chain rejection association for a join request.
+ * Transactor = group owner, Target = requester, Value = group key name.
+ */
+export async function createRejectAssociation(
+  ownerPublicKey: string,
+  requesterPublicKey: string,
+  groupKeyName: string
+): Promise<void> {
+  await withAuth(() =>
+    createUserAssociation(
+      {
+        TransactorPublicKeyBase58Check: ownerPublicKey,
+        TargetUserPublicKeyBase58Check: requesterPublicKey,
+        AssociationType: ASSOCIATION_TYPE_GROUP_JOIN_REJECTED,
+        AssociationValue: groupKeyName,
+      },
+      { checkPermissions: false }
+    )
+  );
 }
 
 /**
