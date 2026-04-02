@@ -417,9 +417,7 @@ function App() {
     );
   }
 
-  // Show the landing page immediately on "/" even while identity is loading —
-  // avoids a long loading screen when navigating back from /community etc.
-  const showLanding = !appUser && (!isLoadingUser || path === "/");
+  const showLanding = !appUser && !isLoadingUser;
 
   if (showLanding) {
     return (
