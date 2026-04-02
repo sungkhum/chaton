@@ -111,6 +111,8 @@ export interface ParsedMessage {
   gifUrl?: string;
   gifTitle?: string;
   videoUrl?: string;
+  /** Local-only thumbnail data URL for optimistic video messages (not stored on-chain). */
+  localThumbnail?: string;
   duration?: number;
   mediaWidth?: number;
   mediaHeight?: number;
@@ -217,6 +219,7 @@ export function parseMessageType(
     gifUrl: extra[MSG_GIF_URL],
     gifTitle: extra[MSG_GIF_TITLE],
     videoUrl: extra[MSG_VIDEO_URL] || desoAppMedia.videoUrl,
+    localThumbnail: extra["_localThumbnail"],
     duration: extra[MSG_DURATION]
       ? parseFloat(extra[MSG_DURATION])
       : undefined,

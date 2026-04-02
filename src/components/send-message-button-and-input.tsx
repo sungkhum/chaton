@@ -48,7 +48,7 @@ export const SendMessageButtonAndInput = ({
   const [isUploading, setIsUploading] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [pendingImage, setPendingImage] = useState<{ file: File; previewUrl: string; width?: number; height?: number } | null>(null);
-  const [pendingVideo, setPendingVideo] = useState<{ file: File; previewUrl: string; width?: number; height?: number; duration?: number } | null>(null);
+  const [pendingVideo, setPendingVideo] = useState<{ file: File; previewUrl: string; width?: number; height?: number; duration?: number; thumbnail?: string } | null>(null);
   const [showLinkPanel, setShowLinkPanel] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -336,7 +336,22 @@ export const SendMessageButtonAndInput = ({
     const video = document.createElement("video");
     video.preload = "metadata";
     video.onloadedmetadata = () => {
-      setPendingVideo({ file, previewUrl, width: video.videoWidth, height: video.videoHeight, duration: video.duration });
+      setPendingVideo((prev) => prev ? { ...prev, width: video.videoWidth, height: video.videoHeight, duration: video.duration } : prev);
+      // Capture a thumbnail frame from the local video
+      video.currentTime = 0.1;
+    };
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(video, 0, 0);
+          const thumbnail = canvas.toDataURL("image/jpeg", 0.7);
+          setPendingVideo((prev) => prev ? { ...prev, thumbnail } : prev);
+        }
+      } catch { /* cross-origin or other canvas error — skip thumbnail */ }
     };
     video.onerror = () => {
       setPendingVideo({ file, previewUrl });
@@ -370,6 +385,8 @@ export const SendMessageButtonAndInput = ({
       if (pendingVideo.width && pendingVideo.height) {
         extraData["video.0.orientation"] = pendingVideo.width >= pendingVideo.height ? "landscape" : "portrait";
       }
+      // Local-only thumbnail for optimistic display — stripped before blockchain submission
+      if (pendingVideo.thumbnail) extraData["_localThumbnail"] = pendingVideo.thumbnail;
       await sendMessage(caption || "", extraData);
       URL.revokeObjectURL(pendingVideo.previewUrl);
       setPendingVideo(null);

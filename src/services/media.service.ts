@@ -2,6 +2,7 @@ import {
   identity,
   uploadVideo as desoUploadVideo,
   pollForVideoReady,
+  getVideoStatus,
 } from "deso-protocol";
 import { useStore } from "../store";
 
@@ -53,10 +54,19 @@ export async function uploadVideoFile(file: File): Promise<VideoUploadResult> {
 
   await pollForVideoReady(response.asset.id);
 
+  // Get the Cloudflare Stream video ID from video status (response.url is just the upload endpoint).
+  // Store as iframe.videodelivery.net URL to match DeSo app format — our player converts to HLS on the fly.
+  const status = await getVideoStatus({ videoId: response.asset.id });
+  const cfVideoId = status.playbackID || response.asset.playbackId;
+  if (!cfVideoId) {
+    throw new Error("Video processed but no playback ID returned");
+  }
+  const playbackUrl = `https://iframe.videodelivery.net/${cfVideoId}`;
+
   return {
     assetId: response.asset.id,
-    playbackId: response.asset.playbackId,
-    url: response.url,
+    playbackId: cfVideoId,
+    url: playbackUrl,
   };
 }
 

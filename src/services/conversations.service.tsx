@@ -415,6 +415,10 @@ export const encryptAndSendNewMessage = async (
   let message: string;
   let isUnencrypted = false;
   const ExtraData: { [k: string]: string } = { ...additionalExtraData };
+  // Strip local-only keys (prefixed with _) — used for optimistic UI, not stored on-chain
+  for (const key of Object.keys(ExtraData)) {
+    if (key.startsWith("_")) delete ExtraData[key];
+  }
   if (response.RecipientAccessGroupKeyName) {
     message = await identity.encryptMessage(
       response.RecipientAccessGroupPublicKeyBase58Check,
@@ -552,6 +556,10 @@ export const encryptAndUpdateMessage = async (
   let message: string;
   let isUnencrypted = false;
   const ExtraData: { [k: string]: string } = { ...additionalExtraData };
+  // Strip local-only keys (prefixed with _) — used for optimistic UI, not stored on-chain
+  for (const key of Object.keys(ExtraData)) {
+    if (key.startsWith("_")) delete ExtraData[key];
+  }
   if (response.RecipientAccessGroupKeyName) {
     message = await identity.encryptMessage(
       response.RecipientAccessGroupPublicKeyBase58Check,

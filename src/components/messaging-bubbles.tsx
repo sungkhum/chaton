@@ -160,17 +160,27 @@ function MessageContent({ message }: { message: DecryptedMessageEntryResponse })
         <FormattedMessage>{messageToShow}</FormattedMessage>
       );
 
-    case "video":
+    case "video": {
+      const videoCaption = messageToShow && messageToShow !== "video" ? messageToShow : undefined;
       return parsed.videoUrl ? (
-        <VideoMessage
-          videoUrl={parsed.videoUrl}
-          width={parsed.mediaWidth}
-          height={parsed.mediaHeight}
-          duration={parsed.duration}
-        />
+        <div>
+          <VideoMessage
+            videoUrl={parsed.videoUrl}
+            width={parsed.mediaWidth}
+            height={parsed.mediaHeight}
+            duration={parsed.duration}
+            localThumbnail={parsed.localThumbnail}
+          />
+          {videoCaption && (
+            <p className="text-sm mt-1.5 select-text">
+              <FormattedMessage>{videoCaption}</FormattedMessage>
+            </p>
+          )}
+        </div>
       ) : (
         <FormattedMessage>{messageToShow}</FormattedMessage>
       );
+    }
 
     case "file":
       return (

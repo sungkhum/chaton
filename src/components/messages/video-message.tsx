@@ -7,12 +7,28 @@ interface VideoMessageProps {
   width?: number;
   height?: number;
   duration?: number;
+  /** Local-only thumbnail (data URL) for optimistic display before Cloudflare thumbnail is available. */
+  localThumbnail?: string;
+}
+
+/**
+ * Convert a video URL to a playable stream URL.
+ * Cloudflare Stream iframe URLs (iframe.videodelivery.net/{id}) are HTML embed pages,
+ * not playable video streams. Convert to the HLS manifest URL.
+ */
+function toStreamUrl(videoUrl: string): string {
+  // Cloudflare Stream iframe: https://iframe.videodelivery.net/{videoId}
+  // → HLS: https://videodelivery.net/{videoId}/manifest/video.m3u8
+  const cfIframeMatch = videoUrl.match(/iframe\.videodelivery\.net\/([a-f0-9]+)/);
+  if (cfIframeMatch) {
+    return `https://videodelivery.net/${cfIframeMatch[1]}/manifest/video.m3u8`;
+  }
+  return videoUrl;
 }
 
 /** Derive a thumbnail URL from a video stream URL. */
 function getThumbnailUrl(videoUrl: string): string | undefined {
-  // Cloudflare Stream: https://iframe.videodelivery.net/{videoId}
-  // Thumbnail: https://videodelivery.net/{videoId}/thumbnails/thumbnail.jpg
+  // Cloudflare Stream: https://iframe.videodelivery.net/{videoId} or https://videodelivery.net/{videoId}/...
   const cfMatch = videoUrl.match(/videodelivery\.net\/([a-f0-9]+)/);
   if (cfMatch) {
     return `https://videodelivery.net/${cfMatch[1]}/thumbnails/thumbnail.jpg`;
@@ -33,15 +49,18 @@ function getThumbnailUrl(videoUrl: string): string | undefined {
   return undefined;
 }
 
-export const VideoMessage = ({ videoUrl, width, height, duration }: VideoMessageProps) => {
+export const VideoMessage = ({ videoUrl, width, height, duration, localThumbnail }: VideoMessageProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [thumbnailError, setThumbnailError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const aspectRatio = width && height ? width / height : 16 / 9;
 
-  const isHls = videoUrl.includes(".m3u8") || videoUrl.includes("/hls/");
-  const thumbnailUrl = getThumbnailUrl(videoUrl);
+  // Derive thumbnail from the original URL (before conversion)
+  const thumbnailUrl = localThumbnail || getThumbnailUrl(videoUrl);
+  // Convert iframe embed URLs to playable stream URLs
+  const streamUrl = toStreamUrl(videoUrl);
+  const isHls = streamUrl.includes(".m3u8") || streamUrl.includes("/hls/");
 
   useEffect(() => {
     const video = videoRef.current;
@@ -49,7 +68,7 @@ export const VideoMessage = ({ videoUrl, width, height, duration }: VideoMessage
 
     if (isHls && Hls.isSupported()) {
       const hls = new Hls({ autoStartLoad: false });
-      hls.loadSource(videoUrl);
+      hls.loadSource(streamUrl);
       hls.attachMedia(video);
       hlsRef.current = hls;
       return () => {
@@ -58,10 +77,10 @@ export const VideoMessage = ({ videoUrl, width, height, duration }: VideoMessage
       };
     } else {
       // Native HLS (Safari) or direct mp4 URL
-      video.src = videoUrl;
+      video.src = streamUrl;
       video.preload = "metadata";
     }
-  }, [videoUrl, isHls]);
+  }, [streamUrl, isHls]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
