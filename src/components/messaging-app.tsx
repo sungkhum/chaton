@@ -20,6 +20,7 @@ import { useMessageSearch } from "../hooks/useMessageSearch";
 import { useMobile } from "../hooks/useMobile";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { useTypingIndicator, useTypingDisplay } from "../hooks/useTypingIndicator";
+import { usePresence } from "../hooks/usePresence";
 import { needsPermissionUpgrade, requestFullPermissions } from "../utils/with-auth";
 import {
   classifyConversation,
@@ -77,6 +78,7 @@ import {
   TITLE_DIVIDER,
 } from "../utils/constants";
 import {
+  formatLastSeen,
   getChatNameFromConversation,
   hasSetupMessaging,
   scrollContainerToElement,
@@ -587,9 +589,15 @@ export const MessagingApp: FC = () => {
 
   const { onTypingReceived, getTypingUsersForConversation } = useTypingDisplay();
 
+  const setOnlineUsers = useStore((s) => s.setOnlineUsers);
+  const { getPresence, getOnlineCount, fetchPresenceForKeys } = usePresence();
+
   const { sendNotify, sendTyping, sendRead } = useWebSocket({
     onNewMessage: handleWsNewMessage,
     onTyping: onTypingReceived,
+    onPresence: (users) => {
+      setOnlineUsers(new Set(Object.keys(users)));
+    },
   });
 
   const { onKeystroke } = useTypingIndicator(sendTyping);
@@ -1855,6 +1863,19 @@ export const MessagingApp: FC = () => {
       )
     : undefined;
   const chatMembers = membersByGroupKey[selectedConversationPublicKey];
+
+  // Fetch presence data when a conversation is selected
+  useEffect(() => {
+    if (!selectedConversation) return;
+    if (isGroupChat) {
+      if (chatMembers) {
+        fetchPresenceForKeys(Object.keys(chatMembers));
+      }
+    } else if (selectedConversation.firstMessagePublicKey) {
+      fetchPresenceForKeys([selectedConversation.firstMessagePublicKey]);
+    }
+  }, [safeSelectedKey, isGroupChat, chatMembers, fetchPresenceForKeys, selectedConversation]);
+
   const activeChatUsersMap: { [k: string]: string } = isGroupChat
     ? Object.keys(chatMembers || {}).reduce<{ [k: string]: string }>(
         (acc, curr) => ({
@@ -2149,17 +2170,61 @@ export const MessagingApp: FC = () => {
                           diameter={32}
                         />
                       )}
-                      <span className="text-white font-bold text-base truncate">
-                        {getCurrentChatName()}
-                      </span>
+                      <div className="min-w-0">
+                        <span className="text-white font-bold text-base truncate block">
+                          {getCurrentChatName()}
+                        </span>
+                        {(() => {
+                          if (isGroupChat) {
+                            const memberKeys = chatMembers ? Object.keys(chatMembers) : [];
+                            const online = getOnlineCount(memberKeys);
+                            return (
+                              <span className="text-gray-500 text-xs">
+                                {online > 0 ? `${online} online` : memberKeys.length > 0 ? `${memberKeys.length} members` : ""}
+                              </span>
+                            );
+                          }
+                          const otherKey = selectedConversation?.firstMessagePublicKey;
+                          if (!otherKey) return null;
+                          const presence = getPresence(otherKey);
+                          if (presence.status === "online") return <span className="text-[#34F080] text-xs">Online</span>;
+                          if (presence.status === "last-seen") return <span className="text-gray-500 text-xs">{formatLastSeen(presence.timestamp)}</span>;
+                          return null;
+                        })()}
+                      </div>
                     </div>
                   )}
                 <div
-                  className={`text-gray-400 items-center hidden ${
-                    isGroupOwner ? "md:block" : "md:hidden"
-                  }`}
+                  className="text-gray-400 items-center hidden md:block"
                 >
-                  You're the<strong> owner of this group</strong>
+                  {isGroupOwner ? (
+                    <div className="flex items-center gap-2">
+                      <span>You're the<strong> owner of this group</strong></span>
+                      {(() => {
+                        const memberKeys = chatMembers ? Object.keys(chatMembers) : [];
+                        const online = getOnlineCount(memberKeys);
+                        if (online > 0) return <span className="text-gray-500 text-xs">· {online} online</span>;
+                        return null;
+                      })()}
+                    </div>
+                  ) : isGroupChat ? (
+                    (() => {
+                      const memberKeys = chatMembers ? Object.keys(chatMembers) : [];
+                      const online = getOnlineCount(memberKeys);
+                      return (
+                        <span className="text-gray-500 text-sm">
+                          {online > 0 ? `${online} online` : memberKeys.length > 0 ? `${memberKeys.length} members` : ""}
+                        </span>
+                      );
+                    })()
+                  ) : (() => {
+                    const otherKey = selectedConversation?.firstMessagePublicKey;
+                    if (!otherKey) return null;
+                    const presence = getPresence(otherKey);
+                    if (presence.status === "online") return <span className="text-[#34F080] text-sm">Online</span>;
+                    if (presence.status === "last-seen") return <span className="text-gray-500 text-sm">{formatLastSeen(presence.timestamp)}</span>;
+                    return null;
+                  })()}
                 </div>
                 <div
                   className={`flex items-center gap-3 justify-end shrink-0 ${

@@ -180,6 +180,42 @@ export async function incrementFailureCount(
   return row?.failure_count ?? 0;
 }
 
+/** Update last_seen_at timestamp for a user on WebSocket disconnect. */
+export async function updateLastSeen(
+  db: D1Database,
+  desoPublicKey: string
+): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE users SET last_seen_at = datetime('now') WHERE deso_public_key = ?`
+    )
+    .bind(desoPublicKey)
+    .run();
+}
+
+/** Batch-fetch last_seen_at timestamps for multiple users. */
+export async function getLastSeenBatch(
+  db: D1Database,
+  publicKeys: string[]
+): Promise<Record<string, string>> {
+  if (publicKeys.length === 0) return {};
+
+  const placeholders = publicKeys.map(() => "?").join(", ");
+  const { results } = await db
+    .prepare(
+      `SELECT deso_public_key, last_seen_at FROM users
+       WHERE deso_public_key IN (${placeholders}) AND last_seen_at IS NOT NULL`
+    )
+    .bind(...publicKeys)
+    .all<{ deso_public_key: string; last_seen_at: string }>();
+
+  const map: Record<string, string> = {};
+  for (const row of results) {
+    map[row.deso_public_key] = row.last_seen_at;
+  }
+  return map;
+}
+
 /** Reset failure count on successful delivery. */
 export async function resetFailureCount(
   db: D1Database,

@@ -21,6 +21,8 @@ import { toast } from "sonner";
 import useKeyDown from "../hooks/useKeyDown";
 import { useMembers } from "../hooks/useMembers";
 import { useMobile } from "../hooks/useMobile";
+import { usePresence } from "../hooks/usePresence";
+import { formatLastSeen } from "../utils/helpers";
 import {
   ASSOCIATION_TYPE_GROUP_JOIN_REQUEST,
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
@@ -73,6 +75,14 @@ export const ManageMembersDialog = ({
   const membersAreaRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const { isMobile } = useMobile();
+  const { getPresence, fetchPresenceForKeys } = usePresence();
+
+  // Fetch presence when dialog opens and members are loaded
+  useEffect(() => {
+    if (open && members.length > 0) {
+      fetchPresenceForKeys(members.map((m) => m.id));
+    }
+  }, [open, members, fetchPresenceForKeys]);
 
   // Focus trap: keep Tab cycling within the dialog
   const handleTrapFocus = useCallback((e: KeyboardEvent) => {
@@ -1217,7 +1227,9 @@ export const ManageMembersDialog = ({
                           <Loader2 className="w-11 h-11 mt-4 animate-spin text-blue-600 mx-auto" />
                         </div>
                       ) : (
-                        members.map((member) => (
+                        members.map((member) => {
+                          const memberPresence = getPresence(member.id);
+                          return (
                           <div
                             className="flex p-1.5 md:p-4 items-center cursor-pointer text-white bg-blue-900/20 border border-blue-600/20 rounded-md my-2"
                             key={member.id}
@@ -1227,15 +1239,20 @@ export const ManageMembersDialog = ({
                               publicKey={member.id}
                               diameter={isMobile ? 40 : 50}
                               classNames="mx-0"
+                              showOnlineDot={memberPresence.status === "online"}
                             />
                             <div className="flex justify-between items-center flex-1 overflow-auto">
                               <div className="mx-2 md:ml-4 max-w-[calc(100%-105px)]">
                                 <div className="font-medium truncate">{member.text}</div>
-                                {isGroupOwner && currentMemberKeys.includes(member.id) && (
+                                {isGroupOwner && currentMemberKeys.includes(member.id) ? (
                                   <div className="text-xs md:text-sm text-blue-300/80 mt-1">
                                     Already in the chat
                                   </div>
-                                )}
+                                ) : memberPresence.status === "online" ? (
+                                  <div className="text-xs text-[#34F080] mt-0.5">Online</div>
+                                ) : memberPresence.status === "last-seen" ? (
+                                  <div className="text-xs text-gray-500 mt-0.5">{formatLastSeen(memberPresence.timestamp)}</div>
+                                ) : null}
                               </div>
                               {isGroupOwner && member.id !== appUser?.PublicKeyBase58Check && (
                                 <button
@@ -1247,7 +1264,8 @@ export const ManageMembersDialog = ({
                               )}
                             </div>
                           </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
                   </div>

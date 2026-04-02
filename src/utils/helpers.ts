@@ -119,3 +119,24 @@ export const formatRelativeTimestamp = (tstampNanos: number): string => {
   }
   return `${month} ${day}`;
 };
+
+/** Format an ISO timestamp into a human-readable "last seen" string. */
+export const formatLastSeen = (isoTimestamp: string): string => {
+  const date = new Date(isoTimestamp);
+  if (isNaN(date.getTime())) return "";
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+
+  if (diffMins < 1) return "last seen just now";
+  if (diffMins < 60) return `last seen ${diffMins}m ago`;
+  if (diffHours < 24) return `last seen ${diffHours}h ago`;
+
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffDays < 7) return `last seen ${diffDays}d ago`;
+
+  const month = date.toLocaleDateString("en-US", { month: "short" });
+  const day = date.getDate();
+  return `last seen ${month} ${day}`;
+};

@@ -10,6 +10,7 @@ import {
   deactivateSubscription,
   incrementFailureCount,
   resetFailureCount,
+  getLastSeenBatch,
 } from "./db";
 import { sendPushNotification, type PushSubscriptionData } from "./web-push";
 import { validateDesoJwt } from "./jwt";
@@ -118,6 +119,35 @@ export default {
       if (!isOriginAllowed(origin, allowed)) return forbidden();
       const res = await handlePushUnsubscribe(request, env);
       return withCors(res, origin!);
+    }
+
+    // Presence — batch last-seen lookup (no JWT, public data)
+    if (url.pathname === "/presence/last-seen" && request.method === "POST") {
+      if (!isOriginAllowed(origin, allowed)) return forbidden();
+      try {
+        const { publicKeys } = await request.json<{ publicKeys: string[] }>();
+        if (!Array.isArray(publicKeys) || publicKeys.length === 0) {
+          return withCors(
+            new Response(JSON.stringify({ lastSeen: {} }), {
+              headers: { "Content-Type": "application/json" },
+            }),
+            origin!
+          );
+        }
+        const capped = publicKeys.slice(0, 50);
+        const lastSeen = await getLastSeenBatch(env.DB, capped);
+        return withCors(
+          new Response(JSON.stringify({ lastSeen }), {
+            headers: { "Content-Type": "application/json" },
+          }),
+          origin!
+        );
+      } catch {
+        return withCors(
+          new Response(JSON.stringify({ error: "Bad request" }), { status: 400 }),
+          origin!
+        );
+      }
     }
 
     // Invite code management — signed by ChatOn's key

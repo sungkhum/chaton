@@ -55,6 +55,8 @@ export const MessagingDisplayAvatar: FC<{
   groupImageUrl?: string;
   /** High-res or NFT profile pic URL from ExtraData (takes priority) */
   extraDataPicUrl?: string;
+  /** Show a green online indicator dot */
+  showOnlineDot?: boolean;
 }> = ({
   publicKey,
   username,
@@ -64,6 +66,7 @@ export const MessagingDisplayAvatar: FC<{
   groupChat = false,
   groupImageUrl,
   extraDataPicUrl,
+  showOnlineDot = false,
 }) => {
   const colorIndex = useMemo(
     () => hashToColorIndex(publicKey || username || ""),
@@ -182,6 +185,17 @@ export const MessagingDisplayAvatar: FC<{
             title={publicKey}
             onLoad={handleImgLoad}
             onError={handleImgError}
+          />
+        )}
+        {showOnlineDot && (
+          <span
+            style={{
+              width: `${Math.max(Math.round(diameter * 0.28), 8)}px`,
+              height: `${Math.max(Math.round(diameter * 0.28), 8)}px`,
+              bottom: "0px",
+              right: "0px",
+            }}
+            className="absolute rounded-full bg-[#34F080] border-2 border-[#0a1019]"
           />
         )}
       </div>

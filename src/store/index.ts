@@ -118,6 +118,14 @@ interface ChatOnState {
   rollbackUnblock: (publicKey: string, associationId: string) => void;
   resetChatRequestState: () => void;
 
+  // Presence
+  onlineUsers: Set<string>;
+  lastSeenByUser: Map<string, string>;
+  desoActivityByUser: Map<string, string>;
+  setOnlineUsers: (users: Set<string>) => void;
+  mergeLastSeen: (data: Record<string, string>) => void;
+  mergeDesoActivity: (data: Record<string, string>) => void;
+
   // Tipping — session spending awareness (tracks USD cents for both currencies)
   sessionTipTotalUsdCents: number;
   addSessionTipUsd: (usdAmount: number) => void;
@@ -568,8 +576,29 @@ export const useStore = create<ChatOnState>((set) => ({
       unreadByConversation: new Map(),
       totalUnread: 0,
       sessionTipTotalUsdCents: 0,
+      onlineUsers: EMPTY_SET,
+      lastSeenByUser: EMPTY_MAP,
+      desoActivityByUser: EMPTY_MAP,
     });
   },
+
+  // Presence
+  onlineUsers: EMPTY_SET,
+  lastSeenByUser: EMPTY_MAP,
+  desoActivityByUser: EMPTY_MAP,
+  setOnlineUsers: (users) => set({ onlineUsers: users }),
+  mergeLastSeen: (data) =>
+    set((state) => {
+      const next = new Map(state.lastSeenByUser);
+      for (const [k, v] of Object.entries(data)) next.set(k, v);
+      return { lastSeenByUser: next };
+    }),
+  mergeDesoActivity: (data) =>
+    set((state) => {
+      const next = new Map(state.desoActivityByUser);
+      for (const [k, v] of Object.entries(data)) next.set(k, v);
+      return { desoActivityByUser: next };
+    }),
 
   // Tipping — tracks USD cents for both DESO and USDC tips
   sessionTipTotalUsdCents: 0,

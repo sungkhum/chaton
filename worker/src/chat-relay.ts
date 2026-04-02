@@ -1,6 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { sendPushNotification, PushSubscriptionData } from "./web-push";
 import { validateDesoJwt } from "./jwt";
+import { updateLastSeen } from "./db";
 
 interface WsMessage {
   type: "notify" | "typing" | "read" | "register";
@@ -24,6 +25,7 @@ export interface RelayEnv {
   VAPID_PRIVATE_KEY: string;
   VAPID_SUBJECT: string;
   DESO_NODE_URL: string;
+  DB: D1Database;
 }
 
 export class ChatRelay extends DurableObject<RelayEnv> {
@@ -312,8 +314,14 @@ export class ChatRelay extends DurableObject<RelayEnv> {
   private removeClient(ws: WebSocket) {
     for (const [pubKey, clients] of this.clients) {
       const filtered = clients.filter((c) => c.ws !== ws);
-      if (filtered.length === 0) this.clients.delete(pubKey);
-      else this.clients.set(pubKey, filtered);
+      if (filtered.length === 0) {
+        this.clients.delete(pubKey);
+        this.ctx.waitUntil(
+          updateLastSeen(this.env.DB, pubKey).catch(() => {/* best-effort */})
+        );
+      } else {
+        this.clients.set(pubKey, filtered);
+      }
     }
     this.broadcastPresence();
   }

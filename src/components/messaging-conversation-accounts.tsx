@@ -86,7 +86,7 @@ export const MessagingConversationAccount: FC<{
   onSearchResultClick,
   searchClearTrigger,
 }) => {
-  const { allAccessGroups, appUser, joinRequestCounts } = useStore();
+  const { allAccessGroups, appUser, joinRequestCounts, onlineUsers } = useStore();
   const [activeTab, setActiveTab] = useState<"chats" | "requests" | "community">("chats");
   const [groupChatOpen, setGroupChatOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
@@ -379,6 +379,7 @@ export const MessagingConversationAccount: FC<{
                         groupChat={isGroupChat}
                         groupImageUrl={groupImgUrl}
                         diameter={48}
+                        showOnlineDot={isDM && !!value.firstMessagePublicKey && onlineUsers.has(value.firstMessagePublicKey)}
                       />
 
                       <div className="flex-1 min-w-0">
