@@ -954,7 +954,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                       </div>
                     )}
                     <MessageContent message={message} />
-                    {/* Timestamp: inside bubble for text and media-with-caption, outside for bare media/emoji */}
+                    {/* Inline timestamp: invisible spacer reserves room, real timestamp is absolute-positioned */}
                     {(() => {
                       const msgText = message.DecryptedMessage || "";
                       const mediaHasCaption = isMedia && (() => {
@@ -964,16 +964,31 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                         return false;
                       })();
                       const timestampInside = (!isMedia && !isEmojiOnly) || mediaHasCaption;
+                      const timeText = `${parsed.edited && !parsed.deleted ? "(edited) " : ""}${convertTstampToDateTime(message.MessageInfo.TimestampNanos)}`;
+                      const timeColor = IsSender ? "text-[#34F080]/50" : "text-gray-500/80";
 
-                      if (timestampInside) {
+                      if (timestampInside && !isMedia) {
+                        // Text messages: float-right timestamp sits inline when room, wraps right when not
                         return (
-                          <div className={`flex justify-end mt-0.5 ${isMedia ? "px-3 pb-1.5 -mb-0" : "-mb-0.5"}`}>
+                          <span className="inline float-right ml-2 mt-1.5 leading-none">
                             <span
-                              className={`${IsSender ? "text-[#34F080]/50" : "text-gray-500/80"} text-[10px] whitespace-nowrap leading-none`}
+                              className={`${timeColor} text-[10px] whitespace-nowrap`}
                               title={new Date(message.MessageInfo.TimestampNanos / 1e6).toLocaleString()}
                             >
-                              {parsed.edited && !parsed.deleted ? "(edited) " : ""}
-                              {convertTstampToDateTime(message.MessageInfo.TimestampNanos)}
+                              {timeText}
+                            </span>
+                          </span>
+                        );
+                      }
+                      if (timestampInside && isMedia) {
+                        // Media with caption: timestamp below caption
+                        return (
+                          <div className="flex justify-end mt-0.5 px-3 pb-1.5">
+                            <span
+                              className={`${timeColor} text-[10px] whitespace-nowrap leading-none`}
+                              title={new Date(message.MessageInfo.TimestampNanos / 1e6).toLocaleString()}
+                            >
+                              {timeText}
                             </span>
                           </div>
                         );

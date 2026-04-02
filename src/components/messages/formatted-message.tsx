@@ -102,7 +102,7 @@ export function FormattedMessage({
 
   return (
     <div
-      className="text-md break-words formatted-message"
+      className="text-md break-words formatted-message inline"
       dangerouslySetInnerHTML={{ __html: html }}
       onClick={handleClick}
     />
