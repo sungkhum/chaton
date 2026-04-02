@@ -1803,12 +1803,15 @@ export const MessagingApp: FC = () => {
 
   const conversationsReady = Object.keys(conversations).length > 0;
   // Guard: if the selected key doesn't match any conversation (e.g. stale
-  // cache, race condition during hydration), reset to prevent crashes from
-  // bare `selectedConversation.property` accesses deep in the JSX tree.
-  if (conversationsReady && selectedConversationPublicKey && !conversations[selectedConversationPublicKey]) {
-    setSelectedConversationPublicKey(Object.keys(conversations)[0] || "");
+  // cache, race condition during hydration), use a safe key for THIS render
+  // and schedule a state update for the next. Prevents crashes from bare
+  // `selectedConversation.property` accesses deep in the JSX tree.
+  let safeSelectedKey = selectedConversationPublicKey;
+  if (conversationsReady && safeSelectedKey && !conversations[safeSelectedKey]) {
+    safeSelectedKey = Object.keys(conversations)[0] || "";
+    setSelectedConversationPublicKey(safeSelectedKey);
   }
-  const selectedConversation = conversations[selectedConversationPublicKey];
+  const selectedConversation = conversations[safeSelectedKey];
   const isGroupChat = selectedConversation?.ChatType === ChatType.GROUPCHAT;
   const isChatOwner =
     isGroupChat &&
