@@ -349,12 +349,24 @@ export const MessagingApp: FC = () => {
       selectedKey: string,
       updatedMessages: DecryptedMessageEntryResponse[]
     ) => {
+      let hasNewlyConfirmed = false;
+
       setConversations((prev) => {
         const currentMessages = prev[selectedKey]?.messages || [];
 
         const optimisticMessages = currentMessages.filter(
-          (m: any) => m._localId && m._status !== "sent"
+          (m: any) => m._localId
         );
+
+        // Map dedup key → _localId so we can transfer it to the confirmed message
+        const optimisticByKey = new Map<string, string>();
+        for (const m of optimisticMessages) {
+          const key =
+            (m as any).SenderInfo.OwnerPublicKeyBase58Check +
+            ":" +
+            (m as any).DecryptedMessage?.slice(0, 50);
+          optimisticByKey.set(key, (m as any)._localId);
+        }
 
         const confirmedKeys = new Set(
           updatedMessages.map(
@@ -374,11 +386,27 @@ export const MessagingApp: FC = () => {
             )
         );
 
+        // Tag blockchain messages that just confirmed an optimistic entry:
+        // transfer _localId (keeps React key stable) and set _status: "confirmed"
+        // so the user sees the double-checkmark briefly before it fades out.
+        const taggedMessages = updatedMessages.map((m) => {
+          const key =
+            m.SenderInfo.OwnerPublicKeyBase58Check +
+            ":" +
+            m.DecryptedMessage?.slice(0, 50);
+          const localId = optimisticByKey.get(key);
+          if (localId) {
+            hasNewlyConfirmed = true;
+            return { ...m, _status: "confirmed" as const, _localId: localId };
+          }
+          return m;
+        });
+
         const merged = {
           ...prev,
           [selectedKey]: {
             ...prev[selectedKey],
-            messages: [...stillPendingOptimistic, ...updatedMessages],
+            messages: [...stillPendingOptimistic, ...taggedMessages],
           },
         };
 
@@ -393,6 +421,32 @@ export const MessagingApp: FC = () => {
 
         return merged;
       });
+
+      // After 1.5s, strip the confirmed tags so the checkmark disappears gracefully.
+      // The next poll will see these as normal blockchain messages.
+      if (hasNewlyConfirmed) {
+        setTimeout(() => {
+          setConversations((prev) => {
+            const conv = prev[selectedKey];
+            if (!conv) return prev;
+            const hasConfirmed = conv.messages.some(
+              (m: any) => m._status === "confirmed"
+            );
+            if (!hasConfirmed) return prev;
+            return {
+              ...prev,
+              [selectedKey]: {
+                ...conv,
+                messages: conv.messages.map((m: any) => {
+                  if (m._status !== "confirmed") return m;
+                  const { _status, _localId, ...rest } = m;
+                  return rest;
+                }),
+              },
+            };
+          });
+        }, 1500);
+      }
     },
     [appUser]
   );

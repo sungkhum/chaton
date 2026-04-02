@@ -730,7 +730,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
 
           // System log messages render as centered, un-bubbled text
           if (parsed.type === "system") {
-            const messageKey = message.MessageInfo.TimestampNanosString || `msg-${i}`;
+            const messageKey = (message as any)._localId || message.MessageInfo.TimestampNanosString || `msg-${i}`;
             const actionText = parsed.systemAction === "member-left" ? " left the group" : " joined the group";
             return (
               <div
@@ -792,7 +792,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
             senderStyles = "";
           }
 
-          const messageKey = message.MessageInfo.TimestampNanosString || `msg-${i}`;
+          const messageKey = (message as any)._localId || message.MessageInfo.TimestampNanosString || `msg-${i}`;
           const isHovered = hoveredMessage === messageKey;
           const reactions = reactionsByTimestamp[message.MessageInfo.TimestampNanosString];
           const tips = tipsByTimestamp[message.MessageInfo.TimestampNanosString];
