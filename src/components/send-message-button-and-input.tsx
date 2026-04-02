@@ -4,9 +4,10 @@ import { toast } from "sonner";
 import { EmojiPickerButton } from "./compose/emoji-picker-button";
 import { GifPicker } from "./compose/gif-picker";
 import { ImagePreviewPanel } from "./compose/image-preview-panel";
+import { VideoPreviewPanel } from "./compose/video-preview-panel";
 import { MentionPicker, MentionCandidate } from "./compose/mention-picker";
 import { KlipyItem, getMessageUrl, trackShare } from "../services/klipy.service";
-import { uploadImage } from "../services/media.service";
+import { uploadImage, uploadVideoFile } from "../services/media.service";
 import { ReplyBanner } from "./compose/reply-banner";
 import { LinkAttachmentPanel } from "./compose/link-attachment-panel";
 import { useDraftMessages } from "../hooks/useDraftMessages";
@@ -47,6 +48,7 @@ export const SendMessageButtonAndInput = ({
   const [isUploading, setIsUploading] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [pendingImage, setPendingImage] = useState<{ file: File; previewUrl: string; width?: number; height?: number } | null>(null);
+  const [pendingVideo, setPendingVideo] = useState<{ file: File; previewUrl: string; width?: number; height?: number; duration?: number } | null>(null);
   const [showLinkPanel, setShowLinkPanel] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -306,11 +308,16 @@ export const SendMessageButtonAndInput = ({
     setIsUploading(true);
     try {
       const result = await uploadImage(pendingImage.file);
-      await sendMessage(caption || pendingImage.file.name, buildExtraData({
-        type: "image",
-        imageUrl: result.ImageURL,
-        ...(pendingImage.width && pendingImage.height ? { mediaWidth: pendingImage.width, mediaHeight: pendingImage.height } : {}),
-      }));
+      // Use DeSo app format (encryptedImageURLs + image.0.*) for cross-app compatibility
+      const extraData: Record<string, string> = {
+        encryptedImageURLs: JSON.stringify([result.ImageURL]), // JSON array — DeSo app format
+      };
+      if (pendingImage.width) extraData["image.0.width"] = String(pendingImage.width);
+      if (pendingImage.height) extraData["image.0.height"] = String(pendingImage.height);
+      if (pendingImage.width && pendingImage.height) {
+        extraData["image.0.orientation"] = pendingImage.width >= pendingImage.height ? "landscape" : "portrait";
+      }
+      await sendMessage(caption || "", extraData);
       URL.revokeObjectURL(pendingImage.previewUrl);
       setPendingImage(null);
       setStagedCaption("");
@@ -321,11 +328,68 @@ export const SendMessageButtonAndInput = ({
     }
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const stageVideo = (file: File) => {
+    if (pendingVideo) URL.revokeObjectURL(pendingVideo.previewUrl);
+    setStagedCaption(messageToSend);
+    setMessageToSend("");
+    const previewUrl = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      setPendingVideo({ file, previewUrl, width: video.videoWidth, height: video.videoHeight, duration: video.duration });
+    };
+    video.onerror = () => {
+      setPendingVideo({ file, previewUrl });
+    };
+    video.src = previewUrl;
+    setPendingVideo({ file, previewUrl });
+    setShowLinkPanel(false);
+    setShowGifPicker(false);
+  };
+
+  const cancelVideo = () => {
+    if (pendingVideo) URL.revokeObjectURL(pendingVideo.previewUrl);
+    if (stagedCaption) {
+      setMessageToSend(stagedCaption);
+      setStagedCaption("");
+    }
+    setPendingVideo(null);
+  };
+
+  const confirmVideo = async (caption?: string) => {
+    if (!pendingVideo) return;
+    setIsUploading(true);
+    try {
+      const result = await uploadVideoFile(pendingVideo.file);
+      // Use DeSo app format (encryptedVideoURLs + video.0.*) for cross-app compatibility
+      const extraData: Record<string, string> = {
+        encryptedVideoURLs: JSON.stringify([result.url]), // JSON array — DeSo app format
+      };
+      if (pendingVideo.width) extraData["video.0.width"] = String(pendingVideo.width);
+      if (pendingVideo.height) extraData["video.0.height"] = String(pendingVideo.height);
+      if (pendingVideo.width && pendingVideo.height) {
+        extraData["video.0.orientation"] = pendingVideo.width >= pendingVideo.height ? "landscape" : "portrait";
+      }
+      await sendMessage(caption || "", extraData);
+      URL.revokeObjectURL(pendingVideo.previewUrl);
+      setPendingVideo(null);
+      setStagedCaption("");
+    } catch (err: any) {
+      toast.error(`Video upload failed: ${err.message || err}`);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
-    stageImage(file);
+    if (file.type.startsWith("video/")) {
+      stageVideo(file);
+    } else {
+      stageImage(file);
+    }
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
@@ -335,6 +399,12 @@ export const SendMessageButtonAndInput = ({
         e.preventDefault();
         const file = item.getAsFile();
         if (file) stageImage(file);
+        return;
+      }
+      if (item.type.startsWith("video/")) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) stageVideo(file);
         return;
       }
     }
@@ -437,6 +507,16 @@ export const SendMessageButtonAndInput = ({
             initialCaption={stagedCaption}
           />
         )}
+        {pendingVideo && (
+          <VideoPreviewPanel
+            file={pendingVideo.file}
+            previewUrl={pendingVideo.previewUrl}
+            onSend={confirmVideo}
+            onCancel={cancelVideo}
+            isSending={isUploading}
+            initialCaption={stagedCaption}
+          />
+        )}
         {showGifPicker && (
           <GifPicker
             onSelectGif={handleGifSelect}
@@ -457,6 +537,7 @@ export const SendMessageButtonAndInput = ({
               setShowLinkPanel((v) => !v);
               setShowGifPicker(false);
               if (pendingImage) cancelImage();
+              if (pendingVideo) cancelVideo();
             }}
             aria-label="Attach a link"
             title="Share a link"
@@ -474,9 +555,9 @@ export const SendMessageButtonAndInput = ({
             )}
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,video/*"
               className="hidden"
-              onChange={handleImageSelect}
+              onChange={handleMediaSelect}
               disabled={isUploading}
             />
           </label>
@@ -487,6 +568,7 @@ export const SendMessageButtonAndInput = ({
               setShowGifPicker(opening);
               setShowLinkPanel(false);
               if (pendingImage) cancelImage();
+              if (pendingVideo) cancelVideo();
               if (opening) textareaRef.current?.blur();
             }}
             className="px-1.5 py-2 text-gray-500 hover:text-[#34F080] cursor-pointer font-extrabold text-[11px] tracking-wide transition-colors shrink-0"

@@ -140,28 +140,92 @@ export interface ParsedMessage {
   tipRecipient?: string;
 }
 
+/**
+ * Detect and extract media from DeSo main app (Diamond/Focus) ExtraData format.
+ * They use: encryptedVideoURLs / encryptedImageURLs (decrypted by this point)
+ * and video.0.width / video.0.height / image.0.width / image.0.height for dimensions.
+ */
+function parseDeSoAppMedia(extra: Record<string, string>): {
+  type?: RichMessageType;
+  videoUrl?: string;
+  imageUrl?: string;
+  mediaWidth?: number;
+  mediaHeight?: number;
+} {
+  // Video from DeSo app — encryptedVideoURLs is decrypted to a URL by this point
+  const decryptedVideoUrls = extra["encryptedVideoURLs"];
+  if (decryptedVideoUrls && !decryptedVideoUrls.startsWith("04")) {
+    // Parse the decrypted value — could be a single URL or JSON array
+    let videoUrl: string | undefined;
+    try {
+      const parsed = JSON.parse(decryptedVideoUrls);
+      videoUrl = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      videoUrl = decryptedVideoUrls;
+    }
+    if (videoUrl) {
+      return {
+        type: "video",
+        videoUrl,
+        mediaWidth: extra["video.0.width"] ? parseInt(extra["video.0.width"]) : undefined,
+        mediaHeight: extra["video.0.height"] ? parseInt(extra["video.0.height"]) : undefined,
+      };
+    }
+  }
+
+  // Image from DeSo app
+  const decryptedImageUrls = extra["encryptedImageURLs"];
+  if (decryptedImageUrls && !decryptedImageUrls.startsWith("04")) {
+    let imageUrl: string | undefined;
+    try {
+      const parsed = JSON.parse(decryptedImageUrls);
+      imageUrl = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      imageUrl = decryptedImageUrls;
+    }
+    if (imageUrl) {
+      return {
+        type: "image",
+        imageUrl,
+        mediaWidth: extra["image.0.width"] ? parseInt(extra["image.0.width"]) : undefined,
+        mediaHeight: extra["image.0.height"] ? parseInt(extra["image.0.height"]) : undefined,
+      };
+    }
+  }
+
+  return {};
+}
+
 export function parseMessageType(
   message: DecryptedMessageEntryResponse
 ): ParsedMessage {
   const extra = message.MessageInfo?.ExtraData || {};
-  const type = (extra[MSG_TYPE] as RichMessageType) || "text";
+  let type = (extra[MSG_TYPE] as RichMessageType) || "text";
+
+  // Detect DeSo main app media format (encryptedVideoURLs, encryptedImageURLs)
+  const desoAppMedia = parseDeSoAppMedia(extra);
+
+  // DeSo app media overrides type when no msg:type is set
+  if (type === "text" && desoAppMedia.type) {
+    type = desoAppMedia.type;
+  }
 
   return {
     type,
     text: message.DecryptedMessage || "",
-    imageUrl: extra[MSG_IMAGE_URL],
+    imageUrl: extra[MSG_IMAGE_URL] || desoAppMedia.imageUrl,
     gifUrl: extra[MSG_GIF_URL],
     gifTitle: extra[MSG_GIF_TITLE],
-    videoUrl: extra[MSG_VIDEO_URL],
+    videoUrl: extra[MSG_VIDEO_URL] || desoAppMedia.videoUrl,
     duration: extra[MSG_DURATION]
       ? parseFloat(extra[MSG_DURATION])
       : undefined,
     mediaWidth: extra[MSG_MEDIA_WIDTH]
       ? parseInt(extra[MSG_MEDIA_WIDTH])
-      : undefined,
+      : desoAppMedia.mediaWidth,
     mediaHeight: extra[MSG_MEDIA_HEIGHT]
       ? parseInt(extra[MSG_MEDIA_HEIGHT])
-      : undefined,
+      : desoAppMedia.mediaHeight,
     fileName: extra[MSG_FILE_NAME],
     fileSize: extra[MSG_FILE_SIZE]
       ? parseInt(extra[MSG_FILE_SIZE])

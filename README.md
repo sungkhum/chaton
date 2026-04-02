@@ -38,11 +38,12 @@ Sign in with a DeSo identity or an Ethereum wallet (MetaMask), and message anyon
 - **Formatted messages** — markdown support for bold, italic, links, and code
 
 ### Rich Media
-- **Image sharing** — upload and send images with lightbox preview
+- **Image sharing** — upload and send images with lightbox preview, using DeSo app format (`encryptedImageURLs`) for cross-app compatibility
+- **Video sharing** — upload and send videos via DeSo's video infrastructure (Cloudflare Stream), with thumbnail previews and inline playback. Uses DeSo app format (`encryptedVideoURLs`) so videos are viewable in Diamond, Focus, and any DeSo messaging app
+- **Cross-app media** — images and videos sent from other DeSo apps (Diamond, Focus, etc.) display natively with decrypted URLs, proper dimensions, and thumbnail previews
 - **GIF & sticker picker** — search and send GIFs and stickers via Klipy integration
 - **Image captions** — add text captions to images and GIFs
 - **Link attachments** — share URLs with descriptions, Open Graph previews, and branded cards for 44+ services (Google Drive, GitHub, Figma, YouTube, Dropbox, etc.)
-- **Rich media rendering** — video and file messages sent from other DeSo apps render with inline playback, download links, and file type icons
 
 ### Real-Time
 - **WebSocket relay** — instant message delivery via Cloudflare Durable Objects
@@ -78,6 +79,7 @@ Sign in with a DeSo identity or an Ethereum wallet (MetaMask), and message anyon
 | GIFs & Stickers | [Klipy](https://klipy.co) (GIF and sticker search API) |
 | Emoji Picker | [frimousse](https://github.com/liveblocks/frimousse) (React 19 native) |
 | Animated Emoji | [Noto Emoji Animation](https://fonts.google.com/noto/emoji) (Google CDN, WebP) |
+| Video Playback | [hls.js](https://github.com/video-dev/hls.js) (HLS stream support for Cloudflare Stream / Livepeer) |
 | Markdown | [Marked](https://github.com/markedjs/marked) (formatted messages) |
 | Icons | Lucide React |
 | Toasts | Sonner |
@@ -337,6 +339,8 @@ msg:ogTitle, msg:ogDescription, msg:ogImage, msg:replyPreview, msg:mentions
 
 **Backward compatibility:** Apps that don't handle `msg:encrypted` will see encrypted hex strings instead of plaintext values. They can safely ignore these — the encrypted message body still contains a human-readable fallback. In Full mode (the default), media URLs, file names, and other metadata are unreadable to other DeSo apps that haven't implemented decryption. Users can switch to Standard mode if cross-app compatibility for media metadata is more important than privacy.
 
+**DeSo app media encryption:** The `encryptedVideoURLs` and `encryptedImageURLs` fields are *always* encrypted (regardless of privacy mode), matching the behavior of Diamond/Focus. This encryption is separate from the `msg:encrypted` flag — it uses the same recipient key but is applied unconditionally for media URLs.
+
 **Note on media URLs:** Images, videos, and files are uploaded to DeSo's public image hosting, so the media itself is accessible to anyone with the URL. What Full encryption protects is the *link* — without decrypting the ExtraData, no one can discover which URLs belong to your conversation. This is a DeSo platform limitation, not a ChatOn limitation.
 
 The user's privacy mode preference is stored as an on-chain self-association (see [On-Chain Associations](#on-chain-associations) below) and cached locally for instant access.
@@ -369,12 +373,46 @@ ExtraData:
 EncryptedMessageText: <encrypted reply body>
 ```
 
-### Media Messages
+### Media Messages (DeSo App Format)
 
-Set `msg:type` to the media type, include the URL, and include dimensions for layout.
+ChatOn sends images and videos using the same ExtraData format as the DeSo main app (Diamond, Focus), ensuring cross-app compatibility. Media URLs are stored in encrypted ExtraData fields that are always encrypted regardless of privacy mode.
+
+#### Video
 
 ```
-# Image example
+ExtraData:
+  encryptedVideoURLs  = <encrypted JSON: '["https://iframe.videodelivery.net/abc123"]'>
+  video.0.width       = "1280"
+  video.0.height      = "720"
+  video.0.orientation = "landscape"    # "landscape" or "portrait"
+
+EncryptedMessageText: <encrypted caption or empty string>
+```
+
+- `encryptedVideoURLs` contains a JSON array of video URLs, encrypted with the recipient's access group key. The URL points to a Cloudflare Stream video.
+- `video.0.*` metadata keys are stored in plaintext (dimensions are not sensitive).
+- Thumbnails are derived at render time from the Cloudflare Stream URL: `https://videodelivery.net/{videoId}/thumbnails/thumbnail.jpg`
+
+#### Image
+
+```
+ExtraData:
+  encryptedImageURLs  = <encrypted JSON: '["https://images.deso.org/abc123.webp"]'>
+  image.0.width       = "1200"
+  image.0.height      = "800"
+  image.0.orientation = "landscape"
+
+EncryptedMessageText: <encrypted caption or empty string>
+```
+
+- `encryptedImageURLs` contains a JSON array of image URLs, encrypted with the recipient's access group key.
+- `image.0.*` metadata keys are stored in plaintext.
+
+#### ChatOn `msg:` Format (Legacy / Receiving)
+
+ChatOn also reads the `msg:` namespaced format for backward compatibility with older ChatOn messages:
+
+```
 ExtraData:
   msg:type        = "image"
   msg:imageUrl    = "https://images.deso.org/..."
@@ -382,7 +420,9 @@ ExtraData:
   msg:mediaHeight = "800"
 ```
 
-The encrypted message body should contain a text fallback (e.g., the image URL, a caption, or a description) for apps that don't render media inline.
+When parsing, the DeSo app format (`encryptedImageURLs`/`encryptedVideoURLs`) takes precedence. The `msg:` format is used as a fallback.
+
+The encrypted message body should contain a text fallback (e.g., a caption or description) for apps that don't render media inline.
 
 ### Link Attachments
 
@@ -530,9 +570,11 @@ To avoid repeated authorization prompts, request a derived key with broad permis
 
 The full implementation lives in these files:
 
-- **[`src/utils/extra-data.ts`](src/utils/extra-data.ts)** — all `msg:` and `group:` constants, types, `parseMessageType()`, `buildExtraData()`, and encryption key lists
+- **[`src/utils/extra-data.ts`](src/utils/extra-data.ts)** — all `msg:` and `group:` constants, types, `parseMessageType()`, `buildExtraData()`, DeSo app media format parsing (`parseDeSoAppMedia()`), and encryption key lists
 - **[`src/utils/constants.ts`](src/utils/constants.ts)** — association type/value constants and `getTransactionSpendingLimits()` (derived key permissions)
-- **[`src/services/conversations.service.tsx`](src/services/conversations.service.tsx)** — encryption/decryption pipeline, send/update messages, all association CRUD, `classifyConversation()`, mutual follow detection
+- **[`src/services/conversations.service.tsx`](src/services/conversations.service.tsx)** — encryption/decryption pipeline (including DeSo app `encryptedVideoURLs`/`encryptedImageURLs`), send/update messages, all association CRUD, `classifyConversation()`, mutual follow detection
+- **[`src/services/media.service.ts`](src/services/media.service.ts)** — image upload via DeSo node API, video upload via `deso-protocol` SDK (`uploadVideo` + `pollForVideoReady`)
+- **[`src/components/messages/video-message.tsx`](src/components/messages/video-message.tsx)** — video player with HLS support (hls.js), Cloudflare Stream thumbnail derivation, lazy loading
 - **[`src/utils/link-services.ts`](src/utils/link-services.ts)** — URL-to-service detection for 44+ services (renders branded link cards)
 - **[`src/services/og.service.ts`](src/services/og.service.ts)** — client-side Open Graph fetch service (calls the worker `/og` endpoint)
 - **[`worker/src/og.ts`](worker/src/og.ts)** — server-side OG metadata extraction with SSRF protection and Cloudflare cache

@@ -306,37 +306,67 @@ export const decryptAccessGroupMessages = async (
   );
 };
 
+/** Keys from the DeSo main app (Diamond/Focus) that contain encrypted media URLs. */
+const DESO_APP_ENCRYPTED_KEYS = [
+  "encryptedVideoURLs",
+  "encryptedImageURLs",
+] as const;
+
 /**
  * If a message has encrypted ExtraData values (flagged by msg:encrypted),
  * decrypt each one by feeding it through identity.decryptMessage as a
  * fake message. This reuses the SDK's DM-vs-group key resolution so we
  * don't need to reimplement it.
+ *
+ * Also handles DeSo main app format (encryptedVideoURLs, encryptedImageURLs)
+ * which encrypts media URLs independently of the msg:encrypted flag.
  */
 async function decryptExtraDataFields(
   msg: DecryptedMessageEntryResponse,
   accessGroups: AccessGroupEntryResponse[]
 ): Promise<DecryptedMessageEntryResponse> {
   const extra = msg.MessageInfo?.ExtraData;
-  if (!extra || extra[MSG_ENCRYPTED] !== "true") return msg;
+  if (!extra) return msg;
 
   const updatedExtra = { ...extra };
 
-  // Try decrypting all keys that could be encrypted (the sender may use
-  // full privacy mode even if we don't). The FULL list is a superset.
-  for (const key of FULL_ENCRYPTED_KEYS) {
+  // Decrypt ChatOn-format encrypted ExtraData (msg:encrypted flag)
+  if (extra[MSG_ENCRYPTED] === "true") {
+    for (const key of FULL_ENCRYPTED_KEYS) {
+      const cipherText = updatedExtra[key];
+      if (!cipherText) continue;
+
+      try {
+        const fakeMsg = {
+          ...msg,
+          MessageInfo: {
+            ...msg.MessageInfo,
+            EncryptedText: cipherText,
+            ExtraData: Object.fromEntries(
+              Object.entries(extra).filter(([k]) => k !== "unencrypted")
+            ),
+          },
+        } as NewMessageEntryResponse;
+
+        const decryptedFake = await identity.decryptMessage(fakeMsg, accessGroups);
+        updatedExtra[key] = decryptedFake.DecryptedMessage;
+      } catch {
+        // If decryption fails (e.g. legacy plaintext value), leave as-is
+      }
+    }
+  }
+
+  // Decrypt DeSo main app encrypted media URLs (encryptedVideoURLs, encryptedImageURLs)
+  for (const key of DESO_APP_ENCRYPTED_KEYS) {
     const cipherText = updatedExtra[key];
     if (!cipherText) continue;
 
     try {
-      // Build a shallow message clone with the encrypted ExtraData value
-      // swapped into EncryptedText so identity.decryptMessage can decrypt it
-      // using the correct key (messaging key for DMs, group key for groups).
       const fakeMsg = {
         ...msg,
         MessageInfo: {
           ...msg.MessageInfo,
           EncryptedText: cipherText,
-          // Remove the unencrypted flag so the SDK decrypts instead of hex-decoding
           ExtraData: Object.fromEntries(
             Object.entries(extra).filter(([k]) => k !== "unencrypted")
           ),
@@ -346,7 +376,7 @@ async function decryptExtraDataFields(
       const decryptedFake = await identity.decryptMessage(fakeMsg, accessGroups);
       updatedExtra[key] = decryptedFake.DecryptedMessage;
     } catch {
-      // If decryption fails (e.g. legacy plaintext value), leave as-is
+      // If decryption fails, leave as-is
     }
   }
 
@@ -390,6 +420,17 @@ export const encryptAndSendNewMessage = async (
       response.RecipientAccessGroupPublicKeyBase58Check,
       messageToSend
     );
+
+    // Always encrypt DeSo app media URLs (encryptedVideoURLs, encryptedImageURLs)
+    // to match the standard DeSo format used by Diamond/Focus.
+    for (const key of DESO_APP_ENCRYPTED_KEYS) {
+      if (ExtraData[key]) {
+        ExtraData[key] = await identity.encryptMessage(
+          response.RecipientAccessGroupPublicKeyBase58Check,
+          ExtraData[key]
+        );
+      }
+    }
 
     // Encrypt sensitive ExtraData values with the same recipient key.
     // Which keys are encrypted depends on the user's privacy mode.
