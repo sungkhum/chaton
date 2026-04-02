@@ -18,6 +18,7 @@ import { formatDisplayName, getProfileURL } from "../utils/helpers";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { SaveToClipboard } from "./shared/save-to-clipboard";
 import { SupportChatOnDialog } from "./support-chaton-dialog";
+import { TipCurrencyToggle } from "./tip-currency-toggle";
 import { UserAccountList } from "./user-account-list";
 
 export const Header = () => {
@@ -129,6 +130,7 @@ export const Header = () => {
 
                 <NotificationToggle />
                 <PrivacyToggle />
+                <TipCurrencyToggle />
 
                 <div className="border-t border-white/10 my-1" />
 
