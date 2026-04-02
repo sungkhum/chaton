@@ -45,11 +45,27 @@ const serwist = new Serwist({
 // This avoids the fragile MessageChannel round-trip during push and eliminates
 // the 500ms timeout. If the SW restarts, this resets to null → all notifications
 // show (fail-open, never fail-closed).
+//
+// iOS WebKit does not reliably fire visibilitychange when a PWA is backgrounded
+// (WebKit bugs 202399, 205942, 207256), so the client may never send null.
+// A TTL prevents stale values from suppressing notifications indefinitely.
 let activeConversationKey: string | null = null;
+let activeConversationSetAt = 0;
+const ACTIVE_CONVERSATION_TTL_MS = 10_000; // 10 seconds
+
+function getActiveConversationKey(): string | null {
+  if (!activeConversationKey) return null;
+  if (Date.now() - activeConversationSetAt > ACTIVE_CONVERSATION_TTL_MS) {
+    activeConversationKey = null;
+    return null;
+  }
+  return activeConversationKey;
+}
 
 self.addEventListener("message", (event: ExtendableMessageEvent) => {
   if (event.data?.type === "set-active-conversation") {
     activeConversationKey = event.data.conversationKey ?? null;
+    activeConversationSetAt = Date.now();
   }
 });
 
@@ -109,7 +125,8 @@ self.addEventListener("push", (event) => {
           const focusedClient = windowClients.find(
             (c) => c.visibilityState === "visible" && (c as { focused?: boolean }).focused
           );
-          if (focusedClient && activeConversationKey && activeConversationKey === localConvKey) {
+          const currentActiveKey = getActiveConversationKey();
+          if (focusedClient && currentActiveKey && currentActiveKey === localConvKey) {
             // Forward to the focused client for in-app handling (e.g. scroll-to-bottom)
             focusedClient.postMessage({ type: "push-received", payload: data });
             return;

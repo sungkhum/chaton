@@ -231,17 +231,31 @@ export const MessagingApp: FC = () => {
   // Uses controller when available, falls back to registration.active for the
   // first page load before clientsClaim takes effect (controller can be null).
   // If the SW restarts, the variable resets to null (fail-open: all notifications show).
+  //
+  // The SW uses a 10s TTL on activeConversationKey to guard against iOS not
+  // firing visibilitychange when the PWA is backgrounded. A 5s heartbeat keeps
+  // the TTL alive while the user is genuinely viewing the conversation.
   useEffect(() => {
-    const msg = {
-      type: "set-active-conversation",
-      conversationKey: selectedConversationPublicKey || null,
+    const sendActiveConversation = () => {
+      const msg = {
+        type: "set-active-conversation",
+        conversationKey: selectedConversationPublicKey || null,
+      };
+      if (navigator.serviceWorker?.controller) {
+        navigator.serviceWorker.controller.postMessage(msg);
+      } else {
+        navigator.serviceWorker?.ready.then((reg) => reg.active?.postMessage(msg));
+      }
     };
 
-    if (navigator.serviceWorker?.controller) {
-      navigator.serviceWorker.controller.postMessage(msg);
-    } else {
-      navigator.serviceWorker?.ready.then((reg) => reg.active?.postMessage(msg));
-    }
+    sendActiveConversation();
+
+    // Heartbeat: re-send every 5s so the SW's 10s TTL stays fresh
+    const heartbeat = selectedConversationPublicKey
+      ? setInterval(sendActiveConversation, 5_000)
+      : undefined;
+
+    return () => clearInterval(heartbeat);
   }, [selectedConversationPublicKey]);
 
   // Clear the active conversation when the tab loses focus or is closed,
