@@ -96,21 +96,23 @@ self.addEventListener("push", (event) => {
 
       // Suppress if user is actively viewing this conversation.
       // All three conditions must be true to suppress (fail-open):
-      //  1. A controlled client window is focused
+      //  1. A controlled client window is visible and focused
       //  2. We know which conversation is active (activeConversationKey != null)
       //  3. The active conversation matches the incoming push
+      // When suppressed, we skip showNotification() entirely — Chrome and Firefox
+      // allow this when at least one visible client exists. We avoid a silent
+      // tagged notification because iOS ignores the `tag` field, causing phantom
+      // notifications to stack in the notification center.
       if (!isMuted && localConvKey) {
         try {
           const windowClients = await self.clients.matchAll({ type: "window", includeUncontrolled: false });
-          const hasFocusedClient = windowClients.some(
+          const focusedClient = windowClients.find(
             (c) => c.visibilityState === "visible" && (c as { focused?: boolean }).focused
           );
-          if (hasFocusedClient && activeConversationKey && activeConversationKey === localConvKey) {
-            return self.registration.showNotification("ChatOn", {
-              tag: "chaton-muted",
-              silent: true,
-              data: { url: "/" },
-            });
+          if (focusedClient && activeConversationKey && activeConversationKey === localConvKey) {
+            // Forward to the focused client for in-app handling (e.g. scroll-to-bottom)
+            focusedClient.postMessage({ type: "push-received", payload: data });
+            return;
           }
         } catch {
           // Clients API unavailable — fall through to normal notification
