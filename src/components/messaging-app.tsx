@@ -199,16 +199,50 @@ export const MessagingApp: FC = () => {
     setBlockConfirm(null);
   }, [selectedConversationPublicKey]);
 
-  // Respond to service worker asking which conversation is active, so it can
+  // Proactively tell the service worker which conversation is active so it can
   // suppress push notifications for the conversation the user is viewing.
+  // This replaces the old reactive MessageChannel pattern — no 500ms timeout,
+  // and if the SW restarts the variable resets to null (fail-open: all notifications show).
   useEffect(() => {
-    const handler = (event: MessageEvent) => {
-      if (event.data?.type === "get-active-conversation" && event.ports[0]) {
-        event.ports[0].postMessage(selectedConversationPublicKeyRef.current || null);
+    const sw = navigator.serviceWorker?.controller;
+    if (!sw) return;
+
+    sw.postMessage({
+      type: "set-active-conversation",
+      conversationKey: selectedConversationPublicKey || null,
+    });
+  }, [selectedConversationPublicKey]);
+
+  // Clear the active conversation when the tab loses focus or is closed,
+  // so notifications resume immediately.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const sw = navigator.serviceWorker?.controller;
+      if (!sw) return;
+
+      if (document.visibilityState === "hidden") {
+        sw.postMessage({ type: "set-active-conversation", conversationKey: null });
+      } else if (selectedConversationPublicKeyRef.current) {
+        sw.postMessage({
+          type: "set-active-conversation",
+          conversationKey: selectedConversationPublicKeyRef.current,
+        });
       }
     };
-    navigator.serviceWorker?.addEventListener("message", handler);
-    return () => navigator.serviceWorker?.removeEventListener("message", handler);
+
+    const handleBeforeUnload = () => {
+      navigator.serviceWorker?.controller?.postMessage({
+        type: "set-active-conversation",
+        conversationKey: null,
+      });
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
   }, []);
 
   // Message search

@@ -40,6 +40,19 @@ const serwist = new Serwist({
   ],
 });
 
+// ── Active-conversation tracking ──
+// The client proactively tells the SW which conversation the user is viewing.
+// This avoids the fragile MessageChannel round-trip during push and eliminates
+// the 500ms timeout. If the SW restarts, this resets to null → all notifications
+// show (fail-open, never fail-closed).
+let activeConversationKey: string | null = null;
+
+self.addEventListener("message", (event: ExtendableMessageEvent) => {
+  if (event.data?.type === "set-active-conversation") {
+    activeConversationKey = event.data.conversationKey ?? null;
+  }
+});
+
 // Handle push notifications.
 // IMPORTANT: Always call showNotification() — iOS Safari revokes the push
 // subscription after 3 push events that don't produce a visible notification.
@@ -82,30 +95,22 @@ self.addEventListener("push", (event) => {
       }
 
       // Suppress if user is actively viewing this conversation.
-      // Ask the visible client directly via MessageChannel — no stale IDB data.
+      // All three conditions must be true to suppress (fail-open):
+      //  1. A controlled client window is focused
+      //  2. We know which conversation is active (activeConversationKey != null)
+      //  3. The active conversation matches the incoming push
       if (!isMuted && localConvKey) {
         try {
           const windowClients = await self.clients.matchAll({ type: "window", includeUncontrolled: false });
-          const visibleClient = windowClients.find((c) => c.visibilityState === "visible");
-          if (visibleClient) {
-            const activeConv = await new Promise<string | null>((resolve) => {
-              let settled = false;
-              const ch = new MessageChannel();
-              ch.port1.onmessage = (e) => {
-                if (!settled) { settled = true; ch.port1.close(); resolve(e.data); }
-              };
-              setTimeout(() => {
-                if (!settled) { settled = true; ch.port1.close(); resolve(null); }
-              }, 500);
-              visibleClient.postMessage({ type: "get-active-conversation" }, [ch.port2]);
+          const hasFocusedClient = windowClients.some(
+            (c) => c.visibilityState === "visible" && (c as { focused?: boolean }).focused
+          );
+          if (hasFocusedClient && activeConversationKey && activeConversationKey === localConvKey) {
+            return self.registration.showNotification("ChatOn", {
+              tag: "chaton-muted",
+              silent: true,
+              data: { url: "/" },
             });
-            if (activeConv === localConvKey) {
-              return self.registration.showNotification("ChatOn", {
-                tag: "chaton-muted",
-                silent: true,
-                data: { url: "/" },
-              });
-            }
           }
         } catch {
           // Clients API unavailable — fall through to normal notification
