@@ -120,7 +120,6 @@ export const TipPills = ({
           ))}
         </div>
         {tipperCount > 3 && <span className={`text-[10px] ${hasUsdc ? "text-[#34F080]/60" : "text-[#2775ca]/60"}`}>+{tipperCount - 3}</span>}
-        <span className={`text-[10px] ${hasUsdc ? "text-[#34F080]/60" : "text-[#2775ca]/60"}`}>({tipperCount})</span>
       </button>
 
       {showPopup && (() => {
