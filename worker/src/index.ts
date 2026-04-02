@@ -13,6 +13,7 @@ import {
 } from "./db";
 import { sendPushNotification, type PushSubscriptionData } from "./web-push";
 import { validateDesoJwt } from "./jwt";
+import { handleCreateInviteCode, handleRevokeInviteCode } from "./invite-codes";
 
 export interface Env {
   CHAT_RELAY: DurableObjectNamespace;
@@ -21,6 +22,8 @@ export interface Env {
   ALLOWED_ORIGINS: string;
   DESO_NODE_URL: string;
   KLIPY_API_KEY: string;
+  CHATON_SIGNING_PUBLIC_KEY: string;
+  CHATON_SIGNING_SEED_HEX: string;
   DB: D1Database;
   PUSH_QUEUE: Queue<PushJob>;
 }
@@ -114,6 +117,19 @@ export default {
     if (url.pathname === "/push/unsubscribe" && request.method === "POST") {
       if (!isOriginAllowed(origin, allowed)) return forbidden();
       const res = await handlePushUnsubscribe(request, env);
+      return withCors(res, origin!);
+    }
+
+    // Invite code management — signed by ChatOn's key
+    if (url.pathname === "/invite-codes/create" && request.method === "POST") {
+      if (!isOriginAllowed(origin, allowed)) return forbidden();
+      const res = await handleCreateInviteCode(request, env);
+      return withCors(res, origin!);
+    }
+
+    if (url.pathname === "/invite-codes/revoke" && request.method === "POST") {
+      if (!isOriginAllowed(origin, allowed)) return forbidden();
+      const res = await handleRevokeInviteCode(request, env);
       return withCors(res, origin!);
     }
 

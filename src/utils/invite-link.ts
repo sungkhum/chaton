@@ -1,23 +1,11 @@
-import {
-  createUserAssociation,
-  deleteUserAssociation,
-  getUserAssociations,
-} from "deso-protocol";
-import { withAuth } from "./with-auth";
+import { getUserAssociations, identity } from "deso-protocol";
 import {
   ASSOCIATION_TYPE_GROUP_INVITE_CODE,
   CHATON_DONATION_PUBLIC_KEY,
-  INVITE_CODE_LENGTH,
+  CHATON_SIGNING_PUBLIC_KEY,
 } from "./constants";
 
-const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-/** Generate a random alphanumeric invite code. */
-export function generateInviteCode(length = INVITE_CODE_LENGTH): string {
-  const arr = new Uint8Array(length);
-  crypto.getRandomValues(arr);
-  return Array.from(arr, (b) => CHARS[b % CHARS.length]).join("");
-}
+const RELAY_URL = import.meta.env.VITE_RELAY_URL || "";
 
 /** Build a full invite URL from a short code. */
 export function buildInviteUrl(code: string): string {
@@ -30,12 +18,16 @@ export function extractInviteCode(path: string): string | null {
   return match ? match[1] : null;
 }
 
-/** Resolve an invite code to the group owner + group key name via on-chain registry. */
+/**
+ * Resolve an invite code to the group owner + group key name.
+ * Only returns codes signed by ChatOn's key (prevents hijacking).
+ */
 export async function resolveInviteCode(
   code: string
 ): Promise<{ ownerKey: string; groupKeyName: string } | null> {
   try {
     const res = await getUserAssociations({
+      TransactorPublicKeyBase58Check: CHATON_SIGNING_PUBLIC_KEY,
       TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
       AssociationType: ASSOCIATION_TYPE_GROUP_INVITE_CODE,
       AssociationValue: code,
@@ -44,50 +36,47 @@ export async function resolveInviteCode(
     const a = res.Associations?.[0];
     if (!a) return null;
     const groupKeyName = a.ExtraData?.["group:keyName"];
-    if (!groupKeyName) return null;
-    return { ownerKey: a.TransactorPublicKeyBase58Check, groupKeyName };
+    const ownerKey = a.ExtraData?.["group:ownerKey"];
+    if (!groupKeyName || !ownerKey) return null;
+    return { ownerKey, groupKeyName };
   } catch {
     return null;
   }
 }
 
-/** Register an invite code on-chain. Returns the association ID. */
+/**
+ * Register an invite code via the Worker API.
+ * The Worker generates the code, signs the transaction with ChatOn's key,
+ * and submits it to the DeSo blockchain.
+ */
 export async function registerInviteCode(
   ownerPublicKey: string,
-  code: string,
   groupKeyName: string
-): Promise<string> {
-  // Check for collision first
-  const existing = await resolveInviteCode(code);
-  if (existing) {
-    throw new Error("Invite code collision — please try again.");
+): Promise<{ code: string; associationId: string }> {
+  const jwt = await identity.jwt();
+  const res = await fetch(`${RELAY_URL}/invite-codes/create`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ownerPublicKey, groupKeyName, jwt }),
+  });
+
+  if (res.status === 409) {
+    // Code already exists — return it
+    return res.json();
   }
 
-  await withAuth(() =>
-    createUserAssociation(
-      {
-        TransactorPublicKeyBase58Check: ownerPublicKey,
-        TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
-        AssociationType: ASSOCIATION_TYPE_GROUP_INVITE_CODE,
-        AssociationValue: code,
-        ExtraData: { "group:keyName": groupKeyName },
-      },
-      { checkPermissions: false }
-    )
-  );
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `HTTP ${res.status}`);
+  }
 
-  // Fetch the new association ID
-  const res = await getUserAssociations({
-    TransactorPublicKeyBase58Check: ownerPublicKey,
-    TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
-    AssociationType: ASSOCIATION_TYPE_GROUP_INVITE_CODE,
-    AssociationValue: code,
-    Limit: 1,
-  });
-  return res.Associations?.[0]?.AssociationID ?? "";
+  return res.json();
 }
 
-/** Fetch the existing invite code for a specific group (if any). */
+/**
+ * Fetch the existing invite code for a specific group (if any).
+ * Queries codes signed by ChatOn's key and matches by owner + group.
+ */
 export async function fetchInviteCode(
   ownerPublicKey: string,
   groupKeyName: string
@@ -96,7 +85,7 @@ export async function fetchInviteCode(
   const maxPages = 10;
   for (let page = 0; page < maxPages; page++) {
     const res = await getUserAssociations({
-      TransactorPublicKeyBase58Check: ownerPublicKey,
+      TransactorPublicKeyBase58Check: CHATON_SIGNING_PUBLIC_KEY,
       TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
       AssociationType: ASSOCIATION_TYPE_GROUP_INVITE_CODE,
       Limit: 100,
@@ -104,7 +93,10 @@ export async function fetchInviteCode(
     });
     const associations = res.Associations ?? [];
     for (const a of associations) {
-      if (a.ExtraData?.["group:keyName"] === groupKeyName) {
+      if (
+        a.ExtraData?.["group:keyName"] === groupKeyName &&
+        a.ExtraData?.["group:ownerKey"] === ownerPublicKey
+      ) {
         return { code: a.AssociationValue, associationId: a.AssociationID };
       }
     }
@@ -114,18 +106,19 @@ export async function fetchInviteCode(
   return null;
 }
 
-/** Revoke an invite code by deleting the registry association. */
+/** Revoke an invite code via the Worker API. */
 export async function revokeInviteCode(
   ownerPublicKey: string,
   associationId: string
 ): Promise<void> {
-  await withAuth(() =>
-    deleteUserAssociation(
-      {
-        TransactorPublicKeyBase58Check: ownerPublicKey,
-        AssociationID: associationId,
-      },
-      { checkPermissions: false }
-    )
-  );
+  const jwt = await identity.jwt();
+  const res = await fetch(`${RELAY_URL}/invite-codes/revoke`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ownerPublicKey, associationId, jwt }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Failed to revoke invite code");
+  }
 }

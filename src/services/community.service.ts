@@ -9,10 +9,11 @@ import {
 import { withAuth } from "../utils/with-auth";
 import {
   ASSOCIATION_TYPE_COMMUNITY_LISTED,
+  ASSOCIATION_TYPE_GROUP_INVITE_CODE,
   CHATON_DONATION_PUBLIC_KEY,
+  CHATON_SIGNING_PUBLIC_KEY,
 } from "../utils/constants";
 import { GROUP_DISPLAY_NAME, GROUP_IMAGE_URL } from "../utils/extra-data";
-import { fetchInviteCode } from "../utils/invite-link";
 
 export interface CommunityListing {
   ownerKey: string;
@@ -228,18 +229,34 @@ export async function enrichCommunityListings(
     // Non-fatal: cards render without images (but we can't validate existence)
   }
 
-  // 2. Fetch invite codes per-owner (scoped queries, not global scan).
-  // Uses existing fetchInviteCode which queries by Transactor+Target+Type.
-  const inviteCodeResults = await Promise.allSettled(
-    deduped.map((l) => fetchInviteCode(l.ownerKey, l.groupKeyName))
-  );
+  // 2. Batch-fetch all invite codes signed by ChatOn's key in a single
+  //    pagination pass, then build a lookup map. Much more efficient than
+  //    per-group queries since all codes share one transactor.
   const inviteCodeMap = new Map<string, string>();
-  deduped.forEach((l, i) => {
-    const result = inviteCodeResults[i];
-    if (result.status === "fulfilled" && result.value) {
-      inviteCodeMap.set(uniqueKey(l), result.value.code);
+  try {
+    let lastId = "";
+    while (true) {
+      const res = await getUserAssociations({
+        TransactorPublicKeyBase58Check: CHATON_SIGNING_PUBLIC_KEY,
+        TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
+        AssociationType: ASSOCIATION_TYPE_GROUP_INVITE_CODE,
+        Limit: 100,
+        ...(lastId ? { LastSeenAssociationID: lastId } : {}),
+      });
+      const associations = res.Associations ?? [];
+      for (const a of associations) {
+        const ownerKey = a.ExtraData?.["group:ownerKey"];
+        const keyName = a.ExtraData?.["group:keyName"];
+        if (ownerKey && keyName) {
+          inviteCodeMap.set(ownerKey + "|" + keyName, a.AssociationValue);
+        }
+      }
+      if (associations.length < 100) break;
+      lastId = associations[associations.length - 1].AssociationID;
     }
-  });
+  } catch {
+    // Non-fatal: groups without matched codes will be filtered out
+  }
 
   // 3. Fetch member counts in parallel (capped at 50 per group)
   const memberCountResults = await Promise.allSettled(

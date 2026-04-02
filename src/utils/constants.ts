@@ -120,4 +120,6 @@ export const BASE_TITLE = "DeSo Chat Protocol";
 export const TITLE_DIVIDER = " · ";
 export const CHATON_DONATION_PUBLIC_KEY: Readonly<string> =
   "BC1YLibU7KwQRTnWJ3nDyVzitNFdyDa28LjZDEnH5Y6xP9oHa59J5xK";
+export const CHATON_SIGNING_PUBLIC_KEY: Readonly<string> =
+  "BC1YLg2qBgxVDcK8pAgSEAJbizmHDRDExTaYS9xzEH5ZMhVxKsxTVZr";
 const UNLIMITED = "UNLIMITED";

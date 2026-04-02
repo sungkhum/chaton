@@ -33,7 +33,6 @@ import {
 import {
   buildInviteUrl,
   fetchInviteCode,
-  generateInviteCode,
   registerInviteCode,
   revokeInviteCode,
 } from "../utils/invite-link";
@@ -537,34 +536,15 @@ export const ManageMembersDialog = ({
     if (!appUser) return;
     setInviteLoading(true);
     try {
-      const code = generateInviteCode();
-      const associationId = await registerInviteCode(
+      const { code, associationId } = await registerInviteCode(
         appUser.PublicKeyBase58Check,
-        code,
         groupName
       );
       setInviteCode(code);
       setInviteAssociationId(associationId);
       toast.success("Invite link created");
-    } catch (err: any) {
-      if (err?.message?.includes("collision")) {
-        // Retry once with a new code
-        try {
-          const code = generateInviteCode();
-          const associationId = await registerInviteCode(
-            appUser.PublicKeyBase58Check,
-            code,
-            groupName
-          );
-          setInviteCode(code);
-          setInviteAssociationId(associationId);
-          toast.success("Invite link created");
-        } catch {
-          toast.error("Failed to create invite link");
-        }
-      } else {
-        toast.error("Failed to create invite link");
-      }
+    } catch {
+      toast.error("Failed to create invite link");
     } finally {
       setInviteLoading(false);
     }
