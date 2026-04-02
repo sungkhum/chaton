@@ -2234,7 +2234,7 @@ export const MessagingApp: FC = () => {
               >
                 <div className="border-none flex flex-col h-full">
                   <div className="overflow-hidden flex-1 min-h-0">
-                    {loadingConversation ? (
+                    {loadingConversation || !selectedConversation ? (
                       <div className="h-full flex items-center justify-center">
                         <Loader2 className="w-11 h-11 animate-spin text-[#34F080]" />
                       </div>
@@ -2282,7 +2282,7 @@ export const MessagingApp: FC = () => {
                           await hideMessage(appUser.PublicKeyBase58Check, timestampNanosString);
                         }}
                         onDeleteForEveryone={async (message) => {
-                          if (!appUser) return;
+                          if (!appUser || !selectedConversation) return;
                           const convKey = selectedConversationPublicKey;
                           const recipientPublicKey =
                             selectedConversation.ChatType === ChatType.DM
@@ -2378,7 +2378,7 @@ export const MessagingApp: FC = () => {
                           removePendingMessage(appUser.PublicKeyBase58Check, localId);
                         }}
                         onReact={async (timestampNanosString, emoji) => {
-                          if (!appUser) return;
+                          if (!appUser || !selectedConversation) return;
                           const recipientPublicKey =
                             selectedConversation.ChatType === ChatType.DM
                               ? selectedConversation.firstMessagePublicKey
@@ -2490,7 +2490,7 @@ export const MessagingApp: FC = () => {
                           });
                         }}
                         onMicroTip={async (msg) => {
-                          if (!appUser) return;
+                          if (!appUser || !selectedConversation) return;
                           const senderPk = msg.SenderInfo.OwnerPublicKeyBase58Check;
                           if (senderPk === appUser.PublicKeyBase58Check) {
                             toast.info("You can't tip yourself");
@@ -2618,7 +2618,7 @@ export const MessagingApp: FC = () => {
                     )}
                   </div>
 
-                  <SendMessageButtonAndInput
+                  {selectedConversation && <SendMessageButtonAndInput
                     key={selectedConversationPublicKey}
                     conversationKey={selectedConversationPublicKey}
                     replyTo={replyToMessage}
@@ -2626,7 +2626,7 @@ export const MessagingApp: FC = () => {
                     editingMessage={editingMessage}
                     onCancelEdit={() => setEditingMessage(null)}
                     onSubmitEdit={async (newText, timestamp) => {
-                      if (!appUser || !newText.trim()) return;
+                      if (!appUser || !newText.trim() || !selectedConversation) return;
                       setEditingMessage(null);
                       const convKey = selectedConversationPublicKey;
                       const recipientPublicKey =
@@ -2731,6 +2731,7 @@ export const MessagingApp: FC = () => {
                         : undefined
                     }
                     onClick={async (messageToSend: string, extraData?: Record<string, string>) => {
+                      if (!selectedConversation) return;
                       // Merge reply data into extraData if replying
                       if (replyToMessage) {
                         extraData = {
@@ -2846,7 +2847,7 @@ export const MessagingApp: FC = () => {
                         setLockRefresh(false);
                       }
                     }}
-                  />
+                  />}
                 </div>
               </div>
             </div>
