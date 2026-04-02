@@ -43,7 +43,10 @@ import {
   FULL_ENCRYPTED_KEYS,
   MSG_ENCRYPTED,
   type PrivacyMode,
+  type SystemAction,
+  type MentionEntry,
   getEncryptedExtraDataKeys,
+  buildExtraData,
 } from "../utils/extra-data";
 import { Conversation, ConversationMap } from "../utils/types";
 import { useStore } from "../store";
@@ -445,6 +448,40 @@ export const encryptAndSendNewMessage = async (
   }
 
   return submittedTransactionResponse.TxnHashHex;
+};
+
+/**
+ * Send a system log message to a group chat (e.g. "X joined the group").
+ * Best-effort — errors are logged but never thrown.
+ */
+export const sendSystemMessage = async (
+  senderPublicKey: string,
+  groupOwnerPublicKey: string,
+  groupKeyName: string,
+  action: SystemAction,
+  members: MentionEntry[]
+): Promise<void> => {
+  const names = members.map((m) => m.un || m.pk.slice(0, 8));
+  const label = names.length <= 3 ? names.join(", ") : `${names.slice(0, 3).join(", ")} and ${names.length - 3} more`;
+  const verb = action === "member-left" ? "left" : "joined";
+  const fallback = `${label} ${verb} the group`;
+
+  try {
+    await encryptAndSendNewMessage(
+      fallback,
+      senderPublicKey,
+      groupOwnerPublicKey,
+      groupKeyName,
+      DEFAULT_KEY_MESSAGING_GROUP_NAME,
+      buildExtraData({
+        type: "system",
+        systemAction: action,
+        systemMembers: members,
+      })
+    );
+  } catch (e) {
+    console.error("Failed to send system message:", e);
+  }
 };
 
 export const encryptAndUpdateMessage = async (

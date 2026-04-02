@@ -202,6 +202,10 @@ function MessageContent({ message }: { message: DecryptedMessageEntryResponse })
       // Reactions are aggregated, not shown as standalone messages
       return null;
 
+    case "system":
+      // System messages are rendered inline by the parent (SystemLogMessage)
+      return null;
+
     case "text":
     default: {
       const emojiOnly = messageToShow ? parseEmojiOnlyMessage(messageToShow) : null;
@@ -723,6 +727,30 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
 
         {displayMessages.map((message, i: number) => {
           const parsed = parseMessageType(message);
+
+          // System log messages render as centered, un-bubbled text
+          if (parsed.type === "system") {
+            const messageKey = message.MessageInfo.TimestampNanosString || `msg-${i}`;
+            const actionText = parsed.systemAction === "member-left" ? " left the group" : " joined the group";
+            return (
+              <div
+                key={messageKey}
+                className="flex justify-center my-2 px-4"
+              >
+                <span className="text-xs text-gray-500 bg-white/5 rounded-full px-3 py-1 text-center">
+                  {parsed.systemMembers?.length
+                    ? parsed.systemMembers.map((m, j) => (
+                        <span key={m.pk}>
+                          {j > 0 && (j === parsed.systemMembers!.length - 1 ? " and " : ", ")}
+                          <span className="text-[#34F080] font-medium">{m.un || m.pk.slice(0, 8)}</span>
+                        </span>
+                      )).concat([<span key="action">{actionText}</span>])
+                    : message.DecryptedMessage || ""}
+                </span>
+              </div>
+            );
+          }
+
           const IsSender =
             message.IsSender ||
             message.SenderInfo.OwnerPublicKeyBase58Check ===

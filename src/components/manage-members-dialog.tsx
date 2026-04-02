@@ -29,6 +29,7 @@ import { GROUP_DISPLAY_NAME, GROUP_IMAGE_URL, getGroupDisplayName, getGroupImage
 import {
   fetchPendingJoinRequests,
   JoinRequestEntry,
+  sendSystemMessage,
 } from "../services/conversations.service";
 import {
   buildInviteUrl,
@@ -431,6 +432,21 @@ export const ManageMembersDialog = ({
       // blockchain transactions — if add fails we must not have already removed.
       await addMembersAction(groupName, memberKeysToAdd);
       await removeMembersAction(groupName, memberKeysToRemove);
+
+      // Best-effort: send system log message for newly added members
+      if (appUser && memberKeysToAdd.length > 0) {
+        const addedMembers = members
+          .filter((m) => memberKeysToAdd.includes(m.id))
+          .map((m) => ({ pk: m.id, un: m.text }));
+        sendSystemMessage(
+          appUser.PublicKeyBase58Check,
+          groupOwnerKey,
+          groupName,
+          "member-joined",
+          addedMembers
+        );
+      }
+
       onSuccess();
       handleOpen();
     } catch {
@@ -687,6 +703,18 @@ export const ManageMembersDialog = ({
         keysToApprove.length === 1
           ? "Member approved"
           : `${keysToApprove.length} members approved`
+      );
+
+      // Best-effort: send system log message for approved members
+      sendSystemMessage(
+        appUser.PublicKeyBase58Check,
+        groupOwnerKey,
+        groupName,
+        "member-joined",
+        approvedRequests.map((r) => ({
+          pk: r.requesterPublicKey,
+          un: nameOrFormattedKey(r.profile, r.requesterPublicKey),
+        }))
       );
 
       // Best-effort cleanup: delete join request associations on-chain.

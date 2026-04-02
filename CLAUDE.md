@@ -98,7 +98,7 @@ on-chain follows and User Associations (no backend needed).
 All rich message metadata uses generic `msg:` namespaced keys in DeSo's `ExtraData`
 field. This is a shared convention any DeSo messaging app can adopt:
 
-- `msg:type` — message type: `text`, `image`, `gif`, `sticker`, `video`, `file`, `reaction`
+- `msg:type` — message type: `text`, `image`, `gif`, `sticker`, `video`, `file`, `reaction`, `system`
 - `msg:replyTo` — `TimestampNanosString` of the message being replied to or reacted to
 - `msg:emoji` — emoji character for reactions
 - `msg:action` — `"add"` or `"remove"` for reaction toggling
@@ -107,6 +107,8 @@ field. This is a shared convention any DeSo messaging app can adopt:
 - `msg:fileName`, `msg:fileSize`, `msg:fileType` — file attachments
 - `msg:replyPreview` — truncated preview text of the replied-to message
 - `msg:gifTitle` — title of a GIF or sticker from KLIPY
+- `msg:systemAction` — system log action: `member-joined`, `member-left`
+- `msg:systemMembers` — JSON array of `{pk, un}` entries for the users involved
 
 ### Access Group ExtraData
 

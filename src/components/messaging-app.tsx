@@ -41,6 +41,7 @@ import {
   fetchMutualFollows,
   fetchPrivacyMode,
   getConversations,
+  sendSystemMessage,
 } from "../services/conversations.service";
 import {
   cacheConversations,
@@ -657,6 +658,17 @@ export const MessagingApp: FC = () => {
 
   const handleArchiveGroup = async (conversationKey: string, groupOwnerPublicKey: string, groupKeyName: string) => {
     if (!appUser) return;
+
+    // Best-effort: send "left" system message while still a member
+    const username = appUser.ProfileEntryResponse?.Username || appUser.PublicKeyBase58Check.slice(0, 8);
+    sendSystemMessage(
+      appUser.PublicKeyBase58Check,
+      groupOwnerPublicKey,
+      groupKeyName,
+      "member-left",
+      [{ pk: appUser.PublicKeyBase58Check, un: username }]
+    );
+
     archiveGroup(conversationKey);
     cleanupAfterClassificationChange(conversationKey);
     try {

@@ -26,6 +26,10 @@ export const MSG_DELETED = "msg:deleted";
 export const MSG_MENTIONS = "msg:mentions";
 export const MSG_ENCRYPTED = "msg:encrypted";
 
+// System/log message metadata — any DeSo messaging app can read these
+export const MSG_SYSTEM_ACTION = "msg:systemAction";
+export const MSG_SYSTEM_MEMBERS = "msg:systemMembers";
+
 // Tip metadata — any DeSo messaging app can read these
 export const MSG_TIP_AMOUNT_NANOS = "msg:tipAmountNanos";
 export const MSG_TIP_TX_HASH = "msg:tipTxHash";
@@ -89,7 +93,10 @@ export type RichMessageType =
   | "video"
   | "file"
   | "reaction"
-  | "tip";
+  | "tip"
+  | "system";
+
+export type SystemAction = "member-joined" | "member-left";
 
 /** A user mentioned in a message. pk = publicKey, un = username. */
 export interface MentionEntry {
@@ -127,6 +134,9 @@ export interface ParsedMessage {
   tipCurrency?: TipCurrency;
   tipTxHash?: string;
   tipReplyTo?: string;
+  systemAction?: SystemAction;
+  /** JSON array of {pk, un} entries for members involved in the system action */
+  systemMembers?: MentionEntry[];
   tipRecipient?: string;
 }
 
@@ -181,6 +191,10 @@ export function parseMessageType(
     tipTxHash: extra[MSG_TIP_TX_HASH],
     tipReplyTo: extra[MSG_TIP_REPLY_TO],
     tipRecipient: extra[MSG_TIP_RECIPIENT],
+    systemAction: extra[MSG_SYSTEM_ACTION] as SystemAction | undefined,
+    systemMembers: extra[MSG_SYSTEM_MEMBERS]
+      ? (JSON.parse(extra[MSG_SYSTEM_MEMBERS]) as MentionEntry[])
+      : undefined,
   };
 }
 
@@ -259,6 +273,9 @@ export function buildExtraData(
   if (parsed.tipTxHash) extra[MSG_TIP_TX_HASH] = parsed.tipTxHash;
   if (parsed.tipReplyTo) extra[MSG_TIP_REPLY_TO] = parsed.tipReplyTo;
   if (parsed.tipRecipient) extra[MSG_TIP_RECIPIENT] = parsed.tipRecipient;
+  if (parsed.systemAction) extra[MSG_SYSTEM_ACTION] = parsed.systemAction;
+  if (parsed.systemMembers && parsed.systemMembers.length > 0)
+    extra[MSG_SYSTEM_MEMBERS] = JSON.stringify(parsed.systemMembers);
 
   return extra;
 }
