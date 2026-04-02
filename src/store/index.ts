@@ -118,9 +118,9 @@ interface ChatOnState {
   rollbackUnblock: (publicKey: string, associationId: string) => void;
   resetChatRequestState: () => void;
 
-  // Tipping — session spending awareness
-  sessionTipTotalNanos: number;
-  addSessionTip: (nanos: number) => void;
+  // Tipping — session spending awareness (tracks USD cents for both currencies)
+  sessionTipTotalUsdCents: number;
+  addSessionTipUsd: (usdAmount: number) => void;
 }
 
 const EMPTY_SET = new Set<string>();
@@ -567,13 +567,15 @@ export const useStore = create<ChatOnState>((set) => ({
       privacyModeAssociationId: null,
       unreadByConversation: new Map(),
       totalUnread: 0,
-      sessionTipTotalNanos: 0,
+      sessionTipTotalUsdCents: 0,
     });
   },
 
-  // Tipping
-  sessionTipTotalNanos: 0,
-  addSessionTip: (nanos) => set((s) => ({ sessionTipTotalNanos: s.sessionTipTotalNanos + nanos })),
+  // Tipping — tracks USD cents for both DESO and USDC tips
+  sessionTipTotalUsdCents: 0,
+  addSessionTipUsd: (usdAmount) => set((s) => ({
+    sessionTipTotalUsdCents: s.sessionTipTotalUsdCents + Math.round(usdAmount * 100),
+  })),
 }));
 
 // Expose store for Playwright tests (dev/test only)

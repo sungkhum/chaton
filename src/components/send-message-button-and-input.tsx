@@ -508,7 +508,7 @@ export const SendMessageButtonAndInput = ({
               }}
               aria-label="Send a tip"
               title="Send a tip"
-              className="p-2 text-[#34F080]/70 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors"
+              className="p-2 text-gray-500 hover:text-white cursor-pointer shrink-0 transition-colors"
               type="button"
             >
               <CircleDollarSign className="w-[18px] h-[18px]" />

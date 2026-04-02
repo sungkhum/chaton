@@ -83,6 +83,11 @@ export const getTransactionSpendingLimits = (
     // The SDK's hasPermissions check matches AssociationType: "" as a wildcard
     // for all specific types. This future-proofs us — no need to update this
     // list when adding new association types.
+    DAOCoinOperationLimitMap: {
+      [USDC_CREATOR_PUBLIC_KEY]: {
+        transfer: UNLIMITED,
+      },
+    },
     AssociationLimitMap: [
       {
         AssociationClass: "User" as const,
@@ -120,6 +125,8 @@ export const BASE_TITLE = "DeSo Chat Protocol";
 export const TITLE_DIVIDER = " · ";
 export const CHATON_DONATION_PUBLIC_KEY: Readonly<string> =
   "BC1YLibU7KwQRTnWJ3nDyVzitNFdyDa28LjZDEnH5Y6xP9oHa59J5xK";
+export const USDC_CREATOR_PUBLIC_KEY: Readonly<string> =
+  "BC1YLiwTN3DbkU8VmD7F7wXcRR1tFX6jDEkLyruHD2WsH3URomimxLX";
 export const CHATON_SIGNING_PUBLIC_KEY: Readonly<string> =
   "BC1YLg2qBgxVDcK8pAgSEAJbizmHDRDExTaYS9xzEH5ZMhVxKsxTVZr";
 const UNLIMITED = "UNLIMITED";

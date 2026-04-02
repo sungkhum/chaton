@@ -3,14 +3,17 @@ import { CircleDollarSign } from "lucide-react";
 import { MessagingDisplayAvatar } from "../messaging-display-avatar";
 import { useMobile } from "../../hooks/useMobile";
 import { fetchExchangeRate, nanosToUsd, formatUsd } from "../../utils/exchange-rate";
+import { usdcBaseUnitsToUsd } from "../../utils/usdc-balance";
 import { formatDesoAmount } from "../../utils/helpers";
+import type { TipCurrency } from "../../utils/extra-data";
 
-/** Track whether a long-press just fired so we can suppress the subsequent click */
 let longPressDidFire = false;
 
 interface TipEntry {
   senderPublicKey: string;
   amountNanos: number;
+  amountUsdcBaseUnits?: string;
+  currency?: TipCurrency;
 }
 
 interface TipPillsProps {
@@ -32,7 +35,14 @@ export const TipPills = ({
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isMobile } = useMobile();
 
-  const totalNanos = tips.reduce((sum, t) => sum + t.amountNanos, 0);
+  // Separate DESO and USDC totals
+  const desoTotalNanos = tips
+    .filter((t) => !t.currency || t.currency === "DESO")
+    .reduce((sum, t) => sum + t.amountNanos, 0);
+  const usdcTotalBaseUnits = tips
+    .filter((t) => t.currency === "USDC" && t.amountUsdcBaseUnits)
+    .reduce((sum, t) => sum + BigInt(t.amountUsdcBaseUnits!), 0n);
+
   const uniqueTippers = useMemo(
     () => [...new Set(tips.map((t) => t.senderPublicKey))],
     [tips]
@@ -40,61 +50,51 @@ export const TipPills = ({
   const tipperCount = uniqueTippers.length;
   const isOwnTip = tips.some((t) => t.senderPublicKey === currentUserKey);
 
-  // Fetch USD conversion
+  // Convert both to USD for a combined total
   useEffect(() => {
-    fetchExchangeRate().then((rate) => {
-      setUsdTotal(formatUsd(nanosToUsd(totalNanos, rate)));
-    }).catch(() => {});
-  }, [totalNanos]);
+    const usdcUsd = usdcBaseUnitsToUsd(usdcTotalBaseUnits);
+    if (desoTotalNanos > 0) {
+      fetchExchangeRate().then((rate) => {
+        const desoUsd = nanosToUsd(desoTotalNanos, rate);
+        setUsdTotal(formatUsd(desoUsd + usdcUsd));
+      }).catch(() => {
+        // Show USDC portion only if DESO conversion fails
+        if (usdcUsd > 0) setUsdTotal(formatUsd(usdcUsd));
+      });
+    } else {
+      setUsdTotal(formatUsd(usdcUsd));
+    }
+  }, [desoTotalNanos, usdcTotalBaseUnits]);
 
-  // Close popup on click outside
   useEffect(() => {
     if (!showPopup) return;
     const handleClick = (e: MouseEvent) => {
-      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
-        setShowPopup(false);
-      }
+      if (popupRef.current && !popupRef.current.contains(e.target as Node)) setShowPopup(false);
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showPopup]);
 
   const clearTimer = useCallback(() => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
   }, []);
-
   useEffect(() => () => clearTimer(), [clearTimer]);
 
   if (tips.length === 0) return null;
 
-  // Show up to 3 unique tipper avatars
   const avatarKeys = uniqueTippers.slice(0, 3);
+  const hasUsdc = usdcTotalBaseUnits > 0n;
 
   return (
     <div className="relative">
       <button
         aria-label={`Tips totaling ${usdTotal ?? "..."} from ${tipperCount} ${tipperCount === 1 ? "person" : "people"}`}
-        onClick={() => {
-          if (longPressDidFire) {
-            longPressDidFire = false;
-            return;
-          }
-        }}
-        onContextMenu={(e) => {
-          if (!isMobile) {
-            e.preventDefault();
-            setShowPopup(!showPopup);
-          }
-        }}
+        onClick={() => { if (longPressDidFire) { longPressDidFire = false; return; } }}
+        onContextMenu={(e) => { if (!isMobile) { e.preventDefault(); setShowPopup(!showPopup); } }}
         onTouchStart={() => {
-          clearTimer();
-          longPressDidFire = false;
+          clearTimer(); longPressDidFire = false;
           longPressTimer.current = setTimeout(() => {
-            longPressTimer.current = null;
-            longPressDidFire = true;
+            longPressTimer.current = null; longPressDidFire = true;
             if (navigator.vibrate) navigator.vibrate(10);
             setShowPopup(!showPopup);
           }, 400);
@@ -103,76 +103,56 @@ export const TipPills = ({
         onTouchEnd={clearTimer}
         className={`flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-full text-xs cursor-pointer transition-colors ${
           isOwnTip
-            ? "bg-[#34F080]/15 border border-[#34F080]/40"
-            : "bg-[#34F080]/10 border border-[#34F080]/30 hover:bg-[#34F080]/20"
+            ? `${hasUsdc ? "bg-[#34F080]/15 border border-[#34F080]/40" : "bg-[#2775ca]/15 border border-[#2775ca]/40"}`
+            : `${hasUsdc ? "bg-[#34F080]/10 border border-[#34F080]/30 hover:bg-[#34F080]/20" : "bg-[#2775ca]/10 border border-[#2775ca]/30 hover:bg-[#2775ca]/20"}`
         }`}
       >
-        <CircleDollarSign className="w-3.5 h-3.5 text-[#34F080]" />
-        <span className="text-[#34F080] font-semibold text-[11px]">
+        <CircleDollarSign className={`w-3.5 h-3.5 ${hasUsdc ? "text-[#34F080]" : "text-[#2775ca]"}`} />
+        <span className={`font-semibold text-[11px] ${hasUsdc ? "text-[#34F080]" : "text-[#2775ca]"}`}>
           {usdTotal ?? "..."}
         </span>
-        {/* Mini avatar stack */}
         <div className="flex -space-x-1.5">
           {avatarKeys.map((pk) => (
-            <div
-              key={pk}
-              className="rounded-full ring-1 ring-[#141c2b] overflow-hidden"
-            >
-              <MessagingDisplayAvatar
-                publicKey={pk}
-                username={getUsernameByPublicKey?.[pk]}
-                extraDataPicUrl={profilePicByPublicKey?.[pk]}
-                diameter={16}
-              />
+            <div key={pk} className="rounded-full ring-1 ring-[#141c2b] overflow-hidden">
+              <MessagingDisplayAvatar publicKey={pk} username={getUsernameByPublicKey?.[pk]}
+                extraDataPicUrl={profilePicByPublicKey?.[pk]} diameter={16} />
             </div>
           ))}
         </div>
-        {tipperCount > 3 && (
-          <span className="text-[#34F080]/60 text-[10px]">
-            +{tipperCount - 3}
-          </span>
-        )}
-        <span className="text-[#34F080]/60 text-[10px]">({tipperCount})</span>
+        {tipperCount > 3 && <span className={`text-[10px] ${hasUsdc ? "text-[#34F080]/60" : "text-[#2775ca]/60"}`}>+{tipperCount - 3}</span>}
+        <span className={`text-[10px] ${hasUsdc ? "text-[#34F080]/60" : "text-[#2775ca]/60"}`}>({tipperCount})</span>
       </button>
 
-      {/* Who tipped popup */}
       {showPopup && (() => {
-        // Compute aggregation only when popup is open
-        const tipsBySender = tips.reduce<Record<string, number>>((acc, t) => {
-          acc[t.senderPublicKey] = (acc[t.senderPublicKey] || 0) + t.amountNanos;
+        const tipsBySender = tips.reduce<Record<string, { desoNanos: number; usdcBaseUnits: bigint }>>((acc, t) => {
+          if (!acc[t.senderPublicKey]) acc[t.senderPublicKey] = { desoNanos: 0, usdcBaseUnits: 0n };
+          if (t.currency === "USDC" && t.amountUsdcBaseUnits) {
+            acc[t.senderPublicKey].usdcBaseUnits += BigInt(t.amountUsdcBaseUnits);
+          } else {
+            acc[t.senderPublicKey].desoNanos += t.amountNanos;
+          }
           return acc;
         }, {});
         return (
-          <div
-            ref={popupRef}
-            className="absolute bottom-full mb-1 left-0 z-20 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg py-1.5 min-w-[180px] max-h-[200px] overflow-y-auto"
-          >
+          <div ref={popupRef}
+            className="absolute bottom-full mb-1 left-0 right-auto z-20 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg py-1.5 min-w-[180px] max-w-[calc(100vw-24px)] max-h-[200px] overflow-y-auto">
             <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1">
-              <CircleDollarSign className="w-3 h-3 text-[#34F080]" />
-              Tips
+              <CircleDollarSign className={`w-3 h-3 ${hasUsdc ? "text-[#34F080]" : "text-[#2775ca]"}`} /> Tips
             </div>
-            {Object.entries(tipsBySender).map(([pk, nanos]) => {
+            {Object.entries(tipsBySender).map(([pk, amounts]) => {
               const username = getUsernameByPublicKey?.[pk];
+              const parts: string[] = [];
+              if (amounts.desoNanos > 0) parts.push(formatDesoAmount(amounts.desoNanos));
+              if (amounts.usdcBaseUnits > 0n) parts.push(`${usdcBaseUnitsToUsd(amounts.usdcBaseUnits).toFixed(2)} USDC`);
               return (
-                <div
-                  key={pk}
-                  className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/5"
-                >
-                  <MessagingDisplayAvatar
-                    publicKey={pk}
-                    username={username}
-                    extraDataPicUrl={profilePicByPublicKey?.[pk]}
-                    diameter={24}
-                  />
-                  <span className="text-sm text-gray-200 truncate">
-                    {username ? username : `${pk.slice(0, 8)}...`}
+                <div key={pk} className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/5">
+                  <MessagingDisplayAvatar publicKey={pk} username={username}
+                    extraDataPicUrl={profilePicByPublicKey?.[pk]} diameter={24} />
+                  <span className="text-sm text-gray-200 truncate">{username || `${pk.slice(0, 8)}...`}</span>
+                  <span className={`text-xs font-semibold ml-auto ${hasUsdc ? "text-[#34F080]" : "text-[#2775ca]"}`}>
+                    {parts.join(" + ")}
                   </span>
-                  <span className="text-[#34F080] text-xs font-semibold ml-auto">
-                    {formatDesoAmount(nanos)}
-                  </span>
-                  {pk === currentUserKey && (
-                    <span className="text-[10px] text-[#34F080]">you</span>
-                  )}
+                  {pk === currentUserKey && <span className="text-[10px] text-[#34F080]">you</span>}
                 </div>
               );
             })}

@@ -11,6 +11,7 @@ import {
   PublicKeyToProfileEntryResponseMap,
   sendDeso,
   identity,
+  transferDeSoToken,
 } from "deso-protocol";
 import { useInterval } from "hooks/useInterval";
 import { FC, lazy, Suspense, useContext, useEffect, useMemo, useRef, useState, useCallback } from "react";
@@ -86,6 +87,10 @@ const LazyTipConfirmDialog = lazy(() =>
 );
 import { withAuth } from "../utils/with-auth";
 import { fetchExchangeRate, usdToNanos } from "../utils/exchange-rate";
+import { fetchUsdcBalance, usdToUsdcBaseUnits, toHexUint256, invalidateUsdcBalanceCache } from "../utils/usdc-balance";
+import { USDC_CREATOR_PUBLIC_KEY } from "../utils/constants";
+import { getCachedTipCurrency } from "../services/cache.service";
+import type { TipCurrency } from "../utils/extra-data";
 
 // Micro-tip cooldown (3 seconds between tips)
 let lastMicroTipTime = 0;
@@ -1848,7 +1853,7 @@ export const MessagingApp: FC = () => {
           <div className="bg-gradient"></div>
           <div className="w-full lg:max-w-[1200px] m-auto bg-transparent p-0 shadow-none">
             <div>
-              {(autoFetchConversations || isLoadingUser || loading) && (
+              {(autoFetchConversations || isLoadingUser || loading || (!conversationsReady && hasSetupMessaging(appUser))) && (
                 <div className="text-center">
                   <Loader2 className="w-11 h-11 mt-4 animate-spin text-[#34F080] mx-auto" />
                 </div>
@@ -2481,53 +2486,68 @@ export const MessagingApp: FC = () => {
                           }
                           lastMicroTipTime = now;
 
-                          // Balance pre-check
-                          if (appUser.BalanceNanos <= 0) {
-                            toast.info("Add funds to your account to send tips");
-                            return;
-                          }
-
                           try {
-                            // Get exchange rate and compute $0.01 in nanos
-                            const rate = await fetchExchangeRate();
-                            const amountNanos = usdToNanos(0.01, rate);
-                            if (amountNanos <= 0) {
-                              toast.error("Could not calculate tip amount");
-                              return;
-                            }
-                            if (amountNanos > appUser.BalanceNanos) {
-                              toast.info("Insufficient balance for this tip");
-                              return;
-                            }
+                            const tipCurrency = (getCachedTipCurrency(appUser.PublicKeyBase58Check) as TipCurrency) || "DESO";
+                            let txHash = "";
+                            let tipAmountNanos = 0;
+                            let tipAmountUsdcBaseUnits: string | undefined;
 
-                            // Check permissions
-                            const hasPerms = identity.hasPermissions({
-                              GlobalDESOLimit: amountNanos,
-                              TransactionCountLimitMap: { BASIC_TRANSFER: 1 },
-                            });
-                            if (!hasPerms) {
-                              await identity.requestPermissions({
-                                GlobalDESOLimit: amountNanos + 1e7,
-                                TransactionCountLimitMap: {
-                                  AUTHORIZE_DERIVED_KEY: 1,
-                                  BASIC_TRANSFER: 1,
-                                },
+                            if (tipCurrency === "USDC") {
+                              const usdcAmount = usdToUsdcBaseUnits(0.01);
+                              const balance = await fetchUsdcBalance(appUser.PublicKeyBase58Check);
+                              if (balance < usdcAmount) { toast.info("Insufficient USDC balance"); return; }
+                              if (appUser.BalanceNanos < 1e6) { toast.info("Need a small amount of DESO for fees"); return; }
+
+                              const hasPerms = identity.hasPermissions({
+                                GlobalDESOLimit: 1e6,
+                                DAOCoinOperationLimitMap: { [USDC_CREATOR_PUBLIC_KEY]: { transfer: 1 } },
                               });
-                            }
+                              if (!hasPerms) {
+                                await identity.requestPermissions({
+                                  GlobalDESOLimit: 1e7,
+                                  TransactionCountLimitMap: { AUTHORIZE_DERIVED_KEY: 1 },
+                                  DAOCoinOperationLimitMap: { [USDC_CREATOR_PUBLIC_KEY]: { transfer: 1 } },
+                                });
+                              }
+                              const result = await withAuth(() =>
+                                transferDeSoToken({
+                                  SenderPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+                                  ProfilePublicKeyBase58CheckOrUsername: USDC_CREATOR_PUBLIC_KEY,
+                                  ReceiverPublicKeyBase58CheckOrUsername: senderPk,
+                                  DAOCoinToTransferNanos: toHexUint256(usdcAmount),
+                                  MinFeeRateNanosPerKB: 1000,
+                                })
+                              );
+                              txHash = (result as any)?.TxnHashHex || (result as any)?.TransactionIDBase58Check || "";
+                              tipAmountUsdcBaseUnits = toHexUint256(usdcAmount);
+                              invalidateUsdcBalanceCache();
+                            } else {
+                              if (appUser.BalanceNanos <= 0) { toast.info("Add funds to send tips"); return; }
+                              const rate = await fetchExchangeRate();
+                              tipAmountNanos = usdToNanos(0.01, rate);
+                              if (tipAmountNanos <= 0) { toast.error("Could not calculate tip amount"); return; }
+                              if (tipAmountNanos > appUser.BalanceNanos) { toast.info("Insufficient balance"); return; }
 
-                            // Send DESO
-                            const result = await withAuth(() =>
-                              sendDeso({
-                                SenderPublicKeyBase58Check: appUser.PublicKeyBase58Check,
-                                RecipientPublicKeyOrUsername: senderPk,
-                                AmountNanos: amountNanos,
-                                MinFeeRateNanosPerKB: 1000,
-                              })
-                            );
-                            const txHash =
-                              (result as any)?.TxnHashHex ||
-                              (result as any)?.TransactionIDBase58Check ||
-                              "";
+                              const hasPerms = identity.hasPermissions({
+                                GlobalDESOLimit: tipAmountNanos,
+                                TransactionCountLimitMap: { BASIC_TRANSFER: 1 },
+                              });
+                              if (!hasPerms) {
+                                await identity.requestPermissions({
+                                  GlobalDESOLimit: tipAmountNanos + 1e7,
+                                  TransactionCountLimitMap: { AUTHORIZE_DERIVED_KEY: 1, BASIC_TRANSFER: 1 },
+                                });
+                              }
+                              const result = await withAuth(() =>
+                                sendDeso({
+                                  SenderPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+                                  RecipientPublicKeyOrUsername: senderPk,
+                                  AmountNanos: tipAmountNanos,
+                                  MinFeeRateNanosPerKB: 1000,
+                                })
+                              );
+                              txHash = (result as any)?.TxnHashHex || (result as any)?.TransactionIDBase58Check || "";
+                            }
 
                             // Send tip message
                             const convKey = selectedConversationPublicKey;
@@ -2553,15 +2573,17 @@ export const MessagingApp: FC = () => {
                               DEFAULT_KEY_MESSAGING_GROUP_NAME,
                               buildExtraData({
                                 type: "tip",
-                                tipAmountNanos: amountNanos,
+                                tipAmountNanos: tipCurrency === "DESO" ? tipAmountNanos : undefined,
+                                tipAmountUsdcBaseUnits,
+                                tipCurrency,
                                 tipTxHash: txHash,
                                 tipReplyTo: msg.MessageInfo.TimestampNanosString,
                                 tipRecipient: senderPk,
                               })
                             );
                             notifyConversation(convKey, recipientPublicKey);
-                            useStore.getState().addSessionTip(amountNanos);
-                            toast.success(`Tipped $0.01 to ${senderUsername ? `@${senderUsername}` : "user"}`);
+                            useStore.getState().addSessionTipUsd(0.01);
+                            toast.success(`Tipped $0.01 ${tipCurrency} to ${senderUsername ? `@${senderUsername}` : "user"}`);
                           } catch (error: any) {
                             const errMsg = error?.message || error?.toString?.() || "";
                             if (errMsg.includes("user cancelled") || errMsg.includes("WINDOW_CLOSED")) {
@@ -2850,9 +2872,7 @@ export const MessagingApp: FC = () => {
           tipReplyTo={tipTarget.tipReplyTo}
           onClose={() => setTipTarget(null)}
           onTipSent={async (tipData) => {
-            // Track session spending
-            useStore.getState().addSessionTip(tipData.amountNanos);
-            // Send tip message to the conversation
+            useStore.getState().addSessionTipUsd(tipData.amountUsd);
             try {
               const convKey = selectedConversationPublicKey;
               const conv = conversations[convKey];
@@ -2879,7 +2899,9 @@ export const MessagingApp: FC = () => {
                 DEFAULT_KEY_MESSAGING_GROUP_NAME,
                 buildExtraData({
                   type: "tip",
-                  tipAmountNanos: tipData.amountNanos,
+                  tipAmountNanos: tipData.currency === "DESO" ? tipData.amountNanos : undefined,
+                  tipAmountUsdcBaseUnits: tipData.amountUsdcBaseUnits,
+                  tipCurrency: tipData.currency,
                   tipTxHash: tipData.txHash,
                   tipReplyTo: tipData.tipReplyTo,
                   tipRecipient: tipData.recipientPublicKey,

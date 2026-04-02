@@ -24,6 +24,7 @@ import {
   MESSAGES_ONE_REQUEST_LIMIT,
 } from "../utils/constants";
 import { parseMessageType } from "../utils/extra-data";
+import { getCachedTipCurrency } from "../services/cache.service";
 import { ConversationMap } from "../utils/types";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { MessageStatusIndicator } from "./messages/message-status-indicator";
@@ -188,6 +189,8 @@ function MessageContent({ message }: { message: DecryptedMessageEntryResponse })
       return (
         <TipMessage
           amountNanos={parsed.tipAmountNanos || 0}
+          amountUsdcBaseUnits={parsed.tipAmountUsdcBaseUnits}
+          currency={parsed.tipCurrency}
           message={messageToShow}
           replyPreview={parsed.replyPreview}
           isSender={message.IsSender}
@@ -243,6 +246,11 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   const [showTipTooltip, setShowTipTooltip] = useState(() => {
     try { return !localStorage.getItem("hasSeenTipTooltip"); } catch { return false; }
   });
+  // Micro-tip button color based on user's preferred currency (DESO=blue, USDC=green)
+  const tipCurrencyPref = appUser ? getCachedTipCurrency(appUser.PublicKeyBase58Check) : null;
+  const microTipIsDeso = !tipCurrencyPref || tipCurrencyPref === "DESO";
+  const microTipColor = microTipIsDeso ? "#2775ca" : "#34F080";
+  const microTipTextColor = microTipIsDeso ? "text-[#2775ca]" : "text-[#34F080]";
 
   // Auto-dismiss tip tooltip after 4 seconds
   useEffect(() => {
@@ -492,14 +500,16 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
 
   // Aggregate tips from tip-type messages (for tip pills on tipped messages)
   const tipsByTimestamp = useMemo(() => {
-    const map: Record<string, Array<{ senderPublicKey: string; amountNanos: number }>> = {};
+    const map: Record<string, Array<{ senderPublicKey: string; amountNanos: number; amountUsdcBaseUnits?: string; currency?: "DESO" | "USDC" }>> = {};
     for (const msg of visibleMessages) {
       const parsed = parseMessageType(msg);
-      if (parsed.type === "tip" && parsed.tipReplyTo && parsed.tipAmountNanos) {
+      if (parsed.type === "tip" && parsed.tipReplyTo && (parsed.tipAmountNanos || parsed.tipAmountUsdcBaseUnits)) {
         if (!map[parsed.tipReplyTo]) map[parsed.tipReplyTo] = [];
         map[parsed.tipReplyTo].push({
           senderPublicKey: msg.SenderInfo.OwnerPublicKeyBase58Check,
-          amountNanos: parsed.tipAmountNanos,
+          amountNanos: parsed.tipAmountNanos || 0,
+          amountUsdcBaseUnits: parsed.tipAmountUsdcBaseUnits,
+          currency: parsed.tipCurrency,
         });
       }
     }
@@ -700,11 +710,16 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
             senderStyles = "overflow-hidden";
           }
 
-          // Tip messages get a green-tinted bubble with accent left border
+          // Tip messages get a tinted bubble with accent left border (DESO = blue, USDC = green)
           if (parsed.type === "tip") {
-            senderStyles = IsSender
-              ? "bg-[#082414] border border-[#34F080]/25 text-white border-l-2 border-l-[#34F080]"
-              : "bg-[#081a12] border border-[#34F080]/15 text-gray-200 border-l-2 border-l-[#34F080]";
+            const isUsdc = parsed.tipCurrency === "USDC";
+            senderStyles = isUsdc
+              ? (IsSender
+                  ? "bg-[#082414] border border-[#34F080]/25 text-white border-l-2 border-l-[#34F080]"
+                  : "bg-[#081a12] border border-[#34F080]/15 text-gray-200 border-l-2 border-l-[#34F080]")
+              : (IsSender
+                  ? "bg-[#081424] border border-[#2775ca]/25 text-white border-l-2 border-l-[#2775ca]"
+                  : "bg-[#081220] border border-[#2775ca]/15 text-gray-200 border-l-2 border-l-[#2775ca]");
           }
 
           // Emoji-only messages float without a bubble
@@ -900,18 +915,23 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                                     onMicroTip(message);
                                     closeMobileAction();
                                   }}
-                                  aria-label="Tip $0.01"
+                                  aria-label={`Tip $0.01 ${microTipIsDeso ? "DESO" : "USDC"}`}
                                   className={`${
                                     isMobile ? "h-11 px-2" : "h-9 px-1.5"
-                                  } flex flex-col items-center justify-center bg-[#34F080]/10 border border-[#34F080]/20 rounded-lg cursor-pointer transition-colors hover:bg-[#34F080]/20`}
-                                  title="Tip $0.01"
+                                  } flex flex-col items-center justify-center rounded-lg cursor-pointer transition-colors`}
+                                  style={{
+                                    backgroundColor: `${microTipColor}15`,
+                                    border: `1px solid ${microTipColor}33`,
+                                  }}
+                                  title={`Tip $0.01 ${microTipIsDeso ? "DESO" : "USDC"}`}
                                 >
-                                  <CircleDollarSign className={`${isMobile ? "w-5 h-5" : "w-4 h-4"} text-[#34F080]`} />
-                                  <span className="text-[#34F080] text-[10px] font-semibold leading-none mt-0.5">$0.01</span>
+                                  <CircleDollarSign className={`${isMobile ? "w-5 h-5" : "w-4 h-4"} ${microTipTextColor}`} />
+                                  <span className={`${microTipTextColor} text-[10px] font-semibold leading-none mt-0.5`}>$0.01</span>
                                 </button>
                                 {showTipTooltip && (
-                                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-max max-w-[180px] px-3 py-2 bg-[#1a2436] border border-[#34F080]/30 rounded-lg shadow-lg text-[11px] text-gray-300 text-center z-50 pointer-events-none">
-                                    <span className="text-[#34F080] font-semibold">Tip $0.01</span> — send a penny to show appreciation
+                                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-max max-w-[180px] px-3 py-2 bg-[#1a2436] rounded-lg shadow-lg text-[11px] text-gray-300 text-center z-50 pointer-events-none"
+                                    style={{ border: `1px solid ${microTipColor}50` }}>
+                                    <span className={`${microTipTextColor} font-semibold`}>Tip $0.01</span> — send a penny to show appreciation
                                   </div>
                                 )}
                               </div>

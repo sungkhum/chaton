@@ -226,6 +226,18 @@ export function getCachedPrivacyMode(publicKey: string): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// Tip currency preference (localStorage — sync)
+// ---------------------------------------------------------------------------
+
+export function cacheTipCurrency(publicKey: string, currency: string): void {
+  lsSet(publicKey, "tipCurrency", currency);
+}
+
+export function getCachedTipCurrency(publicKey: string): string | null {
+  return lsGet<string>(publicKey, "tipCurrency");
+}
+
+// ---------------------------------------------------------------------------
 // Username map (localStorage — sync)
 // ---------------------------------------------------------------------------
 

@@ -31,6 +31,10 @@ export const MSG_TIP_AMOUNT_NANOS = "msg:tipAmountNanos";
 export const MSG_TIP_TX_HASH = "msg:tipTxHash";
 export const MSG_TIP_REPLY_TO = "msg:tipReplyTo";
 export const MSG_TIP_RECIPIENT = "msg:tipRecipient";
+export const MSG_TIP_CURRENCY = "msg:tipCurrency";
+/** USDC tip amount stored as hex uint256 string (e.g., "0x2386f26fc10000" for 0.01 USDC).
+ *  Parse with `BigInt(value)` — NOT `parseInt`. 1 USDC = 1e18 base units. */
+export const MSG_TIP_AMOUNT_USDC = "msg:tipAmountUsdc";
 
 /** ExtraData keys always encrypted (reaction privacy — default). */
 export const STANDARD_ENCRYPTED_KEYS = [MSG_EMOJI, MSG_ACTION] as const;
@@ -60,6 +64,8 @@ export const FULL_ENCRYPTED_KEYS = [
   MSG_TIP_TX_HASH,
   MSG_TIP_REPLY_TO,
   MSG_TIP_RECIPIENT,
+  MSG_TIP_CURRENCY,
+  MSG_TIP_AMOUNT_USDC,
 ] as const;
 
 export type PrivacyMode = "standard" | "full";
@@ -72,6 +78,8 @@ export function getEncryptedExtraDataKeys(mode: PrivacyMode): readonly string[] 
 // Generic DeSo access group ExtraData keys — any messaging app can adopt these
 export const GROUP_IMAGE_URL = "group:imageUrl";
 export const GROUP_DISPLAY_NAME = "group:displayName";
+
+export type TipCurrency = "DESO" | "USDC";
 
 export type RichMessageType =
   | "text"
@@ -115,6 +123,8 @@ export interface ParsedMessage {
   deleted?: boolean;
   mentions?: MentionEntry[];
   tipAmountNanos?: number;
+  tipAmountUsdcBaseUnits?: string;
+  tipCurrency?: TipCurrency;
   tipTxHash?: string;
   tipReplyTo?: string;
   tipRecipient?: string;
@@ -166,6 +176,8 @@ export function parseMessageType(
           ? parseInt(extra[MSG_TIP_AMOUNT_NANOS], 10)
           : undefined)
       : undefined,
+    tipAmountUsdcBaseUnits: extra[MSG_TIP_AMOUNT_USDC],
+    tipCurrency: (extra[MSG_TIP_CURRENCY] as TipCurrency) || (extra[MSG_TIP_AMOUNT_USDC] ? "USDC" : undefined),
     tipTxHash: extra[MSG_TIP_TX_HASH],
     tipReplyTo: extra[MSG_TIP_REPLY_TO],
     tipRecipient: extra[MSG_TIP_RECIPIENT],
@@ -241,6 +253,9 @@ export function buildExtraData(
     extra[MSG_MENTIONS] = JSON.stringify(parsed.mentions);
   if (parsed.tipAmountNanos !== undefined)
     extra[MSG_TIP_AMOUNT_NANOS] = String(parsed.tipAmountNanos);
+  if (parsed.tipAmountUsdcBaseUnits)
+    extra[MSG_TIP_AMOUNT_USDC] = parsed.tipAmountUsdcBaseUnits;
+  if (parsed.tipCurrency) extra[MSG_TIP_CURRENCY] = parsed.tipCurrency;
   if (parsed.tipTxHash) extra[MSG_TIP_TX_HASH] = parsed.tipTxHash;
   if (parsed.tipReplyTo) extra[MSG_TIP_REPLY_TO] = parsed.tipReplyTo;
   if (parsed.tipRecipient) extra[MSG_TIP_RECIPIENT] = parsed.tipRecipient;
