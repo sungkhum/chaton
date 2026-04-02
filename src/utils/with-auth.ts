@@ -3,41 +3,10 @@ import { toast } from "sonner";
 import { getTransactionSpendingLimits } from "./constants";
 import { useStore } from "../store";
 
-// Bump this version whenever getTransactionSpendingLimits changes
-// (e.g., new association types, new transaction types).
-// Users with a cached version lower than this will be prompted to re-authorize.
-const PERMISSIONS_VERSION = 4;
-const PERMISSIONS_VERSION_KEY = "chaton:permissions-version";
-
-function getStoredPermissionsVersion(publicKey: string): number {
-  try {
-    return Number(localStorage.getItem(`${PERMISSIONS_VERSION_KEY}:${publicKey}`)) || 0;
-  } catch {
-    return 0;
-  }
-}
-
-function setStoredPermissionsVersion(publicKey: string): void {
-  try {
-    localStorage.setItem(`${PERMISSIONS_VERSION_KEY}:${publicKey}`, String(PERMISSIONS_VERSION));
-  } catch {}
-}
-
-function clearStoredPermissionsVersion(publicKey: string): void {
-  try {
-    localStorage.removeItem(`${PERMISSIONS_VERSION_KEY}:${publicKey}`);
-  } catch {}
-}
-
 /**
  * Wraps any async function that makes a DeSo transaction.
  * If the derived key is expired or unauthorized, it automatically
  * re-requests permissions and retries the operation once.
- *
- * NOTE: Does NOT mark permissions version as up-to-date because DeSo identity
- * only grants the minimum permissions for the failing transaction, not the
- * full set we request. Only ensurePermissions (triggered by user gesture)
- * should store the version.
  */
 export async function withAuth<T>(fn: () => Promise<T>): Promise<T> {
   try {
@@ -95,33 +64,84 @@ function isDerivedKeyError(errorStr: string): boolean {
 }
 
 /**
- * Check if permissions need upgrading. Returns true if a re-auth is needed.
+ * Check if permissions need upgrading by comparing the derived key's actual
+ * permissions against what the app requires. Returns true if a re-auth is needed.
  * Does NOT open any popups — call requestFullPermissions() with a user gesture.
+ *
+ * Excludes GlobalDESOLimit and DAOCoinOperationLimitMap from the check because
+ * those decrease as the user spends DESO, which would cause false positives.
  */
 export function needsPermissionUpgrade(): boolean {
   const appUser = useStore.getState().appUser;
   const publicKey = appUser?.PublicKeyBase58Check || "";
   if (!publicKey) return false;
-  return getStoredPermissionsVersion(publicKey) < PERMISSIONS_VERSION;
+
+  const { GlobalDESOLimit, DAOCoinOperationLimitMap, ...structuralPermissions } =
+    getTransactionSpendingLimits(publicKey);
+
+  // AUTHORIZE_DERIVED_KEY is a one-shot permission consumed during key creation,
+  // so it always reads as 0 afterward — exclude it to avoid a false positive.
+  if (structuralPermissions.TransactionCountLimitMap) {
+    const { AUTHORIZE_DERIVED_KEY, ...rest } = structuralPermissions.TransactionCountLimitMap;
+    structuralPermissions.TransactionCountLimitMap = rest;
+  }
+
+  const needsUpgrade = !identity.hasPermissions(structuralPermissions);
+
+  if (needsUpgrade) {
+    const missing: string[] = [];
+
+    // Check each transaction type individually
+    const { TransactionCountLimitMap } = structuralPermissions;
+    if (TransactionCountLimitMap) {
+      for (const [txnType, count] of Object.entries(TransactionCountLimitMap)) {
+        if (!identity.hasPermissions({ TransactionCountLimitMap: { [txnType]: count } })) {
+          missing.push(`txn:${txnType}`);
+        }
+      }
+    }
+
+    // Check access group limits
+    if (
+      structuralPermissions.AccessGroupLimitMap &&
+      !identity.hasPermissions({ AccessGroupLimitMap: structuralPermissions.AccessGroupLimitMap })
+    ) {
+      missing.push("AccessGroupLimitMap");
+    }
+
+    // Check access group member limits
+    if (
+      structuralPermissions.AccessGroupMemberLimitMap &&
+      !identity.hasPermissions({ AccessGroupMemberLimitMap: structuralPermissions.AccessGroupMemberLimitMap })
+    ) {
+      missing.push("AccessGroupMemberLimitMap");
+    }
+
+    // Check association limits
+    if (
+      structuralPermissions.AssociationLimitMap &&
+      !identity.hasPermissions({ AssociationLimitMap: structuralPermissions.AssociationLimitMap })
+    ) {
+      missing.push("AssociationLimitMap");
+    }
+
+    console.debug("[permissions] upgrade needed — missing:", missing.join(", ") || "(key invalid or unregistered)");
+  }
+
+  return needsUpgrade;
 }
 
 /**
  * Request the full set of permissions via identity.requestPermissions().
  * Must be called from a user gesture (click handler) to avoid popup blockers.
  *
- * After success, stores the version so the user isn't prompted again.
+ * After success, identity SDK updates the derived key's transactionSpendingLimits
+ * so the next hasPermissions check will pass without needing a version number.
  */
 export async function requestFullPermissions(): Promise<boolean> {
   const appUser = useStore.getState().appUser;
   const publicKey = appUser?.PublicKeyBase58Check || "";
   if (!publicKey) return false;
-
-  // Store version BEFORE calling requestPermissions. On mobile PWA the
-  // redirect flow navigates away from the page, so the await never resolves
-  // and any code after it never runs. By storing first, we avoid showing
-  // the toast again on every app open. If the user cancels (popup flow),
-  // we clear the version in the catch block.
-  setStoredPermissionsVersion(publicKey);
 
   try {
     await identity.requestPermissions({
@@ -130,8 +150,6 @@ export async function requestFullPermissions(): Promise<boolean> {
 
     return true;
   } catch {
-    // Auth was cancelled (popup flow) — clear the version so we ask again
-    clearStoredPermissionsVersion(publicKey);
     return false;
   } finally {
     useStore.getState().setIsLoadingUser(false);

@@ -1,6 +1,6 @@
 import { defaultCache } from "@serwist/vite/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { Serwist, StaleWhileRevalidate, ExpirationPlugin } from "serwist";
+import { Serwist, NetworkOnly, StaleWhileRevalidate, ExpirationPlugin } from "serwist";
 import { createStore, get, set } from "idb-keyval";
 
 declare global {
@@ -20,6 +20,13 @@ const serwist = new Serwist({
   navigationPreload: true,
   runtimeCaching: [
     ...defaultCache,
+    {
+      // DeSo API calls should always go to the network — never cache.
+      // Registering an explicit NetworkOnly route silences the noisy
+      // "No route found" warnings serwist logs for every unmatched request.
+      matcher: ({ url }) => url.hostname === "node.deso.org",
+      handler: new NetworkOnly(),
+    },
     {
       // Cache profile avatar images and other DeSo CDN images
       matcher: ({ url }) =>
