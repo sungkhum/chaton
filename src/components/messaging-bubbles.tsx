@@ -172,9 +172,9 @@ function MessageContent({ message }: { message: DecryptedMessageEntryResponse })
             localThumbnail={parsed.localThumbnail}
           />
           {videoCaption && (
-            <p className="text-sm mt-1.5 select-text">
+            <div className="text-sm mt-1.5 select-text">
               <FormattedMessage>{videoCaption}</FormattedMessage>
-            </p>
+            </div>
           )}
         </div>
       ) : (

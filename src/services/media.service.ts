@@ -54,18 +54,17 @@ export async function uploadVideoFile(file: File): Promise<VideoUploadResult> {
 
   await pollForVideoReady(response.asset.id);
 
-  // Get the Cloudflare Stream video ID from video status (response.url is just the upload endpoint).
-  // Store as iframe.videodelivery.net URL to match DeSo app format — our player converts to HLS on the fly.
-  const status = await getVideoStatus({ videoId: response.asset.id });
-  const cfVideoId = status.playbackID || response.asset.playbackId;
-  if (!cfVideoId) {
-    throw new Error("Video processed but no playback ID returned");
+  // Get the actual playback URL from video status (response.url is just the upload endpoint).
+  // The API returns playbackUrl (lowercase) despite the TS types saying playbackURL (uppercase).
+  const status = await getVideoStatus({ videoId: response.asset.id }) as any;
+  const playbackUrl: string = status.playbackUrl || status.playbackURL;
+  if (!playbackUrl) {
+    throw new Error("Video processed but no playback URL returned");
   }
-  const playbackUrl = `https://iframe.videodelivery.net/${cfVideoId}`;
 
   return {
     assetId: response.asset.id,
-    playbackId: cfVideoId,
+    playbackId: status.playbackId || status.playbackID || response.asset.playbackId,
     url: playbackUrl,
   };
 }

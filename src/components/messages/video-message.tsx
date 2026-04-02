@@ -19,7 +19,9 @@ interface VideoMessageProps {
 function toStreamUrl(videoUrl: string): string {
   // Cloudflare Stream iframe: https://iframe.videodelivery.net/{videoId}
   // → HLS: https://videodelivery.net/{videoId}/manifest/video.m3u8
-  const cfIframeMatch = videoUrl.match(/iframe\.videodelivery\.net\/([a-f0-9]+)/);
+  // Only convert if the ID is a 32-char hex string (CF Stream UID).
+  // Livepeer playback IDs (alphanumeric, shorter) should not be sent to CF Stream.
+  const cfIframeMatch = videoUrl.match(/iframe\.videodelivery\.net\/([a-f0-9]{32})/);
   if (cfIframeMatch) {
     return `https://videodelivery.net/${cfIframeMatch[1]}/manifest/video.m3u8`;
   }
@@ -28,22 +30,19 @@ function toStreamUrl(videoUrl: string): string {
 
 /** Derive a thumbnail URL from a video stream URL. */
 function getThumbnailUrl(videoUrl: string): string | undefined {
-  // Cloudflare Stream: https://iframe.videodelivery.net/{videoId} or https://videodelivery.net/{videoId}/...
-  const cfMatch = videoUrl.match(/videodelivery\.net\/([a-f0-9]+)/);
+  // Cloudflare Stream: 32-char hex ID in videodelivery.net or cloudflarestream.com URLs
+  const cfMatch = videoUrl.match(/videodelivery\.net\/([a-f0-9]{32})/);
   if (cfMatch) {
     return `https://videodelivery.net/${cfMatch[1]}/thumbnails/thumbnail.jpg`;
   }
-
-  // Cloudflare Stream customer subdomain: https://customer-{sub}.cloudflarestream.com/{videoId}
-  const cfCustomerMatch = videoUrl.match(/cloudflarestream\.com\/([a-f0-9]+)/);
+  const cfCustomerMatch = videoUrl.match(/cloudflarestream\.com\/([a-f0-9]{32})/);
   if (cfCustomerMatch) {
     return `https://videodelivery.net/${cfCustomerMatch[1]}/thumbnails/thumbnail.jpg`;
   }
 
-  // Livepeer HLS: .../hls/{playbackId}/index.m3u8
-  // Thumbnail: .../hls/{playbackId}/thumbnails/keyframes_0.jpg
-  if (videoUrl.includes("/hls/") && videoUrl.includes(".m3u8")) {
-    return videoUrl.replace(/\/[^/]+\.m3u8.*$/, "/thumbnails/keyframes_0.jpg");
+  // Livepeer VOD: .../hls/{playbackId}/index.m3u8 → .../hls/{playbackId}/thumbnails/keyframes_0.png
+  if (videoUrl.includes("lp-playback") && videoUrl.includes("/hls/")) {
+    return videoUrl.replace(/\/[^/]+\.m3u8.*$/, "/thumbnails/keyframes_0.png");
   }
 
   return undefined;
