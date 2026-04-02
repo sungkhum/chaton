@@ -138,7 +138,7 @@ export class ChatRelay extends DurableObject<RelayEnv> {
           await this.handleRegister(ws, message);
           break;
         case "notify":
-          this.handleNotify(message);
+          await this.handleNotify(message);
           break;
         case "typing":
           this.handleTyping(ws, message);
@@ -176,9 +176,11 @@ export class ChatRelay extends DurableObject<RelayEnv> {
     this.broadcastPresence();
   }
 
-  private handleNotify(message: WsMessage) {
+  private async handleNotify(message: WsMessage) {
     const { recipients, threadId, from, fromUsername, groupName } = message;
     if (!recipients || !threadId) return;
+
+    const pushPromises: Promise<void>[] = [];
 
     for (const recipientKey of recipients) {
       // Don't notify the sender about their own message
@@ -196,9 +198,14 @@ export class ChatRelay extends DurableObject<RelayEnv> {
 
       // Always send push — the service worker suppresses if the app is visible
       if (this.env.VAPID_PRIVATE_KEY) {
-        this.sendPushToUser(recipientKey, fromUsername || from || "Someone", threadId, from, groupName);
+        pushPromises.push(
+          this.sendPushToUser(recipientKey, fromUsername || from || "Someone", threadId, from, groupName)
+        );
       }
     }
+
+    // Await all push deliveries so the DO doesn't hibernate before they complete
+    await Promise.all(pushPromises);
   }
 
   private async sendPushToUser(publicKey: string, fromName: string, threadId: string, fromPublicKey?: string, groupName?: string) {
