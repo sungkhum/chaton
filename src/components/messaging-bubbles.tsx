@@ -763,18 +763,23 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                 {/* Message bubble */}
                 <div className="relative inline-block">
                   <div
-                    className={`${senderStyles} mt-auto py-2.5 px-3 md:px-4 break-words inline-flex text-left relative items-end gap-1.5`}
+                    className={`${senderStyles} mt-auto py-2.5 px-3 md:px-4 break-words ${isMedia || isEmojiOnly ? "inline-flex items-end gap-1.5" : "inline-block pb-4"} text-left relative`}
                     style={bubbleRadiusStyle}
                   >
                     <MessageContent message={message} />
                     {!isMedia && !isEmojiOnly && (
-                      <span
-                        className="text-gray-500 text-[10px] whitespace-nowrap leading-none shrink-0 ml-2"
-                        title={new Date(message.MessageInfo.TimestampNanos / 1e6).toLocaleString()}
-                      >
-                        {parsed.edited && !parsed.deleted ? "(edited) " : ""}
-                        {convertTstampToDateTime(message.MessageInfo.TimestampNanos)}
-                      </span>
+                      <>
+                        {/* Inline spacer to reserve room for timestamp on last line */}
+                        <span className="inline-block w-[60px] md:w-[68px]" />
+                        {/* Timestamp pinned to bottom-right of bubble */}
+                        <span
+                          className="absolute bottom-1.5 right-2.5 md:right-3.5 text-gray-500 text-[10px] whitespace-nowrap leading-none"
+                          title={new Date(message.MessageInfo.TimestampNanos / 1e6).toLocaleString()}
+                        >
+                          {parsed.edited && !parsed.deleted ? "(edited) " : ""}
+                          {convertTstampToDateTime(message.MessageInfo.TimestampNanos)}
+                        </span>
+                      </>
                     )}
                   </div>
 
