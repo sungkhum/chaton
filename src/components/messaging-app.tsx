@@ -210,6 +210,7 @@ export const MessagingApp: FC = () => {
     recipientUsername?: string;
     tipReplyTo?: string;
   } | null>(null);
+  const [pendingTipTimestamps, setPendingTipTimestamps] = useState<Set<string>>(new Set());
   const [dmMenuOpen, setDmMenuOpen] = useState(false);
   const [blockConfirm, setBlockConfirm] = useState<{ conversationKey: string; publicKey: string; name: string } | null>(null);
   const { isMobile } = useMobile();
@@ -219,6 +220,7 @@ export const MessagingApp: FC = () => {
     setDmMenuOpen(false);
     setBlockConfirm(null);
     setTipTarget(null);
+    setPendingTipTimestamps(new Set());
     // Pre-warm exchange rate cache so micro-tips don't hit a cold fetch
     fetchExchangeRate().catch(() => {});
   }, [selectedConversationPublicKey]);
@@ -2265,6 +2267,7 @@ export const MessagingApp: FC = () => {
                           });
                         }}
                         hiddenMessageIds={hiddenMessageIds}
+                        pendingTipTimestamps={pendingTipTimestamps}
                         onEdit={(msg) => {
                           setReplyToMessage(null);
                           setEditingMessage({
@@ -2488,6 +2491,7 @@ export const MessagingApp: FC = () => {
                             recipientUsername: activeChatUsersMap[senderPk],
                             tipReplyTo: msg.MessageInfo.TimestampNanosString,
                           });
+                          setPendingTipTimestamps((prev) => new Set(prev).add(msg.MessageInfo.TimestampNanosString));
                         }}
                         onMicroTip={async (msg) => {
                           if (!appUser || !selectedConversation) return;
@@ -2505,6 +2509,8 @@ export const MessagingApp: FC = () => {
                             return;
                           }
                           lastMicroTipTime = now;
+                          const tipTs = msg.MessageInfo.TimestampNanosString;
+                          setPendingTipTimestamps((prev) => new Set(prev).add(tipTs));
 
                           try {
                             const tipCurrency = (getCachedTipCurrency(appUser.PublicKeyBase58Check) as TipCurrency) || "DESO";
@@ -2612,6 +2618,12 @@ export const MessagingApp: FC = () => {
                               toast.error("Tip failed.");
                               console.error("Micro-tip error:", error);
                             }
+                          } finally {
+                            setPendingTipTimestamps((prev) => {
+                              const next = new Set(prev);
+                              next.delete(tipTs);
+                              return next;
+                            });
                           }
                         }}
                       />
@@ -2891,7 +2903,16 @@ export const MessagingApp: FC = () => {
           recipientPublicKey={tipTarget.recipientPublicKey}
           recipientUsername={tipTarget.recipientUsername}
           tipReplyTo={tipTarget.tipReplyTo}
-          onClose={() => setTipTarget(null)}
+          onClose={() => {
+            if (tipTarget?.tipReplyTo) {
+              setPendingTipTimestamps((prev) => {
+                const next = new Set(prev);
+                next.delete(tipTarget.tipReplyTo!);
+                return next;
+              });
+            }
+            setTipTarget(null);
+          }}
           onTipSent={async (tipData) => {
             useStore.getState().addSessionTipUsd(tipData.amountUsd);
             try {

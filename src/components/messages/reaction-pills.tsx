@@ -51,7 +51,7 @@ export const ReactionPills = ({
   if (entries.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-1 -mt-1.5 relative z-10">
+    <div className="flex flex-wrap gap-1">
       {entries.map(([emoji, keys]) => {
         const isOwnReaction = currentUserKey && keys.includes(currentUserKey);
         // Show up to 3 mini avatars

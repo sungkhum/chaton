@@ -62,6 +62,7 @@ export interface MessagingBubblesProps {
   onDeleteForEveryone?: (message: DecryptedMessageEntryResponse) => void;
   onTip?: (message: DecryptedMessageEntryResponse) => void;
   onMicroTip?: (message: DecryptedMessageEntryResponse) => void;
+  pendingTipTimestamps?: Set<string>;
   hiddenMessageIds?: Set<string>;
 }
 
@@ -233,6 +234,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   onDeleteForEveryone,
   onTip,
   onMicroTip,
+  pendingTipTimestamps,
   hiddenMessageIds,
 }: MessagingBubblesProps) => {
   const messageAreaRef = useRef<HTMLDivElement>(null);
@@ -1123,8 +1125,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                 </div>
 
                 {/* Reaction pills + Tip pills */}
-                {(reactions || tips) && (
-                  <div className={`mt-1 flex flex-wrap gap-1 ${IsSender ? "justify-end" : ""}`}>
+                {(reactions || tips || pendingTipTimestamps?.has(message.MessageInfo.TimestampNanosString)) && (
+                  <div className={`-mt-1.5 relative z-10 flex flex-wrap items-center gap-1 ${IsSender ? "justify-end" : ""}`}>
                     {reactions && (
                       <ReactionPills
                         reactions={reactions}
@@ -1143,6 +1145,12 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                         getUsernameByPublicKey={getUsernameByPublicKey}
                         profilePicByPublicKey={profilePicByPublicKey}
                       />
+                    )}
+                    {pendingTipTimestamps?.has(message.MessageInfo.TimestampNanosString) && (
+                      <div className="flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-full text-xs bg-white/5 border border-white/10 animate-pulse">
+                        <Loader2 className="w-3.5 h-3.5 text-gray-400 animate-spin" />
+                        <span className="text-gray-400 text-[11px] font-semibold">Tipping...</span>
+                      </div>
                     )}
                   </div>
                 )}
