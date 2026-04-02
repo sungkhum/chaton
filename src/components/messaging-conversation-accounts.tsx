@@ -682,7 +682,7 @@ export const MessagingConversationAccount: FC<{
 
           {activeTab === "community" && (
             <div className="h-full overflow-hidden">
-              <CommunityTab />
+              <CommunityTab onSelectConversation={onClick} />
             </div>
           )}
         </div>

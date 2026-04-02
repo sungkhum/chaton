@@ -1,4 +1,4 @@
-import { ChevronRight, RefreshCw, Search, Users, X } from "lucide-react";
+import { RefreshCw, Search, Users, X } from "lucide-react";
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   EnrichedCommunityListing,
@@ -8,6 +8,7 @@ import {
 import { containsProfanity } from "../utils/profanity-filter";
 import { buildInviteUrl } from "../utils/invite-link";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
+import { useStore } from "../store";
 
 const CACHE_KEY = "chaton:community-cache";
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -59,12 +60,23 @@ export function clearCommunityCache() {
 export const CommunityTab: FC<{
   /** When true, uses full-page styling instead of sidebar styling */
   fullPage?: boolean;
-}> = ({ fullPage = false }) => {
+  /** Called when clicking a group the user is already a member of */
+  onSelectConversation?: (conversationKey: string) => void;
+}> = ({ fullPage = false, onSelectConversation }) => {
+  const allAccessGroups = useStore((s) => s.allAccessGroups);
   const [listings, setListings] = useState<EnrichedCommunityListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const loadingRef = useRef(false);
+
+  const memberGroupKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const g of allAccessGroups) {
+      keys.add(g.AccessGroupOwnerPublicKeyBase58Check + "|" + g.AccessGroupKeyName);
+    }
+    return keys;
+  }, [allAccessGroups]);
 
   const loadListings = useCallback(async (useCache = true) => {
     if (loadingRef.current) return;
@@ -149,16 +161,18 @@ export const CommunityTab: FC<{
     });
   }, [listings, searchQuery]);
 
-  const handleCardClick = (listing: EnrichedCommunityListing) => {
-    if (listing.inviteCode) {
+  const handleCardClick = (listing: EnrichedCommunityListing, isMember: boolean) => {
+    if (isMember && onSelectConversation) {
+      onSelectConversation(listing.ownerKey + listing.groupKeyName);
+    } else if (listing.inviteCode) {
       window.location.href = buildInviteUrl(listing.inviteCode);
     }
   };
 
-  const handleCardKeyDown = (e: React.KeyboardEvent, listing: EnrichedCommunityListing) => {
+  const handleCardKeyDown = (e: React.KeyboardEvent, listing: EnrichedCommunityListing, isMember: boolean) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      handleCardClick(listing);
+      handleCardClick(listing, isMember);
     }
   };
 
@@ -248,13 +262,14 @@ export const CommunityTab: FC<{
           !error &&
           filteredListings.map((listing) => {
             const ownerUsername = listing.ownerProfile?.Username;
+            const isMember = memberGroupKeys.has(listing.ownerKey + "|" + listing.groupKeyName);
             return (
               <div key={listing.associationId}>
                 <div
                   role="link"
                   tabIndex={0}
-                  onClick={() => handleCardClick(listing)}
-                  onKeyDown={(e) => handleCardKeyDown(e, listing)}
+                  onClick={() => handleCardClick(listing, isMember)}
+                  onKeyDown={(e) => handleCardKeyDown(e, listing, isMember)}
                   className="px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer focus-visible:bg-white/5 outline-none"
                 >
                   <div className="flex items-center gap-3">
@@ -264,23 +279,25 @@ export const CommunityTab: FC<{
                       groupImageUrl={listing.groupImageUrl}
                       diameter={48}
                     />
-                    <div className="flex-1 min-w-0">
-                      <span className="truncate text-sm text-white font-medium block mb-0.5">
+                    <div className="flex-1 min-w-0 text-left">
+                      <span className="truncate text-sm text-white font-medium block">
                         {listing.groupDisplayName ?? listing.groupKeyName}
                       </span>
                       {listing.description && (
-                        <p className="text-xs text-gray-400 mb-0.5 line-clamp-2">
+                        <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
                           {listing.description}
                         </p>
                       )}
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 mt-0.5">
                         {ownerUsername ? `@${ownerUsername}` : ""}
                         {ownerUsername && " · "}
                         {listing.memberCountCapped ? "50+" : listing.memberCount}{" "}
                         {listing.memberCount === 1 ? "member" : "members"}
                       </p>
                     </div>
-                    <span className="text-[#34F080] text-xs font-bold shrink-0">Join</span>
+                    {!isMember && (
+                      <span className="text-[#34F080] text-xs font-bold shrink-0 self-center">Join</span>
+                    )}
                   </div>
                 </div>
                 <div className="ml-[76px] border-b border-white/5" />
