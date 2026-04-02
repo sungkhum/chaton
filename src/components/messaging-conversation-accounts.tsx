@@ -134,7 +134,7 @@ export const MessagingConversationAccount: FC<{
             spellCheck={false}
             value={searchQuery}
             onChange={(e) => onSearchQueryChange?.(e.target.value)}
-            className="w-full rounded-xl py-2 pl-9 pr-3 text-sm text-white placeholder:text-gray-500 bg-white/5 border border-white/8 hover:border-[#34F080]/30 focus:border-[#34F080]/50 outline-none transition-colors"
+            className="w-full rounded-xl py-2 pl-9 pr-3 text-sm text-white placeholder:text-gray-500 glass-search hover:border-[#34F080]/30 focus:border-[#34F080]/50 outline-none transition-colors"
           />
           {searchQuery && (
             <button
@@ -342,7 +342,7 @@ export const MessagingConversationAccount: FC<{
                 );
                 const isSelected = key === selectedConversationPublicKey;
                 const selectedConversationStyle = isSelected
-                  ? "selected-conversation bg-white/5"
+                  ? "selected-conversation glass-conversation-active"
                   : "";
                 const unreadCount = unreadByConversation.get(key) || 0;
                 const hasUnread = unreadCount > 0;
@@ -367,7 +367,7 @@ export const MessagingConversationAccount: FC<{
                   <div key={`message-thread-${key}`}>
                     <div
                       onClick={() => onClick(key)}
-                      className={`px-4 py-3 ${selectedConversationStyle} hover:bg-white/5 cursor-pointer flex items-center gap-3 transition-colors ${
+                      className={`px-4 py-3 ${selectedConversationStyle} hover:bg-white/[0.04] cursor-pointer flex items-center gap-3 transition-colors ${
                         hasUnread && !isSelected
                           ? "bg-white/[0.03]"
                           : ""
@@ -576,7 +576,7 @@ export const MessagingConversationAccount: FC<{
                       );
                       const selectedConversationStyle =
                         key === selectedConversationPublicKey
-                          ? "selected-conversation bg-white/5"
+                          ? "selected-conversation glass-conversation-active"
                           : "";
                       const timestamp = value.messages[0]
                         ? formatRelativeTimestamp(value.messages[0].MessageInfo.TimestampNanos)
@@ -587,7 +587,7 @@ export const MessagingConversationAccount: FC<{
                       return (
                         <div key={`request-thread-${key}`}>
                           <div
-                            className={`px-4 py-3 ${selectedConversationStyle} hover:bg-white/5 transition-colors`}
+                            className={`px-4 py-3 ${selectedConversationStyle} hover:bg-white/[0.04] transition-colors`}
                           >
                             <div
                               onClick={() => onClick(key)}
@@ -709,7 +709,7 @@ export const MessagingConversationAccount: FC<{
                 toast.success("Invite link copied!");
               }
             }}
-            className="pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/5 border border-white/10 hover:border-[#34F080]/40 hover:bg-[#34F080]/10 text-gray-400 hover:text-[#34F080] text-sm font-medium cursor-pointer transition-all active:scale-95 backdrop-blur-sm"
+            className="pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-full glass-invite hover:border-[#34F080]/40 hover:bg-[#34F080]/10 text-gray-400 hover:text-[#34F080] text-sm font-medium cursor-pointer transition-all active:scale-95"
           >
             <Share2 className="w-4 h-4" />
             <span>Invite Friends</span>
@@ -718,9 +718,9 @@ export const MessagingConversationAccount: FC<{
           {/* Compose FAB */}
           <button
             onClick={() => setComposeOpen(true)}
-            className="pointer-events-auto w-14 h-14 rounded-full bg-gradient-to-r from-[#34F080] to-[#20E0AA] flex items-center justify-center shadow-lg cursor-pointer transition-transform active:scale-95 hover:brightness-110 md:w-12 md:h-12"
+            className="pointer-events-auto w-14 h-14 rounded-full glass-fab flex items-center justify-center cursor-pointer transition-all active:scale-95 hover:border-[#34F080]/60 hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] md:w-12 md:h-12"
           >
-            <Pencil className="w-6 h-6 text-black md:w-5 md:h-5" />
+            <Pencil className="w-6 h-6 text-[#34F080] md:w-5 md:h-5" />
           </button>
         </div>
       </div>

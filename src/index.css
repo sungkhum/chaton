@@ -414,3 +414,123 @@ input::placeholder {
   );
   box-shadow: 0 0 50px rgba(52, 240, 128, 0.7), 0 0 80px rgba(64, 184, 224, 0.3);
 }
+
+/* Glassmorphism message bubbles */
+.glass-received {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.glass-sent {
+  background: rgba(52, 240, 128, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(52, 240, 128, 0.15);
+  box-shadow: inset 0 1px 0 rgba(52, 240, 128, 0.1);
+}
+
+.glass-compose {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.glass-search {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.glass-conversation-active {
+  background: rgba(52, 240, 128, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-left: 2px solid rgba(52, 240, 128, 0.4);
+  box-shadow: inset 0 0 20px rgba(52, 240, 128, 0.03);
+}
+
+.glass-invite {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.glass-fab {
+  background: rgba(52, 240, 128, 0.10);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(52, 240, 128, 0.30);
+  box-shadow:
+    inset 0 1px 0 rgba(52, 240, 128, 0.15),
+    0 0 20px rgba(52, 240, 128, 0.15),
+    0 0 40px rgba(52, 240, 128, 0.05);
+}
+
+.glass-send-edit {
+  background: rgba(96, 165, 250, 0.10);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(96, 165, 250, 0.30);
+  box-shadow:
+    inset 0 1px 0 rgba(96, 165, 250, 0.15),
+    0 0 20px rgba(96, 165, 250, 0.15),
+    0 0 40px rgba(96, 165, 250, 0.05);
+}
+
+/* Glassmorphism pills (reactions & tips) */
+.glass-pill {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.glass-pill-active {
+  background: rgba(52, 240, 128, 0.10);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(52, 240, 128, 0.35);
+  box-shadow: inset 0 1px 0 rgba(52, 240, 128, 0.10);
+}
+
+.glass-pill-tip-deso {
+  background: rgba(39, 117, 202, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(39, 117, 202, 0.25);
+  box-shadow: inset 0 1px 0 rgba(39, 117, 202, 0.08);
+}
+
+.glass-pill-tip-deso-active {
+  background: rgba(39, 117, 202, 0.14);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(39, 117, 202, 0.40);
+  box-shadow: inset 0 1px 0 rgba(39, 117, 202, 0.12);
+}
+
+.glass-pill-tip-usdc {
+  background: rgba(52, 240, 128, 0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(52, 240, 128, 0.25);
+  box-shadow: inset 0 1px 0 rgba(52, 240, 128, 0.08);
+}
+
+.glass-pill-tip-usdc-active {
+  background: rgba(52, 240, 128, 0.12);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(52, 240, 128, 0.40);
+  box-shadow: inset 0 1px 0 rgba(52, 240, 128, 0.10);
+}

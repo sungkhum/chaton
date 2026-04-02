@@ -101,13 +101,12 @@ export const TipPills = ({
         }}
         onTouchMove={clearTimer}
         onTouchEnd={clearTimer}
-        className={`flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-full text-xs cursor-pointer transition-colors ${
+        className={`flex items-center gap-1 pl-1.5 pr-2 h-[26px] rounded-full text-xs cursor-pointer transition-colors ${
           isOwnTip
-            ? `${hasUsdc ? "bg-[#34F080]/15 border border-[#34F080]/40" : "bg-[#2775ca]/15 border border-[#2775ca]/40"}`
-            : `${hasUsdc ? "bg-[#34F080]/10 border border-[#34F080]/30 hover:bg-[#34F080]/20" : "bg-[#2775ca]/10 border border-[#2775ca]/30 hover:bg-[#2775ca]/20"}`
+            ? `${hasUsdc ? "glass-pill-tip-usdc-active" : "glass-pill-tip-deso-active"}`
+            : `${hasUsdc ? "glass-pill-tip-usdc hover:bg-[#34F080]/[0.08]" : "glass-pill-tip-deso hover:bg-[#2775ca]/[0.08]"}`
         }`}
       >
-        <CircleDollarSign className={`w-3.5 h-3.5 ${hasUsdc ? "text-[#34F080]" : "text-[#2775ca]"}`} />
         <span className={`font-semibold text-[11px] ${hasUsdc ? "text-[#34F080]" : "text-[#2775ca]"}`}>
           {usdTotal ?? "..."}
         </span>

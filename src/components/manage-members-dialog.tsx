@@ -808,11 +808,11 @@ export const ManageMembersDialog = ({
     <Fragment>
       <button
         onClick={handleOpen}
-        className="text-blue-400 bg-transparent p-0 flex items-center cursor-pointer relative overflow-visible"
+        className="text-gray-400 hover:text-[#34F080] bg-transparent p-0 flex items-center cursor-pointer relative overflow-visible transition-colors"
       >
-        <Users className="mr-2 w-6 h-6" />
-        <span className="hidden items-center md:flex font-medium text-base">
-          View Members
+        <Users className="mr-1.5 w-5 h-5" />
+        <span className="hidden items-center md:flex font-medium text-sm">
+          Members
         </span>
         {joinRequestBadge > 0 && (
           <span className="absolute -top-1.5 -right-1.5 md:-top-1 md:right-auto md:-left-0.5 min-w-[18px] h-[18px] rounded-full bg-green-500 text-white text-[10px] font-bold flex items-center justify-center px-1">

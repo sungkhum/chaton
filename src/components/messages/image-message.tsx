@@ -113,9 +113,9 @@ export const ImageMessage = ({ imageUrl, alt, width, height, caption }: ImageMes
 
   return (
     <>
-      <div className="max-w-[300px]">
+      <div className="w-full min-w-[180px]">
         <div
-          className="cursor-pointer rounded-lg overflow-hidden relative"
+          className="cursor-pointer overflow-hidden relative"
           onClick={() => setLightboxOpen(true)}
           style={aspectRatio ? { aspectRatio } : undefined}
         >
@@ -136,7 +136,7 @@ export const ImageMessage = ({ imageUrl, alt, width, height, caption }: ImageMes
           />
         </div>
         {caption && (
-          <p className="text-sm text-white mt-2 px-1 whitespace-pre-wrap break-words select-text">
+          <p className="text-sm text-white mt-1.5 px-3 pb-1 whitespace-pre-wrap break-words select-text">
             {caption}
           </p>
         )}

@@ -172,6 +172,33 @@ export const getConversations = async (
   }
 };
 
+// --- Retry caches to avoid redundant API calls across polling cycles ---
+
+// Cache for getAllAccessGroups: { data, timestamp }
+let accessGroupsCache: {
+  data: AccessGroupEntryResponse[];
+  fetchedAt: number;
+} | null = null;
+const ACCESS_GROUPS_CACHE_TTL_MS = 30_000; // 30 seconds
+
+// Cache for getBulkAccessGroups sender default-key mappings
+const senderDefaultKeyCache = new Map<
+  string,
+  { publicKey: string; fetchedAt: number }
+>();
+const SENDER_KEY_CACHE_TTL_MS = 60_000; // 60 seconds
+
+// Messages that permanently fail decryption even with fresh groups.
+// Key = TimestampNanos (unique per message). Cleared on login/logout.
+const permanentlyFailedMessages = new Set<number>();
+
+/** Clear all decryption caches (call on login/logout). */
+export const clearDecryptionCaches = () => {
+  accessGroupsCache = null;
+  senderDefaultKeyCache.clear();
+  permanentlyFailedMessages.clear();
+};
+
 export const decryptAccessGroupMessagesWithRetry = async (
   publicKeyBase58Check: string,
   messages: NewMessageEntryResponse[],
@@ -189,20 +216,43 @@ export const decryptAccessGroupMessagesWithRetry = async (
   // "access group key not found" = group missing from local list.
   // "incorrect MAC" = stale/outdated group key (e.g. key was rotated).
   // Both are fixed by fetching the latest access groups from the blockchain.
-  const hasDecryptionErrors = decryptedMessageEntries.some(
-    (dmr) => dmr.error && !dmr.DecryptedMessage
+  //
+  // Skip messages already known to permanently fail — they failed even with
+  // fresh groups on a previous poll, so retrying is wasted work.
+  const hasNewDecryptionErrors = decryptedMessageEntries.some(
+    (dmr) =>
+      dmr.error &&
+      !dmr.DecryptedMessage &&
+      !permanentlyFailedMessages.has(dmr.MessageInfo.TimestampNanos)
   );
-  if (hasDecryptionErrors) {
-    const newAllAccessGroups = await getAllAccessGroups({
-      PublicKeyBase58Check: publicKeyBase58Check,
-    });
-    accessGroups = (newAllAccessGroups.AccessGroupsOwned || []).concat(
-      newAllAccessGroups.AccessGroupsMember || []
-    );
+  if (hasNewDecryptionErrors) {
+    const now = Date.now();
+    if (
+      accessGroupsCache &&
+      now - accessGroupsCache.fetchedAt < ACCESS_GROUPS_CACHE_TTL_MS
+    ) {
+      // Use cached access groups instead of fetching again
+      accessGroups = accessGroupsCache.data;
+    } else {
+      const newAllAccessGroups = await getAllAccessGroups({
+        PublicKeyBase58Check: publicKeyBase58Check,
+      });
+      accessGroups = (newAllAccessGroups.AccessGroupsOwned || []).concat(
+        newAllAccessGroups.AccessGroupsMember || []
+      );
+      accessGroupsCache = { data: accessGroups, fetchedAt: now };
+    }
     decryptedMessageEntries = await decryptAccessGroupMessages(
       messages,
       accessGroups
     );
+
+    // Track messages that still fail after fresh groups — they're permanently broken
+    for (const dmr of decryptedMessageEntries) {
+      if (dmr.error && !dmr.DecryptedMessage) {
+        permanentlyFailedMessages.add(dmr.MessageInfo.TimestampNanos);
+      }
+    }
   }
 
   // Fallback for "incorrect MAC" on group messages: the sender's app may
@@ -213,31 +263,49 @@ export const decryptAccessGroupMessagesWithRetry = async (
     (msg) =>
       msg.error?.includes("incorrect MAC") &&
       !msg.DecryptedMessage &&
-      msg.ChatType === ChatType.GROUPCHAT
+      msg.ChatType === ChatType.GROUPCHAT &&
+      !permanentlyFailedMessages.has(msg.MessageInfo.TimestampNanos)
   );
   if (macErrors.length > 0) {
-    // Collect unique sender keys that failed
+    // Collect unique sender keys that failed, excluding those already cached
+    const now = Date.now();
     const failedSenderKeys = [
       ...new Set(macErrors.map((m) => m.SenderInfo.OwnerPublicKeyBase58Check)),
     ];
 
-    // Fetch each sender's default-key access group to get their real messaging public key
+    // Build map from cache hits + fetch only uncached senders
     const senderDefaultKeyMap = new Map<string, string>();
-    try {
-      const { AccessGroupEntries } = await getBulkAccessGroups({
-        GroupOwnerAndGroupKeyNamePairs: failedSenderKeys.map((pk) => ({
-          GroupOwnerPublicKeyBase58Check: pk,
-          GroupKeyName: "default-key",
-        })),
-      });
-      for (const entry of AccessGroupEntries || []) {
-        senderDefaultKeyMap.set(
-          entry.AccessGroupOwnerPublicKeyBase58Check,
-          entry.AccessGroupPublicKeyBase58Check
-        );
+    const uncachedSenderKeys: string[] = [];
+
+    for (const pk of failedSenderKeys) {
+      const cached = senderDefaultKeyCache.get(pk);
+      if (cached && now - cached.fetchedAt < SENDER_KEY_CACHE_TTL_MS) {
+        senderDefaultKeyMap.set(pk, cached.publicKey);
+      } else {
+        uncachedSenderKeys.push(pk);
       }
-    } catch {
-      // Non-fatal — fall through with whatever we have
+    }
+
+    if (uncachedSenderKeys.length > 0) {
+      try {
+        const { AccessGroupEntries } = await getBulkAccessGroups({
+          GroupOwnerAndGroupKeyNamePairs: uncachedSenderKeys.map((pk) => ({
+            GroupOwnerPublicKeyBase58Check: pk,
+            GroupKeyName: "default-key",
+          })),
+        });
+        for (const entry of AccessGroupEntries || []) {
+          const ownerPk = entry.AccessGroupOwnerPublicKeyBase58Check;
+          const groupPk = entry.AccessGroupPublicKeyBase58Check;
+          senderDefaultKeyMap.set(ownerPk, groupPk);
+          senderDefaultKeyCache.set(ownerPk, {
+            publicKey: groupPk,
+            fetchedAt: now,
+          });
+        }
+      } catch {
+        // Non-fatal — fall through with whatever we have
+      }
     }
 
     if (senderDefaultKeyMap.size > 0) {
@@ -280,6 +348,10 @@ export const decryptAccessGroupMessagesWithRetry = async (
         for (let j = 0; j < indicesToRetry.length; j++) {
           if (retried[j].DecryptedMessage) {
             decryptedMessageEntries[indicesToRetry[j]] = retried[j];
+            // Decryption succeeded with patched key — remove from permanently failed
+            permanentlyFailedMessages.delete(
+              retried[j].MessageInfo.TimestampNanos
+            );
           }
         }
       }

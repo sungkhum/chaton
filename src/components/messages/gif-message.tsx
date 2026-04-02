@@ -14,7 +14,7 @@ export const GifMessage = ({ gifUrl, title, width, height, caption }: GifMessage
 
   return (
     <div
-      className="rounded-lg overflow-hidden max-w-[250px] md:max-w-[300px] relative"
+      className="overflow-hidden w-full min-w-[180px] max-w-[300px] md:max-w-[350px] relative"
       style={aspectRatio ? { aspectRatio } : undefined}
     >
       {!loaded && (

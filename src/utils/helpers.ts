@@ -129,14 +129,14 @@ export const formatLastSeen = (isoTimestamp: string): string => {
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
 
-  if (diffMins < 1) return "last seen just now";
-  if (diffMins < 60) return `last seen ${diffMins}m ago`;
-  if (diffHours < 24) return `last seen ${diffHours}h ago`;
+  if (diffMins < 1) return "active just now";
+  if (diffMins < 60) return `active ${diffMins}m ago`;
+  if (diffHours < 24) return `active ${diffHours}h ago`;
 
   const diffDays = Math.floor(diffMs / 86400000);
-  if (diffDays < 7) return `last seen ${diffDays}d ago`;
+  if (diffDays < 7) return `active ${diffDays}d ago`;
 
   const month = date.toLocaleDateString("en-US", { month: "short" });
   const day = date.getDate();
-  return `last seen ${month} ${day}`;
+  return `active ${month} ${day}`;
 };

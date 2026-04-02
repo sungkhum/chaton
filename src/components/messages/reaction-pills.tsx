@@ -85,10 +85,10 @@ export const ReactionPills = ({
               }}
               onTouchMove={clearTimer}
               onTouchEnd={clearTimer}
-              className={`flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-full text-xs cursor-pointer transition-colors ${
+              className={`flex items-center gap-1 pl-1.5 pr-2 h-[26px] rounded-full text-xs cursor-pointer transition-colors ${
                 isOwnReaction
-                  ? "bg-[#0d2818] border border-[#34F080]/40"
-                  : "bg-[#141c2b]/90 backdrop-blur-sm border border-white/10 hover:bg-white/10"
+                  ? "glass-pill-active"
+                  : "glass-pill hover:bg-white/[0.08]"
               }`}
             >
               <AnimatedEmoji emoji={emoji} size={18} />

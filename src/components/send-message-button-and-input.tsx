@@ -497,7 +497,7 @@ export const SendMessageButtonAndInput = ({
         </div>
       )}
 
-      <div className="relative flex flex-wrap md:flex-nowrap items-center gap-x-1 bg-[#0a1019] rounded-2xl border border-white/8 px-2 py-1.5">
+      <div className="relative flex flex-wrap md:flex-nowrap items-center gap-x-1 glass-compose rounded-2xl px-2 py-1.5">
         {/* Absolutely-positioned overlays */}
         {showMentionPicker && (
           <MentionPicker
@@ -671,10 +671,10 @@ export const SendMessageButtonAndInput = ({
         <button
           onClick={() => sendMessage()}
           disabled={isSending}
-          className={`p-2 rounded-full shrink-0 hover:brightness-110 cursor-pointer transition-colors ${
+          className={`p-2 rounded-full shrink-0 cursor-pointer transition-all ${
             editingMessage
-              ? "bg-gradient-to-r from-blue-400 to-blue-500 text-white"
-              : "bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black"
+              ? "glass-send-edit text-blue-300 hover:border-blue-400/60"
+              : "glass-fab text-[#34F080] hover:border-[#34F080]/60"
           }`}
           type="button"
         >

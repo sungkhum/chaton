@@ -105,7 +105,7 @@ export const VideoMessage = ({ videoUrl, width, height, duration, localThumbnail
 
   return (
     <div
-      className="relative rounded-lg overflow-hidden max-w-[300px] cursor-pointer"
+      className="relative overflow-hidden w-full min-w-[180px] max-w-[400px] cursor-pointer"
       style={{ aspectRatio }}
       onClick={togglePlay}
     >

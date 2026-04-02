@@ -34,6 +34,7 @@ import {
   clearCacheForUser,
   checkCacheVersion,
 } from "./services/cache.service";
+import { clearDecryptionCaches } from "./services/conversations.service";
 
 // Mobile browsers and in-app browsers (Telegram, Instagram, etc.) can't
 // reliably use popups for identity login — window.open() either opens a new
@@ -241,6 +242,7 @@ function App() {
         if (event === NOTIFICATION_EVENTS.LOGOUT_END) {
           const loggedOutKey = store.appUser?.PublicKeyBase58Check;
           if (loggedOutKey) clearCacheForUser(loggedOutKey);
+          clearDecryptionCaches();
 
           if (alternateUsers && Object.keys(alternateUsers).length > 0) {
             const fallbackUser = Object.values(alternateUsers)[0];
@@ -268,6 +270,7 @@ function App() {
             NOTIFICATION_EVENTS.CHANGE_ACTIVE_USER,
           ].includes(event)
         ) {
+          clearDecryptionCaches();
           const messagingKey = currentUser.primaryDerivedKey?.messagingPublicKeyBase58Check;
           if (messagingKey) {
             hydrateUser.current?.(currentUser.publicKey, messagingKey);

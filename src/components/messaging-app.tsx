@@ -2242,7 +2242,7 @@ export const MessagingApp: FC = () => {
                           if (!otherKey) return null;
                           const presence = getPresence(otherKey);
                           if (presence.status === "online") return <span className="text-[#34F080] text-xs">Online</span>;
-                          if (presence.status === "last-seen") return <span className="text-gray-500 text-xs">{formatLastSeen(presence.timestamp)}</span>;
+                          if (presence.status === "last-seen") return <span className="text-gray-500 text-xs whitespace-nowrap">{formatLastSeen(presence.timestamp)}</span>;
                           return null;
                         })()}
                       </div>
@@ -2276,7 +2276,7 @@ export const MessagingApp: FC = () => {
                     if (!otherKey) return null;
                     const presence = getPresence(otherKey);
                     if (presence.status === "online") return <span className="text-[#34F080] text-sm">Online</span>;
-                    if (presence.status === "last-seen") return <span className="text-gray-500 text-sm">{formatLastSeen(presence.timestamp)}</span>;
+                    if (presence.status === "last-seen") return <span className="text-gray-500 text-sm whitespace-nowrap">{formatLastSeen(presence.timestamp)}</span>;
                     return null;
                   })()}
                 </div>

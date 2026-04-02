@@ -172,7 +172,7 @@ function MessageContent({ message }: { message: DecryptedMessageEntryResponse })
             localThumbnail={parsed.localThumbnail}
           />
           {videoCaption && (
-            <div className="text-sm mt-1.5 select-text">
+            <div className="text-sm mt-1.5 px-3 pb-1 select-text">
               <FormattedMessage>{videoCaption}</FormattedMessage>
             </div>
           )}
@@ -220,10 +220,11 @@ function MessageContent({ message }: { message: DecryptedMessageEntryResponse })
     default: {
       const emojiOnly = messageToShow ? parseEmojiOnlyMessage(messageToShow) : null;
       if (emojiOnly) {
+        const emojiSize = emojiOnly.length === 1 ? 64 : emojiOnly.length === 2 ? 48 : 36;
         return (
-          <span className="flex gap-1 items-center">
+          <span className="flex gap-1.5 items-center">
             {emojiOnly.map((e, i) => (
-              <AnimatedEmoji key={i} emoji={e} size={48} />
+              <AnimatedEmoji key={i} emoji={e} size={emojiSize} />
             ))}
           </span>
         );
@@ -677,11 +678,22 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     return null;
   }
 
-  // Filter out reaction messages (aggregated) and hidden messages (delete for me)
+  // Filter out reaction messages (aggregated), hidden messages (delete for me),
+  // and small tip messages (≤$5) that are attached to another message (shown on pill instead)
+  const SMALL_TIP_DESO_NANOS = 1e9; // ~1 DESO
+  const SMALL_TIP_USDC_BASE = 5_000_000; // $5 USDC
   const displayMessages = visibleMessages.filter((msg) => {
     const parsed = parseMessageType(msg);
     if (parsed.type === "reaction") return false;
     if (hiddenMessageIds?.has(msg.MessageInfo.TimestampNanosString)) return false;
+    // Hide small tips that are attached to a parent message — they show on the tip pill
+    if (parsed.type === "tip" && parsed.tipReplyTo) {
+      const isSmallDeso = (!parsed.tipCurrency || parsed.tipCurrency === "DESO")
+        && (parsed.tipAmountNanos || 0) <= SMALL_TIP_DESO_NANOS;
+      const isSmallUsdc = parsed.tipCurrency === "USDC"
+        && BigInt(parsed.tipAmountUsdcBaseUnits || "0") <= BigInt(SMALL_TIP_USDC_BASE);
+      if (isSmallDeso || isSmallUsdc) return false;
+    }
     return true;
   });
 
@@ -767,19 +779,21 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
               appUser?.PublicKeyBase58Check;
 
           let senderStyles =
-            "bg-[#141c2b] border border-white/6 text-gray-200";
+            "glass-received text-gray-200";
           if (IsSender) {
             senderStyles =
-              "bg-[#0d2818] border border-[#34F080]/15 text-white";
+              "glass-sent text-white";
           }
           if (message.error && !message.DecryptedMessage) {
             senderStyles = "bg-white/5 border border-white/10 text-gray-500";
           }
 
-          // For media messages, use a cleaner bubble style
+          // For media messages, keep glass style (overflow handled by media components)
           const isMedia = ["image", "gif", "sticker", "video"].includes(parsed.type);
           if (isMedia) {
-            senderStyles = "overflow-hidden";
+            senderStyles = IsSender
+              ? "glass-sent text-white"
+              : "glass-received text-gray-200";
           }
 
           // Tip messages get a tinted bubble with accent left border (DESO = blue, USDC = green)
@@ -808,23 +822,44 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
           const tips = tipsByTimestamp[message.MessageInfo.TimestampNanosString];
 
           // Message grouping: collapse consecutive messages from the same sender within 5 min
-          const prevMessage = displayMessages[i + 1]; // older message (above on screen)
-          const nextMessage = displayMessages[i - 1]; // newer message (below on screen)
+          // Skip system/tip messages — they render separately and shouldn't break visual groups
           const senderKey = message.SenderInfo.OwnerPublicKeyBase58Check;
+          const isGroupable = (m: typeof displayMessages[0]) => {
+            const t = parseMessageType(m).type;
+            return t !== "system" && t !== "tip";
+          };
+          let prevMessage: typeof displayMessages[0] | undefined;
+          for (let j = i + 1; j < displayMessages.length; j++) {
+            if (isGroupable(displayMessages[j])) { prevMessage = displayMessages[j]; break; }
+          }
+          let nextMessage: typeof displayMessages[0] | undefined;
+          for (let j = i - 1; j >= 0; j--) {
+            if (isGroupable(displayMessages[j])) { nextMessage = displayMessages[j]; break; }
+          }
 
-          const isFirstInGroup =
-            !prevMessage ||
-            prevMessage.SenderInfo.OwnerPublicKeyBase58Check !== senderKey ||
-            Math.abs(message.MessageInfo.TimestampNanos - prevMessage.MessageInfo.TimestampNanos) > GROUP_TIME_GAP_NS;
+          // Use BigInt for nanosecond timestamp comparison — values exceed Number.MAX_SAFE_INTEGER
+          const msgNanos = BigInt(message.MessageInfo.TimestampNanosString || String(message.MessageInfo.TimestampNanos));
+          const gapNs = BigInt(GROUP_TIME_GAP_NS);
 
-          const isLastInGroup =
-            !nextMessage ||
-            nextMessage.SenderInfo.OwnerPublicKeyBase58Check !== senderKey ||
-            Math.abs(nextMessage.MessageInfo.TimestampNanos - message.MessageInfo.TimestampNanos) > GROUP_TIME_GAP_NS;
+          const isFirstInGroup = (() => {
+            if (!prevMessage) return true;
+            if (prevMessage.SenderInfo.OwnerPublicKeyBase58Check !== senderKey) return true;
+            const prevNanos = BigInt(prevMessage.MessageInfo.TimestampNanosString || String(prevMessage.MessageInfo.TimestampNanos));
+            const diff = msgNanos > prevNanos ? msgNanos - prevNanos : prevNanos - msgNanos;
+            return diff > gapNs;
+          })();
+
+          const isLastInGroup = (() => {
+            if (!nextMessage) return true;
+            if (nextMessage.SenderInfo.OwnerPublicKeyBase58Check !== senderKey) return true;
+            const nextNanos = BigInt(nextMessage.MessageInfo.TimestampNanosString || String(nextMessage.MessageInfo.TimestampNanos));
+            const diff = nextNanos > msgNanos ? nextNanos - msgNanos : msgNanos - nextNanos;
+            return diff > gapNs;
+          })();
 
           // Grouped bubble border-radius: connected corners for consecutive messages
-          const R = 18;  // full corner
-          const C = 4;   // connected corner (adjacent message in group)
+          const R = 20;  // full corner
+          const C = 3;   // connected corner (adjacent message in group)
           const bubbleRadiusStyle = isEmojiOnly
             ? {}
             : IsSender
@@ -832,12 +867,12 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                   borderTopLeftRadius: R,
                   borderTopRightRadius: isFirstInGroup ? R : C,
                   borderBottomLeftRadius: R,
-                  borderBottomRightRadius: isLastInGroup ? C : C,
+                  borderBottomRightRadius: isLastInGroup ? R : C,
                 }
               : {
                   borderTopLeftRadius: isFirstInGroup ? R : C,
                   borderTopRightRadius: R,
-                  borderBottomLeftRadius: isLastInGroup ? C : C,
+                  borderBottomLeftRadius: isLastInGroup ? R : C,
                   borderBottomRightRadius: R,
                 };
 
@@ -869,10 +904,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
               className={`mx-0 last:pt-4 ${
                 IsSender ? "ml-auto justify-end" : "mr-auto justify-start"
               } max-w-[80%] md:max-w-[65%] ${
-                isLastInGroup ? "mb-3" : "mb-px"
-              } inline-flex items-start ${
-                isFirstInGroup ? "top-[20px]" : ""
-              } text-left group ${
+                isLastInGroup ? "mb-4" : "mb-0.5"
+              } inline-flex items-end text-left group ${
                 mobileActionFor === messageKey ? "relative z-50" : ""
               } ${isMobile ? "select-none" : ""}`}
               style={isMobile ? NO_CALLOUT_STYLE : undefined}
@@ -897,58 +930,82 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
             >
               {!IsSender && (isLastInGroup ? messagingDisplayAvatar : avatarSpacer)}
               <div className={`w-full ${IsSender ? "text-right" : "text-left"}`}>
-                {isFirstInGroup && !IsSender && (
-                  <header className="flex items-center flex-row-reverse justify-end mb-[3px]">
-                    <span className="mx-1"> </span>
-                    <div className="text-sm mb-1">
-                      <p className="text-[#34F080] text-xs font-semibold">
+
+                {/* Message bubble */}
+                <div className="relative inline-block">
+                  <div
+                    className={`${senderStyles} mt-auto ${isMedia ? "p-0" : isEmojiOnly ? "p-0" : "py-1.5 px-3 md:px-4"} break-words ${isMedia || isEmojiOnly ? "inline-flex flex-col items-stretch" : "inline-block"} text-left relative`}
+                    style={bubbleRadiusStyle}
+                  >
+                    {/* Sender name inside bubble (Telegram-style) */}
+                    {isFirstInGroup && !IsSender && (
+                      <div className={`text-[#34F080] text-[11px] font-semibold ${isMedia ? "px-3 pt-1.5 pb-0.5" : "mb-0.5"}`}>
                         {getUsernameByPublicKey[
                           message.SenderInfo.OwnerPublicKeyBase58Check
                         ]
                           ? getUsernameByPublicKey[message.SenderInfo.OwnerPublicKeyBase58Check]
                           : shortenLongWord(message.SenderInfo.OwnerPublicKeyBase58Check)}
-                      </p>
-                    </div>
-                  </header>
-                )}
-
-                {/* Message bubble */}
-                <div className="relative inline-block">
-                  <div
-                    className={`${senderStyles} mt-auto py-1.5 px-3 md:px-4 break-words ${isMedia || isEmojiOnly ? "inline-flex items-end gap-1.5" : "inline-block"} text-left relative`}
-                    style={bubbleRadiusStyle}
-                  >
+                      </div>
+                    )}
                     {/* Reply preview inside the bubble (Telegram-style) */}
                     {parsed.replyTo && parsed.replyPreview && (
-                      <div className="mb-1.5 -mt-0.5">
+                      <div className={`mb-1.5 mt-0.5 ${isMedia ? "px-3" : ""}`}>
                         <ReplyPreview replyPreview={parsed.replyPreview} isSender={false} />
                       </div>
                     )}
                     <MessageContent message={message} />
-                    {/* Timestamp inside bubble, bottom-right */}
-                    {!isMedia && !isEmojiOnly && (
-                      <div className="flex justify-end -mb-0.5 mt-0.5">
-                        <span
-                          className="text-gray-500 text-[10px] whitespace-nowrap leading-none"
+                    {/* Timestamp: inside bubble for text and media-with-caption, outside for bare media/emoji */}
+                    {(() => {
+                      const msgText = message.DecryptedMessage || "";
+                      const mediaHasCaption = isMedia && (() => {
+                        if (parsed.type === "image") return !!msgText && !/\.\w{2,5}$/.test(msgText.trim());
+                        if (parsed.type === "gif") return !!msgText && msgText !== parsed.gifTitle && msgText !== "GIF";
+                        if (parsed.type === "video") return !!msgText && msgText !== "video";
+                        return false;
+                      })();
+                      const timestampInside = (!isMedia && !isEmojiOnly) || mediaHasCaption;
+
+                      if (timestampInside) {
+                        return (
+                          <div className={`flex justify-end mt-0.5 ${isMedia ? "px-3 pb-1.5 -mb-0" : "-mb-0.5"}`}>
+                            <span
+                              className={`${IsSender ? "text-[#34F080]/50" : "text-gray-500/80"} text-[10px] whitespace-nowrap leading-none`}
+                              title={new Date(message.MessageInfo.TimestampNanos / 1e6).toLocaleString()}
+                            >
+                              {parsed.edited && !parsed.deleted ? "(edited) " : ""}
+                              {convertTstampToDateTime(message.MessageInfo.TimestampNanos)}
+                            </span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+
+                  {/* Timestamp outside bubble — only for bare media (no caption) and emoji-only */}
+                  {(() => {
+                    const msgText = message.DecryptedMessage || "";
+                    const mediaHasCaption = isMedia && (() => {
+                      if (parsed.type === "image") return !!msgText && !/\.\w{2,5}$/.test(msgText.trim());
+                      if (parsed.type === "gif") return !!msgText && msgText !== parsed.gifTitle && msgText !== "GIF";
+                      if (parsed.type === "video") return !!msgText && msgText !== "video";
+                      return false;
+                    })();
+                    const timestampOutside = (isMedia && !mediaHasCaption) || isEmojiOnly;
+
+                    if (timestampOutside) {
+                      return (
+                        <div
+                          className={`text-[10px] mt-0.5 px-1 text-right ${IsSender ? "text-[#34F080]/50" : "text-gray-500/80"}`}
                           title={new Date(message.MessageInfo.TimestampNanos / 1e6).toLocaleString()}
                         >
                           {parsed.edited && !parsed.deleted ? "(edited) " : ""}
                           {convertTstampToDateTime(message.MessageInfo.TimestampNanos)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Timestamp for media/emoji messages (outside bubble) */}
-                  {(isMedia || isEmojiOnly) && (
-                    <div
-                      className={`text-[10px] text-gray-500 mt-0.5 px-1 ${IsSender ? "text-right" : "text-left"}`}
-                      title={new Date(message.MessageInfo.TimestampNanos / 1e6).toLocaleString()}
-                    >
-                      {parsed.edited && !parsed.deleted ? "(edited) " : ""}
-                      {convertTstampToDateTime(message.MessageInfo.TimestampNanos)}
-                    </div>
-                  )}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   {/* Status indicator – absolutely positioned so it never shifts layout */}
                   {IsSender && (message as any)._status && (
