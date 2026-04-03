@@ -898,22 +898,22 @@ export const ManageMembersDialog = ({
               className="bg-[#0c1220] text-white border border-white/8 w-full sm:w-[min(95vw,480px)] rounded-t-2xl sm:rounded-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col outline-none shadow-2xl shadow-black/40 modal-card-enter"
             >
               {/* Sticky header */}
-              <div className="text-white p-5 border-b border-white/8 flex-shrink-0">
+              <div className="text-white p-3 sm:p-4 border-b border-white/8 flex-shrink-0">
                 <div className="flex justify-between w-full items-center">
-                  <div className="flex items-center gap-4 min-w-0 flex-1">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
                     {isGroupOwner ? (
                       <GroupImagePicker
                         imageUrl={groupImageUrl}
                         onImageChange={handleGroupImageSave}
                         groupName={currentDisplayName}
-                        diameter={56}
+                        diameter={isMobile ? 44 : 48}
                       />
                     ) : (
                       <MessagingDisplayAvatar
                         publicKey={currentDisplayName}
                         groupChat
                         groupImageUrl={currentGroupImageUrl}
-                        diameter={56}
+                        diameter={isMobile ? 44 : 48}
                       />
                     )}
                     <div className="min-w-0 flex-1">
@@ -933,14 +933,14 @@ export const ManageMembersDialog = ({
                             }
                           }}
                           onBlur={handleGroupNameSave}
-                          className="text-xl font-semibold bg-white/5 border border-white/10 rounded-md px-2 py-0.5 outline-none text-white w-full"
+                          className="text-lg sm:text-xl font-semibold bg-white/5 border border-white/10 rounded-md px-2 py-0.5 outline-none text-white w-full"
                           autoFocus
                         />
                       ) : (
                         <div className="flex items-center gap-1.5">
                           <span
                             id="manage-members-title"
-                            className={`text-xl font-semibold truncate ${isGroupOwner ? "cursor-pointer" : ""}`}
+                            className={`text-lg sm:text-xl font-semibold truncate ${isGroupOwner ? "cursor-pointer" : ""}`}
                             onClick={isGroupOwner && !savingName ? () => {
                               setEditingName(true);
                               setTimeout(() => nameInputRef.current?.select(), 0);
@@ -986,57 +986,54 @@ export const ManageMembersDialog = ({
 
               {/* Invite Link Section (owner only) */}
               {isGroupOwner && (
-                <div className="px-5 py-3 border-b border-white/8 flex-shrink-0">
+                <div className="px-3 py-2 sm:px-4 sm:py-2.5 border-b border-white/8 flex-shrink-0">
                   {inviteCode ? (
-                    <div className="space-y-2">
-                      <div className="glass-pill rounded-lg px-3 py-2 text-sm text-white/70 truncate font-mono">
+                    <div className="flex items-center gap-1.5">
+                      <div className="glass-pill rounded-lg px-3 py-1.5 text-xs text-white/70 truncate font-mono min-w-0 flex-1">
                         {buildInviteUrl(inviteCode)}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={handleCopyInviteLink}
-                          className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg glass-btn-secondary text-gray-300 cursor-pointer"
-                          title="Copy link"
-                        >
-                          {inviteCopied ? (
-                            <Check className="w-4 h-4 text-green-400" />
-                          ) : (
-                            <Copy className="w-4 h-4" />
-                          )}
-                        </button>
-                        {typeof navigator.share === "function" && (
-                          <button
-                            type="button"
-                            onClick={handleShareInviteLink}
-                            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg glass-btn-secondary text-gray-300 cursor-pointer"
-                            title="Share link"
-                          >
-                            <Share2 className="w-4 h-4" />
-                          </button>
+                      <button
+                        type="button"
+                        onClick={handleCopyInviteLink}
+                        className="p-1.5 flex items-center justify-center rounded-lg glass-btn-secondary text-gray-300 cursor-pointer shrink-0"
+                        title="Copy link"
+                      >
+                        {inviteCopied ? (
+                          <Check className="w-4 h-4 text-green-400" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
                         )}
-                        <div className="flex-1" />
+                      </button>
+                      {typeof navigator.share === "function" && (
                         <button
                           type="button"
-                          onClick={handleRevokeInviteLink}
-                          disabled={inviteLoading}
-                          className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg glass-btn-danger text-red-400 cursor-pointer disabled:opacity-50"
-                          title="Revoke link"
+                          onClick={handleShareInviteLink}
+                          className="p-1.5 flex items-center justify-center rounded-lg glass-btn-secondary text-gray-300 cursor-pointer shrink-0"
+                          title="Share link"
                         >
-                          {inviteLoading ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-4 h-4" />
-                          )}
+                          <Share2 className="w-4 h-4" />
                         </button>
-                      </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleRevokeInviteLink}
+                        disabled={inviteLoading}
+                        className="p-1.5 flex items-center justify-center rounded-lg glass-btn-danger text-red-400 cursor-pointer disabled:opacity-50 shrink-0"
+                        title="Revoke link"
+                      >
+                        {inviteLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </button>
                     </div>
                   ) : (
                     <button
                       type="button"
                       onClick={handleCreateInviteLink}
                       disabled={inviteLoading}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg glass-btn-secondary text-gray-300 text-sm font-medium cursor-pointer disabled:opacity-50"
+                      className="w-full flex items-center justify-center gap-2 py-2 rounded-lg glass-btn-secondary text-gray-300 text-sm font-medium cursor-pointer disabled:opacity-50"
                     >
                       {inviteLoading ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -1051,14 +1048,14 @@ export const ManageMembersDialog = ({
 
               {/* Community Listing Toggle (owner only, when invite link exists) */}
               {isGroupOwner && inviteCode && (
-                <div className="px-5 py-3 border-b border-white/8 flex-shrink-0">
+                <div className="px-3 py-2 sm:px-4 sm:py-2.5 border-b border-white/8 flex-shrink-0">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Globe className="w-4 h-4 text-gray-400 shrink-0" />
-                      <div className="min-w-0">
-                        <span className="text-sm text-white/80 font-medium">List in Community</span>
-                        <p className="text-xs text-white/25">Let others discover this group</p>
-                      </div>
+                    <div className="min-w-0">
+                      <span className="text-sm text-white/80 font-medium flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                        List in Community
+                      </span>
+                      <p className="text-[11px] text-white/25">Let others discover this group</p>
                     </div>
                     <button
                       type="button"
@@ -1081,22 +1078,15 @@ export const ManageMembersDialog = ({
                     </button>
                   </div>
 
-                  {/* Friendly content guideline */}
+                  {/* Description field with guideline (shown when listed) */}
                   {isCommunityListed && (
-                    <p className="mt-2 text-[11px] text-white/25">
-                      Community listings are visible to everyone. Please keep your group name and description welcoming and appropriate for all audiences.
-                    </p>
-                  )}
-
-                  {/* Description field (shown when listed) */}
-                  {isCommunityListed && (
-                    <div className="mt-2 space-y-2">
+                    <div className="mt-1.5 space-y-1">
                       <textarea
                         value={communityDescription}
                         onChange={(e) => setCommunityDescription(e.target.value.slice(0, 200))}
                         placeholder="Add a short description..."
                         rows={2}
-                        className="w-full rounded-lg px-3 py-2 text-sm text-white/80 placeholder:text-white/20 bg-white/5 border border-white/8 focus:border-white/15 outline-none resize-none"
+                        className="w-full rounded-lg px-3 py-1.5 text-sm text-white/80 placeholder:text-white/20 bg-white/5 border border-white/8 focus:border-white/15 outline-none resize-none"
                       />
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] text-white/25">{communityDescription.length}/200</span>
@@ -1123,12 +1113,12 @@ export const ManageMembersDialog = ({
 
               <form name="start-group-chat-form" onSubmit={formSubmit} className="flex flex-col min-h-0 flex-1">
                 {/* Scrollable body */}
-                <div className="p-5 pb-0 overflow-y-auto overflow-x-hidden flex-1 min-h-0 custom-scrollbar">
+                <div className="p-3 sm:p-4 pb-0 overflow-y-auto overflow-x-hidden flex-1 min-h-0 custom-scrollbar">
                   <div className="mb-0">
                     {/* Join Requests Section (owner only) */}
                     {isGroupOwner && joinRequests.length > 0 && (
-                      <div className="mb-4">
-                        <div className="flex items-center justify-between mb-2">
+                      <div className="mb-3">
+                        <div className="flex items-center justify-between mb-1.5">
                           <span className="text-sm font-semibold text-white/70 flex items-center gap-1.5">
                             <UserPlus className="w-4 h-4" />
                             Join Requests ({joinRequests.length})
@@ -1290,8 +1280,8 @@ export const ManageMembersDialog = ({
                     )}
 
                     {isGroupOwner && !joinRequestsLoading && joinRequests.length === 0 && (
-                      <div className="text-sm text-white/25 mb-3 flex items-center gap-1.5">
-                        <UserPlus className="w-4 h-4" />
+                      <div className="text-xs sm:text-sm text-white/25 mb-2 flex items-center gap-1.5">
+                        <UserPlus className="w-3.5 h-3.5" />
                         No pending join requests
                       </div>
                     )}
@@ -1310,7 +1300,7 @@ export const ManageMembersDialog = ({
                     )}
 
                     <div
-                      className="mt-3 pr-1"
+                      className="mt-2 pr-1"
                       ref={membersAreaRef}
                     >
                       {loading ? (
@@ -1322,13 +1312,13 @@ export const ManageMembersDialog = ({
                           const memberPresence = getPresence(member.id);
                           return (
                           <div
-                            className="grid grid-cols-[auto_1fr_auto] gap-x-2 p-2 md:p-3 items-center cursor-pointer text-white bg-white/[0.03] border border-white/5 rounded-xl my-2"
+                            className="grid grid-cols-[auto_1fr_auto] gap-x-2 p-1.5 sm:p-2 items-center cursor-pointer text-white bg-white/[0.03] border border-white/5 rounded-xl my-1"
                             key={member.id}
                           >
                             <MessagingDisplayAvatar
                               username={member.text}
                               publicKey={member.id}
-                              diameter={isMobile ? 40 : 50}
+                              diameter={isMobile ? 36 : 40}
                               classNames="mx-0"
                               showOnlineDot={memberPresence.status === "online"}
                             />
@@ -1363,7 +1353,7 @@ export const ManageMembersDialog = ({
                 </div>
 
                 {/* Sticky footer */}
-                <div className="flex justify-between p-5 border-t border-white/8 gap-3 flex-shrink-0">
+                <div className="flex justify-between p-3 sm:p-4 border-t border-white/8 gap-3 flex-shrink-0">
                   {!isGroupOwner && (
                     <button
                       onClick={() => {

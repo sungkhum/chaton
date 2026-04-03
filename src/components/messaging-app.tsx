@@ -110,7 +110,7 @@ import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { MessagingSetupButton } from "./messaging-setup-button";
 import { OnboardingWizard, isOnboardingComplete, markOnboardingComplete } from "./onboarding/onboarding-wizard";
 import { shortenLongWord } from "./search-users";
-import { SendMessageButtonAndInput } from "./send-message-button-and-input";
+import { SendMessageButtonAndInput, SendMessageInputHandle } from "./send-message-button-and-input";
 import {
   addPendingMessage,
   removePendingMessage,
@@ -253,6 +253,7 @@ export const MessagingApp: FC = () => {
     text: string;
     timestamp: string;
   } | null>(null);
+  const sendInputRef = useRef<SendMessageInputHandle>(null);
   const [editingMessage, setEditingMessage] = useState<{
     text: string;
     timestamp: string;
@@ -2527,22 +2528,28 @@ export const MessagingApp: FC = () => {
                             },
                           }));
                         }}
-                        onReply={(msg) => startTransition(() => {
-                          setEditingMessage(null);
-                          setReplyToMessage({
-                            text: msg.DecryptedMessage || "",
-                            timestamp: msg.MessageInfo.TimestampNanosString,
+                        onReply={(msg) => {
+                          sendInputRef.current?.focus();
+                          startTransition(() => {
+                            setEditingMessage(null);
+                            setReplyToMessage({
+                              text: msg.DecryptedMessage || "",
+                              timestamp: msg.MessageInfo.TimestampNanosString,
+                            });
                           });
-                        })}
+                        }}
                         hiddenMessageIds={hiddenMessageIds}
                         pendingTipTimestamps={pendingTipTimestamps}
-                        onEdit={(msg) => startTransition(() => {
-                          setReplyToMessage(null);
-                          setEditingMessage({
-                            text: msg.DecryptedMessage || "",
-                            timestamp: msg.MessageInfo.TimestampNanosString,
+                        onEdit={(msg) => {
+                          sendInputRef.current?.focus();
+                          startTransition(() => {
+                            setReplyToMessage(null);
+                            setEditingMessage({
+                              text: msg.DecryptedMessage || "",
+                              timestamp: msg.MessageInfo.TimestampNanosString,
+                            });
                           });
-                        })}
+                        }}
                         onDeleteForMe={async (timestampNanosString) => {
                           if (!appUser) return;
                           setHiddenMessageIds((prev) => {
@@ -2899,6 +2906,7 @@ export const MessagingApp: FC = () => {
                   </div>
 
                   {selectedConversation && <SendMessageButtonAndInput
+                    ref={sendInputRef}
                     key={selectedConversationPublicKey}
                     conversationKey={selectedConversationPublicKey}
                     replyTo={replyToMessage}

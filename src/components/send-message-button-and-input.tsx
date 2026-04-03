@@ -1,4 +1,4 @@
-import { KeyboardEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, startTransition, ViewTransition } from "react";
+import { KeyboardEvent, forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, startTransition, ViewTransition } from "react";
 import { Send, Image, Loader2, Pencil, X, Check, Paperclip, CircleDollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { EmojiPickerButton } from "./compose/emoji-picker-button";
@@ -31,7 +31,11 @@ export interface SendMessageButtonAndInputProps {
   onTipClick?: () => void;
 }
 
-export const SendMessageButtonAndInput = ({
+export interface SendMessageInputHandle {
+  focus: () => void;
+}
+
+export const SendMessageButtonAndInput = forwardRef<SendMessageInputHandle, SendMessageButtonAndInputProps>(({
   onClick,
   replyTo,
   onCancelReply,
@@ -43,7 +47,7 @@ export const SendMessageButtonAndInput = ({
   onSubmitEdit,
   mentionCandidates,
   onTipClick,
-}: SendMessageButtonAndInputProps) => {
+}, ref) => {
   const [isSending, setIsSending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
@@ -55,6 +59,7 @@ export const SendMessageButtonAndInput = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputBarRef = useRef<HTMLDivElement>(null);
   const linkPanelRef = useRef<LinkAttachmentPanelHandle>(null);
+  useImperativeHandle(ref, () => ({ focus: () => textareaRef.current?.focus() }), []);
   const publicKey = useStore((s) => s.appUser?.PublicKeyBase58Check || "");
   const { getDraft, setDraft, clearDraft } = useDraftMessages(publicKey);
 
@@ -766,4 +771,4 @@ export const SendMessageButtonAndInput = ({
       </p>
     </div>
   );
-};
+});
