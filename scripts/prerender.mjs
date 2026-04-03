@@ -126,7 +126,9 @@ async function generateOgImages(browser) {
 
       await page.waitForTimeout(200);
 
-      const outDir = join(DIST, "og", "blog");
+      // Write to public/ so images are committed to git and included
+      // in every Vite build (Vite copies public/ → dist/ automatically).
+      const outDir = join(process.cwd(), "public", "og", "blog");
       await mkdir(outDir, { recursive: true });
       await page.screenshot({
         path: join(outDir, `${post.slug}.png`),
