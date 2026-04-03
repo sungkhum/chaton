@@ -114,6 +114,7 @@ import {
   getGroupImageUrl,
   MSG_REPLY_TO,
   MSG_REPLY_PREVIEW,
+  MSG_REPLY_SENDER,
   type MentionEntry,
 } from "../utils/extra-data";
 const LazyTipConfirmDialog = lazy(() =>
@@ -319,6 +320,7 @@ export const MessagingApp: FC = () => {
   const [replyToMessage, setReplyToMessage] = useState<{
     text: string;
     timestamp: string;
+    sender: string;
   } | null>(null);
   const sendInputRef = useRef<SendMessageInputHandle>(null);
   const [editingMessage, setEditingMessage] = useState<{
@@ -3025,11 +3027,15 @@ export const MessagingApp: FC = () => {
                         }}
                         onReply={(msg) => {
                           sendInputRef.current?.focus();
+                          const senderKey =
+                            msg.SenderInfo.OwnerPublicKeyBase58Check;
                           startTransition(() => {
                             setEditingMessage(null);
                             setReplyToMessage({
                               text: msg.DecryptedMessage || "",
                               timestamp: msg.MessageInfo.TimestampNanosString,
+                              sender:
+                                activeChatUsersMap[senderKey] || senderKey,
                             });
                           });
                         }}
@@ -3675,6 +3681,7 @@ export const MessagingApp: FC = () => {
                               0,
                               100
                             ),
+                            [MSG_REPLY_SENDER]: replyToMessage.sender,
                           };
                           setReplyToMessage(null);
                         }

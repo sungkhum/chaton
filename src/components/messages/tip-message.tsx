@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { CircleDollarSign } from "lucide-react";
 import { formatDesoAmount } from "../../utils/helpers";
-import { fetchExchangeRate, nanosToUsd, formatUsd } from "../../utils/exchange-rate";
+import {
+  fetchExchangeRate,
+  nanosToUsd,
+  formatUsd,
+} from "../../utils/exchange-rate";
 import { usdcBaseUnitsToUsd } from "../../utils/usdc-balance";
 import { ReplyPreview } from "./reply-preview";
 import { FormattedMessage } from "./formatted-message";
@@ -13,7 +17,7 @@ interface TipMessageProps {
   currency?: TipCurrency;
   message?: string;
   replyPreview?: string;
-  isSender?: boolean;
+  replySender?: string;
   onReplyClick?: () => void;
 }
 
@@ -23,7 +27,7 @@ export const TipMessage = ({
   currency = "DESO",
   message,
   replyPreview,
-  isSender,
+  replySender,
   onReplyClick,
 }: TipMessageProps) => {
   const [usdAmount, setUsdAmount] = useState<string | null>(null);
@@ -32,30 +36,34 @@ export const TipMessage = ({
   const accentColor = isUsdc ? "text-[#34F080]" : "text-[#2775ca]";
 
   // Parse USDC base units once (BigInt from hex string)
-  const usdcUsd = isUsdc && amountUsdcBaseUnits
-    ? usdcBaseUnitsToUsd(BigInt(amountUsdcBaseUnits))
-    : null;
+  const usdcUsd =
+    isUsdc && amountUsdcBaseUnits
+      ? usdcBaseUnitsToUsd(BigInt(amountUsdcBaseUnits))
+      : null;
 
   useEffect(() => {
     if (usdcUsd != null) {
       setUsdAmount(formatUsd(usdcUsd));
     } else if (!isUsdc && amountNanos > 0) {
-      fetchExchangeRate().then((rate) => {
-        setUsdAmount(formatUsd(nanosToUsd(amountNanos, rate)));
-      }).catch(() => {});
+      fetchExchangeRate()
+        .then((rate) => {
+          setUsdAmount(formatUsd(nanosToUsd(amountNanos, rate)));
+        })
+        .catch(() => {});
     }
   }, [amountNanos, usdcUsd, isUsdc]);
 
-  const subLabel = usdcUsd != null
-    ? `${usdcUsd.toFixed(2)} USDC`
-    : formatDesoAmount(amountNanos);
+  const subLabel =
+    usdcUsd != null
+      ? `${usdcUsd.toFixed(2)} USDC`
+      : formatDesoAmount(amountNanos);
 
   return (
     <div className="select-text">
       {replyPreview && (
         <ReplyPreview
           replyPreview={replyPreview}
-          isSender={isSender}
+          replySender={replySender}
           onClick={onReplyClick}
         />
       )}
@@ -65,9 +73,7 @@ export const TipMessage = ({
           {usdAmount ?? "..."}
         </span>
       </div>
-      <div className="text-gray-400 text-[10px] mb-0.5">
-        {subLabel}
-      </div>
+      <div className="text-gray-400 text-[10px] mb-0.5">{subLabel}</div>
       {message && (
         <div className="mt-1">
           <FormattedMessage>{message}</FormattedMessage>

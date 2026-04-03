@@ -1,9 +1,13 @@
-import { AccessGroupEntryResponse, DecryptedMessageEntryResponse } from "deso-protocol";
+import {
+  AccessGroupEntryResponse,
+  DecryptedMessageEntryResponse,
+} from "deso-protocol";
 
 // Generic DeSo message ExtraData keys — any messaging app can adopt these
 export const MSG_TYPE = "msg:type";
 export const MSG_REPLY_TO = "msg:replyTo";
 export const MSG_REPLY_PREVIEW = "msg:replyPreview";
+export const MSG_REPLY_SENDER = "msg:replySender";
 export const MSG_IMAGE_URL = "msg:imageUrl";
 export const MSG_GIF_URL = "msg:gifUrl";
 export const MSG_GIF_TITLE = "msg:gifTitle";
@@ -63,6 +67,7 @@ export const FULL_ENCRYPTED_KEYS = [
   MSG_OG_DESCRIPTION,
   MSG_OG_IMAGE,
   MSG_REPLY_PREVIEW,
+  MSG_REPLY_SENDER,
   MSG_MENTIONS,
   MSG_TIP_AMOUNT_NANOS,
   MSG_TIP_TX_HASH,
@@ -75,7 +80,9 @@ export const FULL_ENCRYPTED_KEYS = [
 export type PrivacyMode = "standard" | "full";
 
 /** Return the list of ExtraData keys to encrypt for the given privacy mode. */
-export function getEncryptedExtraDataKeys(mode: PrivacyMode): readonly string[] {
+export function getEncryptedExtraDataKeys(
+  mode: PrivacyMode
+): readonly string[] {
   return mode === "full" ? FULL_ENCRYPTED_KEYS : STANDARD_ENCRYPTED_KEYS;
 }
 
@@ -126,6 +133,7 @@ export interface ParsedMessage {
   ogImage?: string;
   replyTo?: string;
   replyPreview?: string;
+  replySender?: string;
   emoji?: string;
   action?: "add" | "remove";
   edited?: boolean;
@@ -169,8 +177,12 @@ function parseDeSoAppMedia(extra: Record<string, string>): {
       return {
         type: "video",
         videoUrl,
-        mediaWidth: extra["video.0.width"] ? parseInt(extra["video.0.width"]) : undefined,
-        mediaHeight: extra["video.0.height"] ? parseInt(extra["video.0.height"]) : undefined,
+        mediaWidth: extra["video.0.width"]
+          ? parseInt(extra["video.0.width"])
+          : undefined,
+        mediaHeight: extra["video.0.height"]
+          ? parseInt(extra["video.0.height"])
+          : undefined,
       };
     }
   }
@@ -189,8 +201,12 @@ function parseDeSoAppMedia(extra: Record<string, string>): {
       return {
         type: "image",
         imageUrl,
-        mediaWidth: extra["image.0.width"] ? parseInt(extra["image.0.width"]) : undefined,
-        mediaHeight: extra["image.0.height"] ? parseInt(extra["image.0.height"]) : undefined,
+        mediaWidth: extra["image.0.width"]
+          ? parseInt(extra["image.0.width"])
+          : undefined,
+        mediaHeight: extra["image.0.height"]
+          ? parseInt(extra["image.0.height"])
+          : undefined,
       };
     }
   }
@@ -220,9 +236,7 @@ export function parseMessageType(
     gifTitle: extra[MSG_GIF_TITLE],
     videoUrl: extra[MSG_VIDEO_URL] || desoAppMedia.videoUrl,
     localThumbnail: extra["_localThumbnail"],
-    duration: extra[MSG_DURATION]
-      ? parseFloat(extra[MSG_DURATION])
-      : undefined,
+    duration: extra[MSG_DURATION] ? parseFloat(extra[MSG_DURATION]) : undefined,
     mediaWidth: extra[MSG_MEDIA_WIDTH]
       ? parseInt(extra[MSG_MEDIA_WIDTH])
       : desoAppMedia.mediaWidth,
@@ -230,9 +244,7 @@ export function parseMessageType(
       ? parseInt(extra[MSG_MEDIA_HEIGHT])
       : desoAppMedia.mediaHeight,
     fileName: extra[MSG_FILE_NAME],
-    fileSize: extra[MSG_FILE_SIZE]
-      ? parseInt(extra[MSG_FILE_SIZE])
-      : undefined,
+    fileSize: extra[MSG_FILE_SIZE] ? parseInt(extra[MSG_FILE_SIZE]) : undefined,
     fileType: extra[MSG_FILE_TYPE],
     fileUrl: extra[MSG_FILE_URL],
     fileDescription: extra[MSG_FILE_DESCRIPTION],
@@ -241,6 +253,7 @@ export function parseMessageType(
     ogImage: extra[MSG_OG_IMAGE],
     replyTo: extra[MSG_REPLY_TO],
     replyPreview: extra[MSG_REPLY_PREVIEW],
+    replySender: extra[MSG_REPLY_SENDER],
     emoji: extra[MSG_EMOJI],
     action: extra[MSG_ACTION] as "add" | "remove" | undefined,
     edited: extra[MSG_EDITED] === "true",
@@ -249,12 +262,14 @@ export function parseMessageType(
       ? (JSON.parse(extra[MSG_MENTIONS]) as MentionEntry[])
       : undefined,
     tipAmountNanos: extra[MSG_TIP_AMOUNT_NANOS]
-      ? (Number.isFinite(parseInt(extra[MSG_TIP_AMOUNT_NANOS], 10))
-          ? parseInt(extra[MSG_TIP_AMOUNT_NANOS], 10)
-          : undefined)
+      ? Number.isFinite(parseInt(extra[MSG_TIP_AMOUNT_NANOS], 10))
+        ? parseInt(extra[MSG_TIP_AMOUNT_NANOS], 10)
+        : undefined
       : undefined,
     tipAmountUsdcBaseUnits: extra[MSG_TIP_AMOUNT_USDC],
-    tipCurrency: (extra[MSG_TIP_CURRENCY] as TipCurrency) || (extra[MSG_TIP_AMOUNT_USDC] ? "USDC" : undefined),
+    tipCurrency:
+      (extra[MSG_TIP_CURRENCY] as TipCurrency) ||
+      (extra[MSG_TIP_AMOUNT_USDC] ? "USDC" : undefined),
     tipTxHash: extra[MSG_TIP_TX_HASH],
     tipReplyTo: extra[MSG_TIP_REPLY_TO],
     tipRecipient: extra[MSG_TIP_RECIPIENT],
@@ -320,12 +335,15 @@ export function buildExtraData(
     extra[MSG_FILE_SIZE] = String(parsed.fileSize);
   if (parsed.fileType) extra[MSG_FILE_TYPE] = parsed.fileType;
   if (parsed.fileUrl) extra[MSG_FILE_URL] = parsed.fileUrl;
-  if (parsed.fileDescription) extra[MSG_FILE_DESCRIPTION] = parsed.fileDescription;
+  if (parsed.fileDescription)
+    extra[MSG_FILE_DESCRIPTION] = parsed.fileDescription;
   if (parsed.ogTitle) extra[MSG_OG_TITLE] = parsed.ogTitle.slice(0, 100);
-  if (parsed.ogDescription) extra[MSG_OG_DESCRIPTION] = parsed.ogDescription.slice(0, 200);
+  if (parsed.ogDescription)
+    extra[MSG_OG_DESCRIPTION] = parsed.ogDescription.slice(0, 200);
   if (parsed.ogImage) extra[MSG_OG_IMAGE] = parsed.ogImage;
   if (parsed.replyTo) extra[MSG_REPLY_TO] = parsed.replyTo;
   if (parsed.replyPreview) extra[MSG_REPLY_PREVIEW] = parsed.replyPreview;
+  if (parsed.replySender) extra[MSG_REPLY_SENDER] = parsed.replySender;
   if (parsed.emoji) extra[MSG_EMOJI] = parsed.emoji;
   if (parsed.action) extra[MSG_ACTION] = parsed.action;
   if (parsed.edited) extra[MSG_EDITED] = "true";

@@ -253,6 +253,7 @@ All keys use the `msg:` namespace. Set only the keys relevant to your message ty
 | `msg:type` | `text` \| `image` \| `gif` \| `sticker` \| `video` \| `file` \| `reaction` \| `system` | Message type. Omit for plain text. |
 | `msg:replyTo` | `TimestampNanosString` | Timestamp of the message being replied to or reacted to |
 | `msg:replyPreview` | `string` | Truncated preview of the replied-to message (for display without lookup) |
+| `msg:replySender` | `string` | Username of the sender of the replied-to message |
 | `msg:emoji` | emoji character | The emoji for a reaction (encrypted — see below) |
 | `msg:action` | `add` \| `remove` | Reaction toggle (encrypted — see below). Omit for `add`. |
 | `msg:imageUrl` | URL | Image attachment URL |
@@ -326,7 +327,7 @@ ChatOn supports two privacy modes, controlled by a toggle in the user menu:
 msg:emoji, msg:action, msg:imageUrl, msg:gifUrl, msg:gifTitle,
 msg:videoUrl, msg:duration, msg:mediaWidth, msg:mediaHeight,
 msg:fileName, msg:fileSize, msg:fileType, msg:fileUrl, msg:fileDescription,
-msg:ogTitle, msg:ogDescription, msg:ogImage, msg:replyPreview, msg:mentions
+msg:ogTitle, msg:ogDescription, msg:ogImage, msg:replyPreview, msg:replySender, msg:mentions
 ```
 
 **Standard mode encrypts only:** `msg:emoji`, `msg:action`
