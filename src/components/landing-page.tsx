@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { identity } from "deso-protocol";
+import { usePageMeta } from "../hooks/usePageMeta";
 import { AnimatedEmoji } from "./messages/animated-emoji";
 import {
   ArrowRight,
@@ -20,6 +21,7 @@ import {
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { PreSignupTutorial } from "./onboarding/pre-signup-tutorial";
+import { SeoStructuredData } from "./seo-structured-data";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -32,6 +34,8 @@ gsap.registerPlugin(ScrollTrigger);
  */
 
 export const LandingPage = () => {
+  usePageMeta({ path: "/" });
+
   const root = useRef<HTMLDivElement>(null);
   const [showTutorial, setShowTutorial] = useState(false);
 
@@ -305,6 +309,7 @@ export const LandingPage = () => {
 
   return (
     <div ref={root} className="min-h-screen bg-[#0F1520] text-white selection:bg-[#34F080]/30 selection:text-white relative overflow-x-clip">
+      <SeoStructuredData />
       {/* Atmospheric Orbs */}
       <div className="landing-orb w-[1000px] h-[1000px] bg-[#34F080] bottom-[20%] -left-[400px] opacity-[0.10]" />
       <div className="landing-orb w-[800px] h-[800px] bg-[#20E0AA] top-[40%] left-[15%] opacity-[0.07]" />

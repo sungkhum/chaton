@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { identity, sendDeso } from "deso-protocol";
+import { usePageMeta } from "../hooks/usePageMeta";
 import {
   Heart,
   ArrowRight,
@@ -23,6 +24,13 @@ const PRESET_AMOUNTS = [0.1, 0.5, 1, 5] as const;
  */
 
 export const SupportPage = () => {
+  usePageMeta({
+    title: "Support ChatOn — Keep Decentralized Messaging Alive",
+    description:
+      "ChatOn is free, open-source, and costs $0/month to run. No ads. No data harvesting. Support the project with a $DESO tip.",
+    path: "/support",
+  });
+
   const appUser = useStore((s) => s.appUser);
   const root = useRef<HTMLDivElement>(null);
 
@@ -170,9 +178,9 @@ const LoggedOutCTA = () => (
     <div className="w-14 h-14 mx-auto mb-5 rounded-full bg-[#34F080]/8 border border-[#34F080]/15 flex items-center justify-center">
       <Heart className="w-6 h-6 text-[#34F080]" />
     </div>
-    <h3 className="text-xl md:text-2xl font-bold text-white mb-3">
+    <h2 className="text-xl md:text-2xl font-bold text-white mb-3">
       Send a tip with $DESO
-    </h3>
+    </h2>
     <p className="text-sm text-gray-400 mb-6 leading-relaxed max-w-xs mx-auto">
       Log in with your DeSo account to send a tip directly on the blockchain.
       Any amount helps.
@@ -257,7 +265,7 @@ const InlineDonationForm = ({ appUser }: { appUser: AppUser }) => {
         <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-[#34F080]/10 border border-[#34F080]/20 flex items-center justify-center">
           <Sparkles className="w-8 h-8 text-[#34F080]" />
         </div>
-        <h3 className="text-2xl font-bold text-white mb-2">Thank you!</h3>
+        <h2 className="text-2xl font-bold text-white mb-2">Thank you!</h2>
         <p className="text-gray-400 text-sm mb-1">
           You sent{" "}
           <span className="text-[#34F080] font-semibold">
@@ -285,7 +293,7 @@ const InlineDonationForm = ({ appUser }: { appUser: AppUser }) => {
 
       <div className="flex items-center gap-2.5 mb-2">
         <Heart className="w-5 h-5 text-[#34F080]" />
-        <h3 className="text-lg font-bold text-white">Send a tip</h3>
+        <h2 className="text-lg font-bold text-white">Send a tip</h2>
       </div>
       <p className="text-gray-500 text-sm mb-5">
         Pick an amount or enter your own. Every bit helps.

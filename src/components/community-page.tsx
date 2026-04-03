@@ -1,5 +1,6 @@
 import { identity } from "deso-protocol";
 import { Heart, RefreshCw, Search, Users, X } from "lucide-react";
+import { usePageMeta } from "../hooks/usePageMeta";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   EnrichedCommunityListing,
@@ -39,6 +40,13 @@ function setCachedListings(listings: EnrichedCommunityListing[]) {
 }
 
 const CommunityPage = () => {
+  usePageMeta({
+    title: "Discover Communities — ChatOn",
+    description:
+      "Browse and join public group chats on the DeSo blockchain. Encrypted, decentralized, and free.",
+    path: "/community",
+  });
+
   const appUser = useStore((s) => s.appUser);
   const [listings, setListings] = useState<EnrichedCommunityListing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -286,9 +294,9 @@ const CommunityPage = () => {
                 <div className="w-20 h-20 rounded-full bg-[#34F080]/10 flex items-center justify-center mx-auto mb-6">
                   <Users className="w-10 h-10 text-[#34F080]" />
                 </div>
-                <h3 className="text-white font-black text-xl md:text-2xl mb-3">
+                <h2 className="text-white font-black text-xl md:text-2xl mb-3">
                   {searchQuery ? "No matches" : "No communities yet"}
-                </h3>
+                </h2>
                 <p className="text-gray-400 text-sm md:text-base leading-relaxed">
                   {searchQuery
                     ? "Try a different search term"

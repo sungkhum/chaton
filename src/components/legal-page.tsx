@@ -1,4 +1,5 @@
 import { FC } from "react";
+import { usePageMeta } from "../hooks/usePageMeta";
 
 const LAST_UPDATED = "March 29, 2026";
 
@@ -317,7 +318,17 @@ const Section: FC<{ title: string; children: React.ReactNode }> = ({
   </section>
 );
 
-export const LegalPage: FC<{ type: "privacy" | "terms" }> = ({ type }) => (
+export const LegalPage: FC<{ type: "privacy" | "terms" }> = ({ type }) => {
+  usePageMeta({
+    title: type === "privacy" ? "Privacy Policy — ChatOn" : "Terms of Service — ChatOn",
+    description:
+      type === "privacy"
+        ? "ChatOn does not collect analytics, tracking pixels, or advertising data. Learn how your privacy is protected."
+        : "Terms of Service for ChatOn, an end-to-end encrypted messaging app on the DeSo blockchain.",
+    path: type === "privacy" ? "/privacy" : "/terms",
+  });
+
+  return (
   <div className="min-h-screen bg-[#0A0E17] text-white">
     <header className="border-b border-white/5 bg-[#0F1520]">
       <div className="max-w-3xl mx-auto px-6 py-4 flex items-center gap-4">
@@ -361,4 +372,5 @@ export const LegalPage: FC<{ type: "privacy" | "terms" }> = ({ type }) => (
       </div>
     </footer>
   </div>
-);
+  );
+};

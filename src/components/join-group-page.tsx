@@ -5,6 +5,7 @@ import {
   identity,
   ProfileEntryResponse,
 } from "deso-protocol";
+import { usePageMeta } from "../hooks/usePageMeta";
 import { Loader2, LogIn, UserPlus, CheckCircle2, MessageSquare, AlertCircle, Users, Clock } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -38,6 +39,12 @@ interface GroupInfo {
 }
 
 export const JoinGroupPage = () => {
+  usePageMeta({
+    title: "Join Group — ChatOn",
+    description:
+      "Join an encrypted group chat on the DeSo blockchain. End-to-end encrypted, decentralized, and free.",
+  });
+
   const { appUser, allAccessGroups, isLoadingUser } = useStore(useShallow((s) => ({ appUser: s.appUser, allAccessGroups: s.allAccessGroups, isLoadingUser: s.isLoadingUser })));
   const [pageState, setPageState] = useState<PageState>("loading");
   const [groupInfo, setGroupInfo] = useState<GroupInfo | null>(null);
