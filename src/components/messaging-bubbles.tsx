@@ -502,6 +502,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
       const target = e.currentTarget as HTMLElement;
       longPressTimerRef.current = setTimeout(() => {
         longPressTimerRef.current = null;
+        // Clear any iOS text selection that started during the hold
+        window.getSelection()?.removeAllRanges();
         if (navigator.vibrate) navigator.vibrate(20);
         setReactionPickerFor(null); // Close picker from previous message
         const bubble = target.querySelector<HTMLElement>(".relative.inline-block");
@@ -711,7 +713,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
 
   return (
     <div
-      className="h-full flex flex-col-reverse custom-scrollbar px-3 md:px-6 pb-2 overflow-y-auto [contain:layout_style]"
+      className={`h-full flex flex-col-reverse custom-scrollbar px-3 md:px-6 pb-2 overflow-y-auto [contain:layout_style] ${isMobile ? "select-none" : ""}`}
+      style={isMobile ? NO_CALLOUT_STYLE : undefined}
       ref={messageAreaRef}
       id="scrollableArea"
     >
