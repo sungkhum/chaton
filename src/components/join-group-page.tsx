@@ -8,6 +8,7 @@ import {
 import { Loader2, LogIn, UserPlus, CheckCircle2, MessageSquare, AlertCircle, Users, Clock } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
 import { extractInviteCode, resolveInviteCode } from "../utils/invite-link";
 import { cleanupOwnJoinRequests, createJoinRequest, hasExistingJoinRequest } from "../services/conversations.service";
@@ -37,7 +38,7 @@ interface GroupInfo {
 }
 
 export const JoinGroupPage = () => {
-  const { appUser, allAccessGroups, isLoadingUser } = useStore();
+  const { appUser, allAccessGroups, isLoadingUser } = useStore(useShallow((s) => ({ appUser: s.appUser, allAccessGroups: s.allAccessGroups, isLoadingUser: s.isLoadingUser })));
   const [pageState, setPageState] = useState<PageState>("loading");
   const [groupInfo, setGroupInfo] = useState<GroupInfo | null>(null);
   const [showTutorial, setShowTutorial] = useState(false);

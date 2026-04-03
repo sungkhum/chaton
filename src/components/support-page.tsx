@@ -23,7 +23,7 @@ const PRESET_AMOUNTS = [0.1, 0.5, 1, 5] as const;
  */
 
 export const SupportPage = () => {
-  const { appUser } = useStore();
+  const appUser = useStore((s) => s.appUser);
   const root = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {

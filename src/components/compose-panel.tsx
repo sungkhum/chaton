@@ -30,7 +30,7 @@ export const ComposePanel: FC<ComposePanelProps> = ({
   onSelectUser,
   onNewGroup,
 }) => {
-  const { appUser } = useStore();
+  const appUser = useStore((s) => s.appUser);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchMenuItem[]>([]);
   const [loading, setLoading] = useState(false);

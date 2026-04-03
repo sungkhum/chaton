@@ -3,6 +3,7 @@ import { Archive, ArrowLeft, BellOff, Check, ChevronDown, ChevronRight, Globe, M
 import { FC, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../store";
+import { useShallow } from "zustand/react/shallow";
 import { MessageSearchResult, SearchProgress } from "../services/message-search.service";
 import { getGroupImageUrl } from "../utils/extra-data";
 import { formatRelativeTimestamp, getChatNameFromConversation } from "../utils/helpers";
@@ -86,7 +87,9 @@ export const MessagingConversationAccount: FC<{
   onSearchResultClick,
   searchClearTrigger,
 }) => {
-  const { allAccessGroups, appUser, joinRequestCounts, onlineUsers } = useStore();
+  const { allAccessGroups, appUser, joinRequestCounts, onlineUsers } = useStore(
+    useShallow((s) => ({ allAccessGroups: s.allAccessGroups, appUser: s.appUser, joinRequestCounts: s.joinRequestCounts, onlineUsers: s.onlineUsers }))
+  );
   const [activeTab, setActiveTab] = useState<"chats" | "requests" | "community">("chats");
   const [groupChatOpen, setGroupChatOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);

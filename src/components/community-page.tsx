@@ -39,7 +39,7 @@ function setCachedListings(listings: EnrichedCommunityListing[]) {
 }
 
 const CommunityPage = () => {
-  const { appUser } = useStore();
+  const appUser = useStore((s) => s.appUser);
   const [listings, setListings] = useState<EnrichedCommunityListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

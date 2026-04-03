@@ -4,13 +4,14 @@ import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../store";
+import { useShallow } from "zustand/react/shallow";
 import { DEFAULT_KEY_MESSAGING_GROUP_NAME } from "utils/constants";
 import { hasSetupMessaging } from "utils/helpers";
 import { SendFundsDialog } from "./send-funds-dialog";
 
 export const MessagingSetupButton = () => {
   const { appUser, isLoadingUser, setAccessGroups, setAllAccessGroups } =
-    useStore();
+    useStore(useShallow((s) => ({ appUser: s.appUser, isLoadingUser: s.isLoadingUser, setAccessGroups: s.setAccessGroups, setAllAccessGroups: s.setAllAccessGroups })));
   const [isSettingUpMessage, setIsSettingUpMessaging] = useState<boolean>(false);
   const [openDialog, setOpenDialog] = useState<boolean>(false);
 

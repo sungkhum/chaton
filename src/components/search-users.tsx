@@ -87,7 +87,7 @@ export const SearchUsers = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const { appUser } = useStore();
+  const appUser = useStore((s) => s.appUser);
 
   useEffect(() => {
     setInputValue(initialValue);

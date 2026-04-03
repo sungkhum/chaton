@@ -100,7 +100,9 @@ import type { TipCurrency } from "../utils/extra-data";
 let lastMicroTipTime = 0;
 const MICRO_TIP_COOLDOWN_MS = 3000;
 import { JoinGroupModal } from "./join-group-modal";
-import { ManageMembersDialog } from "./manage-members-dialog";
+const LazyManageMembersDialog = lazy(() =>
+  import("./manage-members-dialog").then(m => ({ default: m.ManageMembersDialog }))
+);
 import { MessagingBubblesAndAvatar } from "./messaging-bubbles";
 import { MessagingConversationAccount } from "./messaging-conversation-accounts";
 import { MessagingConversationButton } from "./messaging-conversation-button";
@@ -2403,7 +2405,8 @@ export const MessagingApp: FC = () => {
                     </button>
                   )}
                   {isGroupChat ? (
-                    <ManageMembersDialog
+                    <Suspense fallback={null}>
+                    <LazyManageMembersDialog
                       conversation={selectedConversation}
                       conversationKey={selectedConversationPublicKey}
                       onSuccess={rehydrateConversation}
@@ -2411,6 +2414,7 @@ export const MessagingApp: FC = () => {
                       onOptimisticSystemMessage={handleOptimisticSystemMessage}
                       isGroupOwner={!!isGroupOwner}
                     />
+                    </Suspense>
                   ) : (
                     selectedConversation &&
                     selectedConversation.firstMessagePublicKey && (

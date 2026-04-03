@@ -1,4 +1,5 @@
 import { useStore } from "../store";
+import { useShallow } from "zustand/react/shallow";
 import {
   ChatType,
   DecryptedMessageEntryResponse,
@@ -253,7 +254,9 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   hiddenMessageIds,
 }: MessagingBubblesProps) => {
   const messageAreaRef = useRef<HTMLDivElement>(null);
-  const { appUser, allAccessGroups, setAllAccessGroups } = useStore();
+  const { appUser, allAccessGroups, setAllAccessGroups } = useStore(
+    useShallow((s) => ({ appUser: s.appUser, allAccessGroups: s.allAccessGroups, setAllAccessGroups: s.setAllAccessGroups }))
+  );
   const conversation = conversations[conversationPublicKey] ?? { messages: [] };
   const [allowScrolling, setAllowScrolling] = useState<boolean>(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);

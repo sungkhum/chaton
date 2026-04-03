@@ -25,7 +25,7 @@ type Account = {
 };
 
 const UserAccountList = ({ onSwitch }: { onSwitch?: () => void }) => {
-  const { appUser } = useStore();
+  const appUser = useStore((s) => s.appUser);
   const [showMore, setShowMore] = useState<boolean>(false);
   const [users, setUsers] = useState<User[]>([]);
   const [allAccounts, setAllAccounts] = useState<Account[]>([]);

@@ -7,6 +7,7 @@ import {
 import { Loader2, UserPlus, CheckCircle2, MessageSquare, AlertCircle, Users, Clock, X, ArrowLeft } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
 import { resolveInviteCode } from "../utils/invite-link";
 import { createJoinRequest, hasExistingJoinRequest } from "../services/conversations.service";
@@ -33,7 +34,7 @@ interface GroupInfo {
 }
 
 export function JoinGroupModal({ code, onClose }: { code: string; onClose: () => void }) {
-  const { appUser, allAccessGroups } = useStore();
+  const { appUser, allAccessGroups } = useStore(useShallow((s) => ({ appUser: s.appUser, allAccessGroups: s.allAccessGroups })));
   const [state, setState] = useState<ModalState>("loading");
   const [groupInfo, setGroupInfo] = useState<GroupInfo | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);

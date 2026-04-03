@@ -28,7 +28,7 @@ export interface StartGroupChatProps {
 }
 
 export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange }: StartGroupChatProps) => {
-  const { appUser } = useStore();
+  const appUser = useStore((s) => s.appUser);
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = (v: boolean) => {

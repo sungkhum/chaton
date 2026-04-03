@@ -2,12 +2,13 @@ import { useCallback, useState } from "react";
 import { Shield, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "../store";
+import { useShallow } from "zustand/react/shallow";
 import { setPrivacyModeOnChain } from "../services/conversations.service";
 import type { PrivacyMode } from "../utils/extra-data";
 
 export function PrivacyToggle() {
   const { appUser, privacyMode, privacyModeAssociationId, setPrivacyMode } =
-    useStore();
+    useStore(useShallow((s) => ({ appUser: s.appUser, privacyMode: s.privacyMode, privacyModeAssociationId: s.privacyModeAssociationId, setPrivacyMode: s.setPrivacyMode })));
   const [loading, setLoading] = useState(false);
 
   const toggle = useCallback(async () => {

@@ -8,7 +8,7 @@ import {
 import type { TipCurrency } from "../utils/extra-data";
 
 export function TipCurrencyToggle() {
-  const { appUser } = useStore();
+  const appUser = useStore((s) => s.appUser);
   const [currency, setCurrency] = useState<TipCurrency>(() => {
     if (!appUser) return "DESO";
     return (getCachedTipCurrency(appUser.PublicKeyBase58Check) as TipCurrency) || "DESO";

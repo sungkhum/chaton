@@ -17,6 +17,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../../store";
 import { uploadImage } from "../../services/media.service";
 import { withAuth } from "../../utils/with-auth";
@@ -54,7 +55,7 @@ export function markOnboardingComplete(publicKey: string) {
 }
 
 export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
-  const { appUser, setAppUser } = useStore();
+  const { appUser, setAppUser } = useStore(useShallow((s) => ({ appUser: s.appUser, setAppUser: s.setAppUser })));
   const [step, setStep] = useState(1);
 
   // Profile setup state

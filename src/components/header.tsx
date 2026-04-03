@@ -1,6 +1,7 @@
 import { identity } from "deso-protocol";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "../store";
+import { useShallow } from "zustand/react/shallow";
 import {
   Copy,
   Check,
@@ -22,7 +23,7 @@ import { TipCurrencyToggle } from "./tip-currency-toggle";
 import { UserAccountList } from "./user-account-list";
 
 export const Header = () => {
-  const { appUser, setLockRefresh } = useStore();
+  const { appUser, setLockRefresh } = useStore(useShallow((s) => ({ appUser: s.appUser, setLockRefresh: s.setLockRefresh })));
   const [menuOpen, setMenuOpen] = useState(false);
   const [showSupport, setShowSupport] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
