@@ -31,7 +31,7 @@
     "dev": "vite",
     "build": "vite build",
     "prerender": "node scripts/prerender.mjs",
-    "build:production": "vite build && node scripts/prerender.mjs",
+    "build:production": "vite build",
     "preview": "vite preview",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
