@@ -937,7 +937,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                 {/* Message bubble */}
                 <div className="relative inline-block">
                   <div
-                    className={`${senderStyles} mt-auto ${isMedia ? "p-0" : isEmojiOnly ? "p-0" : "py-1.5 px-3 md:px-4"} break-words ${isMedia || isEmojiOnly ? "inline-flex flex-col items-stretch" : "inline-block"} text-left relative`}
+                    className={`${senderStyles} mt-auto ${isMedia ? "p-0" : isEmojiOnly ? "p-0" : "py-1.5 px-3 md:px-4"} break-words ${isMedia || isEmojiOnly ? "inline-flex flex-col items-stretch" : "inline-block"} text-left relative overflow-hidden`}
                     style={bubbleRadiusStyle}
                   >
                     {/* Sender name inside bubble (Telegram-style) */}
@@ -1025,8 +1025,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                     return null;
                   })()}
 
-                  {/* Status indicator – absolutely positioned so it never shifts layout */}
-                  {IsSender && (message as any)._status && (
+                  {/* Status indicator – only on last bubble in a sender group (or failed) to avoid overlap */}
+                  {IsSender && (message as any)._status && (isLastInGroup || (message as any)._status === "failed") && (
                     <div className="absolute -bottom-4 right-0 z-10">
                       <MessageStatusIndicator
                         status={(message as any)._status}
