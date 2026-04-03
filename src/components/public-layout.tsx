@@ -11,6 +11,7 @@ const PRIMARY_LINKS = [
 
 /** Links inside the desktop "More" dropdown. */
 const MORE_LINKS = [
+  { href: "/blog", label: "Blog" },
   { href: "/faq", label: "FAQ" },
   { href: "/support", label: "Support" },
 ];
@@ -182,8 +183,8 @@ export const PublicFooter = () => (
         <a href="/terms" className="hover:text-gray-400 transition-colors">
           Terms
         </a>
-        <a href="/support" className="hover:text-gray-400 transition-colors">
-          Support
+        <a href="/donate" className="hover:text-gray-400 transition-colors">
+          Donate
         </a>
       </div>
     </div>

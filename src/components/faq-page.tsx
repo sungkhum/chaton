@@ -16,7 +16,7 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
   },
   {
     q: "Does ChatOn require a phone number?",
-    a: "No. ChatOn does not require a phone number, email address, or any personal information to sign up. You create a DeSo account using a seed phrase, a Google account, or a MetaMask wallet. Phone verification is entirely optional — it's only used to receive a small amount of free starter DESO tokens.",
+    a: "No. ChatOn does not require a phone number, email address, or any personal information to sign up. You create a DeSo account using a seed phrase, a Google account, or a MetaMask wallet. A simple CAPTCHA during signup gives you free starter DESO tokens to begin messaging immediately.",
   },
   {
     q: "Is ChatOn free to use?",
@@ -40,7 +40,7 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
   },
   {
     q: "What features does ChatOn have?",
-    a: "ChatOn includes encrypted DMs and group chats, emoji reactions, GIFs and stickers via Klipy, image and video sharing, file attachments with link previews, reply threads, push notifications, a public community directory for discovering group chats, and unread message badges. All message content — including media URLs, reactions, and file names — is encrypted by default.",
+    a: "ChatOn includes encrypted DMs and group chats, emoji reactions, GIFs and stickers via Klipy, image and video sharing, encrypted link sharing for files hosted on services like Google Drive, reply threads, push notifications, a public community directory for discovering group chats, and unread message badges. All message content — including media URLs, reactions, and shared links — is encrypted by default.",
   },
   {
     q: "How is ChatOn different from Signal?",
@@ -56,7 +56,7 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
   },
   {
     q: "Do I need cryptocurrency to use ChatOn?",
-    a: "You need a tiny amount of DESO tokens to cover transaction fees, but you don't need to buy any. During signup, you can verify a phone number to receive free starter DESO — enough for thousands of messages. You do not need a crypto wallet, exchange account, or any prior crypto experience to start chatting.",
+    a: "You need a tiny amount of DESO tokens to cover transaction fees, but you don't need to buy any. During signup, you complete a simple CAPTCHA to receive free starter DESO — enough for thousands of messages. You do not need a crypto wallet, exchange account, or any prior crypto experience to start chatting.",
   },
   {
     q: "Is ChatOn open source?",

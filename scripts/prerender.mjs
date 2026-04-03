@@ -25,8 +25,12 @@ import { join, extname } from "node:path";
 const DIST = join(process.cwd(), "dist");
 const PORT = 4199;
 
-/** Public routes to pre-render. */
-const ROUTES = ["/", "/privacy", "/terms", "/support", "/community", "/faq", "/about", "/compare"];
+/** Public routes to pre-render. Add new blog posts here too. */
+const ROUTES = [
+  "/", "/privacy", "/terms", "/support", "/community",
+  "/faq", "/about", "/compare",
+  "/blog", "/blog/near-zero-infrastructure",
+];
 
 const MIME = {
   ".html": "text/html; charset=utf-8",

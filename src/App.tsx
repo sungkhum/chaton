@@ -32,6 +32,8 @@ const CommunityPage = lazy(() => import("./components/community-page"));
 const FaqPage = lazy(() => import("./components/faq-page"));
 const AboutPage = lazy(() => import("./components/about-page"));
 const ComparePage = lazy(() => import("./components/compare-page"));
+const BlogIndex = lazy(() => import("./components/blog/blog-index"));
+import { lazyPost } from "./components/blog/blog-registry";
 import { AppUser, useStore } from "./store";
 import { useShallow } from "zustand/react/shallow";
 import { withAuth } from "./utils/with-auth";
@@ -354,16 +356,18 @@ function App() {
 
   // Remove splash once content is ready (not during loading)
   const isJoinRoute = path === "/join" || path.startsWith("/join/");
+  const isBlogRoute = path === "/blog" || path.startsWith("/blog/");
   const contentReady =
     !isLoadingUser ||
     !!appUser ||
     path === "/privacy" ||
     path === "/terms" ||
-    path === "/support" ||
+    path === "/donate" ||
     path === "/community" ||
     path === "/faq" ||
     path === "/about" ||
     path === "/compare" ||
+    isBlogRoute ||
     isJoinRoute;
   useEffect(() => {
     if (!contentReady || splashRemovedRef.current) return;
@@ -422,7 +426,7 @@ function App() {
       </RouteErrorBoundary>
     );
   }
-  if (path === "/support") {
+  if (path === "/donate") {
     return (
       <RouteErrorBoundary>
         <Suspense fallback={routeFallback}>
@@ -475,6 +479,32 @@ function App() {
         </Suspense>
       </RouteErrorBoundary>
     );
+  }
+
+  if (path === "/blog") {
+    return (
+      <RouteErrorBoundary>
+        <Suspense fallback={routeFallback}>
+          <BlogIndex />
+          <Toaster position="top-right" theme="dark" />
+        </Suspense>
+      </RouteErrorBoundary>
+    );
+  }
+
+  if (path.startsWith("/blog/")) {
+    const slug = path.replace("/blog/", "");
+    const PostComponent = lazyPost(slug);
+    if (PostComponent) {
+      return (
+        <RouteErrorBoundary>
+          <Suspense fallback={routeFallback}>
+            <PostComponent />
+            <Toaster position="top-right" theme="dark" />
+          </Suspense>
+        </RouteErrorBoundary>
+      );
+    }
   }
 
   if (isJoinRoute) {

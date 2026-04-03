@@ -1336,11 +1336,11 @@ export const LandingPage = () => {
             fund ongoing development.
           </p>
           <a
-            href="/support"
+            href="/donate"
             className="support-btn inline-flex items-center gap-2.5 px-6 py-3 bg-white/5 border border-white/10 text-gray-300 hover:text-[#34F080] hover:border-[#34F080]/40 font-semibold rounded-xl transition-all cursor-pointer text-sm"
           >
             <Heart className="w-4 h-4" />
-            Support ChatOn with $DESO
+            Donate $DESO to ChatOn
           </a>
         </div>
       </section>
@@ -1371,10 +1371,10 @@ export const LandingPage = () => {
                 GitHub
               </a>
               <a
-                href="/support"
+                href="/donate"
                 className="hover:text-[#34F080] transition-colors"
               >
-                Support
+                Donate
               </a>
               <a
                 href="/privacy"

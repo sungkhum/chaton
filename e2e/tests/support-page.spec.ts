@@ -2,7 +2,7 @@ import { test, expect } from "../fixtures";
 
 test.describe("Support page", () => {
   test("loads with donation content", async ({ page, waitForAppReady }) => {
-    await page.goto("/support");
+    await page.goto("/donate");
     await waitForAppReady();
 
     await expect(
@@ -27,7 +27,7 @@ test.describe("Support page", () => {
     waitForAppReady,
     consoleErrors,
   }) => {
-    await page.goto("/support");
+    await page.goto("/donate");
     await waitForAppReady();
 
     await page.waitForTimeout(2000);

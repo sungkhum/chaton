@@ -4,6 +4,8 @@
 ## src
     AboutPage
     AlertNotification
+    BlogIndex
+    BlogPostLayout
     chunk-error-boundary
     clearCommunityCache
     community-page
@@ -42,6 +44,7 @@
     MockBubble
     MyErrorLabel
     MyInput
+    near-zero-infrastructure
     NotificationToggle
     PreSignupTutorial
     PrivacyToggle

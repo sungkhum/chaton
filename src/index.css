@@ -785,6 +785,100 @@ input::placeholder {
   animation: modal-card-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* Blog prose styles */
+.prose-chaton {
+  color: #d1d5db;
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
+.prose-chaton h2 {
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  margin-top: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose-chaton h3 {
+  color: #fff;
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.prose-chaton p {
+  margin-bottom: 1.25rem;
+}
+
+.prose-chaton a {
+  color: #34F080;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.prose-chaton a:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.prose-chaton strong {
+  color: #fff;
+  font-weight: 700;
+}
+
+.prose-chaton ul,
+.prose-chaton ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.prose-chaton li {
+  margin-bottom: 0.5rem;
+}
+
+.prose-chaton code {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.375rem;
+  font-size: 0.875em;
+  color: #e5e7eb;
+}
+
+.prose-chaton pre {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.prose-chaton pre code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.prose-chaton blockquote {
+  border-left: 3px solid #34F080;
+  padding-left: 1rem;
+  margin: 1.5rem 0;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.prose-chaton hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin: 2rem 0;
+}
+
 /* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(*),
