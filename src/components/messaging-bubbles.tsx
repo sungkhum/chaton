@@ -232,11 +232,13 @@ function MessageContent({ message }: { message: DecryptedMessageEntryResponse })
         );
       }
       const firstUrl = extractFirstUrl(messageToShow);
+      // Fragment (not <div>) so FormattedMessage stays inline in the bubble flow,
+      // allowing the Telegram-style timestamp spacer to sit on the same line.
       return (
-        <div>
+        <>
           <FormattedMessage mentions={parsed.mentions}>{messageToShow}</FormattedMessage>
           {firstUrl && <LinkPreview url={firstUrl} />}
-        </div>
+        </>
       );
     }
   }
@@ -978,9 +980,10 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                       const timeColor = IsSender ? "text-[#34F080]/50" : "text-gray-500/80";
 
                       if (timestampInside && !isMedia) {
-                        // Text messages: float-right timestamp sits inline when room, wraps right when not
+                        // Telegram-style float: sits on the same line as short text,
+                        // drops to its own right-aligned line when the text fills the width.
                         return (
-                          <span className="inline float-right ml-2 mt-1.5 leading-none">
+                          <span className="float-right ml-3 mt-1 leading-none">
                             <span
                               className={`${timeColor} text-[10px] whitespace-nowrap`}
                               title={new Date(message.MessageInfo.TimestampNanos / 1e6).toLocaleString()}
