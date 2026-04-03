@@ -6,13 +6,15 @@ import {
   getBulkAccessGroups,
   identity,
 } from "deso-protocol";
-import { Loader2 } from "lucide-react";
+import { Globe, Link2, Loader2 } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useStore } from "../store";
 import { toast } from "sonner";
 import { useMembers } from "../hooks/useMembers";
 import { useMobile } from "../hooks/useMobile";
 import { encryptAndSendNewMessage } from "../services/conversations.service";
+import { listGroupInCommunity } from "../services/community.service";
+import { registerInviteCode } from "../utils/invite-link";
 import { withAuth } from "../utils/with-auth";
 import { DEFAULT_KEY_MESSAGING_GROUP_NAME } from "../utils/constants";
 import { GROUP_DISPLAY_NAME, GROUP_IMAGE_URL } from "../utils/extra-data";
@@ -40,6 +42,9 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange }
   const [groupImageUrl, setGroupImageUrl] = useState<string>("");
   const [imageUploading, setImageUploading] = useState(false);
   const [formTouched, setFormTouched] = useState<boolean>(false);
+  const [wantInviteLink, setWantInviteLink] = useState(false);
+  const [wantCommunityList, setWantCommunityList] = useState(false);
+  const [communityDescription, setCommunityDescription] = useState("");
   const { members, addMember, removeMember, onPairMissing } = useMembers(
     setLoading,
     open
@@ -58,6 +63,9 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange }
       setChatName("");
       setGroupImageUrl("");
       setFormTouched(false);
+      setWantInviteLink(false);
+      setWantCommunityList(false);
+      setCommunityDescription("");
     }
   }, [open]);
 
@@ -147,6 +155,23 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange }
         groupName
       );
 
+      // Post-creation: invite link + community listing (non-blocking)
+      if (wantInviteLink || wantCommunityList) {
+        try {
+          await registerInviteCode(appUser.PublicKeyBase58Check, groupName);
+          if (wantCommunityList) {
+            await listGroupInCommunity(
+              appUser.PublicKeyBase58Check,
+              groupName,
+              communityDescription.trim()
+            );
+          }
+        } catch (e) {
+          console.error("Post-creation setup error:", e);
+          toast.error("Group created, but invite link or community listing failed. You can set these up in group settings.");
+        }
+      }
+
       return `${appUser.PublicKeyBase58Check}${accessGroupKeys.AccessGroupKeyName}`;
     } catch (e) {
       console.error(e);
@@ -164,13 +189,13 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange }
           <div className="fixed inset-0 bg-black/60 z-50" onClick={handleOpen} />
           {/* Dialog */}
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-[#0a1019] text-white border border-white/10 w-[90%] md:w-[40%] rounded-2xl">
-              <div className="text-white text-xl font-semibold p-5 border-b border-white/10">
+            <div className="bg-[#0a1019] text-white border border-white/10 w-[90%] md:w-[40%] rounded-2xl max-h-[90vh] flex flex-col overflow-hidden">
+              <div className="text-white text-xl font-semibold p-5 border-b border-white/10 shrink-0">
                 Start New Group Chat
               </div>
 
-              <form name="start-group-chat-form" onSubmit={formSubmit}>
-                <div className="p-5">
+              <form name="start-group-chat-form" onSubmit={formSubmit} className="flex flex-col min-h-0 flex-1">
+                <div className="p-5 overflow-y-auto custom-scrollbar flex-1 min-h-0">
                   <div className="mb-4 md:mb-8 flex items-start gap-4">
                     <GroupImagePicker
                       imageUrl={groupImageUrl}
@@ -236,9 +261,89 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange }
                       ))}
                     </div>
                   </div>
+
+                  {/* Sharing section */}
+                  <div className="border-t border-white/8 pt-4">
+                    <div className="text-xs font-medium uppercase tracking-wider text-white/30 mb-3">
+                      Sharing
+                    </div>
+
+                    {/* Invite link toggle */}
+                    <div className="flex items-center justify-between py-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Link2 className="w-4 h-4 text-blue-300 shrink-0" />
+                        <div className="min-w-0">
+                          <span className="text-sm text-blue-200 font-medium">Create invite link</span>
+                          <p className="text-xs text-white/30">Anyone with the link can request to join</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = !wantInviteLink;
+                          setWantInviteLink(next);
+                          if (!next) setWantCommunityList(false);
+                        }}
+                        className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 ${
+                          wantInviteLink ? "bg-[#34F080]" : "bg-white/10 border border-white/15"
+                        }`}
+                        aria-label="Toggle invite link"
+                      >
+                        <div className={`w-[18px] h-[18px] rounded-full bg-white absolute top-[3px] transition-transform ${
+                          wantInviteLink ? "translate-x-[21px]" : "translate-x-[3px]"
+                        }`} />
+                      </button>
+                    </div>
+
+                    {/* Community listing toggle */}
+                    <div className={`flex items-center justify-between py-2 transition-opacity ${
+                      wantInviteLink ? "opacity-100" : "opacity-30 pointer-events-none"
+                    }`}>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Globe className="w-4 h-4 text-blue-300 shrink-0" />
+                        <div className="min-w-0">
+                          <span className="text-sm text-blue-200 font-medium">List in Community</span>
+                          <p className="text-xs text-white/30">Let others discover this group</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = !wantCommunityList;
+                          setWantCommunityList(next);
+                          if (next && !wantInviteLink) setWantInviteLink(true);
+                        }}
+                        disabled={!wantInviteLink}
+                        className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 disabled:cursor-not-allowed ${
+                          wantCommunityList ? "bg-[#34F080]" : "bg-white/10 border border-white/15"
+                        }`}
+                        aria-label="Toggle community listing"
+                      >
+                        <div className={`w-[18px] h-[18px] rounded-full bg-white absolute top-[3px] transition-transform ${
+                          wantCommunityList ? "translate-x-[21px]" : "translate-x-[3px]"
+                        }`} />
+                      </button>
+                    </div>
+
+                    {/* Description field (visible when community listing is on) */}
+                    {wantCommunityList && (
+                      <div className="mt-2 ml-[26px]">
+                        <textarea
+                          value={communityDescription}
+                          onChange={(e) => setCommunityDescription(e.target.value.slice(0, 200))}
+                          placeholder="Short description for the directory..."
+                          rows={2}
+                          className="w-full rounded-lg px-3 py-2 text-sm text-blue-200 placeholder:text-white/20 bg-white/5 border border-white/10 focus:border-white/20 outline-none resize-none"
+                        />
+                        <div className="text-right text-[11px] text-white/25 mt-1">
+                          {communityDescription.length}/200
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div className="flex justify-end p-5 pt-0 gap-3">
+                <div className="flex justify-end p-5 gap-3 border-t border-white/8 shrink-0">
                   <button
                     onClick={handleOpen}
                     type="button"
