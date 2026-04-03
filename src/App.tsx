@@ -7,11 +7,13 @@ import {
   NOTIFICATION_EVENTS,
   User,
 } from "deso-protocol";
+import { Loader2 } from "lucide-react";
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { Toaster } from "sonner";
 import { Header } from "./components/header";
 import { InstallPrompt } from "./components/install-prompt";
 import { MessagingApp } from "./components/messaging-app";
+import { SwUpdatePrompt } from "./components/sw-update-prompt";
 import { RouteErrorBoundary } from "./components/route-error-boundary";
 
 // bundle-dynamic-imports: Lazy-load route pages so GSAP and page code
@@ -22,6 +24,7 @@ const SupportPage = lazy(() => import("./components/support-page").then(m => ({ 
 const JoinGroupPage = lazy(() => import("./components/join-group-page"));
 const CommunityPage = lazy(() => import("./components/community-page"));
 import { AppUser, useStore } from "./store";
+import { useShallow } from "zustand/react/shallow";
 import { withAuth } from "./utils/with-auth";
 import {
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
@@ -196,7 +199,9 @@ function App() {
     }
   };
 
-  const { setAppUser, setIsLoadingUser } = useStore();
+  const { setAppUser, setIsLoadingUser } = useStore(
+    useShallow((s) => ({ setAppUser: s.setAppUser, setIsLoadingUser: s.setIsLoadingUser }))
+  );
 
   useEffect(
     () => {
@@ -299,7 +304,9 @@ function App() {
     []
   );
 
-  const { appUser, isLoadingUser } = useStore();
+  const { appUser, isLoadingUser } = useStore(
+    useShallow((s) => ({ appUser: s.appUser, isLoadingUser: s.isLoadingUser }))
+  );
   const path = window.location.pathname;
   const splashRemovedRef = useRef(false);
 
@@ -340,7 +347,7 @@ function App() {
   // instead of flashing a blank white screen on slow connections.
   const routeFallback = (
     <div className="App flex items-center justify-center">
-      <img src="/ChatOn-Logo-Small.png" alt="ChatOn" width={80} height={80} className="rounded-[20px] animate-pulse" />
+      <Loader2 className="w-8 h-8 animate-spin text-[#34F080]" />
     </div>
   );
 
@@ -400,14 +407,7 @@ function App() {
   if (isLoadingUser && !appUser) {
     return (
       <div className="App flex items-center justify-center">
-        <img
-          src="/ChatOn-Logo-Small.png"
-          alt="ChatOn"
-          width={80}
-          height={80}
-          className="rounded-[20px]"
-          style={{ animation: "splash-pulse 1.8s ease-in-out infinite" }}
-        />
+        <Loader2 className="w-8 h-8 animate-spin text-[#34F080]" />
       </div>
     );
   }
@@ -419,6 +419,7 @@ function App() {
         <MessagingApp />
       </section>
       <InstallPrompt />
+      <SwUpdatePrompt />
       <Toaster position="top-right" theme="dark" />
     </div>
   );

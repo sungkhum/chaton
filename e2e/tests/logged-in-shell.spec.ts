@@ -59,10 +59,10 @@ test.describe("Logged-in app shell", () => {
       store.setState({ appUser: null, isLoadingUser: true });
     });
 
-    // Must show the loading indicator (pulsing logo), NOT the landing page
+    // Must show the loading spinner, NOT the landing page
     // (which starts elements at autoAlpha:0 = black screen), and NOT a blank div.
     await expect(
-      page.locator("img[alt='ChatOn'][style*='animation']")
+      page.locator(".animate-spin")
     ).toBeVisible({ timeout: 5_000 });
 
     // Landing page hero must NOT be rendered during loading
