@@ -613,11 +613,13 @@ export const MessagingApp: FC = () => {
                 setPubKeyPlusGroupName(newPubKey);
                 // Update last-read since user is viewing this conversation
                 if (updatedMessages[0]) {
+                  const ts = updatedMessages[0].MessageInfo.TimestampNanos;
                   cacheLastReadTimestamp(
                     appUser.PublicKeyBase58Check,
                     currentSelectedKey,
-                    updatedMessages[0].MessageInfo.TimestampNanos
+                    ts
                   );
+                  sendRead(currentSelectedKey, String(ts));
                 }
               }
             } catch {
@@ -652,11 +654,13 @@ export const MessagingApp: FC = () => {
                         );
                         setPubKeyPlusGroupName(newPubKey);
                         if (updatedMessages[0]) {
+                          const ts = updatedMessages[0].MessageInfo.TimestampNanos;
                           cacheLastReadTimestamp(
                             appUser.PublicKeyBase58Check,
                             currentSelectedKey,
-                            updatedMessages[0].MessageInfo.TimestampNanos
+                            ts
                           );
+                          sendRead(currentSelectedKey, String(ts));
                         }
                       }
                     }).catch(() => {
@@ -744,6 +748,14 @@ export const MessagingApp: FC = () => {
         const lastRead = merged[k];
         if (lastRead !== undefined && msgTs > lastRead) {
           unreadMap.set(k, 1);
+        }
+      }
+      // Clear conversations that were unread but are now read (the key fix
+      // for cross-device sync — initializeUnread only adds, never removes)
+      for (const existingKey of store.unreadByConversation.keys()) {
+        if (!unreadMap.has(existingKey)) {
+          clearUnread(existingKey);
+          removeUnreadConversation(existingKey);
         }
       }
       syncUnreadConversations(Array.from(unreadMap.keys()));
