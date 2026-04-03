@@ -353,10 +353,10 @@ export const TipConfirmDialog = ({
   const needsDesoForFees = currency === "USDC" && appUser.BalanceNanos < MIN_DESO_FOR_FEES;
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 modal-backdrop-enter" onClick={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={`Send tip to ${displayName}`}
         tabIndex={-1}
-        className="bg-[#050e1d] text-blue-100 border border-blue-900/60 w-[92%] max-w-[420px] max-h-[90vh] rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-y-auto overflow-x-hidden outline-none"
+        className="bg-[#050e1d] text-blue-100 border border-blue-900/60 w-[92%] max-w-[420px] max-h-[90vh] rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-y-auto overflow-x-hidden outline-none modal-card-enter"
         onClick={(e) => e.stopPropagation()}>
 
         {/* Header gradient bar — themed per currency */}

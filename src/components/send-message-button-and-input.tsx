@@ -1,4 +1,4 @@
-import { KeyboardEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { KeyboardEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, startTransition, ViewTransition } from "react";
 import { Send, Image, Loader2, Pencil, X, Check, Paperclip, CircleDollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { EmojiPickerButton } from "./compose/emoji-picker-button";
@@ -517,10 +517,13 @@ export const SendMessageButtonAndInput = ({
       )}
 
       {replyTo && !editingMessage && (
+        <ViewTransition enter="slide-up" exit="fade-out" default="none">
         <ReplyBanner replyTo={replyTo.text} onCancel={() => onCancelReply?.()} />
+        </ViewTransition>
       )}
 
       {editingMessage && (
+        <ViewTransition enter="slide-up" exit="fade-out" default="none">
         <div className="flex items-center justify-between bg-blue-500/10 border-l-2 border-blue-400 px-3 py-2 mb-2 rounded-r-lg">
           <div className="text-xs text-gray-400 truncate flex-1 flex items-center gap-1.5">
             <Pencil className="w-3 h-3 shrink-0" />
@@ -536,6 +539,7 @@ export const SendMessageButtonAndInput = ({
             <X className="w-4 h-4" />
           </button>
         </div>
+        </ViewTransition>
       )}
 
       <div className={`relative flex flex-col glass-compose rounded-2xl px-3 py-2 transition-[border-color,box-shadow] duration-200 ${isExpanded ? "border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]" : ""}`}>
@@ -549,23 +553,27 @@ export const SendMessageButtonAndInput = ({
           />
         )}
         {showGifPicker && (
+          <ViewTransition enter="fade-in" exit="fade-out" default="none">
           <GifPicker
             onSelectGif={handleGifSelect}
             onStageGif={stageGif}
             onSelectSticker={handleStickerSelect}
-            onClose={() => setShowGifPicker(false)}
+            onClose={() => startTransition(() => setShowGifPicker(false))}
             customerId={publicKey}
           />
+          </ViewTransition>
         )}
 
         {/* Inline attachments — inside the compose box */}
         {showLinkPanel && (
+          <ViewTransition enter="fade-in" exit="fade-out" default="none">
           <LinkAttachmentPanel
             ref={linkPanelRef}
             onSend={handleLinkSend}
-            onCancel={() => setShowLinkPanel(false)}
+            onCancel={() => startTransition(() => setShowLinkPanel(false))}
             isSending={isSending}
           />
+          </ViewTransition>
         )}
         {pendingGif && (() => {
           const preview = getDisplayUrl(pendingGif, "md");
@@ -591,30 +599,34 @@ export const SendMessageButtonAndInput = ({
           );
         })()}
         {pendingImage && (
+          <ViewTransition enter="fade-in" exit="fade-out" default="none">
           <ImagePreviewPanel
             file={pendingImage.file}
             previewUrl={pendingImage.previewUrl}
             onCancel={cancelImage}
           />
+          </ViewTransition>
         )}
         {pendingVideo && (
+          <ViewTransition enter="fade-in" exit="fade-out" default="none">
           <VideoPreviewPanel
             file={pendingVideo.file}
             previewUrl={pendingVideo.previewUrl}
             onCancel={cancelVideo}
           />
+          </ViewTransition>
         )}
 
         {/* Input row — icons, textarea, send all inline */}
         <div className="flex items-center gap-x-1">
           <div className="flex items-center gap-0.5 shrink-0">
             <button
-              onClick={() => {
+              onClick={() => startTransition(() => {
                 setShowLinkPanel((v) => !v);
                 setShowGifPicker(false);
                 if (pendingImage) cancelImage();
                 if (pendingVideo) cancelVideo();
-              }}
+              })}
               aria-label="Attach a link"
               title="Share a link"
               className="p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors"
@@ -641,10 +653,12 @@ export const SendMessageButtonAndInput = ({
             <button
               onClick={() => {
                 const opening = !showGifPicker;
-                setShowGifPicker(opening);
-                setShowLinkPanel(false);
-                if (pendingImage) cancelImage();
-                if (pendingVideo) cancelVideo();
+                startTransition(() => {
+                  setShowGifPicker(opening);
+                  setShowLinkPanel(false);
+                  if (pendingImage) cancelImage();
+                  if (pendingVideo) cancelVideo();
+                });
                 if (opening) textareaRef.current?.blur();
               }}
               className="px-1.5 py-2 text-gray-500 hover:text-[#34F080] cursor-pointer font-extrabold text-[11px] tracking-wide transition-colors shrink-0"

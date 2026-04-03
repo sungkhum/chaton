@@ -16,12 +16,12 @@ export const SendFundsDialog = ({ appUser, onClose }: StartGroupChatProps) => {
     <Fragment>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/60 z-50"
+        className="fixed inset-0 bg-black/60 z-50 modal-backdrop-enter"
         onClick={onClose}
       />
       {/* Dialog */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-[#0c1220] text-white border border-white/8 w-[min(95vw,440px)] max-h-[95%] overflow-y-auto custom-scrollbar rounded-2xl shadow-2xl shadow-black/40">
+        <div className="bg-[#0c1220] text-white border border-white/8 w-[min(95vw,440px)] max-h-[95%] overflow-y-auto custom-scrollbar rounded-2xl shadow-2xl shadow-black/40 modal-card-enter">
           <div className="text-white text-xl font-semibold p-5 border-b border-white/8">
             Get $DESO to get started
           </div>

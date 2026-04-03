@@ -15,7 +15,7 @@ import {
   transferDeSoToken,
 } from "deso-protocol";
 import { useInterval } from "hooks/useInterval";
-import { FC, lazy, Suspense, useContext, useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { FC, lazy, Suspense, useContext, useEffect, useMemo, useRef, useState, useCallback, startTransition } from "react";
 import { toast } from "sonner";
 import { useMessageSearch } from "../hooks/useMessageSearch";
 import { useMobile } from "../hooks/useMobile";
@@ -2303,7 +2303,7 @@ export const MessagingApp: FC = () => {
             </div>
 
             <div
-              className={`w-full h-full shrink-0 md:flex-1 md:min-w-0 bg-[#0a1019] md:ml-0 md:z-auto ${
+              className={`w-full h-full shrink-0 md:flex-1 md:min-w-0 bg-[#0a1019] md:ml-0 md:z-auto transition-[margin-left] duration-300 ease-in-out ${
                 selectedConversationPublicKey ? "ml-[-100%] z-50" : ""
               }`}
             >
@@ -2527,22 +2527,22 @@ export const MessagingApp: FC = () => {
                             },
                           }));
                         }}
-                        onReply={(msg) => {
+                        onReply={(msg) => startTransition(() => {
                           setEditingMessage(null);
                           setReplyToMessage({
                             text: msg.DecryptedMessage || "",
                             timestamp: msg.MessageInfo.TimestampNanosString,
                           });
-                        }}
+                        })}
                         hiddenMessageIds={hiddenMessageIds}
                         pendingTipTimestamps={pendingTipTimestamps}
-                        onEdit={(msg) => {
+                        onEdit={(msg) => startTransition(() => {
                           setReplyToMessage(null);
                           setEditingMessage({
                             text: msg.DecryptedMessage || "",
                             timestamp: msg.MessageInfo.TimestampNanosString,
                           });
-                        }}
+                        })}
                         onDeleteForMe={async (timestampNanosString) => {
                           if (!appUser) return;
                           setHiddenMessageIds((prev) => {
@@ -2902,9 +2902,9 @@ export const MessagingApp: FC = () => {
                     key={selectedConversationPublicKey}
                     conversationKey={selectedConversationPublicKey}
                     replyTo={replyToMessage}
-                    onCancelReply={() => setReplyToMessage(null)}
+                    onCancelReply={() => startTransition(() => setReplyToMessage(null))}
                     editingMessage={editingMessage}
-                    onCancelEdit={() => setEditingMessage(null)}
+                    onCancelEdit={() => startTransition(() => setEditingMessage(null))}
                     onSubmitEdit={async (newText, timestamp) => {
                       if (!appUser || !newText.trim() || !selectedConversation) return;
                       setEditingMessage(null);

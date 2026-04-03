@@ -1,6 +1,6 @@
 import { ChatType, identity, ProfileEntryResponse } from "deso-protocol";
 import { Archive, ArrowLeft, BellOff, Check, ChevronDown, ChevronRight, Globe, MessageSquarePlus, Plus, RotateCcw, Search, Share2, ShieldOff, UserPlus, Users, X } from "lucide-react";
-import { FC, useEffect, useRef, useState } from "react";
+import { FC, useEffect, useRef, useState, startTransition, addTransitionType, ViewTransition } from "react";
 import { toast } from "sonner";
 import { useStore } from "../store";
 import { useShallow } from "zustand/react/shallow";
@@ -102,6 +102,16 @@ export const MessagingConversationAccount: FC<{
   const blockedCount = blockedUsers.size;
   const dismissedCount = dismissedUsers.size;
 
+  const tabOrder = { chats: 0, requests: 1, community: 2 } as const;
+
+  const switchTab = (next: typeof activeTab) => {
+    const dir = tabOrder[next] > tabOrder[activeTab] ? "tab-right" : "tab-left";
+    startTransition(() => {
+      addTransitionType(dir);
+      setActiveTab(next);
+    });
+  };
+
   const handleComposeSelectUser = (publicKeyWithGroup: string) => {
     rehydrateConversation(publicKeyWithGroup, true);
   };
@@ -167,7 +177,7 @@ export const MessagingConversationAccount: FC<{
         {/* Tab Header */}
         <div className="flex border-b border-white/10">
           <button
-            onClick={() => setActiveTab("chats")}
+            onClick={() => switchTab("chats")}
             className={`flex-1 py-3 text-sm font-bold transition-colors cursor-pointer border-b-2 ${
               activeTab === "chats"
                 ? "border-[#34F080] text-[#34F080]"
@@ -177,7 +187,7 @@ export const MessagingConversationAccount: FC<{
             Chats
           </button>
           <button
-            onClick={() => setActiveTab("requests")}
+            onClick={() => switchTab("requests")}
             className={`flex-1 py-3 text-sm font-bold transition-colors cursor-pointer border-b-2 relative ${
               activeTab === "requests"
                 ? "border-[#34F080] text-[#34F080]"
@@ -192,7 +202,7 @@ export const MessagingConversationAccount: FC<{
             )}
           </button>
           <button
-            onClick={() => setActiveTab("community")}
+            onClick={() => switchTab("community")}
             className={`flex-1 py-3 text-sm font-bold transition-colors cursor-pointer border-b-2 ${
               activeTab === "community"
                 ? "border-[#34F080] text-[#34F080]"
@@ -206,6 +216,7 @@ export const MessagingConversationAccount: FC<{
         {/* Tab Content */}
         <div className="h-[calc(100%-46px)] relative">
           {activeTab === "chats" && (
+            <ViewTransition enter={{ "tab-right": "slide-from-right", "tab-left": "slide-from-left", default: "none" }} exit={{ "tab-right": "slide-to-left", "tab-left": "slide-to-right", default: "none" }} default="none">
             <div className="conversations-list overflow-y-auto max-h-full custom-scrollbar pb-24">
               {/* Telegram-style collapsible archived section */}
               {archivedCount > 0 && (
@@ -454,9 +465,11 @@ export const MessagingConversationAccount: FC<{
                 );
               })}
             </div>
+            </ViewTransition>
           )}
 
           {activeTab === "requests" && (
+            <ViewTransition enter={{ "tab-right": "slide-from-right", "tab-left": "slide-from-left", default: "none" }} exit={{ "tab-right": "slide-to-left", "tab-left": "slide-to-right", default: "none" }} default="none">
             <div className="conversations-list overflow-y-auto max-h-full custom-scrollbar pb-24">
               {/* Sub-navigation for blocked/dismissed lists */}
               {requestSubView === "blocked" && (
@@ -683,12 +696,15 @@ export const MessagingConversationAccount: FC<{
                 </>
               )}
             </div>
+            </ViewTransition>
           )}
 
           {activeTab === "community" && (
+            <ViewTransition enter={{ "tab-right": "slide-from-right", "tab-left": "slide-from-left", default: "none" }} exit={{ "tab-right": "slide-to-left", "tab-left": "slide-to-right", default: "none" }} default="none">
             <div className="h-full overflow-hidden">
               <CommunityTab onSelectConversation={onClick} />
             </div>
+            </ViewTransition>
           )}
         </div>
         </>

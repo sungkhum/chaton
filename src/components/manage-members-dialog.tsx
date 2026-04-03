@@ -887,7 +887,7 @@ export const ManageMembersDialog = ({
 
       {open && (
         <>
-          <div className="fixed inset-0 bg-black/60 z-[60]" onClick={() => setOpen(false)} role="presentation" />
+          <div className="fixed inset-0 bg-black/60 z-[60] modal-backdrop-enter" onClick={() => setOpen(false)} role="presentation" />
           <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4">
             <div
               ref={dialogRef}
@@ -895,7 +895,7 @@ export const ManageMembersDialog = ({
               aria-modal="true"
               aria-labelledby="manage-members-title"
               tabIndex={-1}
-              className="bg-[#0c1220] text-white border border-white/8 w-full sm:w-[min(95vw,480px)] rounded-t-2xl sm:rounded-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col outline-none shadow-2xl shadow-black/40"
+              className="bg-[#0c1220] text-white border border-white/8 w-full sm:w-[min(95vw,480px)] rounded-t-2xl sm:rounded-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col outline-none shadow-2xl shadow-black/40 modal-card-enter"
             >
               {/* Sticky header */}
               <div className="text-white p-5 border-b border-white/8 flex-shrink-0">

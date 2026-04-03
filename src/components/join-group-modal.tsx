@@ -154,9 +154,9 @@ export function JoinGroupModal({ code, onClose }: { code: string; onClose: () =>
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/70 z-[60]" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/70 z-[60] modal-backdrop-enter" onClick={onClose} />
       <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4">
-        <div className="bg-[#0a1220] text-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl max-h-[85vh] overflow-y-auto border border-blue-900/50">
+        <div className="bg-[#0a1220] text-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl max-h-[85vh] overflow-y-auto border border-blue-900/50 modal-card-enter">
           {/* Header with close */}
           <div className="flex items-center justify-between p-4 border-b border-white/5">
             <button onClick={onClose} className="p-1 text-gray-400 hover:text-white cursor-pointer" aria-label="Back to chat">

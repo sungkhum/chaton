@@ -189,10 +189,10 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, 
       {open && (
         <>
           {/* Backdrop */}
-          <div className="fixed inset-0 bg-black/60 z-[60]" onClick={handleOpen} />
+          <div className="fixed inset-0 bg-black/60 z-[60] modal-backdrop-enter" onClick={handleOpen} />
           {/* Dialog */}
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <div className="bg-[#0c1220] text-white border border-white/8 w-[min(95vw,440px)] rounded-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl shadow-black/40">
+            <div className="bg-[#0c1220] text-white border border-white/8 w-[min(95vw,440px)] rounded-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl shadow-black/40 modal-card-enter">
 
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/8 shrink-0">
