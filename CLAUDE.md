@@ -1,5 +1,13 @@
 # Chaton
 
+## Codebase Index
+
+Pre-built index files in `.ai-codex/` — read these FIRST before exploring the codebase:
+- `.ai-codex/components.md` — all components
+- `.ai-codex/lib.md` — utility/library function exports
+
+Auto-updated on every commit via husky pre-commit hook.
+
 ## Architecture
 
 DeSo-first. No custom backend or database. The DeSo blockchain is the data layer.
