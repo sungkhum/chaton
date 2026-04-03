@@ -622,9 +622,79 @@ export const SendMessageButtonAndInput = forwardRef<SendMessageInputHandle, Send
           </ViewTransition>
         )}
 
-        {/* Input row — icons, textarea, send all inline */}
+        {/* Action buttons — compact toolbar row on mobile, inline on desktop */}
+        <div className="flex items-center gap-1 md:hidden pb-1.5 mb-0.5 border-b border-white/[0.06]">
+          <button
+            onClick={() => startTransition(() => {
+              setShowLinkPanel((v) => !v);
+              setShowGifPicker(false);
+              if (pendingImage) cancelImage();
+              if (pendingVideo) cancelVideo();
+            })}
+            aria-label="Attach a link"
+            title="Share a link"
+            className="p-1.5 text-gray-500 hover:text-[#34F080] active:text-[#34F080] cursor-pointer shrink-0 transition-colors rounded-lg hover:bg-white/[0.04] active:bg-white/[0.06]"
+            type="button"
+          >
+            <Paperclip className="w-4 h-4" />
+          </button>
+
+          <label className={`p-1.5 text-gray-500 hover:text-[#34F080] active:text-[#34F080] cursor-pointer shrink-0 transition-colors rounded-lg hover:bg-white/[0.04] active:bg-white/[0.06] ${isUploading ? "opacity-50 pointer-events-none" : ""}`}>
+            {isUploading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Image className="w-4 h-4" />
+            )}
+            <input
+              type="file"
+              accept="image/*,video/*"
+              className="hidden"
+              onChange={handleMediaSelect}
+              disabled={isUploading}
+            />
+          </label>
+
+          <button
+            onClick={() => {
+              const opening = !showGifPicker;
+              startTransition(() => {
+                setShowGifPicker(opening);
+                setShowLinkPanel(false);
+                if (pendingImage) cancelImage();
+                if (pendingVideo) cancelVideo();
+              });
+              if (opening) textareaRef.current?.blur();
+            }}
+            className="px-1.5 py-1.5 text-gray-500 hover:text-[#34F080] active:text-[#34F080] cursor-pointer font-bold text-[10px] tracking-wide transition-colors shrink-0 rounded-lg hover:bg-white/[0.04] active:bg-white/[0.06]"
+            type="button"
+          >
+            GIF
+          </button>
+
+          <div className="shrink-0">
+            <EmojiPickerButton onEmojiSelect={insertAtCursor} />
+          </div>
+
+          {onTipClick && (
+            <button
+              onClick={() => {
+                setShowGifPicker(false);
+                setShowLinkPanel(false);
+                onTipClick();
+              }}
+              aria-label="Send a tip"
+              title="Send a tip"
+              className="p-1.5 text-gray-500 hover:text-white active:text-white cursor-pointer shrink-0 transition-colors rounded-lg hover:bg-white/[0.04] active:bg-white/[0.06]"
+              type="button"
+            >
+              <CircleDollarSign className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Input row — icons inline on desktop, textarea + send always */}
         <div className="flex items-center gap-x-1">
-          <div className="flex items-center gap-0.5 shrink-0">
+          <div className="hidden md:flex items-center gap-0.5 shrink-0">
             <button
               onClick={() => startTransition(() => {
                 setShowLinkPanel((v) => !v);
