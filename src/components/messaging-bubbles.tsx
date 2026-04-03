@@ -8,7 +8,7 @@ import {
   GetPaginatedMessagesForDmThreadResponse,
   GetPaginatedMessagesForGroupChatThreadResponse,
 } from "deso-protocol";
-import { Loader2, Lock, Reply, Plus, Pencil, Trash2, CircleDollarSign } from "lucide-react";
+import { Loader2, Lock, Reply, Plus, Pencil, Trash2, CircleDollarSign, Copy } from "lucide-react";
 import { FC, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChunkErrorBoundary } from "./shared/chunk-error-boundary";
@@ -1159,6 +1159,20 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                           >
                             <Reply className="w-4 h-4 text-gray-400 shrink-0" />
                             Reply
+                          </button>
+                        )}
+                        {message.DecryptedMessage && parsed.type !== "reaction" && (
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(message.DecryptedMessage);
+                              closeMobileAction();
+                            }}
+                            className={`w-full flex items-center gap-3 ${
+                              isMobile ? "px-4 py-3" : "px-3 py-2"
+                            } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
+                          >
+                            <Copy className="w-4 h-4 text-gray-400 shrink-0" />
+                            Copy
                           </button>
                         )}
                         {onTip && !IsSender && !(message as any)._localId && (
