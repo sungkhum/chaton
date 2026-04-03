@@ -1,0 +1,24 @@
+# ChatOn
+
+> ChatOn is a free, decentralized, end-to-end encrypted messaging app built on the
+> DeSo blockchain. Available as a progressive web app at getchaton.com. No phone
+> number required. Zero infrastructure cost. Censorship-resistant message delivery.
+
+## About
+- [Homepage](https://getchaton.com): ChatOn landing page with features overview
+- [Community Directory](https://getchaton.com/community): Browse and join public ChatOn groups
+- [Privacy Policy](https://getchaton.com/privacy): ChatOn privacy policy
+- [Terms of Service](https://getchaton.com/terms): ChatOn terms of service
+- [Support](https://getchaton.com/support): Support ChatOn development
+
+## Source Code
+- [GitHub](https://github.com/sungkhum/chaton): ChatOn open source repository
+
+## Key Facts
+- End-to-end encrypted by default (all messages, DMs and groups)
+- No phone number or email required to sign up
+- Messages stored on the DeSo blockchain (censorship-resistant)
+- Progressive Web App (no app store required, works on any device)
+- $0/month infrastructure cost (DeSo blockchain is the data layer)
+- Open source
+- Features: group chats, emoji reactions, GIFs, media sharing, push notifications, community directory
