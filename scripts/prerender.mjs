@@ -3,25 +3,18 @@
  * Pre-renders public (non-authenticated) pages at build time so search
  * engines and AI crawlers see real content instead of an empty <div id="root">.
  *
+ * Also generates OG images for blog posts using the same Playwright browser.
+ *
  * Run after `vite build`:  npm run prerender
- *
- * How it works:
- *  1. Starts a tiny static server for dist/
- *  2. Opens each public route in headless Chromium (via Playwright)
- *     with prefers-reduced-motion so GSAP skips animations and shows all content
- *  3. Waits for React to render + usePageMeta to set meta tags
- *  4. Captures the full HTML and writes it to the correct dist/ path
- *
- * The messaging app (logged-in routes) stays client-only.
- * Cloudflare Pages serves static files before _redirects rules,
- * so dist/privacy/index.html is served automatically for /privacy.
  */
 
 import { chromium } from "@playwright/test";
 import { createServer } from "node:http";
 import { readFile, writeFile, mkdir, stat } from "node:fs/promises";
-import { join, extname } from "node:path";
+import { join, extname, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const DIST = join(process.cwd(), "dist");
 const PORT = 4199;
 
@@ -30,6 +23,15 @@ const ROUTES = [
   "/", "/privacy", "/terms", "/support", "/community",
   "/faq", "/about", "/compare",
   "/blog", "/blog/near-zero-infrastructure",
+];
+
+/** Blog posts that need OG images. */
+const OG_POSTS = [
+  {
+    slug: "near-zero-infrastructure",
+    title: "How We Run a Messaging App for Near-Zero Cost",
+    date: "April 3, 2026",
+  },
 ];
 
 const MIME = {
@@ -91,6 +93,57 @@ function startServer() {
   return new Promise((resolve) => server.listen(PORT, () => resolve(server)));
 }
 
+/** Generate OG images for blog posts by screenshotting an HTML template. */
+async function generateOgImages(browser) {
+  if (OG_POSTS.length === 0) return;
+
+  console.log("Generating OG images...\n");
+
+  const templatePath = join(__dirname, "og-template.html");
+  const templateHtml = await readFile(templatePath, "utf-8");
+  const logoPath = join(DIST, "ChatOn-Logo-Small.png");
+  const logoBase64 = `data:image/png;base64,${(await readFile(logoPath)).toString("base64")}`;
+
+  for (const post of OG_POSTS) {
+    process.stdout.write(`  og: ${post.slug} ... `);
+
+    const page = await browser.newPage({
+      viewport: { width: 1200, height: 630 },
+    });
+
+    try {
+      // Inject post data into the template
+      const html = templateHtml
+        .replace("TITLE", post.title)
+        .replace("DATE", post.date);
+
+      await page.setContent(html, { waitUntil: "networkidle" });
+
+      // Set the logo src to base64 (avoids network request)
+      await page.evaluate((src) => {
+        document.getElementById("logo").setAttribute("src", src);
+      }, logoBase64);
+
+      await page.waitForTimeout(200);
+
+      const outDir = join(DIST, "og", "blog");
+      await mkdir(outDir, { recursive: true });
+      await page.screenshot({
+        path: join(outDir, `${post.slug}.png`),
+        type: "png",
+      });
+
+      console.log("done");
+    } catch (err) {
+      console.log(`FAILED: ${err.message}`);
+    } finally {
+      await page.close();
+    }
+  }
+
+  console.log("");
+}
+
 async function prerender() {
   if (!(await exists(DIST))) {
     console.error("dist/ not found. Run `vite build` first.");
@@ -103,12 +156,11 @@ async function prerender() {
   const browser = await chromium.launch({ headless: true });
 
   try {
+    // 1. Pre-render HTML pages
     for (const route of ROUTES) {
       process.stdout.write(`  ${route} ... `);
 
       const page = await browser.newPage({
-        // GSAP's matchMedia handler detects reduced-motion and immediately
-        // sets all elements to autoAlpha:1 — no animation delay.
         reducedMotion: "reduce",
       });
 
@@ -118,10 +170,7 @@ async function prerender() {
           timeout: 30000,
         });
 
-        // Wait for React to render content inside #root
         await page.waitForSelector("#root > *", { timeout: 15000 });
-
-        // Give usePageMeta and SeoStructuredData effects time to settle
         await page.waitForTimeout(2000);
 
         const html = await page.content();
@@ -141,12 +190,17 @@ async function prerender() {
         await page.close();
       }
     }
+
+    console.log("");
+
+    // 2. Generate OG images for blog posts
+    await generateOgImages(browser);
   } finally {
     await browser.close();
     server.close();
   }
 
-  console.log("\nPre-rendering complete!\n");
+  console.log("Pre-rendering complete!\n");
 }
 
 prerender().catch((err) => {

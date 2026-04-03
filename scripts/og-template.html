@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 1200px;
+    height: 630px;
+    background: #0F1520;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 60px 70px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Gradient orbs */
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(120px);
+  }
+  .orb-1 {
+    width: 600px; height: 600px;
+    background: #34F080;
+    opacity: 0.08;
+    top: -200px; left: -150px;
+  }
+  .orb-2 {
+    width: 500px; height: 500px;
+    background: #20E0AA;
+    opacity: 0.06;
+    bottom: -150px; right: -100px;
+  }
+  .orb-3 {
+    width: 400px; height: 400px;
+    background: #40B8E0;
+    opacity: 0.05;
+    top: 50%; right: 20%;
+  }
+
+  .content {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    border-radius: 999px;
+    background: rgba(52, 240, 128, 0.08);
+    border: 1px solid rgba(52, 240, 128, 0.2);
+    color: #34F080;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+    width: fit-content;
+  }
+
+  .title {
+    font-size: 52px;
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    max-width: 900px;
+  }
+
+  .date {
+    margin-top: 24px;
+    font-size: 18px;
+    color: rgba(255,255,255,0.4);
+    font-weight: 500;
+  }
+
+  .footer {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+  }
+
+  .brand-name {
+    font-size: 26px;
+    font-weight: 900;
+    letter-spacing: -0.04em;
+  }
+
+  .domain {
+    font-size: 18px;
+    color: rgba(255,255,255,0.35);
+    font-weight: 500;
+  }
+
+  /* Gradient bar at top */
+  .top-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #34F080, #20E0AA, #40B8E0, #3090D0);
+  }
+</style>
+</head>
+<body>
+  <div class="top-bar"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <div class="content">
+    <div class="tag">ChatOn Blog</div>
+    <div class="title" id="title">TITLE</div>
+    <div class="date" id="date">DATE</div>
+  </div>
+
+  <div class="footer">
+    <div class="brand">
+      <img class="logo" id="logo" src="" alt="">
+      <span class="brand-name">ChatOn</span>
+    </div>
+    <span class="domain">getchaton.com</span>
+  </div>
+</body>
+</html>

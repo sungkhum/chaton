@@ -1,4 +1,4 @@
-import { lazy, type ComponentType } from "react";
+import { lazy, type ComponentType, type LazyExoticComponent } from "react";
 
 export interface BlogPostMeta {
   slug: string;
@@ -36,9 +36,21 @@ export const getBlogSlugs = () => BLOG_POSTS.map((p) => p.slug);
 export const getPostBySlug = (slug: string) =>
   BLOG_POSTS.find((p) => p.slug === slug);
 
-/** Lazy-load a post component. */
+/**
+ * Cache of lazy-loaded post components. lazy() must be called at module
+ * scope (not during render) to maintain stable component identity.
+ */
+const lazyCache = new Map<string, LazyExoticComponent<ComponentType>>();
+
+/** Get a lazy-loaded post component (cached). */
 export const lazyPost = (slug: string) => {
+  const cached = lazyCache.get(slug);
+  if (cached) return cached;
+
   const post = getPostBySlug(slug);
   if (!post) return null;
-  return lazy(post.component);
+
+  const component = lazy(post.component);
+  lazyCache.set(slug, component);
+  return component;
 };

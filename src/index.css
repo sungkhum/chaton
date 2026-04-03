@@ -86,6 +86,18 @@ body,
   text-align: center;
 }
 
+/* Prevent text selection on long-press for touch devices (mobile).
+   Child .select-text classes override the parent select-none, so we need
+   !important here to prevent highlighting when long-pressing message bubbles. */
+@media (pointer: coarse) {
+  .mobile-no-select,
+  .mobile-no-select * {
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    -webkit-touch-callout: none !important;
+  }
+}
+
 /* Hide scrollbar for horizontal chip rows */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

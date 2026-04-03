@@ -27,6 +27,7 @@ export const BlogPostLayout = ({
     title: `${title} — ChatOn Blog`,
     description,
     path: `/blog/${slug}`,
+    ogImage: `/og/blog/${slug}.png`,
   });
 
   const root = useRef<HTMLDivElement>(null);

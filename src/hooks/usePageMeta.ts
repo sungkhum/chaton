@@ -11,6 +11,7 @@ interface PageMeta {
   path?: string;
   ogTitle?: string;
   ogDescription?: string;
+  ogImage?: string;
 }
 
 function setMetaTag(
@@ -28,7 +29,9 @@ function setMetaTag(
 }
 
 function setLinkTag(rel: string, href: string) {
-  let el = document.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null;
+  let el = document.querySelector(
+    `link[rel="${rel}"]`
+  ) as HTMLLinkElement | null;
   if (!el) {
     el = document.createElement("link");
     el.setAttribute("rel", rel);
@@ -43,6 +46,7 @@ export function usePageMeta({
   path,
   ogTitle,
   ogDescription,
+  ogImage,
 }: PageMeta = {}) {
   useEffect(() => {
     const prevTitle = document.title;
@@ -58,8 +62,16 @@ export function usePageMeta({
     setMetaTag("twitter:title", ogTitle ?? title);
     setMetaTag("twitter:description", ogDescription ?? description);
 
+    if (ogImage) {
+      const imageUrl = ogImage.startsWith("http")
+        ? ogImage
+        : BASE_URL + ogImage;
+      setMetaTag("og:image", imageUrl);
+      setMetaTag("twitter:image", imageUrl);
+    }
+
     return () => {
       document.title = prevTitle;
     };
-  }, [title, description, path, ogTitle, ogDescription]);
+  }, [title, description, path, ogTitle, ogDescription, ogImage]);
 }
