@@ -1,4 +1,12 @@
-import { Loader2, CheckCircle, Bell, BellOff, Archive, EllipsisVertical, ShieldBan } from "lucide-react";
+import {
+  Loader2,
+  CheckCircle,
+  Bell,
+  BellOff,
+  Archive,
+  EllipsisVertical,
+  ShieldBan,
+} from "lucide-react";
 import { useStore } from "../store";
 import { useShallow } from "zustand/react/shallow";
 import {
@@ -15,14 +23,30 @@ import {
   transferDeSoToken,
 } from "deso-protocol";
 import { useInterval } from "hooks/useInterval";
-import { FC, lazy, Suspense, useContext, useEffect, useMemo, useRef, useState, useCallback, startTransition } from "react";
+import {
+  FC,
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+  startTransition,
+} from "react";
 import { toast } from "sonner";
 import { useMessageSearch } from "../hooks/useMessageSearch";
 import { useMobile } from "../hooks/useMobile";
 import { useWebSocket } from "../hooks/useWebSocket";
-import { useTypingIndicator, useTypingDisplay } from "../hooks/useTypingIndicator";
+import {
+  useTypingIndicator,
+  useTypingDisplay,
+} from "../hooks/useTypingIndicator";
 import { usePresence } from "../hooks/usePresence";
-import { needsPermissionUpgrade, requestFullPermissions } from "../utils/with-auth";
+import {
+  needsPermissionUpgrade,
+  requestFullPermissions,
+} from "../utils/with-auth";
 import {
   classifyConversation,
   createApprovalAssociation,
@@ -74,7 +98,6 @@ import {
   MAX_MEMBERS_TO_REQUEST_IN_GROUP,
   MESSAGES_ONE_REQUEST_LIMIT,
   PUBLIC_KEY_LENGTH,
-  PUBLIC_KEY_PREFIX,
   REFRESH_MESSAGES_INTERVAL_MS,
   REFRESH_MESSAGES_MOBILE_INTERVAL_MS,
   TITLE_DIVIDER,
@@ -86,13 +109,24 @@ import {
   scrollContainerToElement,
 } from "../utils/helpers";
 import { Conversation, ConversationMap } from "../utils/types";
-import { buildExtraData, getGroupImageUrl, MSG_REPLY_TO, MSG_REPLY_PREVIEW, type MentionEntry } from "../utils/extra-data";
+import {
+  buildExtraData,
+  getGroupImageUrl,
+  MSG_REPLY_TO,
+  MSG_REPLY_PREVIEW,
+  type MentionEntry,
+} from "../utils/extra-data";
 const LazyTipConfirmDialog = lazy(() =>
-  import("./tip-confirm-dialog").then(m => ({ default: m.TipConfirmDialog }))
+  import("./tip-confirm-dialog").then((m) => ({ default: m.TipConfirmDialog }))
 );
 import { withAuth } from "../utils/with-auth";
 import { fetchExchangeRate, usdToNanos } from "../utils/exchange-rate";
-import { fetchUsdcBalance, usdToUsdcBaseUnits, toHexUint256, invalidateUsdcBalanceCache } from "../utils/usdc-balance";
+import {
+  fetchUsdcBalance,
+  usdToUsdcBaseUnits,
+  toHexUint256,
+  invalidateUsdcBalanceCache,
+} from "../utils/usdc-balance";
 import { USDC_CREATOR_PUBLIC_KEY } from "../utils/constants";
 import { getCachedTipCurrency } from "../services/cache.service";
 import type { TipCurrency } from "../utils/extra-data";
@@ -102,16 +136,25 @@ let lastMicroTipTime = 0;
 const MICRO_TIP_COOLDOWN_MS = 3000;
 import { JoinGroupModal } from "./join-group-modal";
 const LazyManageMembersDialog = lazy(() =>
-  import("./manage-members-dialog").then(m => ({ default: m.ManageMembersDialog }))
+  import("./manage-members-dialog").then((m) => ({
+    default: m.ManageMembersDialog,
+  }))
 );
 import { MessagingBubblesAndAvatar } from "./messaging-bubbles";
 import { MessagingConversationAccount } from "./messaging-conversation-accounts";
 import { MessagingConversationButton } from "./messaging-conversation-button";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { MessagingSetupButton } from "./messaging-setup-button";
-import { OnboardingWizard, isOnboardingComplete, markOnboardingComplete } from "./onboarding/onboarding-wizard";
+import {
+  OnboardingWizard,
+  isOnboardingComplete,
+  markOnboardingComplete,
+} from "./onboarding/onboarding-wizard";
 import { shortenLongWord } from "./search-users";
-import { SendMessageButtonAndInput, SendMessageInputHandle } from "./send-message-button-and-input";
+import {
+  SendMessageButtonAndInput,
+  SendMessageInputHandle,
+} from "./send-message-button-and-input";
 import {
   addPendingMessage,
   removePendingMessage,
@@ -125,25 +168,21 @@ import {
 } from "../services/hidden-messages.service";
 
 export const MockBubble: FC<{
-    username: string;
-    avatar: string;
-    timestamp: string;
-    text: string;
-    direction: string;
-  }> = ({
-    username,
-    avatar,
-    timestamp,
-    text,
-    direction = "left",
-  }) => {
+  username: string;
+  avatar: string;
+  timestamp: string;
+  text: string;
+  direction: string;
+}> = ({ username, avatar, timestamp, text, direction = "left" }) => {
   return (
     <>
-      { direction == "receiver" && (
+      {direction == "receiver" && (
         <div className="flex flex-row items-start gap-3">
           <div className="flex flex-col w-[60px] top-2 relative justify-center items-center">
-            <img src={avatar} className="w-[38px] rounded-full mb-2"/>
-            <span className="whitespace-nowrap text-xs text-gray-500">{timestamp}</span>
+            <img src={avatar} className="w-[38px] rounded-full mb-2" />
+            <span className="whitespace-nowrap text-xs text-gray-500">
+              {timestamp}
+            </span>
           </div>
           <div className="flex flex-col items-start">
             <div className="mb-2 text-[#34F080] text-xs">{username}</div>
@@ -153,11 +192,13 @@ export const MockBubble: FC<{
           </div>
         </div>
       )}
-      { direction == "sender" && (
+      {direction == "sender" && (
         <div className="flex flex-row-reverse items-start gap-3">
           <div className="flex flex-col w-[60px] justify-center items-center">
-            <img src={avatar} className="w-[38px] rounded-full mb-2"/>
-            <span className="whitespace-nowrap text-xs text-gray-500">{timestamp}</span>
+            <img src={avatar} className="w-[38px] rounded-full mb-2" />
+            <span className="whitespace-nowrap text-xs text-gray-500">
+              {timestamp}
+            </span>
           </div>
           <div className="flex flex-col items-end">
             <div className="mb-2 text-[#34F080] text-xs">{username}</div>
@@ -176,11 +217,19 @@ export const MockBubble: FC<{
  * Includes ExtraData fingerprint so media messages (images, videos, GIFs) with
  * identical or empty captions don't collide.
  */
-function msgDedupeKey(senderPk: string, text: string | undefined, extraData?: Record<string, string>): string {
+function msgDedupeKey(
+  senderPk: string,
+  text: string | undefined,
+  extraData?: Record<string, string>
+): string {
   let key = senderPk + ":" + (text?.slice(0, 50) ?? "");
   if (extraData) {
     // Use media URLs as discriminators — they're unique per upload
-    const media = extraData.encryptedImageURLs || extraData.encryptedVideoURLs || extraData["msg:gifUrl"] || "";
+    const media =
+      extraData.encryptedImageURLs ||
+      extraData.encryptedVideoURLs ||
+      extraData["msg:gifUrl"] ||
+      "";
     if (media) key += ":" + media.slice(0, 120);
   }
   return key;
@@ -189,22 +238,38 @@ function msgDedupeKey(senderPk: string, text: string | undefined, extraData?: Re
 export const MessagingApp: FC = () => {
   // State — only these cause re-renders (useShallow does shallow equality)
   const {
-    appUser, isLoadingUser, allAccessGroups, lockRefresh,
-    mutualFollows, approvedUsers, blockedUsers, initiatedChats, chatRequestsLoaded,
-    archivedGroups, archivedGroupAssociationIds,
-    archivedChats, archivedChatAssociationIds,
-    dismissedUsers, dismissedAssociationIds,
-    blockedAssociationIds,
-    unreadByConversation, mutedConversations,
-  } = useStore(useShallow((s) => ({
-    appUser: s.appUser, isLoadingUser: s.isLoadingUser, allAccessGroups: s.allAccessGroups, lockRefresh: s.lockRefresh,
-    mutualFollows: s.mutualFollows, approvedUsers: s.approvedUsers, blockedUsers: s.blockedUsers, initiatedChats: s.initiatedChats, chatRequestsLoaded: s.chatRequestsLoaded,
-    archivedGroups: s.archivedGroups, archivedGroupAssociationIds: s.archivedGroupAssociationIds,
-    archivedChats: s.archivedChats, archivedChatAssociationIds: s.archivedChatAssociationIds,
-    dismissedUsers: s.dismissedUsers, dismissedAssociationIds: s.dismissedAssociationIds,
-    blockedAssociationIds: s.blockedAssociationIds,
-    unreadByConversation: s.unreadByConversation, mutedConversations: s.mutedConversations,
-  })));
+    appUser,
+    isLoadingUser,
+    allAccessGroups,
+    lockRefresh,
+    mutualFollows,
+    approvedUsers,
+    blockedUsers,
+    initiatedChats,
+    chatRequestsLoaded,
+    archivedGroups,
+    archivedChats,
+    dismissedUsers,
+    unreadByConversation,
+    mutedConversations,
+  } = useStore(
+    useShallow((s) => ({
+      appUser: s.appUser,
+      isLoadingUser: s.isLoadingUser,
+      allAccessGroups: s.allAccessGroups,
+      lockRefresh: s.lockRefresh,
+      mutualFollows: s.mutualFollows,
+      approvedUsers: s.approvedUsers,
+      blockedUsers: s.blockedUsers,
+      initiatedChats: s.initiatedChats,
+      chatRequestsLoaded: s.chatRequestsLoaded,
+      archivedGroups: s.archivedGroups,
+      archivedChats: s.archivedChats,
+      dismissedUsers: s.dismissedUsers,
+      unreadByConversation: s.unreadByConversation,
+      mutedConversations: s.mutedConversations,
+    }))
+  );
   // Actions — stable references, never cause re-renders
   const setAllAccessGroups = useStore((s) => s.setAllAccessGroups);
   const setLockRefresh = useStore((s) => s.setLockRefresh);
@@ -237,11 +302,12 @@ export const MessagingApp: FC = () => {
   const setJoinRequestCounts = useStore((s) => s.setJoinRequestCounts);
   const [usernameByPublicKeyBase58Check, setUsernameByPublicKeyBase58Check] =
     useState<{ [key: string]: string }>({});
-  const [profilePicByPublicKey, setProfilePicByPublicKey] =
-    useState<{ [key: string]: string }>({});
+  const [profilePicByPublicKey, setProfilePicByPublicKey] = useState<{
+    [key: string]: string;
+  }>({});
   const [autoFetchConversations, setAutoFetchConversations] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [pubKeyPlusGroupName, setPubKeyPlusGroupName] = useState<string>("");
+  const [, setPubKeyPlusGroupName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [loadingConversation, setLoadingConversation] = useState(false);
   const [selectedConversationPublicKey, setSelectedConversationPublicKey] =
@@ -259,15 +325,23 @@ export const MessagingApp: FC = () => {
     text: string;
     timestamp: string;
   } | null>(null);
-  const [hiddenMessageIds, setHiddenMessageIds] = useState<Set<string>>(new Set());
+  const [hiddenMessageIds, setHiddenMessageIds] = useState<Set<string>>(
+    new Set()
+  );
   const [tipTarget, setTipTarget] = useState<{
     recipientPublicKey: string;
     recipientUsername?: string;
     tipReplyTo?: string;
   } | null>(null);
-  const [pendingTipTimestamps, setPendingTipTimestamps] = useState<Set<string>>(new Set());
+  const [pendingTipTimestamps, setPendingTipTimestamps] = useState<Set<string>>(
+    new Set()
+  );
   const [dmMenuOpen, setDmMenuOpen] = useState(false);
-  const [blockConfirm, setBlockConfirm] = useState<{ conversationKey: string; publicKey: string; name: string } | null>(null);
+  const [blockConfirm, setBlockConfirm] = useState<{
+    conversationKey: string;
+    publicKey: string;
+    name: string;
+  } | null>(null);
   const { isMobile } = useMobile();
 
   // Close DM menu, block dialog, and tip dialog when switching conversations
@@ -298,7 +372,9 @@ export const MessagingApp: FC = () => {
       if (navigator.serviceWorker?.controller) {
         navigator.serviceWorker.controller.postMessage(msg);
       } else {
-        navigator.serviceWorker?.ready.then((reg) => reg.active?.postMessage(msg));
+        navigator.serviceWorker?.ready.then((reg) =>
+          reg.active?.postMessage(msg)
+        );
       }
     };
 
@@ -320,7 +396,9 @@ export const MessagingApp: FC = () => {
       if (navigator.serviceWorker?.controller) {
         navigator.serviceWorker.controller.postMessage(msg);
       } else {
-        navigator.serviceWorker?.ready.then((reg) => reg.active?.postMessage(msg));
+        navigator.serviceWorker?.ready.then((reg) =>
+          reg.active?.postMessage(msg)
+        );
       }
     };
 
@@ -496,6 +574,7 @@ export const MessagingApp: FC = () => {
                 ...conv,
                 messages: conv.messages.map((m: any) => {
                   if (m._status !== "confirmed") return m;
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
                   const { _status, _localId, ...rest } = m;
                   return rest;
                 }),
@@ -526,8 +605,13 @@ export const MessagingApp: FC = () => {
             // Preserve the full thread; only refresh conversation metadata
             merged[key] = { ...convo, messages: merged[key].messages };
           } else {
-            const optimistic = merged[key].messages.filter((m: any) => m._localId);
-            merged[key] = { ...convo, messages: [...optimistic, ...convo.messages] };
+            const optimistic = merged[key].messages.filter(
+              (m: any) => m._localId
+            );
+            merged[key] = {
+              ...convo,
+              messages: [...optimistic, ...convo.messages],
+            };
           }
         }
         if (appUser) cacheConversations(appUser.PublicKeyBase58Check, merged);
@@ -548,161 +632,219 @@ export const MessagingApp: FC = () => {
       if (!appUser || wsFetchingRef.current) return;
       wsFetchingRef.current = true;
 
-      getConversations(appUser.PublicKeyBase58Check, allAccessGroups).then(
-        async ({ conversations: updated, updatedAllAccessGroups, publicKeyToProfileEntryResponseMap }) => {
-          setAllAccessGroups(updatedAllAccessGroups);
+      getConversations(appUser.PublicKeyBase58Check, allAccessGroups)
+        .then(
+          async ({
+            conversations: updated,
+            updatedAllAccessGroups,
+            publicKeyToProfileEntryResponseMap,
+          }) => {
+            setAllAccessGroups(updatedAllAccessGroups);
 
-          // Update username + profile pic maps from fresh profile data
-          const freshUsernames: Record<string, string> = {};
-          const freshPics: Record<string, string> = {};
-          for (const [pk, profile] of Object.entries(publicKeyToProfileEntryResponseMap)) {
-            if (profile?.Username) freshUsernames[pk] = profile.Username;
-            const ed = profile?.ExtraData;
-            if (ed) {
-              const picUrl = ed.NFTProfilePictureUrl || ed.LargeProfilePicURL;
-              if (picUrl) freshPics[pk] = picUrl;
-            }
-          }
-          if (Object.keys(freshUsernames).length) {
-            mergeUsernames(freshUsernames);
-          }
-          if (Object.keys(freshPics).length) {
-            setProfilePicByPublicKey((s) => ({ ...s, ...freshPics }));
-          }
-
-          const currentSelectedKey = selectedConversationPublicKeyRef.current;
-
-          // The sender passes their own conversation key as threadId, but for
-          // DMs the recipient indexes the same conversation under the sender's
-          // public key. Resolve to the local key so comparisons and unread
-          // tracking use the correct key.
-          let localThreadId = threadId;
-          if (threadId && !updated[threadId] && _from) {
-            const candidateKey = _from + DEFAULT_KEY_MESSAGING_GROUP_NAME;
-            if (updated[candidateKey]) {
-              localThreadId = candidateKey;
-            }
-          }
-
-          if (localThreadId && localThreadId === currentSelectedKey) {
-            // Notification is for the conversation we're looking at —
-            // fetch the full thread so new messages appear immediately.
-            try {
-              const { updatedConversations, pubKeyPlusGroupName: newPubKey } =
-                await getConversation(currentSelectedKey, {
-                  ...updated,
-                  [currentSelectedKey]: updated[currentSelectedKey],
-                });
-
-              // Guard: user may have switched conversations during the await —
-              // still merge the conversation list so new chats appear, but skip
-              // the full-thread merge and pubKeyPlusGroupName update.
-              if (selectedConversationPublicKeyRef.current !== currentSelectedKey) {
-                simpleConversationMerge(updated);
-                return;
+            // Update username + profile pic maps from fresh profile data
+            const freshUsernames: Record<string, string> = {};
+            const freshPics: Record<string, string> = {};
+            for (const [pk, profile] of Object.entries(
+              publicKeyToProfileEntryResponseMap
+            )) {
+              if (profile?.Username) freshUsernames[pk] = profile.Username;
+              const ed = profile?.ExtraData;
+              if (ed) {
+                const picUrl = ed.NFTProfilePictureUrl || ed.LargeProfilePicURL;
+                if (picUrl) freshPics[pk] = picUrl;
               }
+            }
+            if (Object.keys(freshUsernames).length) {
+              mergeUsernames(freshUsernames);
+            }
+            if (Object.keys(freshPics).length) {
+              setProfilePicByPublicKey((s) => ({ ...s, ...freshPics }));
+            }
 
-              const updatedMessages =
-                updatedConversations[currentSelectedKey]?.messages;
-              if (updatedMessages) {
-                mergeConversationUpdate(
-                  updatedConversations,
-                  currentSelectedKey,
-                  updatedMessages
-                );
-                setPubKeyPlusGroupName(newPubKey);
-                // Update last-read since user is viewing this conversation
-                if (updatedMessages[0]) {
-                  const ts = updatedMessages[0].MessageInfo.TimestampNanos;
-                  cacheLastReadTimestamp(
-                    appUser.PublicKeyBase58Check,
+            const currentSelectedKey = selectedConversationPublicKeyRef.current;
+
+            // The sender passes their own conversation key as threadId, but for
+            // DMs the recipient indexes the same conversation under the sender's
+            // public key. Resolve to the local key so comparisons and unread
+            // tracking use the correct key.
+            let localThreadId = threadId;
+            if (threadId && !updated[threadId] && _from) {
+              const candidateKey = _from + DEFAULT_KEY_MESSAGING_GROUP_NAME;
+              if (updated[candidateKey]) {
+                localThreadId = candidateKey;
+              }
+            }
+
+            if (localThreadId && localThreadId === currentSelectedKey) {
+              // Notification is for the conversation we're looking at —
+              // fetch the full thread so new messages appear immediately.
+              try {
+                const { updatedConversations, pubKeyPlusGroupName: newPubKey } =
+                  await getConversation(currentSelectedKey, {
+                    ...updated,
+                    [currentSelectedKey]: updated[currentSelectedKey],
+                  });
+
+                // Guard: user may have switched conversations during the await —
+                // still merge the conversation list so new chats appear, but skip
+                // the full-thread merge and pubKeyPlusGroupName update.
+                if (
+                  selectedConversationPublicKeyRef.current !==
+                  currentSelectedKey
+                ) {
+                  simpleConversationMerge(updated);
+                  return;
+                }
+
+                const updatedMessages =
+                  updatedConversations[currentSelectedKey]?.messages;
+                if (updatedMessages) {
+                  mergeConversationUpdate(
+                    updatedConversations,
                     currentSelectedKey,
-                    ts
+                    updatedMessages
                   );
-                  sendRead(currentSelectedKey, String(ts));
+                  setPubKeyPlusGroupName(newPubKey);
+                  // Update last-read since user is viewing this conversation
+                  if (updatedMessages[0]) {
+                    const ts = updatedMessages[0].MessageInfo.TimestampNanos;
+                    cacheLastReadTimestamp(
+                      appUser.PublicKeyBase58Check,
+                      currentSelectedKey,
+                      ts
+                    );
+                    sendRead(currentSelectedKey, String(ts));
+                  }
                 }
+              } catch {
+                // Fall back to the simple conversation-list merge
+                simpleConversationMerge(updated);
               }
-            } catch {
-              // Fall back to the simple conversation-list merge
+            } else {
+              // Different conversation — just merge the conversation list
               simpleConversationMerge(updated);
-            }
-          } else {
-            // Different conversation — just merge the conversation list
-            simpleConversationMerge(updated);
 
-            const isDmConvo = updated[localThreadId]?.ChatType === ChatType.DM;
-            if (localThreadId && !useStore.getState().mutedConversations.has(localThreadId) && !useStore.getState().archivedGroups.has(localThreadId) && !(isDmConvo && _from && useStore.getState().blockedUsers.has(_from)) && !(isDmConvo && _from && useStore.getState().dismissedUsers.has(_from)) && !(isDmConvo && _from && useStore.getState().archivedChats.has(_from))) {
-              useStore.getState().incrementUnread(localThreadId);
-            } else if (!localThreadId) {
-              // Resume from background — fetch full thread and compute
-              // unread in parallel (they're independent operations).
-              const threadPromise =
-                currentSelectedKey && updated[currentSelectedKey]
-                  ? getConversation(currentSelectedKey, {
-                      ...updated,
-                      [currentSelectedKey]: updated[currentSelectedKey],
-                    }).then(({ updatedConversations, pubKeyPlusGroupName: newPubKey }) => {
-                      // Guard: user may have switched conversations during the await
-                      if (selectedConversationPublicKeyRef.current !== currentSelectedKey) return;
-                      const updatedMessages =
-                        updatedConversations[currentSelectedKey]?.messages;
-                      if (updatedMessages) {
-                        mergeConversationUpdate(
-                          updatedConversations,
-                          currentSelectedKey,
-                          updatedMessages
-                        );
-                        setPubKeyPlusGroupName(newPubKey);
-                        if (updatedMessages[0]) {
-                          const ts = updatedMessages[0].MessageInfo.TimestampNanos;
-                          cacheLastReadTimestamp(
-                            appUser.PublicKeyBase58Check,
-                            currentSelectedKey,
-                            ts
-                          );
-                          sendRead(currentSelectedKey, String(ts));
-                        }
-                      }
-                    }).catch(() => {
-                      // Full thread fetch failed — simple merge already applied above
-                    })
-                  : Promise.resolve();
+              const isDmConvo =
+                updated[localThreadId]?.ChatType === ChatType.DM;
+              if (
+                localThreadId &&
+                !useStore.getState().mutedConversations.has(localThreadId) &&
+                !useStore.getState().archivedGroups.has(localThreadId) &&
+                !(
+                  isDmConvo &&
+                  _from &&
+                  useStore.getState().blockedUsers.has(_from)
+                ) &&
+                !(
+                  isDmConvo &&
+                  _from &&
+                  useStore.getState().dismissedUsers.has(_from)
+                ) &&
+                !(
+                  isDmConvo &&
+                  _from &&
+                  useStore.getState().archivedChats.has(_from)
+                )
+              ) {
+                useStore.getState().incrementUnread(localThreadId);
+              } else if (!localThreadId) {
+                // Resume from background — fetch full thread and compute
+                // unread in parallel (they're independent operations).
+                const threadPromise =
+                  currentSelectedKey && updated[currentSelectedKey]
+                    ? getConversation(currentSelectedKey, {
+                        ...updated,
+                        [currentSelectedKey]: updated[currentSelectedKey],
+                      })
+                        .then(
+                          ({
+                            updatedConversations,
+                            pubKeyPlusGroupName: newPubKey,
+                          }) => {
+                            // Guard: user may have switched conversations during the await
+                            if (
+                              selectedConversationPublicKeyRef.current !==
+                              currentSelectedKey
+                            )
+                              return;
+                            const updatedMessages =
+                              updatedConversations[currentSelectedKey]
+                                ?.messages;
+                            if (updatedMessages) {
+                              mergeConversationUpdate(
+                                updatedConversations,
+                                currentSelectedKey,
+                                updatedMessages
+                              );
+                              setPubKeyPlusGroupName(newPubKey);
+                              if (updatedMessages[0]) {
+                                const ts =
+                                  updatedMessages[0].MessageInfo.TimestampNanos;
+                                cacheLastReadTimestamp(
+                                  appUser.PublicKeyBase58Check,
+                                  currentSelectedKey,
+                                  ts
+                                );
+                                sendRead(currentSelectedKey, String(ts));
+                              }
+                            }
+                          }
+                        )
+                        .catch(() => {
+                          // Full thread fetch failed — simple merge already applied above
+                        })
+                    : Promise.resolve();
 
-              // Compute unread from timestamps (no await needed — sync reads)
-              const lastReadTimestamps = getCachedLastReadTimestamps(appUser.PublicKeyBase58Check);
-              const store = useStore.getState();
-              const unreadMap = new Map<string, number>();
-              for (const [k, convo] of Object.entries(updated)) {
-                if (k === currentSelectedKey) continue;
-                if (store.mutedConversations.has(k) || store.archivedGroups.has(k)) continue;
-                const latestMsg = convo.messages[0];
-                if (!latestMsg || latestMsg.IsSender) continue;
-                const msgTs = latestMsg.MessageInfo.TimestampNanos;
-                const lastRead = lastReadTimestamps[k];
-                if (lastRead === undefined) {
-                  cacheLastReadTimestamp(appUser.PublicKeyBase58Check, k, msgTs);
-                } else if (msgTs > lastRead) {
-                  unreadMap.set(k, 1);
+                // Compute unread from timestamps (no await needed — sync reads)
+                const lastReadTimestamps = getCachedLastReadTimestamps(
+                  appUser.PublicKeyBase58Check
+                );
+                const store = useStore.getState();
+                const unreadMap = new Map<string, number>();
+                for (const [k, convo] of Object.entries(updated)) {
+                  if (k === currentSelectedKey) continue;
+                  if (
+                    store.mutedConversations.has(k) ||
+                    store.archivedGroups.has(k)
+                  )
+                    continue;
+                  const latestMsg = convo.messages[0];
+                  if (!latestMsg || latestMsg.IsSender) continue;
+                  const msgTs = latestMsg.MessageInfo.TimestampNanos;
+                  const lastRead = lastReadTimestamps[k];
+                  if (lastRead === undefined) {
+                    cacheLastReadTimestamp(
+                      appUser.PublicKeyBase58Check,
+                      k,
+                      msgTs
+                    );
+                  } else if (msgTs > lastRead) {
+                    unreadMap.set(k, 1);
+                  }
                 }
-              }
-              syncUnreadConversations(Array.from(unreadMap.keys()));
-              if (unreadMap.size > 0) {
-                useStore.getState().initializeUnread(unreadMap);
-              } else {
-                navigator.clearAppBadge?.()?.catch?.(() => {});
-              }
+                syncUnreadConversations(Array.from(unreadMap.keys()));
+                if (unreadMap.size > 0) {
+                  useStore.getState().initializeUnread(unreadMap);
+                } else {
+                  navigator.clearAppBadge?.()?.catch?.(() => {});
+                }
 
-              // Wait for thread fetch before releasing wsFetchingRef
-              await threadPromise;
+                // Wait for thread fetch before releasing wsFetchingRef
+                await threadPromise;
+              }
             }
           }
-        }
-      ).catch(() => {}).finally(() => { wsFetchingRef.current = false; });
+        )
+        .catch(() => {})
+        .finally(() => {
+          wsFetchingRef.current = false;
+        });
     },
     [appUser, allAccessGroups, mergeConversationUpdate, simpleConversationMerge]
   );
 
-  const { onTypingReceived, getTypingUsersForConversation } = useTypingDisplay();
+  const { onTypingReceived, getTypingUsersForConversation } =
+    useTypingDisplay();
 
   const setOnlineUsers = useStore((s) => s.setOnlineUsers);
   const { getPresence, getOnlineCount, fetchPresenceForKeys } = usePresence();
@@ -741,7 +883,8 @@ export const MessagingApp: FC = () => {
       const convos = conversationsRef.current;
       const unreadMap = new Map<string, number>();
       for (const [k, convo] of Object.entries(convos)) {
-        if (store.mutedConversations.has(k) || store.archivedGroups.has(k)) continue;
+        if (store.mutedConversations.has(k) || store.archivedGroups.has(k))
+          continue;
         const latestMsg = convo.messages[0];
         if (!latestMsg || latestMsg.IsSender) continue;
         const msgTs = latestMsg.MessageInfo.TimestampNanos;
@@ -768,24 +911,51 @@ export const MessagingApp: FC = () => {
   const { onKeystroke } = useTypingIndicator(sendTyping);
 
   // Derive classified conversation maps from the single conversations state + store Sets
-  const { chatConversations, requestConversations, archivedConversations } = useMemo(() => {
-    if (!appUser) return { chatConversations: {} as ConversationMap, requestConversations: {} as ConversationMap, archivedConversations: {} as ConversationMap };
-    const chats: ConversationMap = {};
-    const requests: ConversationMap = {};
-    const archived: ConversationMap = {};
-    for (const [key, convo] of Object.entries(conversations)) {
-      const cls = classifyConversation(
-        convo, key, appUser.PublicKeyBase58Check,
-        mutualFollows, approvedUsers, blockedUsers, initiatedChats, archivedGroups,
-        archivedChats, dismissedUsers
-      );
-      if (cls === "chat") chats[key] = convo;
-      else if (cls === "request") requests[key] = convo;
-      else if (cls === "archived") archived[key] = convo;
-      // "blocked" and "dismissed" → omitted
-    }
-    return { chatConversations: chats, requestConversations: requests, archivedConversations: archived };
-  }, [conversations, mutualFollows, approvedUsers, blockedUsers, initiatedChats, archivedGroups, archivedChats, dismissedUsers, appUser]);
+  const { chatConversations, requestConversations, archivedConversations } =
+    useMemo(() => {
+      if (!appUser)
+        return {
+          chatConversations: {} as ConversationMap,
+          requestConversations: {} as ConversationMap,
+          archivedConversations: {} as ConversationMap,
+        };
+      const chats: ConversationMap = {};
+      const requests: ConversationMap = {};
+      const archived: ConversationMap = {};
+      for (const [key, convo] of Object.entries(conversations)) {
+        const cls = classifyConversation(
+          convo,
+          key,
+          appUser.PublicKeyBase58Check,
+          mutualFollows,
+          approvedUsers,
+          blockedUsers,
+          initiatedChats,
+          archivedGroups,
+          archivedChats,
+          dismissedUsers
+        );
+        if (cls === "chat") chats[key] = convo;
+        else if (cls === "request") requests[key] = convo;
+        else if (cls === "archived") archived[key] = convo;
+        // "blocked" and "dismissed" → omitted
+      }
+      return {
+        chatConversations: chats,
+        requestConversations: requests,
+        archivedConversations: archived,
+      };
+    }, [
+      conversations,
+      mutualFollows,
+      approvedUsers,
+      blockedUsers,
+      initiatedChats,
+      archivedGroups,
+      archivedChats,
+      dismissedUsers,
+      appUser,
+    ]);
 
   // Clean up UI state after a conversation's classification changes
   const cleanupAfterClassificationChange = (conversationKey: string) => {
@@ -803,7 +973,10 @@ export const MessagingApp: FC = () => {
     }
   };
 
-  const handleAcceptRequest = async (conversationKey: string, publicKey: string) => {
+  const handleAcceptRequest = async (
+    conversationKey: string,
+    publicKey: string
+  ) => {
     if (!appUser) return;
     approveUser(publicKey);
     // Clear search so the conversation appears in the right tab
@@ -813,13 +986,16 @@ export const MessagingApp: FC = () => {
     }
     try {
       await createApprovalAssociation(appUser.PublicKeyBase58Check, publicKey);
-    } catch (e) {
+    } catch {
       rollbackApproval(publicKey);
       toast.error("Failed to accept chat request");
     }
   };
 
-  const handleBlockRequest = async (conversationKey: string, publicKey: string) => {
+  const handleBlockRequest = async (
+    conversationKey: string,
+    publicKey: string
+  ) => {
     if (!appUser) return;
     blockUser(publicKey);
     cleanupAfterClassificationChange(conversationKey);
@@ -829,7 +1005,10 @@ export const MessagingApp: FC = () => {
         action: { label: "Undo", onClick: () => handleUnblock(publicKey) },
       });
       // Background-fetch the association ID so unblock works
-      fetchAssociationsByType(appUser.PublicKeyBase58Check, ASSOCIATION_TYPE_BLOCKED)
+      fetchAssociationsByType(
+        appUser.PublicKeyBase58Check,
+        ASSOCIATION_TYPE_BLOCKED
+      )
         .then((ids) => {
           const current = useStore.getState().blockedAssociationIds;
           const next = new Map(current);
@@ -837,17 +1016,23 @@ export const MessagingApp: FC = () => {
           useStore.setState({ blockedAssociationIds: next });
         })
         .catch(() => {});
-    } catch (e) {
+    } catch {
       rollbackBlock(publicKey);
       toast.error("Failed to block user");
     }
   };
 
-  const handleArchiveGroup = async (conversationKey: string, groupOwnerPublicKey: string, groupKeyName: string) => {
+  const handleArchiveGroup = async (
+    conversationKey: string,
+    groupOwnerPublicKey: string,
+    groupKeyName: string
+  ) => {
     if (!appUser) return;
 
     // Best-effort: send "left" system message while still a member
-    const username = appUser.ProfileEntryResponse?.Username || appUser.PublicKeyBase58Check.slice(0, 8);
+    const username =
+      appUser.ProfileEntryResponse?.Username ||
+      appUser.PublicKeyBase58Check.slice(0, 8);
     sendSystemMessage(
       appUser.PublicKeyBase58Check,
       groupOwnerPublicKey,
@@ -859,15 +1044,22 @@ export const MessagingApp: FC = () => {
     archiveGroup(conversationKey);
     cleanupAfterClassificationChange(conversationKey);
     try {
-      await createArchiveAssociation(appUser.PublicKeyBase58Check, groupOwnerPublicKey, groupKeyName);
+      await createArchiveAssociation(
+        appUser.PublicKeyBase58Check,
+        groupOwnerPublicKey,
+        groupKeyName
+      );
       toast("Left group chat", {
-        action: { label: "Undo", onClick: () => handleUnarchiveGroup(conversationKey) },
+        action: {
+          label: "Undo",
+          onClick: () => handleUnarchiveGroup(conversationKey),
+        },
       });
       // Background: fetch the association ID so Rejoin works without page refresh
       fetchArchivedGroups(appUser.PublicKeyBase58Check)
         .then((ids) => mergeArchivedGroupIds(ids))
         .catch(() => {});
-    } catch (e) {
+    } catch {
       rollbackArchive(conversationKey);
       toast.error("Failed to leave group");
     }
@@ -916,7 +1108,10 @@ export const MessagingApp: FC = () => {
               systemMembers: members,
             }),
           },
-        } as DecryptedMessageEntryResponse & { _status: string; _localId: string };
+        } as DecryptedMessageEntryResponse & {
+          _status: string;
+          _localId: string;
+        };
 
         return {
           ...prev,
@@ -929,36 +1124,53 @@ export const MessagingApp: FC = () => {
 
   const handleUnarchiveGroup = async (conversationKey: string) => {
     if (!appUser) return;
-    const associationId = useStore.getState().archivedGroupAssociationIds.get(conversationKey);
+    const associationId = useStore
+      .getState()
+      .archivedGroupAssociationIds.get(conversationKey);
     if (!associationId) {
       toast.error("Cannot rejoin — association not found");
       return;
     }
     unarchiveGroup(conversationKey);
     try {
-      await deleteArchiveAssociation(appUser.PublicKeyBase58Check, associationId);
+      await deleteArchiveAssociation(
+        appUser.PublicKeyBase58Check,
+        associationId
+      );
       toast.success("Rejoined group chat");
-    } catch (e) {
+    } catch {
       rollbackUnarchive(conversationKey, associationId);
       toast.error("Failed to rejoin group");
     }
   };
 
   // ── Archive DM chat ──
-  const handleArchiveChat = async (conversationKey: string, publicKey: string) => {
+  const handleArchiveChat = async (
+    conversationKey: string,
+    publicKey: string
+  ) => {
     if (!appUser) return;
     archiveChat(publicKey);
     cleanupAfterClassificationChange(conversationKey);
     try {
-      await createArchiveChatAssociation(appUser.PublicKeyBase58Check, publicKey);
+      await createArchiveChatAssociation(
+        appUser.PublicKeyBase58Check,
+        publicKey
+      );
       toast("Chat archived", {
-        action: { label: "Undo", onClick: () => handleUnarchiveChat(publicKey) },
+        action: {
+          label: "Undo",
+          onClick: () => handleUnarchiveChat(publicKey),
+        },
       });
       // Background-fetch the association ID so unarchive works
-      fetchAssociationsByType(appUser.PublicKeyBase58Check, ASSOCIATION_TYPE_CHAT_ARCHIVED)
+      fetchAssociationsByType(
+        appUser.PublicKeyBase58Check,
+        ASSOCIATION_TYPE_CHAT_ARCHIVED
+      )
         .then((ids) => mergeArchivedChatIds(ids))
         .catch(() => {});
-    } catch (e) {
+    } catch {
       rollbackArchiveChat(publicKey);
       toast.error("Failed to archive chat");
     }
@@ -967,23 +1179,30 @@ export const MessagingApp: FC = () => {
   const handleUnarchiveChat = async (publicKey: string) => {
     if (!appUser) return;
     // Read latest from store — not the stale closure — since the ID arrives via background fetch
-    const associationId = useStore.getState().archivedChatAssociationIds.get(publicKey);
+    const associationId = useStore
+      .getState()
+      .archivedChatAssociationIds.get(publicKey);
     if (!associationId) {
-      toast.error("Cannot unarchive — association not found. Try again in a moment.");
+      toast.error(
+        "Cannot unarchive — association not found. Try again in a moment."
+      );
       return;
     }
     unarchiveChat(publicKey);
     try {
       await deleteAssociationById(appUser.PublicKeyBase58Check, associationId);
       toast.success("Chat unarchived");
-    } catch (e) {
+    } catch {
       rollbackUnarchiveChat(publicKey, associationId);
       toast.error("Failed to unarchive chat");
     }
   };
 
   // ── Dismiss request ──
-  const handleDismissRequest = async (conversationKey: string, publicKey: string) => {
+  const handleDismissRequest = async (
+    conversationKey: string,
+    publicKey: string
+  ) => {
     if (!appUser) return;
     dismissUser(publicKey);
     cleanupAfterClassificationChange(conversationKey);
@@ -993,10 +1212,13 @@ export const MessagingApp: FC = () => {
         action: { label: "Undo", onClick: () => handleUndismiss(publicKey) },
       });
       // Background-fetch the association ID so undo works
-      fetchAssociationsByType(appUser.PublicKeyBase58Check, ASSOCIATION_TYPE_DISMISSED)
+      fetchAssociationsByType(
+        appUser.PublicKeyBase58Check,
+        ASSOCIATION_TYPE_DISMISSED
+      )
         .then((ids) => mergeDismissedIds(ids))
         .catch(() => {});
-    } catch (e) {
+    } catch {
       rollbackDismiss(publicKey);
       toast.error("Failed to dismiss request");
     }
@@ -1004,16 +1226,20 @@ export const MessagingApp: FC = () => {
 
   const handleUndismiss = async (publicKey: string) => {
     if (!appUser) return;
-    const associationId = useStore.getState().dismissedAssociationIds.get(publicKey);
+    const associationId = useStore
+      .getState()
+      .dismissedAssociationIds.get(publicKey);
     if (!associationId) {
-      toast.error("Cannot undo — association not found. Try again in a moment.");
+      toast.error(
+        "Cannot undo — association not found. Try again in a moment."
+      );
       return;
     }
     undismissUser(publicKey);
     try {
       await deleteAssociationById(appUser.PublicKeyBase58Check, associationId);
       toast.success("Request restored");
-    } catch (e) {
+    } catch {
       rollbackUndismiss(publicKey, associationId);
       toast.error("Failed to restore request");
     }
@@ -1022,16 +1248,20 @@ export const MessagingApp: FC = () => {
   // ── Unblock user ──
   const handleUnblock = async (publicKey: string) => {
     if (!appUser) return;
-    const associationId = useStore.getState().blockedAssociationIds.get(publicKey);
+    const associationId = useStore
+      .getState()
+      .blockedAssociationIds.get(publicKey);
     if (!associationId) {
-      toast.error("Cannot unblock — association not found. Try again in a moment.");
+      toast.error(
+        "Cannot unblock — association not found. Try again in a moment."
+      );
       return;
     }
     unblockUser(publicKey);
     try {
       await deleteAssociationById(appUser.PublicKeyBase58Check, associationId);
       toast.success("User unblocked");
-    } catch (e) {
+    } catch {
       rollbackUnblock(publicKey, associationId);
       toast.error("Failed to unblock user");
     }
@@ -1044,10 +1274,19 @@ export const MessagingApp: FC = () => {
   const retryPendingMessage = useCallback(
     async (pending: PendingMessage) => {
       if (!appUser) return;
-      const { localId, conversationKey, messageText, recipientPublicKey, recipientAccessGroupKeyName, extraData, senderPublicKey } = pending;
+      const {
+        localId,
+        conversationKey,
+        messageText,
+        recipientPublicKey,
+        recipientAccessGroupKeyName,
+        extraData,
+        senderPublicKey,
+      } = pending;
 
       // Don't retry messages from a different account
-      if (senderPublicKey && senderPublicKey !== appUser.PublicKeyBase58Check) return;
+      if (senderPublicKey && senderPublicKey !== appUser.PublicKeyBase58Check)
+        return;
 
       // Guard against concurrent retries for the same message
       if (retryingIds.current.has(localId)) return;
@@ -1073,18 +1312,29 @@ export const MessagingApp: FC = () => {
           TimestampNanosString: String(TimestampNanos),
           ExtraData: extraData || {},
         },
-      } as DecryptedMessageEntryResponse & { _status: string; _localId: string };
+      } as DecryptedMessageEntryResponse & {
+        _status: string;
+        _localId: string;
+      };
 
       // Check if this message already landed on-chain (app closed after
       // blockchain accepted but before we could remove from IndexedDB).
       // Uses the same dedup key as the poll reconciliation.
-      const dedupeKey = msgDedupeKey(appUser.PublicKeyBase58Check, messageText, extraData);
+      const dedupeKey = msgDedupeKey(
+        appUser.PublicKeyBase58Check,
+        messageText,
+        extraData
+      );
       const convo = conversationsRef.current[conversationKey];
       if (convo) {
         const alreadyOnChain = convo.messages.some(
           (m: any) =>
             !m._localId &&
-            msgDedupeKey(m.SenderInfo.OwnerPublicKeyBase58Check, m.DecryptedMessage, m.MessageInfo?.ExtraData) === dedupeKey
+            msgDedupeKey(
+              m.SenderInfo.OwnerPublicKeyBase58Check,
+              m.DecryptedMessage,
+              m.MessageInfo?.ExtraData
+            ) === dedupeKey
         );
         if (alreadyOnChain) {
           // Message already confirmed — just clean up
@@ -1149,7 +1399,8 @@ export const MessagingApp: FC = () => {
         notifyConversation(
           conversationKey,
           recipientPublicKey,
-          usernameByPublicKeyBase58Check[appUser.PublicKeyBase58Check] || appUser.PublicKeyBase58Check
+          usernameByPublicKeyBase58Check[appUser.PublicKeyBase58Check] ||
+            appUser.PublicKeyBase58Check
         );
         setConversations((prev) => {
           if (!prev[conversationKey]) return prev;
@@ -1166,7 +1417,9 @@ export const MessagingApp: FC = () => {
       } catch (e: any) {
         const errorStr = e?.toString() || "Unknown error";
 
-        const isPermanent = /TxnTooBig|TxnTooLarge|MaxMessageLength/i.test(errorStr);
+        const isPermanent = /TxnTooBig|TxnTooLarge|MaxMessageLength/i.test(
+          errorStr
+        );
 
         setConversations((prev) => {
           if (!prev[conversationKey]) return prev;
@@ -1223,7 +1476,9 @@ export const MessagingApp: FC = () => {
     getPendingMessages(appUser.PublicKeyBase58Check).then((pendingMsgs) => {
       if (pendingMsgs.length === 0) return;
       toast.info(
-        `Retrying ${pendingMsgs.length} unsent message${pendingMsgs.length > 1 ? "s" : ""}…`,
+        `Retrying ${pendingMsgs.length} unsent message${
+          pendingMsgs.length > 1 ? "s" : ""
+        }…`,
         {
           action: {
             label: "Clear all",
@@ -1235,7 +1490,9 @@ export const MessagingApp: FC = () => {
                 const next = { ...prev };
                 for (const key of Object.keys(next)) {
                   const c = next[key];
-                  const filtered = c.messages.filter((m: any) => !m._localId || !localIds.has(m._localId));
+                  const filtered = c.messages.filter(
+                    (m: any) => !m._localId || !localIds.has(m._localId)
+                  );
                   if (filtered.length !== c.messages.length) {
                     next[key] = { ...c, messages: filtered };
                   }
@@ -1267,7 +1524,9 @@ export const MessagingApp: FC = () => {
     if (!appUser) return;
 
     const currentKey = appUser.PublicKeyBase58Check;
-    const switched = prevRehydrateUserRef.current && prevRehydrateUserRef.current !== currentKey;
+    const switched =
+      prevRehydrateUserRef.current &&
+      prevRehydrateUserRef.current !== currentKey;
     prevRehydrateUserRef.current = currentKey;
 
     if (switched) {
@@ -1327,7 +1586,12 @@ export const MessagingApp: FC = () => {
       setLoading(true);
       setAutoFetchConversations(true);
       // If opened from a notification, always select the conversation even on mobile
-      rehydrateConversation(pending || "", false, !isMobile || !!pending, isLoadingUser);
+      rehydrateConversation(
+        pending || "",
+        false,
+        !isMobile || !!pending,
+        isLoadingUser
+      );
     } else {
       setLoading(false);
     }
@@ -1336,13 +1600,17 @@ export const MessagingApp: FC = () => {
   // Handle push notification clicks from service worker
   useEffect(() => {
     const handler = (event: MessageEvent) => {
-      if (event.data?.type === "notification-click" && event.data.conversationKey) {
+      if (
+        event.data?.type === "notification-click" &&
+        event.data.conversationKey
+      ) {
         setSelectedConversationPublicKey(event.data.conversationKey);
         clearUnread(event.data.conversationKey);
       }
     };
     navigator.serviceWorker?.addEventListener("message", handler);
-    return () => navigator.serviceWorker?.removeEventListener("message", handler);
+    return () =>
+      navigator.serviceWorker?.removeEventListener("message", handler);
   }, []);
 
   // advanced-event-handler-refs: store handler in ref so the listener
@@ -1367,18 +1635,28 @@ export const MessagingApp: FC = () => {
           fetchMutualFollows(publicKey),
           fetchChatAssociations(publicKey),
           fetchArchivedGroups(publicKey),
-        ]).then(([mutual, assoc, archivedMap]) => {
-          const approvedSet = new Set(assoc.approved.keys());
-          const blockedSet = new Set(assoc.blocked.keys());
-          const archivedSet = new Set(archivedMap.keys());
-          const archivedChatsSet = new Set(assoc.archivedChats.keys());
-          const dismissedSet = new Set(assoc.dismissed.keys());
-          setClassificationData(
-            mutual, approvedSet, blockedSet, assoc.approved, assoc.blocked,
-            archivedSet, archivedMap, archivedChatsSet, assoc.archivedChats,
-            dismissedSet, assoc.dismissed
-          );
-        }).catch(() => {});
+        ])
+          .then(([mutual, assoc, archivedMap]) => {
+            const approvedSet = new Set(assoc.approved.keys());
+            const blockedSet = new Set(assoc.blocked.keys());
+            const archivedSet = new Set(archivedMap.keys());
+            const archivedChatsSet = new Set(assoc.archivedChats.keys());
+            const dismissedSet = new Set(assoc.dismissed.keys());
+            setClassificationData(
+              mutual,
+              approvedSet,
+              blockedSet,
+              assoc.approved,
+              assoc.blocked,
+              archivedSet,
+              archivedMap,
+              archivedChatsSet,
+              assoc.archivedChats,
+              dismissedSet,
+              assoc.dismissed
+            );
+          })
+          .catch(() => {});
 
         // Refresh join request counts for owned groups
         fetchJoinRequestCountsForOwner(publicKey)
@@ -1387,7 +1665,8 @@ export const MessagingApp: FC = () => {
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [appUser]);
 
   useEffect(() => {
@@ -1442,7 +1721,11 @@ export const MessagingApp: FC = () => {
       }
       pollingRef.current = true;
       try {
-        const { conversations, updatedAllAccessGroups, publicKeyToProfileEntryResponseMap: pollProfiles } = await getConversations(
+        const {
+          conversations,
+          updatedAllAccessGroups,
+          publicKeyToProfileEntryResponseMap: pollProfiles,
+        } = await getConversations(
           appUser.PublicKeyBase58Check,
           allAccessGroups
         );
@@ -1549,7 +1832,10 @@ export const MessagingApp: FC = () => {
 
     // Merge the owner's profile into the members map
     const ownerProfile = ownerResult.UserList?.[0]?.ProfileEntryResponse;
-    if (ownerProfile && !PublicKeyToProfileEntryResponse[OwnerPublicKeyBase58Check]) {
+    if (
+      ownerProfile &&
+      !PublicKeyToProfileEntryResponse[OwnerPublicKeyBase58Check]
+    ) {
       PublicKeyToProfileEntryResponse[OwnerPublicKeyBase58Check] = ownerProfile;
     }
 
@@ -1560,14 +1846,16 @@ export const MessagingApp: FC = () => {
     }));
     const usernamesByPublicKeyFromGroup: Record<string, string> = {};
     const groupProfilePics: Record<string, string> = {};
-    Object.entries(PublicKeyToProfileEntryResponse || {}).forEach(([pk, profile]) => {
-      usernamesByPublicKeyFromGroup[pk] = profile?.Username || "";
-      const ed = profile?.ExtraData;
-      if (ed) {
-        const picUrl = ed.NFTProfilePictureUrl || ed.LargeProfilePicURL;
-        if (picUrl) groupProfilePics[pk] = picUrl;
+    Object.entries(PublicKeyToProfileEntryResponse || {}).forEach(
+      ([pk, profile]) => {
+        usernamesByPublicKeyFromGroup[pk] = profile?.Username || "";
+        const ed = profile?.ExtraData;
+        if (ed) {
+          const picUrl = ed.NFTProfilePictureUrl || ed.LargeProfilePicURL;
+          if (picUrl) groupProfilePics[pk] = picUrl;
+        }
       }
-    });
+    );
     mergeUsernames(usernamesByPublicKeyFromGroup);
     setProfilePicByPublicKey((state) => ({
       ...state,
@@ -1654,7 +1942,10 @@ export const MessagingApp: FC = () => {
 
       // Try to show cached messages for the selected conversation
       if (cachedKeyToUse && cachedConvos[cachedKeyToUse]) {
-        const cachedMsgs = await getCachedConversationMessages(publicKey, cachedKeyToUse);
+        const cachedMsgs = await getCachedConversationMessages(
+          publicKey,
+          cachedKeyToUse
+        );
         if (cachedMsgs && cachedMsgs.length > 0) {
           setConversations((prev) => ({
             ...prev,
@@ -1675,20 +1966,33 @@ export const MessagingApp: FC = () => {
           fetchMutualFollows(publicKey),
           fetchChatAssociations(publicKey),
           fetchArchivedGroups(publicKey),
-        ]).then(([mutual, assoc, archivedMap]) => {
-          const approvedSet = new Set(assoc.approved.keys());
-          const blockedSet = new Set(assoc.blocked.keys());
-          const archivedSet = new Set(archivedMap.keys());
-          const archivedChatsSet = new Set(assoc.archivedChats.keys());
-          const dismissedSet = new Set(assoc.dismissed.keys());
-          setClassificationData(
-            mutual, approvedSet, blockedSet, assoc.approved, assoc.blocked,
-            archivedSet, archivedMap, archivedChatsSet, assoc.archivedChats,
-            dismissedSet, assoc.dismissed
-          );
-        }).catch((e) => {
-          console.error("Failed to load chat request classification data:", e);
-        })
+        ])
+          .then(([mutual, assoc, archivedMap]) => {
+            const approvedSet = new Set(assoc.approved.keys());
+            const blockedSet = new Set(assoc.blocked.keys());
+            const archivedSet = new Set(archivedMap.keys());
+            const archivedChatsSet = new Set(assoc.archivedChats.keys());
+            const dismissedSet = new Set(assoc.dismissed.keys());
+            setClassificationData(
+              mutual,
+              approvedSet,
+              blockedSet,
+              assoc.approved,
+              assoc.blocked,
+              archivedSet,
+              archivedMap,
+              archivedChatsSet,
+              assoc.archivedChats,
+              dismissedSet,
+              assoc.dismissed
+            );
+          })
+          .catch((e) => {
+            console.error(
+              "Failed to load chat request classification data:",
+              e
+            );
+          })
       : Promise.resolve();
 
     // Fetch privacy mode from on-chain in parallel
@@ -1702,7 +2006,11 @@ export const MessagingApp: FC = () => {
 
     let conversationResult;
     try {
-      [conversationResult] = await Promise.all([conversationPromise, classificationPromise, privacyPromise]);
+      [conversationResult] = await Promise.all([
+        conversationPromise,
+        classificationPromise,
+        privacyPromise,
+      ]);
     } catch (e) {
       console.error("[ChatOn] Failed to fetch conversations:", e);
       if (!renderedFromCache) {
@@ -1780,7 +2088,11 @@ export const MessagingApp: FC = () => {
     cacheUsernameMap(publicKey, usernameMapRef.current);
 
     // Only force-select if user hasn't already navigated to a different conversation
-    if (selectConversation && (!selectedConversationPublicKeyRef.current || selectedConversationPublicKeyRef.current === keyToUse)) {
+    if (
+      selectConversation &&
+      (!selectedConversationPublicKeyRef.current ||
+        selectedConversationPublicKeyRef.current === keyToUse)
+    ) {
       setSelectedConversationPublicKey(keyToUse);
     }
 
@@ -1806,10 +2118,15 @@ export const MessagingApp: FC = () => {
           } else {
             // For the rehydrated conversation and background conversations,
             // use fresh data but preserve optimistic messages
-            const optimistic = merged[k].messages.filter((m: any) => m._localId && m._status !== "sent");
+            const optimistic = merged[k].messages.filter(
+              (m: any) => m._localId && m._status !== "sent"
+            );
             merged[k] = convo;
             if (optimistic.length > 0) {
-              merged[k] = { ...merged[k], messages: [...optimistic, ...merged[k].messages] };
+              merged[k] = {
+                ...merged[k],
+                messages: [...optimistic, ...merged[k].messages],
+              };
             }
           }
         }
@@ -1831,7 +2148,8 @@ export const MessagingApp: FC = () => {
 
       // Compute initial unread state from persisted last-read timestamps
       const lastReadTimestamps = getCachedLastReadTimestamps(publicKey);
-      const { mutedConversations: muted, archivedGroups: archived } = useStore.getState();
+      const { mutedConversations: muted, archivedGroups: archived } =
+        useStore.getState();
       const unreadMap = new Map<string, number>();
       for (const [k, convo] of Object.entries(conversationsResponse)) {
         if (k === keyToUse) continue; // Currently selected conversation
@@ -1859,7 +2177,11 @@ export const MessagingApp: FC = () => {
       if (keyToUse) {
         const selectedConvo = conversationsResponse[keyToUse];
         if (selectedConvo?.messages[0]) {
-          cacheLastReadTimestamp(publicKey, keyToUse, selectedConvo.messages[0].MessageInfo.TimestampNanos);
+          cacheLastReadTimestamp(
+            publicKey,
+            keyToUse,
+            selectedConvo.messages[0].MessageInfo.TimestampNanos
+          );
         }
       }
 
@@ -1886,7 +2208,10 @@ export const MessagingApp: FC = () => {
     } finally {
       // Only clear conversation loading if user hasn't navigated away —
       // their click handler owns the loading state in that case.
-      if (!selectedConversationPublicKeyRef.current || selectedConversationPublicKeyRef.current === keyToUse) {
+      if (
+        !selectedConversationPublicKeyRef.current ||
+        selectedConversationPublicKeyRef.current === keyToUse
+      ) {
         setLoadingConversation(false);
       }
       setLoading(false);
@@ -2062,7 +2387,11 @@ export const MessagingApp: FC = () => {
   // and schedule a state update for the next. Prevents crashes from bare
   // `selectedConversation.property` accesses deep in the JSX tree.
   let safeSelectedKey = selectedConversationPublicKey;
-  if (conversationsReady && safeSelectedKey && !conversations[safeSelectedKey]) {
+  if (
+    conversationsReady &&
+    safeSelectedKey &&
+    !conversations[safeSelectedKey]
+  ) {
     safeSelectedKey = Object.keys(conversations)[0] || "";
     setSelectedConversationPublicKey(safeSelectedKey);
   }
@@ -2074,13 +2403,15 @@ export const MessagingApp: FC = () => {
     selectedConversation?.messages[0]?.RecipientInfo
       ?.OwnerPublicKeyBase58Check === appUser.PublicKeyBase58Check;
   const isGroupOwner = isGroupChat && isChatOwner;
-  const selectedGroupImageUrl = isGroupChat && selectedConversation?.messages[0]
-    ? getGroupImageUrl(
-        allAccessGroups,
-        selectedConversation.messages[0].RecipientInfo.OwnerPublicKeyBase58Check,
-        selectedConversation.messages[0].RecipientInfo.AccessGroupKeyName
-      )
-    : undefined;
+  const selectedGroupImageUrl =
+    isGroupChat && selectedConversation?.messages[0]
+      ? getGroupImageUrl(
+          allAccessGroups,
+          selectedConversation.messages[0].RecipientInfo
+            .OwnerPublicKeyBase58Check,
+          selectedConversation.messages[0].RecipientInfo.AccessGroupKeyName
+        )
+      : undefined;
   const chatMembers = membersByGroupKey[selectedConversationPublicKey];
 
   // Fetch presence data when a conversation is selected
@@ -2093,13 +2424,22 @@ export const MessagingApp: FC = () => {
     } else if (selectedConversation.firstMessagePublicKey) {
       fetchPresenceForKeys([selectedConversation.firstMessagePublicKey]);
     }
-  }, [safeSelectedKey, isGroupChat, chatMembers, fetchPresenceForKeys, selectedConversation]);
+  }, [
+    safeSelectedKey,
+    isGroupChat,
+    chatMembers,
+    fetchPresenceForKeys,
+    selectedConversation,
+  ]);
 
   const activeChatUsersMap: { [k: string]: string } = isGroupChat
     ? Object.keys(chatMembers || {}).reduce<{ [k: string]: string }>(
         (acc, curr) => ({
           ...acc,
-          [curr]: chatMembers[curr]?.Username || usernameByPublicKeyBase58Check[curr] || "",
+          [curr]:
+            chatMembers[curr]?.Username ||
+            usernameByPublicKeyBase58Check[curr] ||
+            "",
         }),
         { ...usernameByPublicKeyBase58Check }
       )
@@ -2108,12 +2448,17 @@ export const MessagingApp: FC = () => {
   // For group chats, notify ALL members (relay skips the sender).
   // For DMs, notify just the other participant.
   // Always resolves the sender's username from available sources so callers don't need to pass it.
-  const notifyConversation = (convKey: string, dmRecipient: string, fromUsername?: string) => {
-    const resolvedUsername = fromUsername
-      || usernameByPublicKeyBase58Check[appUser?.PublicKeyBase58Check ?? ""]
-      || appUser?.ProfileEntryResponse?.Username
-      || appUser?.PublicKeyBase58Check
-      || "Someone";
+  const notifyConversation = (
+    convKey: string,
+    dmRecipient: string,
+    fromUsername?: string
+  ) => {
+    const resolvedUsername =
+      fromUsername ||
+      usernameByPublicKeyBase58Check[appUser?.PublicKeyBase58Check ?? ""] ||
+      appUser?.ProfileEntryResponse?.Username ||
+      appUser?.PublicKeyBase58Check ||
+      "Someone";
     const conv = conversations[convKey];
     const members = membersByGroupKey[convKey];
     if (conv?.ChatType === ChatType.GROUPCHAT && members) {
@@ -2124,111 +2469,147 @@ export const MessagingApp: FC = () => {
     }
   };
   return (
-    <div className="h-full">      
+    <div className="h-full">
       {/* Onboarding wizard for new users */}
-      {showOnboarding && appUser && hasSetupMessaging(appUser) && !isLoadingUser && (
-        <div className="h-full overflow-y-auto">
-          <OnboardingWizard onComplete={handleOnboardingComplete} />
-        </div>
-      )}
+      {showOnboarding &&
+        appUser &&
+        hasSetupMessaging(appUser) &&
+        !isLoadingUser && (
+          <div className="h-full overflow-y-auto">
+            <OnboardingWizard onComplete={handleOnboardingComplete} />
+          </div>
+        )}
 
       {/* Loading / setup states (non-onboarding) */}
-      {!showOnboarding && (!conversationsReady ||
-        !hasSetupMessaging(appUser) ||
-        isLoadingUser ||
-        loading) && (
-        <div className="m-auto relative top-8 overflow-hidden pt-[30px] pb-[50px]">
-          <div className="bg-gradient"></div>
-          <div className="w-full lg:max-w-[1200px] m-auto bg-transparent p-0 shadow-none">
-            <div>
-              {(autoFetchConversations || isLoadingUser || loading || (!conversationsReady && hasSetupMessaging(appUser))) && (
-                <div className="text-center">
-                  <Loader2 className="w-11 h-11 mt-4 animate-spin text-[#34F080] mx-auto" />
-                </div>
-              )}
-              {!autoFetchConversations &&
-                !hasSetupMessaging(appUser) &&
-                !isLoadingUser &&
-                !loading && (
-                  <div className="text-left flex flex-col lg:flex-row items-center justify-between">
-                    <div className="w-full lg:w-[50%]">
-                      <div>
-                        {appUser ? (
-                          <div>
-                            <h2 className="text-2xl font-bold mb-3 text-white">
-                              Set up your account
-                            </h2>
-                            <p className="text-lg mb-6 text-gray-400">
-                              It seems like your account needs more configuration
-                              to be able to send messages. Press the button below
-                              to set it up automatically
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="text-left w-full md:max-w-[100%]">
-                            <h2 className="text-3xl lg:text-3xl font-semibold mb-6 text-white">
-                              Chat with anyone, on DeSo or Ethereum. Without the risk of being censored.
-                            </h2>
-                            <p className="text-sm mb-5 text-gray-400">
-                              DeSo Chat Protocol is a censorship-resistant messaging
-                              protocol built on top of the DeSo blockchain. It enables fully decentralized cross-chain
-                              messaging between DeSo and Ethereum wallets (and soon, Solana).
-                            </p>
-                            <p className="text-sm mb-5 text-gray-400">
-                              This is possible due to DeSo's infinite-state blockchain & derived keys cryptography.
-                            </p>
-                            <p className="text-sm mb-5 text-gray-400">
-                              Messages are stored directly on-chain, at an average cost of ~$0.000002 (<em>basically free</em>), with end-to-end encryption, and support for DMs & group chats — including fully on-chain social, identity, creator coins, tokens & NFTs.
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 mb-6 text-[#34F080]">
-                          <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5"/> E2EE messages & group chats</div>
-                          <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5"/> 100% on-chain (fully synced)</div>
-                          <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5"/> Sign in with DeSo & MetaMask</div>
-                          <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5"/> Message DeSo & Ethereum wallets</div>
-                          <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5"/> Open-source & built on DeSo</div>
-                          <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5"/> On-chain social, identity & assets</div>
-                      </div>
-                      <MessagingSetupButton />
-                      <p className="mt-5 text-sm mb-5 text-blue-300/40">
-                        This project is fully open-sourced for developers to fork & build on top of.
-                        You can add features like ENS support, NFT profile pictures, message tipping, paid DMs, token-gated group chats and more.
-                        Visit&nbsp;
-                        <a
-                          target="_blank"
-                          className="underline text-blue-300/40 hover:text-blue-300"
-                          href="https://github.com/sungkhum/chaton"
-                          rel="noreferrer"
-                        >
-                          Github Repository &rarr;
-                        </a> or&nbsp;
-                        <a
-                          target="_blank"
-                          className="underline text-blue-300/40 hover:text-blue-300"
-                          href="https://github.com/sungkhum/chaton"
-                          rel="noreferrer"
-                        >
-                          Developer Docs &rarr;
-                        </a>
-                      </p>
-                    </div>
+      {!showOnboarding &&
+        (!conversationsReady ||
+          !hasSetupMessaging(appUser) ||
+          isLoadingUser ||
+          loading) && (
+          <div className="m-auto relative top-8 overflow-hidden pt-[30px] pb-[50px]">
+            <div className="bg-gradient"></div>
+            <div className="w-full lg:max-w-[1200px] m-auto bg-transparent p-0 shadow-none">
+              <div>
+                {(autoFetchConversations ||
+                  isLoadingUser ||
+                  loading ||
+                  (!conversationsReady && hasSetupMessaging(appUser))) && (
+                  <div className="text-center">
+                    <Loader2 className="w-11 h-11 mt-4 animate-spin text-[#34F080] mx-auto" />
                   </div>
                 )}
+                {!autoFetchConversations &&
+                  !hasSetupMessaging(appUser) &&
+                  !isLoadingUser &&
+                  !loading && (
+                    <div className="text-left flex flex-col lg:flex-row items-center justify-between">
+                      <div className="w-full lg:w-[50%]">
+                        <div>
+                          {appUser ? (
+                            <div>
+                              <h2 className="text-2xl font-bold mb-3 text-white">
+                                Set up your account
+                              </h2>
+                              <p className="text-lg mb-6 text-gray-400">
+                                It seems like your account needs more
+                                configuration to be able to send messages. Press
+                                the button below to set it up automatically
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="text-left w-full md:max-w-[100%]">
+                              <h2 className="text-3xl lg:text-3xl font-semibold mb-6 text-white">
+                                Chat with anyone, on DeSo or Ethereum. Without
+                                the risk of being censored.
+                              </h2>
+                              <p className="text-sm mb-5 text-gray-400">
+                                DeSo Chat Protocol is a censorship-resistant
+                                messaging protocol built on top of the DeSo
+                                blockchain. It enables fully decentralized
+                                cross-chain messaging between DeSo and Ethereum
+                                wallets (and soon, Solana).
+                              </p>
+                              <p className="text-sm mb-5 text-gray-400">
+                                This is possible due to DeSo's infinite-state
+                                blockchain & derived keys cryptography.
+                              </p>
+                              <p className="text-sm mb-5 text-gray-400">
+                                Messages are stored directly on-chain, at an
+                                average cost of ~$0.000002 (
+                                <em>basically free</em>), with end-to-end
+                                encryption, and support for DMs & group chats —
+                                including fully on-chain social, identity,
+                                creator coins, tokens & NFTs.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 mb-6 text-[#34F080]">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-5 h-5" /> E2EE messages &
+                            group chats
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-5 h-5" /> 100% on-chain
+                            (fully synced)
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-5 h-5" /> Sign in with
+                            DeSo & MetaMask
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-5 h-5" /> Message DeSo &
+                            Ethereum wallets
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-5 h-5" /> Open-source &
+                            built on DeSo
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-5 h-5" /> On-chain social,
+                            identity & assets
+                          </div>
+                        </div>
+                        <MessagingSetupButton />
+                        <p className="mt-5 text-sm mb-5 text-blue-300/40">
+                          This project is fully open-sourced for developers to
+                          fork & build on top of. You can add features like ENS
+                          support, NFT profile pictures, message tipping, paid
+                          DMs, token-gated group chats and more. Visit&nbsp;
+                          <a
+                            target="_blank"
+                            className="underline text-blue-300/40 hover:text-blue-300"
+                            href="https://github.com/sungkhum/chaton"
+                            rel="noreferrer"
+                          >
+                            Github Repository &rarr;
+                          </a>{" "}
+                          or&nbsp;
+                          <a
+                            target="_blank"
+                            className="underline text-blue-300/40 hover:text-blue-300"
+                            href="https://github.com/sungkhum/chaton"
+                            rel="noreferrer"
+                          >
+                            Developer Docs &rarr;
+                          </a>
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
-              {!autoFetchConversations &&
-                hasSetupMessaging(appUser) &&
-                !isLoadingUser &&
-                !loading && (
-                  <MessagingConversationButton
-                    onClick={rehydrateConversation}
-                  />
-                )}
+                {!autoFetchConversations &&
+                  hasSetupMessaging(appUser) &&
+                  !isLoadingUser &&
+                  !loading && (
+                    <MessagingConversationButton
+                      onClick={rehydrateConversation}
+                    />
+                  )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
       {!showOnboarding &&
         hasSetupMessaging(appUser) &&
         conversationsReady &&
@@ -2245,7 +2626,9 @@ export const MessagingApp: FC = () => {
                     if (unreadByConversation.has(key)) {
                       clearUnread(key);
                       removeUnreadConversation(key);
-                      const ts = conversations[key]?.messages[0]?.MessageInfo?.TimestampNanos;
+                      const ts =
+                        conversations[key]?.messages[0]?.MessageInfo
+                          ?.TimestampNanos;
                       sendRead(key, ts ? String(ts) : undefined);
                       if (appUser && ts) {
                         cacheLastReadTimestamp(
@@ -2265,10 +2648,16 @@ export const MessagingApp: FC = () => {
                   clearUnread(key);
                   removeUnreadConversation(key);
                   {
-                    const ts = conversations[key]?.messages[0]?.MessageInfo?.TimestampNanos;
+                    const ts =
+                      conversations[key]?.messages[0]?.MessageInfo
+                        ?.TimestampNanos;
                     sendRead(key, ts ? String(ts) : undefined);
                     if (appUser && ts) {
-                      cacheLastReadTimestamp(appUser.PublicKeyBase58Check, key, ts);
+                      cacheLastReadTimestamp(
+                        appUser.PublicKeyBase58Check,
+                        key,
+                        ts
+                      );
                     }
                   }
 
@@ -2285,7 +2674,11 @@ export const MessagingApp: FC = () => {
                       appUser.PublicKeyBase58Check,
                       key
                     );
-                    if (cached && cached.length > 0 && key === selectedConversationPublicKeyRef.current) {
+                    if (
+                      cached &&
+                      cached.length > 0 &&
+                      key === selectedConversationPublicKeyRef.current
+                    ) {
                       setConversations((prev) => ({
                         ...prev,
                         [key]: {
@@ -2361,9 +2754,7 @@ export const MessagingApp: FC = () => {
                 selectedConversationPublicKey ? "ml-[-100%] z-50" : ""
               }`}
             >
-              <header
-                className="flex justify-between items-center border-b border-white/5 relative px-4 md:px-5 h-14"
-              >
+              <header className="flex justify-between items-center border-b border-white/5 relative px-4 md:px-5 h-14">
                 <div
                   className="cursor-pointer py-4 pl-0 pr-6 md:hidden"
                   onClick={() => {
@@ -2393,13 +2784,17 @@ export const MessagingApp: FC = () => {
                         </span>
                         {(() => {
                           if (isGroupChat) {
-                            const memberKeys = chatMembers ? Object.keys(chatMembers) : [];
+                            const memberKeys = chatMembers
+                              ? Object.keys(chatMembers)
+                              : [];
                             const online = getOnlineCount(memberKeys);
                             const total = memberKeys.length;
                             if (total === 0) return null;
                             return (
                               <div className="flex items-center gap-2 text-xs">
-                                <span className="text-gray-500">{total} {total === 1 ? "member" : "members"}</span>
+                                <span className="text-gray-500">
+                                  {total} {total === 1 ? "member" : "members"}
+                                </span>
                                 {online > 0 && (
                                   <span className="flex items-center gap-1 text-[#34F080]/80">
                                     <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse" />
@@ -2409,50 +2804,73 @@ export const MessagingApp: FC = () => {
                               </div>
                             );
                           }
-                          const otherKey = selectedConversation?.firstMessagePublicKey;
+                          const otherKey =
+                            selectedConversation?.firstMessagePublicKey;
                           if (!otherKey) return null;
                           const presence = getPresence(otherKey);
-                          if (presence.status === "online") return (
-                            <span className="flex items-center gap-1 text-[#34F080] text-xs">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse" />
-                              Online
-                            </span>
-                          );
-                          if (presence.status === "last-seen") return <span className="text-gray-500 text-xs whitespace-nowrap">{formatLastSeen(presence.timestamp)}</span>;
+                          if (presence.status === "online")
+                            return (
+                              <span className="flex items-center gap-1 text-[#34F080] text-xs">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse" />
+                                Online
+                              </span>
+                            );
+                          if (presence.status === "last-seen")
+                            return (
+                              <span className="text-gray-500 text-xs whitespace-nowrap">
+                                {formatLastSeen(presence.timestamp)}
+                              </span>
+                            );
                           return null;
                         })()}
                       </div>
                     </div>
                   )}
-                <div
-                  className="text-gray-400 items-center hidden md:block"
-                >
-                  {isGroupChat ? (
-                    (() => {
-                      const memberKeys = chatMembers ? Object.keys(chatMembers) : [];
-                      const online = getOnlineCount(memberKeys);
-                      const total = memberKeys.length;
-                      if (total === 0) return null;
-                      return (
-                        <span className="text-gray-500 text-sm whitespace-nowrap inline-flex items-center gap-1">
-                          {total} {total === 1 ? "member" : "members"}
-                          {online > 0 && <> · <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse inline-block" /><span className="text-[#34F080]/80">{online} online</span></>}
-                        </span>
-                      );
-                    })()
-                  ) : (() => {
-                    const otherKey = selectedConversation?.firstMessagePublicKey;
-                    if (!otherKey) return null;
-                    const presence = getPresence(otherKey);
-                    if (presence.status === "online") return (
-                      <span className="flex items-center gap-1.5 text-[#34F080] text-sm">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse" />
-                        Online
-                      </span>
-                    );
-                    if (presence.status === "last-seen") return <span className="text-gray-500 text-sm whitespace-nowrap">{formatLastSeen(presence.timestamp)}</span>;
-                    return null;
-                  })()}
+                <div className="text-gray-400 items-center hidden md:block">
+                  {isGroupChat
+                    ? (() => {
+                        const memberKeys = chatMembers
+                          ? Object.keys(chatMembers)
+                          : [];
+                        const online = getOnlineCount(memberKeys);
+                        const total = memberKeys.length;
+                        if (total === 0) return null;
+                        return (
+                          <span className="text-gray-500 text-sm whitespace-nowrap inline-flex items-center gap-1">
+                            {total} {total === 1 ? "member" : "members"}
+                            {online > 0 && (
+                              <>
+                                {" "}
+                                ·{" "}
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse inline-block" />
+                                <span className="text-[#34F080]/80">
+                                  {online} online
+                                </span>
+                              </>
+                            )}
+                          </span>
+                        );
+                      })()
+                    : (() => {
+                        const otherKey =
+                          selectedConversation?.firstMessagePublicKey;
+                        if (!otherKey) return null;
+                        const presence = getPresence(otherKey);
+                        if (presence.status === "online")
+                          return (
+                            <span className="flex items-center gap-1.5 text-[#34F080] text-sm">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse" />
+                              Online
+                            </span>
+                          );
+                        if (presence.status === "last-seen")
+                          return (
+                            <span className="text-gray-500 text-sm whitespace-nowrap">
+                              {formatLastSeen(presence.timestamp)}
+                            </span>
+                          );
+                        return null;
+                      })()}
                 </div>
                 <div
                   className={`flex items-center gap-3 justify-end shrink-0 ${
@@ -2463,14 +2881,29 @@ export const MessagingApp: FC = () => {
                     <button
                       onClick={() => {
                         toggleMute(selectedConversationPublicKey);
-                        const wasMuted = mutedConversations.has(selectedConversationPublicKey);
-                        toast(wasMuted ? "Notifications unmuted" : "Notifications muted", {
-                          icon: wasMuted ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />,
-                          duration: 2000,
-                        });
+                        const wasMuted = mutedConversations.has(
+                          selectedConversationPublicKey
+                        );
+                        toast(
+                          wasMuted
+                            ? "Notifications unmuted"
+                            : "Notifications muted",
+                          {
+                            icon: wasMuted ? (
+                              <Bell className="w-4 h-4" />
+                            ) : (
+                              <BellOff className="w-4 h-4" />
+                            ),
+                            duration: 2000,
+                          }
+                        );
                       }}
                       className="p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
-                      title={mutedConversations.has(selectedConversationPublicKey) ? "Unmute notifications" : "Mute notifications"}
+                      title={
+                        mutedConversations.has(selectedConversationPublicKey)
+                          ? "Unmute notifications"
+                          : "Mute notifications"
+                      }
                     >
                       {mutedConversations.has(selectedConversationPublicKey) ? (
                         <BellOff className="w-5 h-5 text-gray-500" />
@@ -2481,14 +2914,16 @@ export const MessagingApp: FC = () => {
                   )}
                   {isGroupChat ? (
                     <Suspense fallback={null}>
-                    <LazyManageMembersDialog
-                      conversation={selectedConversation}
-                      conversationKey={selectedConversationPublicKey}
-                      onSuccess={rehydrateConversation}
-                      onLeaveGroup={handleArchiveGroup}
-                      onOptimisticSystemMessage={handleOptimisticSystemMessage}
-                      isGroupOwner={!!isGroupOwner}
-                    />
+                      <LazyManageMembersDialog
+                        conversation={selectedConversation}
+                        conversationKey={selectedConversationPublicKey}
+                        onSuccess={rehydrateConversation}
+                        onLeaveGroup={handleArchiveGroup}
+                        onOptimisticSystemMessage={
+                          handleOptimisticSystemMessage
+                        }
+                        isGroupOwner={!!isGroupOwner}
+                      />
                     </Suspense>
                   ) : (
                     selectedConversation &&
@@ -2517,15 +2952,24 @@ export const MessagingApp: FC = () => {
                           </button>
                           {dmMenuOpen && (
                             <>
-                              <div className="fixed inset-0 z-40" onClick={() => setDmMenuOpen(false)} />
+                              <div
+                                className="fixed inset-0 z-40"
+                                onClick={() => setDmMenuOpen(false)}
+                              />
                               <div className="absolute right-0 top-full mt-1 z-50 bg-[#141c2b] border border-white/10 rounded-lg shadow-xl py-1 min-w-[160px]">
                                 <button
                                   onClick={() => {
                                     setDmMenuOpen(false);
                                     setBlockConfirm({
-                                      conversationKey: selectedConversationPublicKey,
-                                      publicKey: selectedConversation.firstMessagePublicKey,
-                                      name: activeChatUsersMap[selectedConversation.firstMessagePublicKey] || "this user",
+                                      conversationKey:
+                                        selectedConversationPublicKey,
+                                      publicKey:
+                                        selectedConversation.firstMessagePublicKey,
+                                      name:
+                                        activeChatUsersMap[
+                                          selectedConversation
+                                            .firstMessagePublicKey
+                                        ] || "this user",
                                     });
                                   }}
                                   className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-red-400 hover:bg-white/5 cursor-pointer transition-colors"
@@ -2553,9 +2997,7 @@ export const MessagingApp: FC = () => {
                 </div>
               </header>
 
-              <div
-                className="pr-2 rounded-none w-[100%] bg-transparent ml-[calc-340px] pb-0 h-[calc(100%-56px)]"
-              >
+              <div className="pr-2 rounded-none w-[100%] bg-transparent ml-[calc-340px] pb-0 h-[calc(100%-56px)]">
                 <div className="border-none flex flex-col h-full">
                   <div className="overflow-hidden flex-1 min-h-0">
                     {loadingConversation || !selectedConversation ? (
@@ -2610,7 +3052,10 @@ export const MessagingApp: FC = () => {
                             next.add(timestampNanosString);
                             return next;
                           });
-                          await hideMessage(appUser.PublicKeyBase58Check, timestampNanosString);
+                          await hideMessage(
+                            appUser.PublicKeyBase58Check,
+                            timestampNanosString
+                          );
                         }}
                         onDeleteForEveryone={async (message) => {
                           if (!appUser || !selectedConversation) return;
@@ -2625,14 +3070,19 @@ export const MessagingApp: FC = () => {
                               ? DEFAULT_KEY_MESSAGING_GROUP_NAME
                               : selectedConversation.messages[0].RecipientInfo
                                   .AccessGroupKeyName;
-                          const timestampNanosString = message.MessageInfo.TimestampNanosString;
+                          const timestampNanosString =
+                            message.MessageInfo.TimestampNanosString;
 
                           // Save original for rollback
                           const originalMessage = message;
 
                           // Preserve existing ExtraData and add deleted flag
-                          const existingExtraData = message.MessageInfo?.ExtraData || {};
-                          const deletedExtraData = { ...existingExtraData, "msg:deleted": "true" };
+                          const existingExtraData =
+                            message.MessageInfo?.ExtraData || {};
+                          const deletedExtraData = {
+                            ...existingExtraData,
+                            "msg:deleted": "true",
+                          };
 
                           // Optimistic: replace message with tombstone
                           setConversations((prev) => ({
@@ -2640,7 +3090,8 @@ export const MessagingApp: FC = () => {
                             [convKey]: {
                               ...prev[convKey],
                               messages: prev[convKey].messages.map((m) =>
-                                m.MessageInfo.TimestampNanosString === timestampNanosString
+                                m.MessageInfo.TimestampNanosString ===
+                                timestampNanosString
                                   ? {
                                       ...m,
                                       DecryptedMessage: "",
@@ -2666,15 +3117,18 @@ export const MessagingApp: FC = () => {
                               deletedExtraData
                             );
                             // No push notification for deletions
-                          } catch (e) {
-                            toast.error("Failed to delete message for everyone");
+                          } catch {
+                            toast.error(
+                              "Failed to delete message for everyone"
+                            );
                             // Rollback
                             setConversations((prev) => ({
                               ...prev,
                               [convKey]: {
                                 ...prev[convKey],
                                 messages: prev[convKey].messages.map((m) =>
-                                  m.MessageInfo.TimestampNanosString === timestampNanosString
+                                  m.MessageInfo.TimestampNanosString ===
+                                  timestampNanosString
                                     ? originalMessage
                                     : m
                                 ),
@@ -2686,8 +3140,12 @@ export const MessagingApp: FC = () => {
                         }}
                         onRetry={async (localId) => {
                           if (!appUser) return;
-                          const pendingMsgs = await getPendingMessages(appUser.PublicKeyBase58Check);
-                          const pending = pendingMsgs.find((m) => m.localId === localId);
+                          const pendingMsgs = await getPendingMessages(
+                            appUser.PublicKeyBase58Check
+                          );
+                          const pending = pendingMsgs.find(
+                            (m) => m.localId === localId
+                          );
                           if (pending) {
                             retryPendingMessage(pending);
                           }
@@ -2706,7 +3164,10 @@ export const MessagingApp: FC = () => {
                             },
                           }));
                           // Remove from pending messages storage
-                          removePendingMessage(appUser.PublicKeyBase58Check, localId);
+                          removePendingMessage(
+                            appUser.PublicKeyBase58Check,
+                            localId
+                          );
                         }}
                         onReact={async (timestampNanosString, emoji) => {
                           if (!appUser || !selectedConversation) return;
@@ -2722,12 +3183,21 @@ export const MessagingApp: FC = () => {
                                   .AccessGroupKeyName;
 
                           // Build a human-readable fallback for apps without reaction support
-                          const reactedToMsg = selectedConversation.messages.find(
-                            (m) => m.MessageInfo.TimestampNanosString === timestampNanosString
-                          );
-                          const preview = reactedToMsg?.DecryptedMessage?.slice(0, 30) || "";
+                          const reactedToMsg =
+                            selectedConversation.messages.find(
+                              (m) =>
+                                m.MessageInfo.TimestampNanosString ===
+                                timestampNanosString
+                            );
+                          const preview =
+                            reactedToMsg?.DecryptedMessage?.slice(0, 30) || "";
                           const fallbackText = preview
-                            ? `Reacted ${emoji} to "${preview}${(reactedToMsg?.DecryptedMessage?.length ?? 0) > 30 ? "…" : ""}"`
+                            ? `Reacted ${emoji} to "${preview}${
+                                (reactedToMsg?.DecryptedMessage?.length ?? 0) >
+                                30
+                                  ? "…"
+                                  : ""
+                              }"`
                             : `Reacted ${emoji}`;
 
                           // Optimistic: insert a mock reaction message immediately
@@ -2740,8 +3210,10 @@ export const MessagingApp: FC = () => {
                             _status: "sending" as const,
                             _localId: localId,
                             SenderInfo: {
-                              OwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
-                              AccessGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                              OwnerPublicKeyBase58Check:
+                                appUser.PublicKeyBase58Check,
+                              AccessGroupKeyName:
+                                DEFAULT_KEY_MESSAGING_GROUP_NAME,
                             },
                             RecipientInfo: {
                               OwnerPublicKeyBase58Check: recipientPublicKey,
@@ -2756,13 +3228,19 @@ export const MessagingApp: FC = () => {
                                 emoji,
                               }),
                             },
-                          } as DecryptedMessageEntryResponse & { _status: string; _localId: string };
+                          } as DecryptedMessageEntryResponse & {
+                            _status: string;
+                            _localId: string;
+                          };
 
                           setConversations((prev) => ({
                             ...prev,
                             [convKey]: {
                               ...prev[convKey],
-                              messages: [mockReaction, ...prev[convKey].messages],
+                              messages: [
+                                mockReaction,
+                                ...prev[convKey].messages,
+                              ],
                             },
                           }));
 
@@ -2787,11 +3265,13 @@ export const MessagingApp: FC = () => {
                               [convKey]: {
                                 ...prev[convKey],
                                 messages: prev[convKey].messages.map((m: any) =>
-                                  m._localId === localId ? { ...m, _status: "sent" } : m
+                                  m._localId === localId
+                                    ? { ...m, _status: "sent" }
+                                    : m
                                 ),
                               },
                             }));
-                          } catch (e) {
+                          } catch {
                             // Remove failed optimistic reaction
                             setConversations((prev) => ({
                               ...prev,
@@ -2807,80 +3287,135 @@ export const MessagingApp: FC = () => {
                         }}
                         onTip={(msg) => {
                           if (!appUser) return;
-                          const senderPk = msg.SenderInfo.OwnerPublicKeyBase58Check;
+                          const senderPk =
+                            msg.SenderInfo.OwnerPublicKeyBase58Check;
                           if (senderPk === appUser.PublicKeyBase58Check) {
                             toast.info("You can't tip yourself");
                             return;
                           }
-                          const { blockedUsers, dismissedUsers } = useStore.getState();
-                          if (blockedUsers.has(senderPk) || dismissedUsers.has(senderPk)) return;
+                          const { blockedUsers, dismissedUsers } =
+                            useStore.getState();
+                          if (
+                            blockedUsers.has(senderPk) ||
+                            dismissedUsers.has(senderPk)
+                          )
+                            return;
                           setTipTarget({
                             recipientPublicKey: senderPk,
                             recipientUsername: activeChatUsersMap[senderPk],
                             tipReplyTo: msg.MessageInfo.TimestampNanosString,
                           });
-                          setPendingTipTimestamps((prev) => new Set(prev).add(msg.MessageInfo.TimestampNanosString));
+                          setPendingTipTimestamps((prev) =>
+                            new Set(prev).add(
+                              msg.MessageInfo.TimestampNanosString
+                            )
+                          );
                         }}
                         onMicroTip={async (msg) => {
                           if (!appUser || !selectedConversation) return;
-                          const senderPk = msg.SenderInfo.OwnerPublicKeyBase58Check;
+                          const senderPk =
+                            msg.SenderInfo.OwnerPublicKeyBase58Check;
                           if (senderPk === appUser.PublicKeyBase58Check) {
                             toast.info("You can't tip yourself");
                             return;
                           }
-                          const { blockedUsers, dismissedUsers } = useStore.getState();
-                          if (blockedUsers.has(senderPk) || dismissedUsers.has(senderPk)) return;
+                          const { blockedUsers, dismissedUsers } =
+                            useStore.getState();
+                          if (
+                            blockedUsers.has(senderPk) ||
+                            dismissedUsers.has(senderPk)
+                          )
+                            return;
                           // Cooldown check
                           const now = Date.now();
                           if (now - lastMicroTipTime < MICRO_TIP_COOLDOWN_MS) {
-                            toast.info("Please wait a moment before sending another tip");
+                            toast.info(
+                              "Please wait a moment before sending another tip"
+                            );
                             return;
                           }
                           lastMicroTipTime = now;
                           const tipTs = msg.MessageInfo.TimestampNanosString;
-                          setPendingTipTimestamps((prev) => new Set(prev).add(tipTs));
+                          setPendingTipTimestamps((prev) =>
+                            new Set(prev).add(tipTs)
+                          );
 
                           try {
-                            const tipCurrency = (getCachedTipCurrency(appUser.PublicKeyBase58Check) as TipCurrency) || "DESO";
+                            const tipCurrency =
+                              (getCachedTipCurrency(
+                                appUser.PublicKeyBase58Check
+                              ) as TipCurrency) || "DESO";
                             let txHash = "";
                             let tipAmountNanos = 0;
                             let tipAmountUsdcBaseUnits: string | undefined;
 
                             if (tipCurrency === "USDC") {
                               const usdcAmount = usdToUsdcBaseUnits(0.01);
-                              const balance = await fetchUsdcBalance(appUser.PublicKeyBase58Check);
-                              if (balance < usdcAmount) { toast.info("Insufficient USDC balance"); return; }
-                              if (appUser.BalanceNanos < 1e6) { toast.info("Need a small amount of DESO for fees"); return; }
+                              const balance = await fetchUsdcBalance(
+                                appUser.PublicKeyBase58Check
+                              );
+                              if (balance < usdcAmount) {
+                                toast.info("Insufficient USDC balance");
+                                return;
+                              }
+                              if (appUser.BalanceNanos < 1e6) {
+                                toast.info(
+                                  "Need a small amount of DESO for fees"
+                                );
+                                return;
+                              }
 
                               const hasPerms = identity.hasPermissions({
                                 GlobalDESOLimit: 1e6,
-                                DAOCoinOperationLimitMap: { [USDC_CREATOR_PUBLIC_KEY]: { transfer: 1 } },
+                                DAOCoinOperationLimitMap: {
+                                  [USDC_CREATOR_PUBLIC_KEY]: { transfer: 1 },
+                                },
                               });
                               if (!hasPerms) {
                                 await identity.requestPermissions({
                                   GlobalDESOLimit: 1e7,
-                                  TransactionCountLimitMap: { AUTHORIZE_DERIVED_KEY: 1 },
-                                  DAOCoinOperationLimitMap: { [USDC_CREATOR_PUBLIC_KEY]: { transfer: 1 } },
+                                  TransactionCountLimitMap: {
+                                    AUTHORIZE_DERIVED_KEY: 1,
+                                  },
+                                  DAOCoinOperationLimitMap: {
+                                    [USDC_CREATOR_PUBLIC_KEY]: { transfer: 1 },
+                                  },
                                 });
                               }
                               const result = await withAuth(() =>
                                 transferDeSoToken({
-                                  SenderPublicKeyBase58Check: appUser.PublicKeyBase58Check,
-                                  ProfilePublicKeyBase58CheckOrUsername: USDC_CREATOR_PUBLIC_KEY,
-                                  ReceiverPublicKeyBase58CheckOrUsername: senderPk,
-                                  DAOCoinToTransferNanos: toHexUint256(usdcAmount),
+                                  SenderPublicKeyBase58Check:
+                                    appUser.PublicKeyBase58Check,
+                                  ProfilePublicKeyBase58CheckOrUsername:
+                                    USDC_CREATOR_PUBLIC_KEY,
+                                  ReceiverPublicKeyBase58CheckOrUsername:
+                                    senderPk,
+                                  DAOCoinToTransferNanos:
+                                    toHexUint256(usdcAmount),
                                   MinFeeRateNanosPerKB: 1000,
                                 })
                               );
-                              txHash = (result as any)?.TxnHashHex || (result as any)?.TransactionIDBase58Check || "";
+                              txHash =
+                                (result as any)?.TxnHashHex ||
+                                (result as any)?.TransactionIDBase58Check ||
+                                "";
                               tipAmountUsdcBaseUnits = toHexUint256(usdcAmount);
                               invalidateUsdcBalanceCache();
                             } else {
-                              if (appUser.BalanceNanos <= 0) { toast.info("Add funds to send tips"); return; }
+                              if (appUser.BalanceNanos <= 0) {
+                                toast.info("Add funds to send tips");
+                                return;
+                              }
                               const rate = await fetchExchangeRate();
                               tipAmountNanos = usdToNanos(0.01, rate);
-                              if (tipAmountNanos <= 0) { toast.error("Could not calculate tip amount"); return; }
-                              if (tipAmountNanos > appUser.BalanceNanos) { toast.info("Insufficient balance"); return; }
+                              if (tipAmountNanos <= 0) {
+                                toast.error("Could not calculate tip amount");
+                                return;
+                              }
+                              if (tipAmountNanos > appUser.BalanceNanos) {
+                                toast.info("Insufficient balance");
+                                return;
+                              }
 
                               const hasPerms = identity.hasPermissions({
                                 GlobalDESOLimit: tipAmountNanos,
@@ -2889,22 +3424,28 @@ export const MessagingApp: FC = () => {
                               if (!hasPerms) {
                                 await identity.requestPermissions({
                                   GlobalDESOLimit: tipAmountNanos + 1e7,
-                                  TransactionCountLimitMap: { AUTHORIZE_DERIVED_KEY: 1, BASIC_TRANSFER: 1 },
+                                  TransactionCountLimitMap: {
+                                    AUTHORIZE_DERIVED_KEY: 1,
+                                    BASIC_TRANSFER: 1,
+                                  },
                                 });
                               }
                               const result = await withAuth(() =>
                                 sendDeso({
-                                  SenderPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+                                  SenderPublicKeyBase58Check:
+                                    appUser.PublicKeyBase58Check,
                                   RecipientPublicKeyOrUsername: senderPk,
                                   AmountNanos: tipAmountNanos,
                                   MinFeeRateNanosPerKB: 1000,
                                 })
                               );
-                              txHash = (result as any)?.TxnHashHex || (result as any)?.TransactionIDBase58Check || "";
+                              txHash =
+                                (result as any)?.TxnHashHex ||
+                                (result as any)?.TransactionIDBase58Check ||
+                                "";
                             }
 
                             // Send tip message
-                            const convKey = selectedConversationPublicKey;
                             const recipientPublicKey =
                               selectedConversation.ChatType === ChatType.DM
                                 ? selectedConversation.firstMessagePublicKey
@@ -2917,7 +3458,11 @@ export const MessagingApp: FC = () => {
                                     .AccessGroupKeyName;
 
                             const senderUsername = activeChatUsersMap[senderPk];
-                            const fallback = `Tipped $0.01 to ${senderUsername ? `@${senderUsername}` : senderPk.slice(0, 8)}`;
+                            const fallback = `Tipped $0.01 to ${
+                              senderUsername
+                                ? `@${senderUsername}`
+                                : senderPk.slice(0, 8)
+                            }`;
 
                             await encryptAndSendNewMessage(
                               fallback,
@@ -2927,20 +3472,32 @@ export const MessagingApp: FC = () => {
                               DEFAULT_KEY_MESSAGING_GROUP_NAME,
                               buildExtraData({
                                 type: "tip",
-                                tipAmountNanos: tipCurrency === "DESO" ? tipAmountNanos : undefined,
+                                tipAmountNanos:
+                                  tipCurrency === "DESO"
+                                    ? tipAmountNanos
+                                    : undefined,
                                 tipAmountUsdcBaseUnits,
                                 tipCurrency,
                                 tipTxHash: txHash,
-                                tipReplyTo: msg.MessageInfo.TimestampNanosString,
+                                tipReplyTo:
+                                  msg.MessageInfo.TimestampNanosString,
                                 tipRecipient: senderPk,
                               })
                             );
                             // No push notification for tips
                             useStore.getState().addSessionTipUsd(0.01);
-                            toast.success(`Tipped $0.01 ${tipCurrency} to ${senderUsername ? `@${senderUsername}` : "user"}`);
+                            toast.success(
+                              `Tipped $0.01 ${tipCurrency} to ${
+                                senderUsername ? `@${senderUsername}` : "user"
+                              }`
+                            );
                           } catch (error: any) {
-                            const errMsg = error?.message || error?.toString?.() || "";
-                            if (errMsg.includes("user cancelled") || errMsg.includes("WINDOW_CLOSED")) {
+                            const errMsg =
+                              error?.message || error?.toString?.() || "";
+                            if (
+                              errMsg.includes("user cancelled") ||
+                              errMsg.includes("WINDOW_CLOSED")
+                            ) {
                               toast.error("Transaction cancelled.");
                             } else {
                               toast.error("Tip failed.");
@@ -2958,237 +3515,290 @@ export const MessagingApp: FC = () => {
                     )}
                   </div>
 
-                  {selectedConversation && <SendMessageButtonAndInput
-                    ref={sendInputRef}
-                    key={selectedConversationPublicKey}
-                    conversationKey={selectedConversationPublicKey}
-                    replyTo={replyToMessage}
-                    onCancelReply={() => startTransition(() => setReplyToMessage(null))}
-                    editingMessage={editingMessage}
-                    onCancelEdit={() => startTransition(() => setEditingMessage(null))}
-                    onSubmitEdit={async (newText, timestamp) => {
-                      if (!appUser || !newText.trim() || !selectedConversation) return;
-                      setEditingMessage(null);
-                      const convKey = selectedConversationPublicKey;
-                      const recipientPublicKey =
+                  {selectedConversation && (
+                    <SendMessageButtonAndInput
+                      ref={sendInputRef}
+                      key={selectedConversationPublicKey}
+                      conversationKey={selectedConversationPublicKey}
+                      replyTo={replyToMessage}
+                      onCancelReply={() =>
+                        startTransition(() => setReplyToMessage(null))
+                      }
+                      editingMessage={editingMessage}
+                      onCancelEdit={() =>
+                        startTransition(() => setEditingMessage(null))
+                      }
+                      onSubmitEdit={async (newText, timestamp) => {
+                        if (
+                          !appUser ||
+                          !newText.trim() ||
+                          !selectedConversation
+                        )
+                          return;
+                        setEditingMessage(null);
+                        const convKey = selectedConversationPublicKey;
+                        const recipientPublicKey =
+                          selectedConversation.ChatType === ChatType.DM
+                            ? selectedConversation.firstMessagePublicKey
+                            : selectedConversation.messages[0].RecipientInfo
+                                .OwnerPublicKeyBase58Check;
+                        const recipientKeyName =
+                          selectedConversation.ChatType === ChatType.DM
+                            ? DEFAULT_KEY_MESSAGING_GROUP_NAME
+                            : selectedConversation.messages[0].RecipientInfo
+                                .AccessGroupKeyName;
+
+                        // Find original message for rollback
+                        const originalMessage =
+                          selectedConversation.messages.find(
+                            (m) =>
+                              m.MessageInfo.TimestampNanosString === timestamp
+                          );
+
+                        // Preserve existing ExtraData (e.g. reply info) and add edited flag
+                        const existingExtraData =
+                          originalMessage?.MessageInfo?.ExtraData || {};
+                        const updatedExtraData = {
+                          ...existingExtraData,
+                          "msg:edited": "true",
+                        };
+
+                        // Optimistic: update message text and add edited flag
+                        setConversations((prev) => ({
+                          ...prev,
+                          [convKey]: {
+                            ...prev[convKey],
+                            messages: prev[convKey].messages.map((m) =>
+                              m.MessageInfo.TimestampNanosString === timestamp
+                                ? {
+                                    ...m,
+                                    DecryptedMessage: newText,
+                                    MessageInfo: {
+                                      ...m.MessageInfo,
+                                      ExtraData: updatedExtraData,
+                                    },
+                                  }
+                                : m
+                            ),
+                          },
+                        }));
+                        setLockRefresh(true);
+
+                        try {
+                          await encryptAndUpdateMessage(
+                            newText,
+                            appUser.PublicKeyBase58Check,
+                            recipientPublicKey,
+                            recipientKeyName,
+                            DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                            timestamp,
+                            updatedExtraData
+                          );
+                          // No push notification for edits
+                        } catch {
+                          toast.error("Failed to edit message");
+                          // Rollback
+                          if (originalMessage) {
+                            setConversations((prev) => ({
+                              ...prev,
+                              [convKey]: {
+                                ...prev[convKey],
+                                messages: prev[convKey].messages.map((m) =>
+                                  m.MessageInfo.TimestampNanosString ===
+                                  timestamp
+                                    ? originalMessage
+                                    : m
+                                ),
+                              },
+                            }));
+                          }
+                        } finally {
+                          setLockRefresh(false);
+                        }
+                      }}
+                      onKeystroke={() =>
+                        onKeystroke(selectedConversationPublicKey)
+                      }
+                      typingUsers={getTypingUsersForConversation(
+                        selectedConversationPublicKey
+                      )
+                        .map(
+                          (pk) =>
+                            usernameByPublicKeyBase58Check[pk] ||
+                            shortenLongWord(pk)
+                        )
+                        .filter(Boolean)}
+                      mentionCandidates={
+                        isGroupChat && chatMembers
+                          ? Object.entries(chatMembers)
+                              .filter(
+                                ([pk, profile]) =>
+                                  pk !== appUser?.PublicKeyBase58Check &&
+                                  profile?.Username
+                              )
+                              .map(([pk, profile]) => ({
+                                publicKey: pk,
+                                username: profile!.Username,
+                              }))
+                          : undefined
+                      }
+                      onTipClick={
                         selectedConversation.ChatType === ChatType.DM
-                          ? selectedConversation.firstMessagePublicKey
-                          : selectedConversation.messages[0].RecipientInfo
-                              .OwnerPublicKeyBase58Check;
-                      const recipientKeyName =
-                        selectedConversation.ChatType === ChatType.DM
-                          ? DEFAULT_KEY_MESSAGING_GROUP_NAME
-                          : selectedConversation.messages[0].RecipientInfo
-                              .AccessGroupKeyName;
+                          ? () => {
+                              const recipientPk =
+                                selectedConversation.firstMessagePublicKey;
+                              if (
+                                recipientPk === appUser?.PublicKeyBase58Check
+                              ) {
+                                toast.info("You can't tip yourself");
+                                return;
+                              }
+                              setTipTarget({
+                                recipientPublicKey: recipientPk,
+                                recipientUsername:
+                                  activeChatUsersMap[recipientPk],
+                              });
+                            }
+                          : undefined
+                      }
+                      onClick={async (
+                        messageToSend: string,
+                        extraData?: Record<string, string>
+                      ) => {
+                        if (!selectedConversation) return;
+                        // Merge reply data into extraData if replying
+                        if (replyToMessage) {
+                          extraData = {
+                            ...extraData,
+                            [MSG_REPLY_TO]: replyToMessage.timestamp,
+                            [MSG_REPLY_PREVIEW]: replyToMessage.text.slice(
+                              0,
+                              100
+                            ),
+                          };
+                          setReplyToMessage(null);
+                        }
+                        // Generate a mock message to display in the UI to give
+                        // the user immediate feedback.
+                        const TimestampNanos = new Date().getTime() * 1e6;
+                        const recipientPublicKey =
+                          selectedConversation.ChatType === ChatType.DM
+                            ? selectedConversation.firstMessagePublicKey
+                            : selectedConversation.messages[0].RecipientInfo
+                                .OwnerPublicKeyBase58Check;
+                        const recipientAccessGroupKeyName =
+                          selectedConversation.ChatType === ChatType.DM
+                            ? DEFAULT_KEY_MESSAGING_GROUP_NAME
+                            : selectedConversation.messages[0].RecipientInfo
+                                .AccessGroupKeyName;
+                        const localId = `local-${Date.now()}-${Math.random()}`;
+                        const mockMessage = {
+                          DecryptedMessage: messageToSend,
+                          IsSender: true,
+                          _status: "sending" as const,
+                          _localId: localId,
+                          SenderInfo: {
+                            OwnerPublicKeyBase58Check:
+                              appUser.PublicKeyBase58Check,
+                            AccessGroupKeyName:
+                              DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                          },
+                          RecipientInfo: {
+                            OwnerPublicKeyBase58Check: recipientPublicKey,
+                            AccessGroupKeyName: recipientAccessGroupKeyName,
+                          },
+                          MessageInfo: {
+                            TimestampNanos,
+                            TimestampNanosString: String(TimestampNanos),
+                            ExtraData: extraData || {},
+                          },
+                        } as DecryptedMessageEntryResponse & {
+                          _status: string;
+                          _localId: string;
+                        };
 
-                      // Find original message for rollback
-                      const originalMessage = selectedConversation.messages.find(
-                        (m) => m.MessageInfo.TimestampNanosString === timestamp
-                      );
+                        // Optimistic: insert immediately with "sending" status
+                        const convKey = selectedConversationPublicKey;
+                        setConversations((prev) => ({
+                          ...prev,
+                          [convKey]: {
+                            ...prev[convKey],
+                            messages: [mockMessage, ...prev[convKey].messages],
+                          },
+                        }));
+                        setLockRefresh(true);
 
-                      // Preserve existing ExtraData (e.g. reply info) and add edited flag
-                      const existingExtraData = originalMessage?.MessageInfo?.ExtraData || {};
-                      const updatedExtraData = { ...existingExtraData, "msg:edited": "true" };
-
-                      // Optimistic: update message text and add edited flag
-                      setConversations((prev) => ({
-                        ...prev,
-                        [convKey]: {
-                          ...prev[convKey],
-                          messages: prev[convKey].messages.map((m) =>
-                            m.MessageInfo.TimestampNanosString === timestamp
-                              ? {
-                                  ...m,
-                                  DecryptedMessage: newText,
-                                  MessageInfo: {
-                                    ...m.MessageInfo,
-                                    ExtraData: updatedExtraData,
-                                  },
-                                }
-                              : m
-                          ),
-                        },
-                      }));
-                      setLockRefresh(true);
-
-                      try {
-                        await encryptAndUpdateMessage(
-                          newText,
-                          appUser.PublicKeyBase58Check,
+                        // Persist to IndexedDB so the message survives app close.
+                        // Awaited so the write lands before the blockchain call starts.
+                        const pending: PendingMessage = {
+                          localId,
+                          conversationKey: convKey,
+                          messageText: messageToSend,
+                          senderPublicKey: appUser.PublicKeyBase58Check,
                           recipientPublicKey,
-                          recipientKeyName,
-                          DEFAULT_KEY_MESSAGING_GROUP_NAME,
-                          timestamp,
-                          updatedExtraData
-                        );
-                        // No push notification for edits
-                      } catch (e) {
-                        toast.error("Failed to edit message");
-                        // Rollback
-                        if (originalMessage) {
+                          recipientAccessGroupKeyName,
+                          extraData,
+                          createdAt: Date.now(),
+                        };
+                        await addPendingMessage(pending);
+
+                        try {
+                          await encryptAndSendNewMessage(
+                            messageToSend,
+                            appUser.PublicKeyBase58Check,
+                            recipientPublicKey,
+                            recipientAccessGroupKeyName,
+                            DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                            extraData
+                          );
+                          // Sent successfully — remove from IndexedDB
+                          removePendingMessage(
+                            appUser.PublicKeyBase58Check,
+                            localId
+                          );
+                          // Notify via WebSocket relay
+                          notifyConversation(
+                            convKey,
+                            recipientPublicKey,
+                            usernameByPublicKeyBase58Check[
+                              appUser.PublicKeyBase58Check
+                            ] || appUser.PublicKeyBase58Check
+                          );
+                          // Update status to "sent" (blockchain accepted)
                           setConversations((prev) => ({
                             ...prev,
                             [convKey]: {
                               ...prev[convKey],
-                              messages: prev[convKey].messages.map((m) =>
-                                m.MessageInfo.TimestampNanosString === timestamp
-                                  ? originalMessage
+                              messages: prev[convKey].messages.map((m: any) =>
+                                m._localId === localId
+                                  ? { ...m, _status: "sent" }
                                   : m
                               ),
                             },
                           }));
+                        } catch (e: any) {
+                          // Update status to "failed" — pending message stays in IndexedDB for retry
+                          setConversations((prev) => ({
+                            ...prev,
+                            [convKey]: {
+                              ...prev[convKey],
+                              messages: prev[convKey].messages.map((m: any) =>
+                                m._localId === localId
+                                  ? { ...m, _status: "failed" }
+                                  : m
+                              ),
+                            },
+                          }));
+                          toast.error(
+                            `An error occurred while sending your message. Error: ${e.toString()}`
+                          );
+                          return Promise.reject(e);
+                        } finally {
+                          setLockRefresh(false);
                         }
-                      } finally {
-                        setLockRefresh(false);
-                      }
-                    }}
-                    onKeystroke={() => onKeystroke(selectedConversationPublicKey)}
-                    typingUsers={getTypingUsersForConversation(selectedConversationPublicKey)
-                      .map((pk) => usernameByPublicKeyBase58Check[pk] || shortenLongWord(pk))
-                      .filter(Boolean)}
-                    mentionCandidates={isGroupChat && chatMembers
-                      ? Object.entries(chatMembers)
-                          .filter(([pk, profile]) =>
-                            pk !== appUser?.PublicKeyBase58Check && profile?.Username
-                          )
-                          .map(([pk, profile]) => ({
-                            publicKey: pk,
-                            username: profile!.Username,
-                          }))
-                      : undefined}
-                    onTipClick={
-                      selectedConversation.ChatType === ChatType.DM
-                        ? () => {
-                            const recipientPk = selectedConversation.firstMessagePublicKey;
-                            if (recipientPk === appUser?.PublicKeyBase58Check) {
-                              toast.info("You can't tip yourself");
-                              return;
-                            }
-                            setTipTarget({
-                              recipientPublicKey: recipientPk,
-                              recipientUsername: activeChatUsersMap[recipientPk],
-                            });
-                          }
-                        : undefined
-                    }
-                    onClick={async (messageToSend: string, extraData?: Record<string, string>) => {
-                      if (!selectedConversation) return;
-                      // Merge reply data into extraData if replying
-                      if (replyToMessage) {
-                        extraData = {
-                          ...extraData,
-                          [MSG_REPLY_TO]: replyToMessage.timestamp,
-                          [MSG_REPLY_PREVIEW]: replyToMessage.text.slice(0, 100),
-                        };
-                        setReplyToMessage(null);
-                      }
-                      // Generate a mock message to display in the UI to give
-                      // the user immediate feedback.
-                      const TimestampNanos = new Date().getTime() * 1e6;
-                      const recipientPublicKey =
-                        selectedConversation.ChatType === ChatType.DM
-                          ? selectedConversation.firstMessagePublicKey
-                          : selectedConversation.messages[0].RecipientInfo
-                              .OwnerPublicKeyBase58Check;
-                      const recipientAccessGroupKeyName =
-                        selectedConversation.ChatType === ChatType.DM
-                          ? DEFAULT_KEY_MESSAGING_GROUP_NAME
-                          : selectedConversation.messages[0].RecipientInfo
-                              .AccessGroupKeyName;
-                      const localId = `local-${Date.now()}-${Math.random()}`;
-                      const mockMessage = {
-                        DecryptedMessage: messageToSend,
-                        IsSender: true,
-                        _status: "sending" as const,
-                        _localId: localId,
-                        SenderInfo: {
-                          OwnerPublicKeyBase58Check:
-                            appUser.PublicKeyBase58Check,
-                          AccessGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
-                        },
-                        RecipientInfo: {
-                          OwnerPublicKeyBase58Check: recipientPublicKey,
-                          AccessGroupKeyName: recipientAccessGroupKeyName,
-                        },
-                        MessageInfo: {
-                          TimestampNanos,
-                          TimestampNanosString: String(TimestampNanos),
-                          ExtraData: extraData || {},
-                        },
-                      } as DecryptedMessageEntryResponse & { _status: string; _localId: string };
-
-                      // Optimistic: insert immediately with "sending" status
-                      const convKey = selectedConversationPublicKey;
-                      setConversations((prev) => ({
-                        ...prev,
-                        [convKey]: {
-                          ...prev[convKey],
-                          messages: [mockMessage, ...prev[convKey].messages],
-                        },
-                      }));
-                      setLockRefresh(true);
-
-                      // Persist to IndexedDB so the message survives app close.
-                      // Awaited so the write lands before the blockchain call starts.
-                      const pending: PendingMessage = {
-                        localId,
-                        conversationKey: convKey,
-                        messageText: messageToSend,
-                        senderPublicKey: appUser.PublicKeyBase58Check,
-                        recipientPublicKey,
-                        recipientAccessGroupKeyName,
-                        extraData,
-                        createdAt: Date.now(),
-                      };
-                      await addPendingMessage(pending);
-
-                      try {
-                        await encryptAndSendNewMessage(
-                          messageToSend,
-                          appUser.PublicKeyBase58Check,
-                          recipientPublicKey,
-                          recipientAccessGroupKeyName,
-                          DEFAULT_KEY_MESSAGING_GROUP_NAME,
-                          extraData
-                        );
-                        // Sent successfully — remove from IndexedDB
-                        removePendingMessage(appUser.PublicKeyBase58Check, localId);
-                        // Notify via WebSocket relay
-                        notifyConversation(
-                          convKey,
-                          recipientPublicKey,
-                          usernameByPublicKeyBase58Check[appUser.PublicKeyBase58Check] || appUser.PublicKeyBase58Check
-                        );
-                        // Update status to "sent" (blockchain accepted)
-                        setConversations((prev) => ({
-                          ...prev,
-                          [convKey]: {
-                            ...prev[convKey],
-                            messages: prev[convKey].messages.map((m: any) =>
-                              m._localId === localId ? { ...m, _status: "sent" } : m
-                            ),
-                          },
-                        }));
-                      } catch (e: any) {
-                        // Update status to "failed" — pending message stays in IndexedDB for retry
-                        setConversations((prev) => ({
-                          ...prev,
-                          [convKey]: {
-                            ...prev[convKey],
-                            messages: prev[convKey].messages.map((m: any) =>
-                              m._localId === localId ? { ...m, _status: "failed" } : m
-                            ),
-                          },
-                        }));
-                        toast.error(
-                          `An error occurred while sending your message. Error: ${e.toString()}`
-                        );
-                        return Promise.reject(e);
-                      } finally {
-                        setLockRefresh(false);
-                      }
-                    }}
-                  />}
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -3197,11 +3807,17 @@ export const MessagingApp: FC = () => {
       {/* Block confirmation dialog */}
       {blockConfirm && (
         <>
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setBlockConfirm(null)} />
+          <div
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+            onClick={() => setBlockConfirm(null)}
+          />
           <div className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#141c2b] border border-white/10 rounded-xl shadow-2xl p-6 w-[320px] max-w-[90vw]">
-            <h3 className="text-white font-bold text-base mb-2">Block {blockConfirm.name}?</h3>
+            <h3 className="text-white font-bold text-base mb-2">
+              Block {blockConfirm.name}?
+            </h3>
             <p className="text-gray-400 text-sm mb-5">
-              They won't be able to message you. You can unblock them later from the Requests tab.
+              They won't be able to message you. You can unblock them later from
+              the Requests tab.
             </p>
             <div className="flex gap-3">
               <button
@@ -3212,7 +3828,10 @@ export const MessagingApp: FC = () => {
               </button>
               <button
                 onClick={() => {
-                  handleBlockRequest(blockConfirm.conversationKey, blockConfirm.publicKey);
+                  handleBlockRequest(
+                    blockConfirm.conversationKey,
+                    blockConfirm.publicKey
+                  );
                   setBlockConfirm(null);
                 }}
                 className="flex-1 py-2.5 rounded-lg glass-btn-danger text-red-400 text-sm font-bold cursor-pointer transition-colors"
@@ -3227,64 +3846,69 @@ export const MessagingApp: FC = () => {
       {/* Tip confirm dialog */}
       {tipTarget && appUser && (
         <Suspense fallback={null}>
-        <LazyTipConfirmDialog
-          appUser={appUser}
-          recipientPublicKey={tipTarget.recipientPublicKey}
-          recipientUsername={tipTarget.recipientUsername}
-          tipReplyTo={tipTarget.tipReplyTo}
-          onClose={() => {
-            if (tipTarget?.tipReplyTo) {
-              setPendingTipTimestamps((prev) => {
-                const next = new Set(prev);
-                next.delete(tipTarget.tipReplyTo!);
-                return next;
-              });
-            }
-            setTipTarget(null);
-          }}
-          onTipSent={async (tipData) => {
-            useStore.getState().addSessionTipUsd(tipData.amountUsd);
-            try {
-              const convKey = selectedConversationPublicKey;
-              const conv = conversations[convKey];
-              if (!conv) return;
-              const recipientPublicKey =
-                conv.ChatType === ChatType.DM
-                  ? conv.firstMessagePublicKey
-                  : conv.messages[0].RecipientInfo.OwnerPublicKeyBase58Check;
-              const recipientKeyName =
-                conv.ChatType === ChatType.DM
-                  ? DEFAULT_KEY_MESSAGING_GROUP_NAME
-                  : conv.messages[0].RecipientInfo.AccessGroupKeyName;
+          <LazyTipConfirmDialog
+            appUser={appUser}
+            recipientPublicKey={tipTarget.recipientPublicKey}
+            recipientUsername={tipTarget.recipientUsername}
+            tipReplyTo={tipTarget.tipReplyTo}
+            onClose={() => {
+              if (tipTarget?.tipReplyTo) {
+                setPendingTipTimestamps((prev) => {
+                  const next = new Set(prev);
+                  next.delete(tipTarget.tipReplyTo!);
+                  return next;
+                });
+              }
+              setTipTarget(null);
+            }}
+            onTipSent={async (tipData) => {
+              useStore.getState().addSessionTipUsd(tipData.amountUsd);
+              try {
+                const convKey = selectedConversationPublicKey;
+                const conv = conversations[convKey];
+                if (!conv) return;
+                const recipientPublicKey =
+                  conv.ChatType === ChatType.DM
+                    ? conv.firstMessagePublicKey
+                    : conv.messages[0].RecipientInfo.OwnerPublicKeyBase58Check;
+                const recipientKeyName =
+                  conv.ChatType === ChatType.DM
+                    ? DEFAULT_KEY_MESSAGING_GROUP_NAME
+                    : conv.messages[0].RecipientInfo.AccessGroupKeyName;
 
-              const recipientName = tipData.recipientUsername
-                ? `@${tipData.recipientUsername}`
-                : tipData.recipientPublicKey.slice(0, 8);
-              const fallback = tipData.message || `Tipped ${recipientName}`;
+                const recipientName = tipData.recipientUsername
+                  ? `@${tipData.recipientUsername}`
+                  : tipData.recipientPublicKey.slice(0, 8);
+                const fallback = tipData.message || `Tipped ${recipientName}`;
 
-              await encryptAndSendNewMessage(
-                fallback,
-                appUser.PublicKeyBase58Check,
-                recipientPublicKey,
-                recipientKeyName,
-                DEFAULT_KEY_MESSAGING_GROUP_NAME,
-                buildExtraData({
-                  type: "tip",
-                  tipAmountNanos: tipData.currency === "DESO" ? tipData.amountNanos : undefined,
-                  tipAmountUsdcBaseUnits: tipData.amountUsdcBaseUnits,
-                  tipCurrency: tipData.currency,
-                  tipTxHash: tipData.txHash,
-                  tipReplyTo: tipData.tipReplyTo,
-                  tipRecipient: tipData.recipientPublicKey,
-                })
-              );
-              // No push notification for tips
-            } catch (e) {
-              toast.error("Tip sent but message failed. The recipient received the funds.");
-              console.error("Tip message error:", e);
-            }
-          }}
-        />
+                await encryptAndSendNewMessage(
+                  fallback,
+                  appUser.PublicKeyBase58Check,
+                  recipientPublicKey,
+                  recipientKeyName,
+                  DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                  buildExtraData({
+                    type: "tip",
+                    tipAmountNanos:
+                      tipData.currency === "DESO"
+                        ? tipData.amountNanos
+                        : undefined,
+                    tipAmountUsdcBaseUnits: tipData.amountUsdcBaseUnits,
+                    tipCurrency: tipData.currency,
+                    tipTxHash: tipData.txHash,
+                    tipReplyTo: tipData.tipReplyTo,
+                    tipRecipient: tipData.recipientPublicKey,
+                  })
+                );
+                // No push notification for tips
+              } catch (e) {
+                toast.error(
+                  "Tip sent but message failed. The recipient received the funds."
+                );
+                console.error("Tip message error:", e);
+              }
+            }}
+          />
         </Suspense>
       )}
 
@@ -3305,5 +3929,3 @@ function JoinGroupModalWrapper() {
     />
   );
 }
-
-
