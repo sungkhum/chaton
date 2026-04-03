@@ -21,8 +21,8 @@ export const SendFundsDialog = ({ appUser, onClose }: StartGroupChatProps) => {
       />
       {/* Dialog */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-[#050e1d] text-blue-100 border border-blue-900 w-[90%] md:w-[40%] max-h-[95%] overflow-y-auto custom-scrollbar rounded-lg">
-          <div className="text-blue-100 text-xl font-semibold p-5 border-b border-blue-600/20">
+        <div className="bg-[#0c1220] text-white border border-white/8 w-[min(95vw,440px)] max-h-[95%] overflow-y-auto custom-scrollbar rounded-2xl shadow-2xl shadow-black/40">
+          <div className="text-white text-xl font-semibold p-5 border-b border-white/8">
             Get $DESO to get started
           </div>
 
@@ -55,7 +55,7 @@ export const SendFundsDialog = ({ appUser, onClose }: StartGroupChatProps) => {
 
               <div className="mt-1 md:mt-2">
                 <button
-                  className="bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm px-4 py-2 cursor-pointer"
+                  className="glass-btn-primary text-[#34F080] font-semibold rounded-lg text-sm px-4 py-2 cursor-pointer transition-colors"
                   onClick={() => identity.verifyPhoneNumber()}
                 >
                   Get $DESO

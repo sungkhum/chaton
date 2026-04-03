@@ -37,8 +37,8 @@ function NativeContent({ onInstall }: { onInstall: () => void }) {
       </p>
       <button
         onClick={onInstall}
-        className="w-full py-3 rounded-xl font-semibold text-black
-                   bg-gradient-to-r from-[#34F080] via-[#20E0AA] to-[#40B8E0]
+        className="w-full py-3 rounded-xl font-semibold text-[#34F080]
+                   glass-btn-primary
                    active:scale-[0.98] transition-transform"
       >
         <Download className="inline -mt-0.5 mr-2 h-4 w-4" />

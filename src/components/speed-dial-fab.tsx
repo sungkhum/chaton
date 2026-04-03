@@ -44,12 +44,12 @@ export const SpeedDialFab: FC<{
 
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-14 h-14 rounded-full bg-gradient-to-r from-[#34F080] to-[#20E0AA] flex items-center justify-center shadow-lg cursor-pointer transition-transform active:scale-95"
+          className="w-14 h-14 rounded-full glass-fab flex items-center justify-center shadow-lg cursor-pointer transition-transform active:scale-95"
         >
           {expanded ? (
-            <X className="w-6 h-6 text-black" />
+            <X className="w-6 h-6 text-[#34F080]" />
           ) : (
-            <Plus className="w-6 h-6 text-black" />
+            <Plus className="w-6 h-6 text-[#34F080]" />
           )}
         </button>
       </div>

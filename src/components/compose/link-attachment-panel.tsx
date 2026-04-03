@@ -302,7 +302,7 @@ export const LinkAttachmentPanel = ({
           disabled={isSending || !validUrl}
           aria-label="Send link"
           title={!validUrl ? "Paste a URL first" : "Send link"}
-          className="p-2 rounded-full bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black hover:brightness-110 cursor-pointer transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="p-2 rounded-full glass-fab text-[#34F080] cursor-pointer transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isSending ? (
             <Loader2 className="w-4 h-4 animate-spin" />

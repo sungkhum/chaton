@@ -87,7 +87,7 @@ export const Header = () => {
                     Profiles
                   </span>
                   <button
-                    className="bg-transparent hover:bg-[#34F080]/10 text-[#34F080] font-semibold md:text-sm border py-1 px-2 border-[#34F080]/50 hover:border-[#34F080] rounded outline-none transition-colors"
+                    className="glass-btn-primary text-[#34F080] font-semibold md:text-sm py-1 px-2 rounded outline-none transition-colors"
                     onClick={async () => {
                       setLockRefresh(true);
                       try {

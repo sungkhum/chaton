@@ -235,7 +235,7 @@ export const GifPicker = ({
           />
           <button
             onClick={handleSend}
-            className="p-2 rounded-full bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black hover:brightness-110 cursor-pointer transition-colors shrink-0"
+            className="p-2 rounded-full glass-fab text-[#34F080] cursor-pointer transition-colors shrink-0"
           >
             <Send className="w-4 h-4" />
           </button>
@@ -316,7 +316,7 @@ export const GifPicker = ({
             <button
               key={cat.slug}
               onClick={() => handleCategoryClick(cat)}
-              className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium bg-blue-800/20 text-blue-300/70 hover:bg-blue-800/40 hover:text-blue-200 cursor-pointer transition-colors"
+              className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium glass-pill text-gray-400 hover:text-white cursor-pointer transition-colors"
             >
               {cat.title}
             </button>

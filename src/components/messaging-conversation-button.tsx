@@ -17,7 +17,7 @@ export const MessagingConversationButton: FC<{
       </p>
 
       <button
-        className="bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black font-bold rounded-full hover:brightness-110 text-lg px-6 py-3 cursor-pointer"
+        className="glass-btn-primary text-[#34F080] font-bold rounded-full text-lg px-6 py-3 cursor-pointer transition-colors"
         onClick={async () => {
           setIsSending(true);
           try {
