@@ -284,6 +284,7 @@ input::placeholder {
 
 .landing-glass-card {
   background: rgba(20, 28, 40, 0.7);
+  -webkit-backdrop-filter: blur(40px);
   backdrop-filter: blur(40px);
   border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
@@ -416,50 +417,62 @@ input::placeholder {
 }
 
 /* Glassmorphism message bubbles */
-/* Base glass styles use low-opacity backgrounds that rely on backdrop-filter
-   for visual weight. When backdrop-filter fails (stacking context issues,
-   older browsers), bump backgrounds to opaque-enough fallbacks so elements
-   remain readable. The @supports block at the end restores the translucent
-   look when backdrop-filter is confirmed working. */
+/* Glassmorphism — translucent backgrounds with backdrop-filter blur.
+   Using cssMinify: "esbuild" in vite.config.ts to prevent Lightning CSS
+   from stripping the unprefixed backdrop-filter (known bug #537). */
 
 .glass-received {
-  background: rgba(20, 28, 43, 0.92);
+  background: rgba(255, 255, 255, 0.04);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .glass-sent {
-  background: rgba(13, 40, 24, 0.92);
+  background: rgba(52, 240, 128, 0.08);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(52, 240, 128, 0.15);
   box-shadow: inset 0 1px 0 rgba(52, 240, 128, 0.1);
 }
 
 .glass-compose {
-  background: rgba(20, 28, 43, 0.92);
+  background: rgba(255, 255, 255, 0.04);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.10);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .glass-search {
-  background: rgba(20, 28, 43, 0.92);
+  background: rgba(255, 255, 255, 0.04);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .glass-conversation-active {
-  background: rgba(13, 40, 24, 0.85);
+  background: rgba(52, 240, 128, 0.06);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   border-left: 2px solid rgba(52, 240, 128, 0.4);
   box-shadow: inset 0 0 20px rgba(52, 240, 128, 0.03);
 }
 
 .glass-invite {
-  background: rgba(20, 28, 43, 0.92);
+  background: rgba(255, 255, 255, 0.04);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.10);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .glass-fab {
-  background: rgba(13, 40, 24, 0.92);
+  background: rgba(52, 240, 128, 0.18);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(52, 240, 128, 0.45);
   box-shadow:
     inset 0 1px 0 rgba(52, 240, 128, 0.20),
@@ -468,7 +481,9 @@ input::placeholder {
 }
 
 .glass-send-edit {
-  background: rgba(15, 25, 50, 0.92);
+  background: rgba(96, 165, 250, 0.10);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(96, 165, 250, 0.30);
   box-shadow:
     inset 0 1px 0 rgba(96, 165, 250, 0.15),
@@ -478,177 +493,95 @@ input::placeholder {
 
 /* Glassmorphism buttons */
 .glass-btn-primary {
-  background: rgba(13, 40, 24, 0.92);
+  background: rgba(52, 240, 128, 0.12);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(52, 240, 128, 0.30);
   box-shadow: inset 0 1px 0 rgba(52, 240, 128, 0.12);
 }
 .glass-btn-primary:hover {
-  background: rgba(13, 40, 24, 0.95);
+  background: rgba(52, 240, 128, 0.18);
   border-color: rgba(52, 240, 128, 0.45);
 }
 
 .glass-btn-secondary {
-  background: rgba(20, 28, 43, 0.92);
+  background: rgba(255, 255, 255, 0.04);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.10);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 .glass-btn-secondary:hover {
-  background: rgba(20, 28, 43, 0.95);
+  background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.18);
 }
 
 .glass-btn-danger {
-  background: rgba(40, 15, 15, 0.92);
+  background: rgba(239, 68, 68, 0.10);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(239, 68, 68, 0.25);
   box-shadow: inset 0 1px 0 rgba(239, 68, 68, 0.08);
 }
 .glass-btn-danger:hover {
-  background: rgba(40, 15, 15, 0.95);
+  background: rgba(239, 68, 68, 0.18);
   border-color: rgba(239, 68, 68, 0.35);
 }
 
-/* When backdrop-filter is supported, use translucent backgrounds + blur */
-@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .glass-received {
-    background: rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-  .glass-sent {
-    background: rgba(52, 240, 128, 0.08);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-  .glass-compose {
-    background: rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-  .glass-search {
-    background: rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-  }
-  .glass-conversation-active {
-    background: rgba(52, 240, 128, 0.06);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-  }
-  .glass-invite {
-    background: rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-  .glass-fab {
-    background: rgba(52, 240, 128, 0.18);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-  .glass-send-edit {
-    background: rgba(96, 165, 250, 0.10);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-  .glass-btn-primary {
-    background: rgba(52, 240, 128, 0.12);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-  .glass-btn-primary:hover {
-    background: rgba(52, 240, 128, 0.18);
-  }
-  .glass-btn-secondary {
-    background: rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-  .glass-btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.08);
-  }
-  .glass-btn-danger {
-    background: rgba(239, 68, 68, 0.10);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-  .glass-btn-danger:hover {
-    background: rgba(239, 68, 68, 0.18);
-  }
-}
-
-/* Glassmorphism pills (reactions & tips) — opaque fallbacks */
+/* Glassmorphism pills (reactions & tips) */
 .glass-pill {
-  background: rgba(20, 28, 43, 0.92);
+  background: rgba(255, 255, 255, 0.04);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.10);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .glass-pill-active {
-  background: rgba(13, 40, 24, 0.92);
+  background: rgba(52, 240, 128, 0.10);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(52, 240, 128, 0.35);
   box-shadow: inset 0 1px 0 rgba(52, 240, 128, 0.10);
 }
 
 .glass-pill-tip-deso {
-  background: rgba(12, 22, 40, 0.92);
+  background: rgba(39, 117, 202, 0.08);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(39, 117, 202, 0.25);
   box-shadow: inset 0 1px 0 rgba(39, 117, 202, 0.08);
 }
 
 .glass-pill-tip-deso-active {
-  background: rgba(12, 22, 40, 0.95);
+  background: rgba(39, 117, 202, 0.14);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(39, 117, 202, 0.40);
   box-shadow: inset 0 1px 0 rgba(39, 117, 202, 0.12);
 }
 
 .glass-pill-tip-usdc {
-  background: rgba(13, 40, 24, 0.88);
+  background: rgba(52, 240, 128, 0.06);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(52, 240, 128, 0.25);
   box-shadow: inset 0 1px 0 rgba(52, 240, 128, 0.08);
 }
 
 .glass-pill-tip-usdc-active {
-  background: rgba(13, 40, 24, 0.92);
+  background: rgba(52, 240, 128, 0.12);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(52, 240, 128, 0.40);
   box-shadow: inset 0 1px 0 rgba(52, 240, 128, 0.10);
 }
 
-/* Pills: translucent when backdrop-filter works */
-@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .glass-pill {
-    background: rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-  .glass-pill-active {
-    background: rgba(52, 240, 128, 0.10);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-  .glass-pill-tip-deso {
-    background: rgba(39, 117, 202, 0.08);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-  .glass-pill-tip-deso-active {
-    background: rgba(39, 117, 202, 0.14);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-  .glass-pill-tip-usdc {
-    background: rgba(52, 240, 128, 0.06);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-  .glass-pill-tip-usdc-active {
-    background: rgba(52, 240, 128, 0.12);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-}
-
-/* Glassmorphism Sonner toasts — opaque fallback */
+/* Glassmorphism Sonner toasts */
 [data-sonner-toaster] [data-sonner-toast] {
-  background: rgba(20, 28, 43, 0.95) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  backdrop-filter: blur(20px) !important;
   border: 1px solid rgba(255, 255, 255, 0.10) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
@@ -667,7 +600,7 @@ input::placeholder {
 }
 
 [data-sonner-toaster] [data-sonner-toast][data-type="success"] {
-  background: rgba(13, 40, 24, 0.95) !important;
+  background: rgba(52, 240, 128, 0.08) !important;
   border: 1px solid rgba(52, 240, 128, 0.25) !important;
   box-shadow:
     inset 0 1px 0 rgba(52, 240, 128, 0.10),
@@ -680,7 +613,7 @@ input::placeholder {
 }
 
 [data-sonner-toaster] [data-sonner-toast][data-type="error"] {
-  background: rgba(40, 15, 15, 0.95) !important;
+  background: rgba(239, 68, 68, 0.08) !important;
   border: 1px solid rgba(239, 68, 68, 0.25) !important;
   box-shadow:
     inset 0 1px 0 rgba(239, 68, 68, 0.10),
@@ -692,21 +625,6 @@ input::placeholder {
   color: #ef4444 !important;
 }
 
-/* Toasts: translucent when backdrop-filter works */
-@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  [data-sonner-toaster] [data-sonner-toast] {
-    background: rgba(255, 255, 255, 0.05) !important;
-    backdrop-filter: blur(20px) !important;
-    -webkit-backdrop-filter: blur(20px) !important;
-  }
-  [data-sonner-toaster] [data-sonner-toast][data-type="success"] {
-    background: rgba(52, 240, 128, 0.08) !important;
-  }
-  [data-sonner-toaster] [data-sonner-toast][data-type="error"] {
-    background: rgba(239, 68, 68, 0.08) !important;
-  }
-}
-
 /* Action button inside toasts */
 [data-sonner-toaster] [data-sonner-toast] [data-button] {
   background: rgba(52, 240, 128, 0.15) !important;
@@ -714,8 +632,8 @@ input::placeholder {
   color: #34F080 !important;
   font-weight: 600 !important;
   border-radius: 8px !important;
-  backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
+  backdrop-filter: blur(12px) !important;
   transition: all 0.2s ease !important;
 }
 
