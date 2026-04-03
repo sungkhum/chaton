@@ -268,15 +268,9 @@ export const SendMessageButtonAndInput = ({
     }));
   };
 
-  // Text that was in the input when an image was staged — used as initial caption
-  const [stagedCaption, setStagedCaption] = useState("");
-
   const stageImage = (file: File) => {
     // Revoke previous preview URL if any
     if (pendingImage) URL.revokeObjectURL(pendingImage.previewUrl);
-    // Capture current text as the image caption and clear the main input
-    setStagedCaption(messageToSend);
-    setMessageToSend("");
     const previewUrl = URL.createObjectURL(file);
     // Read image dimensions from the file for layout reservation
     const img = new window.Image();
@@ -295,11 +289,6 @@ export const SendMessageButtonAndInput = ({
 
   const cancelImage = () => {
     if (pendingImage) URL.revokeObjectURL(pendingImage.previewUrl);
-    // Restore the text that was in the input before staging
-    if (stagedCaption) {
-      setMessageToSend(stagedCaption);
-      setStagedCaption("");
-    }
     setPendingImage(null);
   };
 
@@ -320,7 +309,6 @@ export const SendMessageButtonAndInput = ({
       await sendMessage(caption || "", extraData);
       URL.revokeObjectURL(pendingImage.previewUrl);
       setPendingImage(null);
-      setStagedCaption("");
     } catch (err: any) {
       toast.error(`Image upload failed: ${err.message || err}`);
     } finally {
@@ -330,8 +318,6 @@ export const SendMessageButtonAndInput = ({
 
   const stageVideo = (file: File) => {
     if (pendingVideo) URL.revokeObjectURL(pendingVideo.previewUrl);
-    setStagedCaption(messageToSend);
-    setMessageToSend("");
     const previewUrl = URL.createObjectURL(file);
     const video = document.createElement("video");
     video.preload = "metadata";
@@ -364,10 +350,6 @@ export const SendMessageButtonAndInput = ({
 
   const cancelVideo = () => {
     if (pendingVideo) URL.revokeObjectURL(pendingVideo.previewUrl);
-    if (stagedCaption) {
-      setMessageToSend(stagedCaption);
-      setStagedCaption("");
-    }
     setPendingVideo(null);
   };
 
@@ -390,7 +372,6 @@ export const SendMessageButtonAndInput = ({
       await sendMessage(caption || "", extraData);
       URL.revokeObjectURL(pendingVideo.previewUrl);
       setPendingVideo(null);
-      setStagedCaption("");
     } catch (err: any) {
       toast.error(`Video upload failed: ${err.message || err}`);
     } finally {
@@ -441,6 +422,19 @@ export const SendMessageButtonAndInput = ({
       ogImage: ogData?.image,
     }));
     setShowLinkPanel(false);
+  };
+
+  /** Unified send: routes to image/video confirm when media is staged, otherwise normal send */
+  const handleSend = async () => {
+    if (pendingImage) {
+      await confirmImage(messageToSend || undefined);
+      return;
+    }
+    if (pendingVideo) {
+      await confirmVideo(messageToSend || undefined);
+      return;
+    }
+    await sendMessage();
   };
 
   // Auto-size textarea whenever messageToSend changes — covers both typing and
@@ -518,20 +512,14 @@ export const SendMessageButtonAndInput = ({
           <ImagePreviewPanel
             file={pendingImage.file}
             previewUrl={pendingImage.previewUrl}
-            onSend={confirmImage}
             onCancel={cancelImage}
-            isSending={isUploading}
-            initialCaption={stagedCaption}
           />
         )}
         {pendingVideo && (
           <VideoPreviewPanel
             file={pendingVideo.file}
             previewUrl={pendingVideo.previewUrl}
-            onSend={confirmVideo}
             onCancel={cancelVideo}
-            isSending={isUploading}
-            initialCaption={stagedCaption}
           />
         )}
         {showGifPicker && (
@@ -660,7 +648,7 @@ export const SendMessageButtonAndInput = ({
             }
             if (canSend(e)) {
               e.preventDefault();
-              await sendMessage();
+              await handleSend();
             }
           }}
           onPaste={handlePaste}
@@ -669,8 +657,8 @@ export const SendMessageButtonAndInput = ({
 
         {/* Send / Save button */}
         <button
-          onClick={() => sendMessage()}
-          disabled={isSending}
+          onClick={() => handleSend()}
+          disabled={isSending || isUploading}
           className={`p-2 rounded-full shrink-0 cursor-pointer transition-all ${
             editingMessage
               ? "glass-send-edit text-blue-300 hover:border-blue-400/60"
@@ -678,7 +666,7 @@ export const SendMessageButtonAndInput = ({
           }`}
           type="button"
         >
-          {isSending ? (
+          {isSending || isUploading ? (
             <Loader2 className="w-5 h-5 animate-spin" />
           ) : editingMessage ? (
             <Check className="w-5 h-5" />
