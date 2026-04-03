@@ -1,3 +1,4 @@
+import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
 import {
   AccessGroupEntryResponse,
@@ -56,6 +57,7 @@ import { nameOrFormattedKey, SearchUsers } from "./search-users";
 export interface ManageMembersDialogProps {
   onSuccess: () => void;
   onLeaveGroup: (conversationKey: string, groupOwnerPublicKey: string, groupKeyName: string) => void;
+  onOptimisticSystemMessage: (members: Array<{ pk: string; un: string }>) => void;
   conversation: Conversation;
   conversationKey: string;
   isGroupOwner: boolean;
@@ -64,11 +66,12 @@ export interface ManageMembersDialogProps {
 export const ManageMembersDialog = ({
   onSuccess,
   onLeaveGroup,
+  onOptimisticSystemMessage,
   conversation,
   conversationKey,
   isGroupOwner,
 }: ManageMembersDialogProps) => {
-  const { appUser, allAccessGroups, decrementJoinRequestCount } = useStore();
+  const { appUser, allAccessGroups, decrementJoinRequestCount } = useStore(useShallow((s) => ({ appUser: s.appUser, allAccessGroups: s.allAccessGroups, decrementJoinRequestCount: s.decrementJoinRequestCount })));
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -459,6 +462,7 @@ export const ManageMembersDialog = ({
         const addedMembers = members
           .filter((m) => memberKeysToAdd.includes(m.id))
           .map((m) => ({ pk: m.id, un: m.text }));
+        onOptimisticSystemMessage(addedMembers);
         sendSystemMessage(
           appUser.PublicKeyBase58Check,
           groupOwnerKey,
@@ -727,15 +731,17 @@ export const ManageMembersDialog = ({
       );
 
       // Best-effort: send system log message for approved members
+      const approvedMembers = approvedRequests.map((r) => ({
+        pk: r.requesterPublicKey,
+        un: nameOrFormattedKey(r.profile, r.requesterPublicKey),
+      }));
+      onOptimisticSystemMessage(approvedMembers);
       sendSystemMessage(
         appUser.PublicKeyBase58Check,
         groupOwnerKey,
         groupName,
         "member-joined",
-        approvedRequests.map((r) => ({
-          pk: r.requesterPublicKey,
-          un: nameOrFormattedKey(r.profile, r.requesterPublicKey),
-        }))
+        approvedMembers
       );
 
       // Best-effort cleanup: delete join request associations on-chain.

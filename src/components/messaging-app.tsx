@@ -1,5 +1,6 @@
 import { Loader2, CheckCircle, Bell, BellOff, Archive, EllipsisVertical, ShieldBan } from "lucide-react";
 import { useStore } from "../store";
+import { useShallow } from "zustand/react/shallow";
 import {
   ChatType,
   DecryptedMessageEntryResponse,
@@ -84,7 +85,7 @@ import {
   scrollContainerToElement,
 } from "../utils/helpers";
 import { Conversation, ConversationMap } from "../utils/types";
-import { buildExtraData, getGroupImageUrl, MSG_REPLY_TO, MSG_REPLY_PREVIEW } from "../utils/extra-data";
+import { buildExtraData, getGroupImageUrl, MSG_REPLY_TO, MSG_REPLY_PREVIEW, type MentionEntry } from "../utils/extra-data";
 const LazyTipConfirmDialog = lazy(() =>
   import("./tip-confirm-dialog").then(m => ({ default: m.TipConfirmDialog }))
 );
@@ -168,22 +169,54 @@ export const MockBubble: FC<{
 };
 
 export const MessagingApp: FC = () => {
+  // State — only these cause re-renders (useShallow does shallow equality)
   const {
-    appUser, isLoadingUser, allAccessGroups, setAllAccessGroups, lockRefresh, setLockRefresh,
+    appUser, isLoadingUser, allAccessGroups, lockRefresh,
     mutualFollows, approvedUsers, blockedUsers, initiatedChats, chatRequestsLoaded,
     archivedGroups, archivedGroupAssociationIds,
     archivedChats, archivedChatAssociationIds,
     dismissedUsers, dismissedAssociationIds,
     blockedAssociationIds,
-    setClassificationData, addInitiatedChat, approveUser, rollbackApproval,
-    blockUser, rollbackBlock, archiveGroup, unarchiveGroup, rollbackArchive, rollbackUnarchive, mergeArchivedGroupIds,
-    archiveChat, unarchiveChat, rollbackArchiveChat, rollbackUnarchiveChat, mergeArchivedChatIds,
-    dismissUser, undismissUser, rollbackDismiss, rollbackUndismiss, mergeDismissedIds,
-    unblockUser, rollbackUnblock,
-    unreadByConversation, clearUnread, initializeUnread,
-    mutedConversations, toggleMute,
-    setJoinRequestCounts,
-  } = useStore();
+    unreadByConversation, mutedConversations,
+  } = useStore(useShallow((s) => ({
+    appUser: s.appUser, isLoadingUser: s.isLoadingUser, allAccessGroups: s.allAccessGroups, lockRefresh: s.lockRefresh,
+    mutualFollows: s.mutualFollows, approvedUsers: s.approvedUsers, blockedUsers: s.blockedUsers, initiatedChats: s.initiatedChats, chatRequestsLoaded: s.chatRequestsLoaded,
+    archivedGroups: s.archivedGroups, archivedGroupAssociationIds: s.archivedGroupAssociationIds,
+    archivedChats: s.archivedChats, archivedChatAssociationIds: s.archivedChatAssociationIds,
+    dismissedUsers: s.dismissedUsers, dismissedAssociationIds: s.dismissedAssociationIds,
+    blockedAssociationIds: s.blockedAssociationIds,
+    unreadByConversation: s.unreadByConversation, mutedConversations: s.mutedConversations,
+  })));
+  // Actions — stable references, never cause re-renders
+  const setAllAccessGroups = useStore((s) => s.setAllAccessGroups);
+  const setLockRefresh = useStore((s) => s.setLockRefresh);
+  const setClassificationData = useStore((s) => s.setClassificationData);
+  const addInitiatedChat = useStore((s) => s.addInitiatedChat);
+  const approveUser = useStore((s) => s.approveUser);
+  const rollbackApproval = useStore((s) => s.rollbackApproval);
+  const blockUser = useStore((s) => s.blockUser);
+  const rollbackBlock = useStore((s) => s.rollbackBlock);
+  const archiveGroup = useStore((s) => s.archiveGroup);
+  const unarchiveGroup = useStore((s) => s.unarchiveGroup);
+  const rollbackArchive = useStore((s) => s.rollbackArchive);
+  const rollbackUnarchive = useStore((s) => s.rollbackUnarchive);
+  const mergeArchivedGroupIds = useStore((s) => s.mergeArchivedGroupIds);
+  const archiveChat = useStore((s) => s.archiveChat);
+  const unarchiveChat = useStore((s) => s.unarchiveChat);
+  const rollbackArchiveChat = useStore((s) => s.rollbackArchiveChat);
+  const rollbackUnarchiveChat = useStore((s) => s.rollbackUnarchiveChat);
+  const mergeArchivedChatIds = useStore((s) => s.mergeArchivedChatIds);
+  const dismissUser = useStore((s) => s.dismissUser);
+  const undismissUser = useStore((s) => s.undismissUser);
+  const rollbackDismiss = useStore((s) => s.rollbackDismiss);
+  const rollbackUndismiss = useStore((s) => s.rollbackUndismiss);
+  const mergeDismissedIds = useStore((s) => s.mergeDismissedIds);
+  const unblockUser = useStore((s) => s.unblockUser);
+  const rollbackUnblock = useStore((s) => s.rollbackUnblock);
+  const clearUnread = useStore((s) => s.clearUnread);
+  const initializeUnread = useStore((s) => s.initializeUnread);
+  const toggleMute = useStore((s) => s.toggleMute);
+  const setJoinRequestCounts = useStore((s) => s.setJoinRequestCounts);
   const [usernameByPublicKeyBase58Check, setUsernameByPublicKeyBase58Check] =
     useState<{ [key: string]: string }>({});
   const [profilePicByPublicKey, setProfilePicByPublicKey] =
@@ -628,7 +661,7 @@ export const MessagingApp: FC = () => {
               if (unreadMap.size > 0) {
                 useStore.getState().initializeUnread(unreadMap);
               } else {
-                navigator.clearAppBadge?.();
+                navigator.clearAppBadge?.()?.catch?.(() => {});
               }
 
               // Wait for thread fetch before releasing wsFetchingRef
@@ -761,6 +794,60 @@ export const MessagingApp: FC = () => {
       toast.error("Failed to leave group");
     }
   };
+
+  const handleOptimisticSystemMessage = useCallback(
+    (members: MentionEntry[]) => {
+      if (!appUser) return;
+      const key = selectedConversationPublicKeyRef.current;
+      if (!key) return;
+
+      const names = members.map((m) => m.un || m.pk.slice(0, 8));
+      const label =
+        names.length <= 3
+          ? names.join(", ")
+          : `${names.slice(0, 3).join(", ")} and ${names.length - 3} more`;
+      const fallback = `${label} joined the group`;
+
+      const TimestampNanos = Date.now() * 1e6;
+      const localId = `sys-${crypto.randomUUID()}`;
+
+      setConversations((prev) => {
+        const c = prev[key];
+        if (!c?.messages.length) return prev;
+        const recipient = c.messages[0].RecipientInfo;
+
+        const mockMessage = {
+          DecryptedMessage: fallback,
+          IsSender: true,
+          _status: "sending" as const,
+          _localId: localId,
+          SenderInfo: {
+            OwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+            AccessGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
+          },
+          RecipientInfo: {
+            OwnerPublicKeyBase58Check: recipient.OwnerPublicKeyBase58Check,
+            AccessGroupKeyName: recipient.AccessGroupKeyName,
+          },
+          MessageInfo: {
+            TimestampNanos,
+            TimestampNanosString: String(TimestampNanos),
+            ExtraData: buildExtraData({
+              type: "system",
+              systemAction: "member-joined",
+              systemMembers: members,
+            }),
+          },
+        } as DecryptedMessageEntryResponse & { _status: string; _localId: string };
+
+        return {
+          ...prev,
+          [key]: { ...c, messages: [mockMessage, ...c.messages] },
+        };
+      });
+    },
+    [appUser]
+  );
 
   const handleUnarchiveGroup = async (conversationKey: string) => {
     if (!appUser) return;
@@ -1688,7 +1775,7 @@ export const MessagingApp: FC = () => {
         initializeUnread(unreadMap);
       } else {
         // No unread conversations — clear any stale PWA badge set by the service worker
-        navigator.clearAppBadge?.();
+        navigator.clearAppBadge?.()?.catch?.(() => {});
       }
       // Mark the selected conversation as read
       if (keyToUse) {
@@ -2321,6 +2408,7 @@ export const MessagingApp: FC = () => {
                       conversationKey={selectedConversationPublicKey}
                       onSuccess={rehydrateConversation}
                       onLeaveGroup={handleArchiveGroup}
+                      onOptimisticSystemMessage={handleOptimisticSystemMessage}
                       isGroupOwner={!!isGroupOwner}
                     />
                   ) : (
@@ -2492,7 +2580,7 @@ export const MessagingApp: FC = () => {
                               timestampNanosString,
                               deletedExtraData
                             );
-                            notifyConversation(convKey, recipientPublicKey);
+                            // No push notification for deletions
                           } catch (e) {
                             toast.error("Failed to delete message for everyone");
                             // Rollback
@@ -2606,8 +2694,8 @@ export const MessagingApp: FC = () => {
                                 emoji,
                               })
                             );
-                            // Notify via WebSocket relay
-                            notifyConversation(convKey, recipientPublicKey);
+                            // No push notification for reactions — they're lightweight
+                            // metadata. The WebSocket handles real-time UI updates.
                             // Mark as sent
                             setConversations((prev) => ({
                               ...prev,
@@ -2762,7 +2850,7 @@ export const MessagingApp: FC = () => {
                                 tipRecipient: senderPk,
                               })
                             );
-                            notifyConversation(convKey, recipientPublicKey);
+                            // No push notification for tips
                             useStore.getState().addSessionTipUsd(0.01);
                             toast.success(`Tipped $0.01 ${tipCurrency} to ${senderUsername ? `@${senderUsername}` : "user"}`);
                           } catch (error: any) {
@@ -2847,7 +2935,7 @@ export const MessagingApp: FC = () => {
                           timestamp,
                           updatedExtraData
                         );
-                        notifyConversation(convKey, recipientPublicKey);
+                        // No push notification for edits
                       } catch (e) {
                         toast.error("Failed to edit message");
                         // Rollback
@@ -3104,7 +3192,7 @@ export const MessagingApp: FC = () => {
                   tipRecipient: tipData.recipientPublicKey,
                 })
               );
-              notifyConversation(convKey, recipientPublicKey);
+              // No push notification for tips
             } catch (e) {
               toast.error("Tip sent but message failed. The recipient received the funds.");
               console.error("Tip message error:", e);
