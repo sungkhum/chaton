@@ -170,6 +170,21 @@ export const MockBubble: FC<{
   );
 };
 
+/**
+ * Build a dedup key for matching optimistic messages to blockchain-confirmed ones.
+ * Includes ExtraData fingerprint so media messages (images, videos, GIFs) with
+ * identical or empty captions don't collide.
+ */
+function msgDedupeKey(senderPk: string, text: string | undefined, extraData?: Record<string, string>): string {
+  let key = senderPk + ":" + (text?.slice(0, 50) ?? "");
+  if (extraData) {
+    // Use media URLs as discriminators — they're unique per upload
+    const media = extraData.encryptedImageURLs || extraData.encryptedVideoURLs || extraData["msg:gifUrl"] || "";
+    if (media) key += ":" + media.slice(0, 120);
+  }
+  return key;
+}
+
 export const MessagingApp: FC = () => {
   // State — only these cause re-renders (useShallow does shallow equality)
   const {
@@ -396,28 +411,32 @@ export const MessagingApp: FC = () => {
         // Map dedup key → _localId so we can transfer it to the confirmed message
         const optimisticByKey = new Map<string, string>();
         for (const m of optimisticMessages) {
-          const key =
-            (m as any).SenderInfo.OwnerPublicKeyBase58Check +
-            ":" +
-            (m as any).DecryptedMessage?.slice(0, 50);
+          const key = msgDedupeKey(
+            (m as any).SenderInfo.OwnerPublicKeyBase58Check,
+            (m as any).DecryptedMessage,
+            (m as any).MessageInfo?.ExtraData
+          );
           optimisticByKey.set(key, (m as any)._localId);
         }
 
         const confirmedKeys = new Set(
-          updatedMessages.map(
-            (m) =>
-              m.SenderInfo.OwnerPublicKeyBase58Check +
-              ":" +
-              m.DecryptedMessage?.slice(0, 50)
+          updatedMessages.map((m) =>
+            msgDedupeKey(
+              m.SenderInfo.OwnerPublicKeyBase58Check,
+              m.DecryptedMessage,
+              m.MessageInfo?.ExtraData
+            )
           )
         );
 
         const stillPendingOptimistic = optimisticMessages.filter(
           (m: any) =>
             !confirmedKeys.has(
-              m.SenderInfo.OwnerPublicKeyBase58Check +
-                ":" +
-                m.DecryptedMessage?.slice(0, 50)
+              msgDedupeKey(
+                m.SenderInfo.OwnerPublicKeyBase58Check,
+                m.DecryptedMessage,
+                m.MessageInfo?.ExtraData
+              )
             )
         );
 
@@ -425,10 +444,11 @@ export const MessagingApp: FC = () => {
         // transfer _localId (keeps React key stable) and set _status: "confirmed"
         // so the user sees the double-checkmark briefly before it fades out.
         const taggedMessages = updatedMessages.map((m) => {
-          const key =
-            m.SenderInfo.OwnerPublicKeyBase58Check +
-            ":" +
-            m.DecryptedMessage?.slice(0, 50);
+          const key = msgDedupeKey(
+            m.SenderInfo.OwnerPublicKeyBase58Check,
+            m.DecryptedMessage,
+            m.MessageInfo?.ExtraData
+          );
           const localId = optimisticByKey.get(key);
           if (localId) {
             hasNewlyConfirmed = true;
@@ -1001,14 +1021,14 @@ export const MessagingApp: FC = () => {
 
       // Check if this message already landed on-chain (app closed after
       // blockchain accepted but before we could remove from IndexedDB).
-      // Uses the same dedup key as the poll reconciliation: sender + first 50 chars.
-      const dedupeKey = appUser.PublicKeyBase58Check + ":" + messageText.slice(0, 50);
+      // Uses the same dedup key as the poll reconciliation.
+      const dedupeKey = msgDedupeKey(appUser.PublicKeyBase58Check, messageText, extraData);
       const convo = conversationsRef.current[conversationKey];
       if (convo) {
         const alreadyOnChain = convo.messages.some(
           (m: any) =>
             !m._localId &&
-            m.SenderInfo.OwnerPublicKeyBase58Check + ":" + m.DecryptedMessage?.slice(0, 50) === dedupeKey
+            msgDedupeKey(m.SenderInfo.OwnerPublicKeyBase58Check, m.DecryptedMessage, m.MessageInfo?.ExtraData) === dedupeKey
         );
         if (alreadyOnChain) {
           // Message already confirmed — just clean up
@@ -3133,7 +3153,7 @@ export const MessagingApp: FC = () => {
                   handleBlockRequest(blockConfirm.conversationKey, blockConfirm.publicKey);
                   setBlockConfirm(null);
                 }}
-                className="flex-1 py-2.5 rounded-lg bg-red-500/20 text-red-400 text-sm font-bold hover:bg-red-500/30 cursor-pointer transition-colors"
+                className="flex-1 py-2.5 rounded-lg glass-btn-danger text-red-400 text-sm font-bold cursor-pointer transition-colors"
               >
                 Block
               </button>
