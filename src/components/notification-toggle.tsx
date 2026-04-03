@@ -11,6 +11,7 @@ import {
   getExistingSubscription,
   unsubscribeFromPush,
 } from "../utils/push-notifications";
+import { cachePushPublicKey } from "../services/cache.service";
 
 const RELAY_URL = import.meta.env.VITE_RELAY_URL || "";
 
@@ -22,6 +23,10 @@ function getPrefKey(publicKey: string) {
 
 /** Register a push subscription with the relay server. Best-effort, no throw. */
 async function registerWithServer(publicKey: string, subscription: PushSubscription) {
+  // Persist public key to IDB so the service worker can re-register
+  // the subscription during pushsubscriptionchange (when no client is open).
+  cachePushPublicKey(publicKey);
+
   if (!RELAY_URL) {
     console.warn("[push] No RELAY_URL configured, skipping server registration");
     return;
@@ -78,7 +83,7 @@ async function ensureSubscription(publicKey: string) {
 }
 
 export function NotificationToggle() {
-  const { appUser } = useStore();
+  const appUser = useStore((s) => s.appUser);
   const [pushState, setPushState] = useState<PushState>("disabled");
   const [loading, setLoading] = useState(false);
   const mountedRef = useRef(true);

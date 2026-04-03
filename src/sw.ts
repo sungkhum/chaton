@@ -13,11 +13,14 @@ declare const self: ServiceWorkerGlobalScope & typeof globalThis;
 
 const idbStore = createStore("chattra-cache", "cache-store");
 
+// Build-time env vars (injected by Vite/Serwist)
+const RELAY_URL = import.meta.env.VITE_RELAY_URL || "";
+
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
-  skipWaiting: true,
+  skipWaiting: false,
   clientsClaim: true,
-  navigationPreload: true,
+  navigationPreload: false,
   runtimeCaching: [
     ...defaultCache,
     {
@@ -45,6 +48,14 @@ const serwist = new Serwist({
       }),
     },
   ],
+  fallbacks: {
+    entries: [
+      {
+        url: "/offline.html",
+        matcher: ({ request }) => request.destination === "document",
+      },
+    ],
+  },
 });
 
 // ── Active-conversation tracking ──
@@ -73,6 +84,11 @@ self.addEventListener("message", (event: ExtendableMessageEvent) => {
   if (event.data?.type === "set-active-conversation") {
     activeConversationKey = event.data.conversationKey ?? null;
     activeConversationSetAt = Date.now();
+  }
+
+  // Allow the client to trigger skipWaiting when the user accepts the update
+  if (event.data?.type === "skip-waiting") {
+    self.skipWaiting();
   }
 });
 
@@ -122,11 +138,19 @@ self.addEventListener("push", (event) => {
       //  1. A controlled client window is visible and focused
       //  2. We know which conversation is active (activeConversationKey != null)
       //  3. The active conversation matches the incoming push
-      // When suppressed, we skip showNotification() entirely — Chrome and Firefox
-      // allow this when at least one visible client exists. We avoid a silent
-      // tagged notification because iOS ignores the `tag` field, causing phantom
-      // notifications to stack in the notification center.
-      if (!isMuted && localConvKey) {
+      //
+      // CRITICAL iOS CONSTRAINT: iOS Safari revokes the push subscription after
+      // ~3 push events that don't call showNotification(). We CANNOT skip
+      // showNotification() on iOS — ever. Additionally, iOS WebKit has bugs where
+      // visibilityState stays "visible" and focused stays true after backgrounding,
+      // making client state unreliable for suppression decisions.
+      //
+      // Strategy: skip suppression entirely on iOS. The WebSocket already provides
+      // real-time in-app updates, so an extra notification while in-app is harmless
+      // compared to losing the subscription entirely. On Chrome/Firefox, suppress
+      // safely (they allow silent pushes when a visible client exists).
+      const isIOS = /iPad|iPhone|iPod/.test(self.navigator.userAgent);
+      if (!isIOS && !isMuted && localConvKey) {
         try {
           const windowClients = await self.clients.matchAll({ type: "window", includeUncontrolled: false });
           const focusedClient = windowClients.find(
@@ -146,11 +170,19 @@ self.addEventListener("push", (event) => {
       if (isMuted) {
         // iOS requires showNotification() on every push — show a silent,
         // self-replacing notification that disappears quickly.
-        return self.registration.showNotification("ChatOn", {
+        await self.registration.showNotification("ChatOn", {
           tag: "chaton-muted",
           silent: true,
           data: { url: "/" },
         });
+        // Clean up the muted notification so it doesn't linger in the tray
+        try {
+          const muted = await self.registration.getNotifications({ tag: "chaton-muted" });
+          for (const n of muted) n.close();
+        } catch {
+          // getNotifications not supported (some browsers) — notification stays
+        }
+        return;
       }
 
       const title = (data.title as string) || "ChatOn";
@@ -185,8 +217,9 @@ self.addEventListener("push", (event) => {
 });
 
 // Handle subscription changes (browser rotated keys, subscription expired, etc.)
-// Re-subscribes to keep the browser subscription alive. The app will sync
-// the new subscription to the server on the next visit.
+// Re-subscribes and syncs the new subscription directly to the relay server.
+// This is critical when no client window is open — without this, the server
+// holds a dead endpoint and the user stops receiving push until they reopen the app.
 self.addEventListener("pushsubscriptionchange", ((event: Event & {
   oldSubscription?: PushSubscription;
   newSubscription?: PushSubscription;
@@ -195,13 +228,38 @@ self.addEventListener("pushsubscriptionchange", ((event: Event & {
   event.waitUntil(
     (async () => {
       try {
-        if (!event.newSubscription && event.oldSubscription?.options?.applicationServerKey) {
-          await self.registration.pushManager.subscribe({
+        let newSub = event.newSubscription;
+        if (!newSub && event.oldSubscription?.options?.applicationServerKey) {
+          newSub = await self.registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: event.oldSubscription.options.applicationServerKey,
           });
         }
-        // Notify any open app windows to re-register
+
+        // Sync the new subscription to the relay server directly from the SW.
+        // This ensures push keeps working even if no client window is open.
+        if (newSub && RELAY_URL) {
+          try {
+            // Read the user's public key from IDB (set by the app on login)
+            const publicKey = await get<string>("push:publicKey", idbStore);
+            if (publicKey) {
+              await fetch(`${RELAY_URL}/push/subscribe`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  publicKey,
+                  subscription: newSub.toJSON(),
+                  // No JWT available in SW context — server should accept
+                  // subscription updates from the same endpoint origin
+                }),
+              });
+            }
+          } catch {
+            // Best-effort — client will re-register on next visit
+          }
+        }
+
+        // Notify any open app windows to re-register (with JWT)
         const clients = await self.clients.matchAll({ type: "window" });
         for (const client of clients) {
           client.postMessage({ type: "push-subscription-changed" });

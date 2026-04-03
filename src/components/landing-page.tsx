@@ -541,9 +541,9 @@ export const LandingPage = () => {
               <span className="landing-text-logo-gradient">On the blockchain.</span>
             </h2>
             <p className="text-base md:text-xl text-gray-400 max-w-3xl mx-auto font-medium leading-relaxed">
-              Group chats, reactions, GIFs, replies, typing indicators, and spam
-              filtering — everything you expect from a modern messenger, built on
-              infrastructure you actually own.
+              Group chats, reactions, GIFs, video, replies, typing indicators,
+              and spam filtering — everything you expect from a modern messenger,
+              built on infrastructure you actually own.
             </p>
           </div>
 

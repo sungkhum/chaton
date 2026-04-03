@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { identity } from "deso-protocol";
 import { useStore } from "../store";
 import { isPushSupported, getExistingSubscription } from "../utils/push-notifications";
+import { cachePushPublicKey } from "../services/cache.service";
 
 const RELAY_URL = import.meta.env.VITE_RELAY_URL || "";
 const RECONNECT_BASE_MS = 1000;
@@ -207,6 +208,9 @@ async function refreshPushSubscription(publicKey: string) {
   try {
     const subscription = await getExistingSubscription();
     if (!subscription) return;
+
+    // Keep IDB public key fresh so the SW can re-register on key rotation
+    cachePushPublicKey(publicKey);
 
     const jwt = await identity.jwt();
     await fetch(`${RELAY_URL}/push/subscribe`, {

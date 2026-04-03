@@ -84,5 +84,19 @@ test.describe("PWA", () => {
     expect(manifest.display).toBe("standalone");
     expect(manifest.icons.length).toBeGreaterThan(0);
     expect(manifest.start_url).toBe("/");
+    expect(manifest.id).toBe("/");
+
+    // Android installability requires a 192x192 icon
+    const has192 = manifest.icons.some(
+      (icon: { sizes?: string }) => icon.sizes === "192x192"
+    );
+    expect(has192).toBe(true);
+  });
+
+  test("offline fallback page is accessible", async ({ page }) => {
+    const response = await page.goto("/offline.html");
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("heading", { name: /offline/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /retry/i })).toBeVisible();
   });
 });

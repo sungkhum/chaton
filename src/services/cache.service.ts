@@ -469,6 +469,16 @@ export async function clearCacheForUser(publicKey: string): Promise<void> {
   }
 }
 
+/**
+ * Persist the user's public key to IndexedDB so the service worker can
+ * identify the user during pushsubscriptionchange events (when no client
+ * window may be open to provide a JWT).
+ */
+export function cachePushPublicKey(publicKey: string): void {
+  if (!idbStore) return;
+  set("push:publicKey", publicKey, idbStore).catch(() => {});
+}
+
 export async function clearAllCaches(): Promise<void> {
   // localStorage — remove all chattra:cache keys
   try {
