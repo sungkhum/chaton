@@ -39,6 +39,7 @@ import { ReactionPills } from "./messages/reaction-pills";
 import { TipMessage } from "./messages/tip-message";
 import { TipPills } from "./messages/tip-pills";
 import { FormattedMessage } from "./messages/formatted-message";
+import { LinkPreview, extractFirstUrl } from "./messages/link-preview";
 import {
   AnimatedEmoji,
   parseEmojiOnlyMessage,
@@ -230,7 +231,13 @@ function MessageContent({ message }: { message: DecryptedMessageEntryResponse })
           </span>
         );
       }
-      return <FormattedMessage mentions={parsed.mentions}>{messageToShow}</FormattedMessage>;
+      const firstUrl = extractFirstUrl(messageToShow);
+      return (
+        <div>
+          <FormattedMessage mentions={parsed.mentions}>{messageToShow}</FormattedMessage>
+          {firstUrl && <LinkPreview url={firstUrl} />}
+        </div>
+      );
     }
   }
 }

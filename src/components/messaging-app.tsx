@@ -2344,15 +2344,26 @@ export const MessagingApp: FC = () => {
                             const total = memberKeys.length;
                             if (total === 0) return null;
                             return (
-                              <span className="text-gray-500 text-xs whitespace-nowrap">
-                                {total} {total === 1 ? "member" : "members"}{online > 0 ? `, ${online} online` : ""}
-                              </span>
+                              <div className="flex items-center gap-2 text-xs">
+                                <span className="text-gray-500">{total} {total === 1 ? "member" : "members"}</span>
+                                {online > 0 && (
+                                  <span className="flex items-center gap-1 text-[#34F080]/80">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse" />
+                                    {online} online
+                                  </span>
+                                )}
+                              </div>
                             );
                           }
                           const otherKey = selectedConversation?.firstMessagePublicKey;
                           if (!otherKey) return null;
                           const presence = getPresence(otherKey);
-                          if (presence.status === "online") return <span className="text-[#34F080] text-xs">Online</span>;
+                          if (presence.status === "online") return (
+                            <span className="flex items-center gap-1 text-[#34F080] text-xs">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse" />
+                              Online
+                            </span>
+                          );
                           if (presence.status === "last-seen") return <span className="text-gray-500 text-xs whitespace-nowrap">{formatLastSeen(presence.timestamp)}</span>;
                           return null;
                         })()}
@@ -2362,31 +2373,16 @@ export const MessagingApp: FC = () => {
                 <div
                   className="text-gray-400 items-center hidden md:block"
                 >
-                  {isGroupOwner ? (
-                    (() => {
-                      const memberKeys = chatMembers ? Object.keys(chatMembers) : [];
-                      const online = getOnlineCount(memberKeys);
-                      const total = memberKeys.length;
-                      return (
-                        <div className="flex items-center gap-2">
-                          <span>You're the<strong> owner of this group</strong></span>
-                          {total > 0 && (
-                            <span className="text-gray-500 text-xs">
-                              · {total} {total === 1 ? "member" : "members"}{online > 0 ? `, ${online} online` : ""}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })()
-                  ) : isGroupChat ? (
+                  {isGroupChat ? (
                     (() => {
                       const memberKeys = chatMembers ? Object.keys(chatMembers) : [];
                       const online = getOnlineCount(memberKeys);
                       const total = memberKeys.length;
                       if (total === 0) return null;
                       return (
-                        <span className="text-gray-500 text-sm">
-                          {total} {total === 1 ? "member" : "members"}{online > 0 ? `, ${online} online` : ""}
+                        <span className="text-gray-500 text-sm whitespace-nowrap inline-flex items-center gap-1">
+                          {total} {total === 1 ? "member" : "members"}
+                          {online > 0 && <> · <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse inline-block" /><span className="text-[#34F080]/80">{online} online</span></>}
                         </span>
                       );
                     })()
@@ -2394,7 +2390,12 @@ export const MessagingApp: FC = () => {
                     const otherKey = selectedConversation?.firstMessagePublicKey;
                     if (!otherKey) return null;
                     const presence = getPresence(otherKey);
-                    if (presence.status === "online") return <span className="text-[#34F080] text-sm">Online</span>;
+                    if (presence.status === "online") return (
+                      <span className="flex items-center gap-1.5 text-[#34F080] text-sm">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse" />
+                        Online
+                      </span>
+                    );
                     if (presence.status === "last-seen") return <span className="text-gray-500 text-sm whitespace-nowrap">{formatLastSeen(presence.timestamp)}</span>;
                     return null;
                   })()}

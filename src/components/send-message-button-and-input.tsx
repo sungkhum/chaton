@@ -6,10 +6,10 @@ import { GifPicker } from "./compose/gif-picker";
 import { ImagePreviewPanel } from "./compose/image-preview-panel";
 import { VideoPreviewPanel } from "./compose/video-preview-panel";
 import { MentionPicker, MentionCandidate } from "./compose/mention-picker";
-import { KlipyItem, getMessageUrl, trackShare } from "../services/klipy.service";
+import { KlipyItem, getMessageUrl, getDisplayUrl, trackShare } from "../services/klipy.service";
 import { uploadImage, uploadVideoFile } from "../services/media.service";
 import { ReplyBanner } from "./compose/reply-banner";
-import { LinkAttachmentPanel } from "./compose/link-attachment-panel";
+import { LinkAttachmentPanel, LinkAttachmentPanelHandle } from "./compose/link-attachment-panel";
 import { useDraftMessages } from "../hooks/useDraftMessages";
 import { buildExtraData, MentionEntry, MSG_MENTIONS } from "../utils/extra-data";
 import { useStore } from "../store";
@@ -49,10 +49,12 @@ export const SendMessageButtonAndInput = ({
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [pendingImage, setPendingImage] = useState<{ file: File; previewUrl: string; width?: number; height?: number } | null>(null);
   const [pendingVideo, setPendingVideo] = useState<{ file: File; previewUrl: string; width?: number; height?: number; duration?: number; thumbnail?: string } | null>(null);
+  const [pendingGif, setPendingGif] = useState<KlipyItem | null>(null);
   const [showLinkPanel, setShowLinkPanel] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputBarRef = useRef<HTMLDivElement>(null);
+  const linkPanelRef = useRef<LinkAttachmentPanelHandle>(null);
   const publicKey = useStore((s) => s.appUser?.PublicKeyBase58Check || "");
   const { getDraft, setDraft, clearDraft } = useDraftMessages(publicKey);
 
@@ -96,6 +98,13 @@ export const SendMessageButtonAndInput = ({
       textareaRef.current?.focus();
     }
   }, [editingMessage]);
+
+  // Auto-focus input when replying to a message
+  useEffect(() => {
+    if (replyTo) {
+      textareaRef.current?.focus();
+    }
+  }, [replyTo]);
 
   // Save draft on change (skip while editing to avoid overwriting)
   useEffect(() => {
@@ -268,6 +277,34 @@ export const SendMessageButtonAndInput = ({
     }));
   };
 
+  const stageGif = (item: KlipyItem) => {
+    setPendingGif(item);
+    setShowGifPicker(false);
+    setShowLinkPanel(false);
+    if (pendingImage) { URL.revokeObjectURL(pendingImage.previewUrl); setPendingImage(null); }
+    if (pendingVideo) { URL.revokeObjectURL(pendingVideo.previewUrl); setPendingVideo(null); }
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  };
+
+  const cancelGif = () => {
+    setPendingGif(null);
+  };
+
+  const confirmGif = (caption?: string) => {
+    if (!pendingGif) return;
+    const media = getMessageUrl(pendingGif);
+    if (!media) return;
+    trackShare("gifs", pendingGif.slug);
+    sendMessage(caption || pendingGif.title || "GIF", buildExtraData({
+      type: "gif",
+      gifUrl: media.url,
+      gifTitle: pendingGif.title,
+      mediaWidth: media.width,
+      mediaHeight: media.height,
+    }));
+    setPendingGif(null);
+  };
+
   const stageImage = (file: File) => {
     // Revoke previous preview URL if any
     if (pendingImage) URL.revokeObjectURL(pendingImage.previewUrl);
@@ -424,8 +461,18 @@ export const SendMessageButtonAndInput = ({
     setShowLinkPanel(false);
   };
 
-  /** Unified send: routes to image/video confirm when media is staged, otherwise normal send */
+  /** Unified send: routes to link/image/video/gif confirm when media is staged, otherwise normal send */
   const handleSend = async () => {
+    if (showLinkPanel && linkPanelRef.current) {
+      await linkPanelRef.current.triggerSend();
+      return;
+    }
+    if (pendingGif) {
+      confirmGif(messageToSend || undefined);
+      setMessageToSend("");
+      if (conversationKey) setDraft(conversationKey, "");
+      return;
+    }
     if (pendingImage) {
       await confirmImage(messageToSend || undefined);
       return;
@@ -464,7 +511,7 @@ export const SendMessageButtonAndInput = ({
   const isExpanded = isFocused || messageToSend.length > 0;
 
   return (
-    <div ref={inputBarRef} className="w-full px-3 pb-3 md:px-6 md:pb-4">
+    <div ref={inputBarRef} className="w-full px-3 pb-3 pt-2 md:px-6 md:pb-4 md:pt-3 border-t border-white/[0.06] bg-white/[0.02]">
       {typingLabel && (
         <div className="text-xs text-gray-400 px-2 pb-1 animate-pulse">{typingLabel}</div>
       )}
@@ -491,7 +538,7 @@ export const SendMessageButtonAndInput = ({
         </div>
       )}
 
-      <div className="relative flex flex-wrap md:flex-nowrap items-center gap-x-1 glass-compose rounded-2xl px-2 py-1.5">
+      <div className={`relative flex flex-col glass-compose rounded-2xl px-3 py-2 transition-[border-color,box-shadow] duration-200 ${isExpanded ? "border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]" : ""}`}>
         {/* Absolutely-positioned overlays */}
         {showMentionPicker && (
           <MentionPicker
@@ -501,13 +548,48 @@ export const SendMessageButtonAndInput = ({
             onSelect={selectMention}
           />
         )}
+        {showGifPicker && (
+          <GifPicker
+            onSelectGif={handleGifSelect}
+            onStageGif={stageGif}
+            onSelectSticker={handleStickerSelect}
+            onClose={() => setShowGifPicker(false)}
+            customerId={publicKey}
+          />
+        )}
+
+        {/* Inline attachments — inside the compose box */}
         {showLinkPanel && (
           <LinkAttachmentPanel
+            ref={linkPanelRef}
             onSend={handleLinkSend}
             onCancel={() => setShowLinkPanel(false)}
             isSending={isSending}
           />
         )}
+        {pendingGif && (() => {
+          const preview = getDisplayUrl(pendingGif, "md");
+          return (
+            <div className="w-full pb-2 mb-1 border-b border-white/[0.06]">
+              <div className="relative inline-block">
+                {preview && (
+                  <img
+                    src={preview.url}
+                    alt={pendingGif.title}
+                    className="max-h-[160px] w-auto rounded-lg object-contain"
+                  />
+                )}
+                <button
+                  onClick={cancelGif}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-black/70 border border-white/20 text-gray-300 hover:text-white hover:bg-black/90 cursor-pointer transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-500 mt-1">{pendingGif.title || "GIF"}</p>
+            </div>
+          );
+        })()}
         {pendingImage && (
           <ImagePreviewPanel
             file={pendingImage.file}
@@ -522,158 +604,147 @@ export const SendMessageButtonAndInput = ({
             onCancel={cancelVideo}
           />
         )}
-        {showGifPicker && (
-          <GifPicker
-            onSelectGif={handleGifSelect}
-            onSelectSticker={handleStickerSelect}
-            onClose={() => setShowGifPicker(false)}
-            customerId={publicKey}
-          />
-        )}
 
-        {/* Toolbar icons — own row on mobile when input is active, inline on desktop */}
-        <div className={`flex items-center gap-1 shrink-0 ${
-          isExpanded
-            ? "w-full pb-1 mb-0.5 border-b border-white/5 md:w-auto md:pb-0 md:mb-0 md:border-b-0"
-            : ""
-        }`}>
-          <button
-            onClick={() => {
-              setShowLinkPanel((v) => !v);
-              setShowGifPicker(false);
-              if (pendingImage) cancelImage();
-              if (pendingVideo) cancelVideo();
-            }}
-            aria-label="Attach a link"
-            title="Share a link"
-            className="p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors"
-            type="button"
-          >
-            <Paperclip className="w-[18px] h-[18px]" />
-          </button>
-
-          <label className={`p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors ${isUploading ? "opacity-50 pointer-events-none" : ""}`}>
-            {isUploading ? (
-              <Loader2 className="w-[18px] h-[18px] animate-spin" />
-            ) : (
-              <Image className="w-[18px] h-[18px]" />
-            )}
-            <input
-              type="file"
-              accept="image/*,video/*"
-              className="hidden"
-              onChange={handleMediaSelect}
-              disabled={isUploading}
-            />
-          </label>
-
-          <button
-            onClick={() => {
-              const opening = !showGifPicker;
-              setShowGifPicker(opening);
-              setShowLinkPanel(false);
-              if (pendingImage) cancelImage();
-              if (pendingVideo) cancelVideo();
-              if (opening) textareaRef.current?.blur();
-            }}
-            className="px-1.5 py-2 text-gray-500 hover:text-[#34F080] cursor-pointer font-extrabold text-[11px] tracking-wide transition-colors shrink-0"
-            type="button"
-          >
-            GIF
-          </button>
-
-          <div className="shrink-0">
-            <EmojiPickerButton onEmojiSelect={insertAtCursor} />
-          </div>
-
-          {onTipClick && (
+        {/* Input row — icons, textarea, send all inline */}
+        <div className="flex items-center gap-x-1">
+          <div className="flex items-center gap-0.5 shrink-0">
             <button
               onClick={() => {
+                setShowLinkPanel((v) => !v);
                 setShowGifPicker(false);
-                setShowLinkPanel(false);
-                onTipClick();
+                if (pendingImage) cancelImage();
+                if (pendingVideo) cancelVideo();
               }}
-              aria-label="Send a tip"
-              title="Send a tip"
-              className="p-2 text-gray-500 hover:text-white cursor-pointer shrink-0 transition-colors"
+              aria-label="Attach a link"
+              title="Share a link"
+              className="p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors"
               type="button"
             >
-              <CircleDollarSign className="w-[18px] h-[18px]" />
+              <Paperclip className="w-[18px] h-[18px]" />
             </button>
-          )}
+
+            <label className={`p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors ${isUploading ? "opacity-50 pointer-events-none" : ""}`}>
+              {isUploading ? (
+                <Loader2 className="w-[18px] h-[18px] animate-spin" />
+              ) : (
+                <Image className="w-[18px] h-[18px]" />
+              )}
+              <input
+                type="file"
+                accept="image/*,video/*"
+                className="hidden"
+                onChange={handleMediaSelect}
+                disabled={isUploading}
+              />
+            </label>
+
+            <button
+              onClick={() => {
+                const opening = !showGifPicker;
+                setShowGifPicker(opening);
+                setShowLinkPanel(false);
+                if (pendingImage) cancelImage();
+                if (pendingVideo) cancelVideo();
+                if (opening) textareaRef.current?.blur();
+              }}
+              className="px-1.5 py-2 text-gray-500 hover:text-[#34F080] cursor-pointer font-extrabold text-[11px] tracking-wide transition-colors shrink-0"
+              type="button"
+            >
+              GIF
+            </button>
+
+            <div className="shrink-0">
+              <EmojiPickerButton onEmojiSelect={insertAtCursor} />
+            </div>
+
+            {onTipClick && (
+              <button
+                onClick={() => {
+                  setShowGifPicker(false);
+                  setShowLinkPanel(false);
+                  onTipClick();
+                }}
+                aria-label="Send a tip"
+                title="Send a tip"
+                className="p-2 text-gray-500 hover:text-white cursor-pointer shrink-0 transition-colors"
+                type="button"
+              >
+                <CircleDollarSign className="w-[18px] h-[18px]" />
+              </button>
+            )}
+          </div>
+
+          <textarea
+            ref={textareaRef}
+            className="flex-1 min-w-0 bg-transparent text-white text-[15px] outline-none resize-none min-h-[36px] max-h-[150px] py-[7px] placeholder:text-gray-500 leading-snug"
+            placeholder="Type a message..."
+            value={messageToSend}
+            onChange={handleTextareaChange}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            onKeyDown={async (e) => {
+              if (e.key === "Escape" && editingMessage) {
+                e.preventDefault();
+                onCancelEdit?.();
+                setMessageToSend(conversationKey ? getDraft(conversationKey) : "");
+                return;
+              }
+              if (showMentionPicker) {
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  setMentionSelectedIdx((i) =>
+                    i < filteredMentions.length - 1 ? i + 1 : 0
+                  );
+                  return;
+                }
+                if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setMentionSelectedIdx((i) =>
+                    i > 0 ? i - 1 : filteredMentions.length - 1
+                  );
+                  return;
+                }
+                if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
+                  e.preventDefault();
+                  const selected = filteredMentions[mentionSelectedIdx];
+                  if (selected) selectMention(selected);
+                  return;
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setMentionQuery(null);
+                  return;
+                }
+              }
+              if (canSend(e)) {
+                e.preventDefault();
+                await handleSend();
+              }
+            }}
+            onPaste={handlePaste}
+            rows={1}
+          />
+
+          {/* Send / Save button */}
+          <button
+            onClick={() => handleSend()}
+            disabled={isSending || isUploading}
+            className={`p-2 rounded-full shrink-0 cursor-pointer transition-all ${
+              editingMessage
+                ? "glass-send-edit text-blue-300 hover:border-blue-400/60"
+                : "glass-fab text-[#34F080] hover:border-[#34F080]/60"
+            }`}
+            type="button"
+          >
+            {isSending || isUploading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : editingMessage ? (
+              <Check className="w-5 h-5" />
+            ) : (
+              <Send className="w-5 h-5" />
+            )}
+          </button>
         </div>
-
-        {/* Auto-growing textarea */}
-        <textarea
-          ref={textareaRef}
-          className="flex-1 min-w-0 bg-transparent text-white text-[15px] outline-none resize-none min-h-[36px] max-h-[150px] py-[7px] placeholder:text-gray-600 leading-snug"
-          placeholder="Message..."
-          value={messageToSend}
-          onChange={handleTextareaChange}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          onKeyDown={async (e) => {
-            if (e.key === "Escape" && editingMessage) {
-              e.preventDefault();
-              onCancelEdit?.();
-              setMessageToSend(conversationKey ? getDraft(conversationKey) : "");
-              return;
-            }
-            if (showMentionPicker) {
-              if (e.key === "ArrowDown") {
-                e.preventDefault();
-                setMentionSelectedIdx((i) =>
-                  i < filteredMentions.length - 1 ? i + 1 : 0
-                );
-                return;
-              }
-              if (e.key === "ArrowUp") {
-                e.preventDefault();
-                setMentionSelectedIdx((i) =>
-                  i > 0 ? i - 1 : filteredMentions.length - 1
-                );
-                return;
-              }
-              if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
-                e.preventDefault();
-                const selected = filteredMentions[mentionSelectedIdx];
-                if (selected) selectMention(selected);
-                return;
-              }
-              if (e.key === "Escape") {
-                e.preventDefault();
-                setMentionQuery(null);
-                return;
-              }
-            }
-            if (canSend(e)) {
-              e.preventDefault();
-              await handleSend();
-            }
-          }}
-          onPaste={handlePaste}
-          rows={1}
-        />
-
-        {/* Send / Save button */}
-        <button
-          onClick={() => handleSend()}
-          disabled={isSending || isUploading}
-          className={`p-2 rounded-full shrink-0 cursor-pointer transition-all ${
-            editingMessage
-              ? "glass-send-edit text-blue-300 hover:border-blue-400/60"
-              : "glass-fab text-[#34F080] hover:border-[#34F080]/60"
-          }`}
-          type="button"
-        >
-          {isSending || isUploading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : editingMessage ? (
-            <Check className="w-5 h-5" />
-          ) : (
-            <Send className="w-5 h-5" />
-          )}
-        </button>
       </div>
 
       <p className="text-gray-600 text-[10px] mt-1 ml-2 hidden md:block">
