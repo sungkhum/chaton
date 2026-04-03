@@ -6,7 +6,7 @@ import {
   getBulkAccessGroups,
   identity,
 } from "deso-protocol";
-import { Globe, Link2, Loader2 } from "lucide-react";
+import { Globe, Link2, Loader2, X } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useStore } from "../store";
 import { toast } from "sonner";
@@ -20,16 +20,16 @@ import { DEFAULT_KEY_MESSAGING_GROUP_NAME } from "../utils/constants";
 import { GROUP_DISPLAY_NAME, GROUP_IMAGE_URL } from "../utils/extra-data";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { GroupImagePicker } from "./group-image-picker";
-import { MyInput } from "./form/my-input";
 import useKeyDown from "../hooks/useKeyDown";
 
 export interface StartGroupChatProps {
   onSuccess: (pubKey: string) => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  defaultCommunity?: boolean;
 }
 
-export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange }: StartGroupChatProps) => {
+export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, defaultCommunity }: StartGroupChatProps) => {
   const appUser = useStore((s) => s.appUser);
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
@@ -66,8 +66,11 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange }
       setWantInviteLink(false);
       setWantCommunityList(false);
       setCommunityDescription("");
+    } else if (defaultCommunity) {
+      setWantInviteLink(true);
+      setWantCommunityList(true);
     }
-  }, [open]);
+  }, [open, defaultCommunity]);
 
   const isNameValid = () => chatName && chatName.trim();
   const areMembersValid = () => Array.isArray(members) && members.length > 0;
@@ -186,41 +189,61 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange }
       {open && (
         <>
           {/* Backdrop */}
-          <div className="fixed inset-0 bg-black/60 z-50" onClick={handleOpen} />
+          <div className="fixed inset-0 bg-black/60 z-[60]" onClick={handleOpen} />
           {/* Dialog */}
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-[#0a1019] text-white border border-white/10 w-[90%] md:w-[40%] rounded-2xl max-h-[90vh] flex flex-col overflow-hidden">
-              <div className="text-white text-xl font-semibold p-5 border-b border-white/10 shrink-0">
-                Start New Group Chat
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="bg-[#0c1220] text-white border border-white/8 w-[min(95vw,440px)] rounded-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl shadow-black/40">
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/8 shrink-0">
+                <span className="text-[15px] font-semibold text-white">New Group</span>
+                <button
+                  type="button"
+                  onClick={handleOpen}
+                  className="p-1 -mr-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  <X className="w-4.5 h-4.5 text-gray-400" />
+                </button>
               </div>
 
               <form name="start-group-chat-form" onSubmit={formSubmit} className="flex flex-col min-h-0 flex-1">
-                <div className="p-5 overflow-y-auto custom-scrollbar flex-1 min-h-0">
-                  <div className="mb-4 md:mb-8 flex items-start gap-4">
+                <div className="px-4 py-4 overflow-y-auto custom-scrollbar flex-1 min-h-0 space-y-4">
+
+                  {/* Group identity: photo + name */}
+                  <div className="flex items-center gap-3.5">
                     <GroupImagePicker
                       imageUrl={groupImageUrl}
                       onImageChange={setGroupImageUrl}
                       onUploadingChange={setImageUploading}
                       groupName={chatName}
-                      diameter={64}
+                      diameter={52}
                     />
-                    <div className="flex-1">
-                      <MyInput
-                        label="Name"
-                        error={formTouched && !isNameValid() ? "Group name must be defined" : ""}
-                        placeholder="Group name"
+                    <div className="flex-1 min-w-0">
+                      <input
+                        type="text"
                         value={chatName}
-                        setValue={setChatName}
+                        onChange={(e) => setChatName(e.target.value)}
+                        placeholder="Group name"
+                        autoFocus
+                        className={`w-full bg-white/5 text-white text-sm placeholder:text-gray-500 rounded-xl px-3.5 py-2.5 outline-none border transition-colors ${
+                          formTouched && !isNameValid()
+                            ? "border-red-500/60"
+                            : "border-white/8 focus:border-[#34F080]/40"
+                        }`}
                       />
+                      {formTouched && !isNameValid() && (
+                        <p className="text-red-400 text-xs mt-1 ml-1">Group name is required</p>
+                      )}
                     </div>
                   </div>
 
-                  <div className="mb-4">
-                    <div className="text-lg font-semibold mb-2 text-white">
-                      Add Users to Your Group Chat
+                  {/* Members */}
+                  <div>
+                    <div className="text-xs font-medium uppercase tracking-wider text-white/30 mb-2">
+                      Members
                     </div>
                     <SearchUsers
-                      className="text-white placeholder:text-gray-500 bg-white/5 border-white/10"
+                      className="text-white placeholder:text-gray-500 bg-white/5 border-white/8"
                       onSelected={(member) =>
                         addMember(member, () => {
                           setTimeout(() => {
@@ -228,114 +251,119 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange }
                           }, 0);
                         })
                       }
-                      error={formTouched && !areMembersValid() ? "At least one member must be added" : ""}
+                      error={formTouched && !areMembersValid() ? "Add at least one member" : ""}
                     />
 
                     <div
-                      className="max-h-[400px] mt-1 pr-3 overflow-y-auto custom-scrollbar overflow-hidden"
+                      className="max-h-[200px] mt-1.5 overflow-y-auto custom-scrollbar space-y-1.5"
                       ref={membersAreaRef}
                     >
                       {members.map((member) => (
                         <div
-                          className="flex p-1.5 md:p-4 items-center cursor-pointer text-white bg-white/5 border border-white/8 rounded-xl my-2"
+                          className="flex items-center gap-2.5 px-2.5 py-2 bg-white/[0.03] border border-white/5 rounded-xl group"
                           key={member.id}
                         >
                           <MessagingDisplayAvatar
                             username={member.text}
                             publicKey={member.id}
-                            diameter={isMobile ? 40 : 44}
+                            diameter={isMobile ? 32 : 34}
                             classNames="mx-0"
                           />
-                          <div className="flex justify-between align-center flex-1 text-white overflow-auto">
-                            <span className="mx-2 md:ml-4 font-medium truncate my-auto">
-                              {member.text}
-                            </span>
-                            <button
-                              className="rounded-full mr-1 md:mr-3 px-3 py-2 border text-white bg-red-400/20 hover:bg-red-400/30 border-red-600/60 text-sm md:px-4 cursor-pointer"
-                              onClick={() => removeMember(member.id)}
-                            >
-                              Remove
-                            </button>
-                          </div>
+                          <span className="text-sm text-white font-medium truncate flex-1">
+                            {member.text}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeMember(member.id)}
+                            className="p-1 rounded-full text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer opacity-0 group-hover:opacity-100 shrink-0"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Sharing section */}
-                  <div className="border-t border-white/8 pt-4">
-                    <div className="text-xs font-medium uppercase tracking-wider text-white/30 mb-3">
+                  {/* Sharing */}
+                  <div className="border-t border-white/5 pt-3.5">
+                    <div className="text-xs font-medium uppercase tracking-wider text-white/30 mb-2.5">
                       Sharing
                     </div>
 
-                    {/* Invite link toggle */}
-                    <div className="flex items-center justify-between py-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <Link2 className="w-4 h-4 text-blue-300 shrink-0" />
-                        <div className="min-w-0">
-                          <span className="text-sm text-blue-200 font-medium">Create invite link</span>
-                          <p className="text-xs text-white/30">Anyone with the link can request to join</p>
+                    <div className="space-y-1">
+                      {/* Invite link toggle */}
+                      <div className="flex items-center justify-between py-1.5">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                            <Link2 className="w-3.5 h-3.5 text-gray-400" />
+                          </div>
+                          <div className="min-w-0 text-left">
+                            <div className="text-sm text-white/80">Invite link</div>
+                            <div className="text-[11px] text-white/25 leading-tight">Anyone with the link can request to join</div>
+                          </div>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = !wantInviteLink;
+                            setWantInviteLink(next);
+                            if (!next) setWantCommunityList(false);
+                          }}
+                          className={`relative w-10 h-[22px] rounded-full transition-colors cursor-pointer shrink-0 ml-3 ${
+                            wantInviteLink ? "bg-[#34F080]" : "bg-white/10"
+                          }`}
+                          aria-label="Toggle invite link"
+                        >
+                          <div className={`w-[16px] h-[16px] rounded-full bg-white absolute top-[3px] transition-transform shadow-sm ${
+                            wantInviteLink ? "translate-x-[21px]" : "translate-x-[3px]"
+                          }`} />
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = !wantInviteLink;
-                          setWantInviteLink(next);
-                          if (!next) setWantCommunityList(false);
-                        }}
-                        className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 ${
-                          wantInviteLink ? "bg-[#34F080]" : "bg-white/10 border border-white/15"
-                        }`}
-                        aria-label="Toggle invite link"
-                      >
-                        <div className={`w-[18px] h-[18px] rounded-full bg-white absolute top-[3px] transition-transform ${
-                          wantInviteLink ? "translate-x-[21px]" : "translate-x-[3px]"
-                        }`} />
-                      </button>
-                    </div>
 
-                    {/* Community listing toggle */}
-                    <div className={`flex items-center justify-between py-2 transition-opacity ${
-                      wantInviteLink ? "opacity-100" : "opacity-30 pointer-events-none"
-                    }`}>
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <Globe className="w-4 h-4 text-blue-300 shrink-0" />
-                        <div className="min-w-0">
-                          <span className="text-sm text-blue-200 font-medium">List in Community</span>
-                          <p className="text-xs text-white/30">Let others discover this group</p>
+                      {/* Community listing toggle */}
+                      <div className={`flex items-center justify-between py-1.5 transition-opacity ${
+                        wantInviteLink ? "opacity-100" : "opacity-25 pointer-events-none"
+                      }`}>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                            <Globe className="w-3.5 h-3.5 text-gray-400" />
+                          </div>
+                          <div className="min-w-0 text-left">
+                            <div className="text-sm text-white/80">List in Community</div>
+                            <div className="text-[11px] text-white/25 leading-tight">Let others discover this group</div>
+                          </div>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = !wantCommunityList;
+                            setWantCommunityList(next);
+                            if (next && !wantInviteLink) setWantInviteLink(true);
+                          }}
+                          disabled={!wantInviteLink}
+                          className={`relative w-10 h-[22px] rounded-full transition-colors cursor-pointer shrink-0 disabled:cursor-not-allowed ml-3 ${
+                            wantCommunityList ? "bg-[#34F080]" : "bg-white/10"
+                          }`}
+                          aria-label="Toggle community listing"
+                        >
+                          <div className={`w-[16px] h-[16px] rounded-full bg-white absolute top-[3px] transition-transform shadow-sm ${
+                            wantCommunityList ? "translate-x-[21px]" : "translate-x-[3px]"
+                          }`} />
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = !wantCommunityList;
-                          setWantCommunityList(next);
-                          if (next && !wantInviteLink) setWantInviteLink(true);
-                        }}
-                        disabled={!wantInviteLink}
-                        className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 disabled:cursor-not-allowed ${
-                          wantCommunityList ? "bg-[#34F080]" : "bg-white/10 border border-white/15"
-                        }`}
-                        aria-label="Toggle community listing"
-                      >
-                        <div className={`w-[18px] h-[18px] rounded-full bg-white absolute top-[3px] transition-transform ${
-                          wantCommunityList ? "translate-x-[21px]" : "translate-x-[3px]"
-                        }`} />
-                      </button>
                     </div>
 
                     {/* Description field (visible when community listing is on) */}
                     {wantCommunityList && (
-                      <div className="mt-2 ml-[26px]">
+                      <div className="mt-2.5">
                         <textarea
                           value={communityDescription}
                           onChange={(e) => setCommunityDescription(e.target.value.slice(0, 200))}
                           placeholder="Short description for the directory..."
                           rows={2}
-                          className="w-full rounded-lg px-3 py-2 text-sm text-blue-200 placeholder:text-white/20 bg-white/5 border border-white/10 focus:border-white/20 outline-none resize-none"
+                          className="w-full rounded-xl px-3 py-2 text-sm text-white/80 placeholder:text-white/20 bg-white/5 border border-white/8 focus:border-white/15 outline-none resize-none"
                         />
-                        <div className="text-right text-[11px] text-white/25 mt-1">
+                        <div className="text-right text-[11px] text-white/20 mt-0.5">
                           {communityDescription.length}/200
                         </div>
                       </div>
@@ -343,21 +371,22 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange }
                   </div>
                 </div>
 
-                <div className="flex justify-end p-5 gap-3 border-t border-white/8 shrink-0">
+                {/* Footer */}
+                <div className="flex justify-end px-4 py-3 gap-2.5 border-t border-white/8 shrink-0">
                   <button
                     onClick={handleOpen}
                     type="button"
-                    className="rounded-full py-2 bg-transparent border border-white/15 text-sm px-4 text-gray-300 hover:bg-white/5 cursor-pointer"
+                    className="rounded-xl py-2 px-4 text-sm text-gray-400 hover:text-white hover:bg-white/5 cursor-pointer transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black font-bold rounded-full py-2 hover:brightness-110 text-sm px-4 flex items-center cursor-pointer"
+                    className="glass-btn-primary text-[#34F080] font-semibold rounded-xl py-2 px-5 text-sm flex items-center cursor-pointer transition-colors disabled:opacity-50"
                     disabled={loading || imageUploading}
                   >
-                    {(loading || imageUploading) && <Loader2 className="w-5 h-5 mr-2 animate-spin" />}
-                    <span>{imageUploading ? "Uploading..." : "Create Chat"}</span>
+                    {(loading || imageUploading) && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
+                    <span>{imageUploading ? "Uploading..." : "Create"}</span>
                   </button>
                 </div>
               </form>
