@@ -1,5 +1,5 @@
 import { ChatType, identity, ProfileEntryResponse } from "deso-protocol";
-import { Archive, ArrowLeft, BellOff, Check, ChevronDown, ChevronRight, Globe, MessageSquarePlus, Pencil, RotateCcw, Search, Share2, ShieldOff, UserPlus, Users, X } from "lucide-react";
+import { Archive, ArrowLeft, BellOff, Check, ChevronDown, ChevronRight, Globe, MessageSquarePlus, Plus, RotateCcw, Search, Share2, ShieldOff, UserPlus, Users, X } from "lucide-react";
 import { FC, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../store";
@@ -117,6 +117,7 @@ export const MessagingConversationAccount: FC<{
         onSuccess={rehydrateConversation}
         open={groupChatOpen}
         onOpenChange={setGroupChatOpen}
+        defaultCommunity={activeTab === "community"}
       />
 
       <ComposePanel
@@ -324,7 +325,7 @@ export const MessagingConversationAccount: FC<{
                   </p>
                   <button
                     onClick={() => setComposeOpen(true)}
-                    className="bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black font-bold rounded-full py-2.5 px-6 text-sm hover:brightness-110 cursor-pointer transition-all"
+                    className="glass-btn-primary text-[#34F080] font-bold rounded-full py-2.5 px-6 text-sm cursor-pointer transition-colors"
                   >
                     Start a conversation
                   </button>
@@ -634,7 +635,7 @@ export const MessagingConversationAccount: FC<{
                                   e.stopPropagation();
                                   onBlock(key, publicKey);
                                 }}
-                                className="flex-1 flex items-center justify-center gap-1 min-h-[36px] py-1.5 rounded-lg bg-red-500/15 text-red-400 text-xs font-bold hover:bg-red-500/25 cursor-pointer transition-colors"
+                                className="flex-1 flex items-center justify-center gap-1 min-h-[36px] py-1.5 rounded-lg glass-btn-danger text-red-400 text-xs font-bold cursor-pointer transition-colors"
                               >
                                 <X className="w-3.5 h-3.5" />
                                 Block
@@ -694,8 +695,8 @@ export const MessagingConversationAccount: FC<{
         )}
       </div>
 
-      {/* Bottom actions — Invite + Compose (hidden on Community tab) */}
-      <div className={`absolute bottom-0 left-0 right-0 z-20 pointer-events-none ${activeTab === "community" ? "hidden" : ""}`}>
+      {/* Bottom actions — Invite + New */}
+      <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
         <div className="flex items-end justify-between p-4 md:p-3">
           {/* Invite Friends pill */}
           <button
@@ -718,12 +719,13 @@ export const MessagingConversationAccount: FC<{
             <span>Invite Friends</span>
           </button>
 
-          {/* Compose FAB */}
+          {/* New button — opens group dialog directly on Community tab, compose panel otherwise */}
           <button
-            onClick={() => setComposeOpen(true)}
-            className="pointer-events-auto w-14 h-14 rounded-full glass-fab flex items-center justify-center cursor-pointer transition-all active:scale-95 hover:border-[#34F080]/60 hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] md:w-12 md:h-12"
+            onClick={() => activeTab === "community" ? setGroupChatOpen(true) : setComposeOpen(true)}
+            className="pointer-events-auto flex items-center gap-1.5 px-5 py-3 rounded-full glass-fab cursor-pointer transition-all active:scale-95 hover:border-[#34F080]/60 hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] md:px-4 md:py-2.5"
           >
-            <Pencil className="w-6 h-6 text-[#34F080] md:w-5 md:h-5" />
+            <Plus className="w-5 h-5 text-[#34F080]" strokeWidth={2.5} />
+            <span className="text-[#34F080] font-semibold text-[15px]">New</span>
           </button>
         </div>
       </div>
