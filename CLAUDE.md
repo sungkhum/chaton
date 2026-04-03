@@ -117,6 +117,7 @@ field. This is a shared convention any DeSo messaging app can adopt:
 - `msg:duration`, `msg:mediaWidth`, `msg:mediaHeight` — media dimensions
 - `msg:fileName`, `msg:fileSize`, `msg:fileType` — file attachments
 - `msg:replyPreview` — truncated preview text of the replied-to message
+- `msg:replySender` — username of the sender of the replied-to message
 - `msg:gifTitle` — title of a GIF or sticker from KLIPY
 - `msg:systemAction` — system log action: `member-joined`, `member-left`
 - `msg:systemMembers` — JSON array of `{pk, un}` entries for the users involved
@@ -149,6 +150,40 @@ cd worker
 npx wrangler d1 migrations apply chaton-push --remote
 npx wrangler deploy
 ```
+
+## Blog posts
+
+Blog posts live in `src/components/blog/posts/`. Adding a new post:
+
+1. **Create the component** in `src/components/blog/posts/[slug].tsx` using
+   `BlogPostLayout` (see existing posts for the pattern).
+2. **Register it** in `src/components/blog/blog-registry.ts` — add an entry to
+   `BLOG_POSTS` (slug, title, description, date, readTime, tags, component import).
+3. **Add the route** to the prerender script `scripts/prerender.mjs`:
+   - Add `/blog/[slug]` to the `ROUTES` array.
+   - Add an entry to `OG_POSTS` with slug, title, and formatted date.
+4. **Add to sitemap** in `public/sitemap.xml`.
+5. **Run `npm run prerender`** — this generates the OG image into
+   `public/og/blog/[slug].png` and pre-renders the HTML into `dist/`.
+6. **Commit the source + the generated OG image** in `public/og/blog/`.
+
+The OG image lives in `public/` (not `dist/`) so Vite includes it in every
+build automatically. Cloudflare Pages does not run Playwright, so prerender
+runs locally — only the OG image needs to be committed.
+
+### Fact-checking blog content
+
+All claims about ChatOn features must be verified against the codebase. All
+claims about DeSo must be verified against DeSo documentation. Known corrections:
+
+- Infrastructure cost is **near-zero**, not $0 (Cloudflare Queues needs paid plan).
+- Messages cost ~$0.000017 each — they are not free.
+- DeSo uses ECDH + AES-128-CTR, **not** the Signal Protocol. No forward secrecy.
+- Do not claim messages "can never be deleted" — content can be updated via
+  update transactions, and apps/nodes can filter content.
+- DeSo Foundation has significant development influence — do not claim "fully
+  decentralized with no central authority."
+- Free starter DESO is obtained via CAPTCHA, not phone verification.
 
 ## Testing
 
