@@ -1,5 +1,6 @@
 import { Search, X, Loader2, ArrowLeft, Send } from "lucide-react";
 import { useEffect, useState, useRef, useCallback, KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import {
   KlipyItem,
   KlipyCategory,
@@ -18,6 +19,8 @@ type ContentTab = "gifs" | "stickers";
 
 interface GifPickerProps {
   onSelectGif: (item: KlipyItem, caption?: string) => void;
+  /** Called when a GIF is picked from the grid — stages it inline in the compose box instead of showing the confirmation screen. */
+  onStageGif?: (item: KlipyItem) => void;
   onSelectSticker: (item: KlipyItem) => void;
   onClose: () => void;
   customerId?: string;
@@ -25,6 +28,7 @@ interface GifPickerProps {
 
 export const GifPicker = ({
   onSelectGif,
+  onStageGif,
   onSelectSticker,
   onClose,
   customerId,
@@ -157,11 +161,15 @@ export const GifPicker = ({
       // Stickers send immediately (like Telegram)
       onSelectSticker(item);
       onClose();
+    } else if (onStageGif) {
+      // Stage GIF inline in compose box
+      onStageGif(item);
+      onClose();
     } else {
-      // GIFs go to preview/caption screen
+      // Fallback: show confirmation screen inside picker
       setSelectedGif(item);
     }
-  }, [tab, onSelectSticker, onClose]);
+  }, [tab, onSelectSticker, onStageGif, onClose]);
 
   const handleBack = () => {
     setSelectedGif(null);
@@ -193,10 +201,19 @@ export const GifPicker = ({
     }
   };
 
+  // Portal wrapper — on mobile, render inside .App to escape the backdrop-filter
+  // containing block from .glass-compose, while staying inside .App's keyboard-aware
+  // layout (transform on .App makes fixed children respect --app-height).
+  const portalTarget = isMobile
+    ? document.querySelector(".App") || document.body
+    : null;
+  const wrap = (node: React.ReactNode) =>
+    portalTarget ? createPortal(node, portalTarget) : node;
+
   // ── GIF confirmation view ──
   if (selectedGif) {
     const preview = getDisplayUrl(selectedGif, "md");
-    return (
+    return wrap(
       <div ref={pickerRef} className={PICKER_CONTAINER}>
         <div className="flex items-center gap-2 p-3 border-b border-blue-800/30">
           <button
@@ -213,7 +230,7 @@ export const GifPicker = ({
           </button>
         </div>
 
-        <div className="flex-1 min-h-0 flex items-center justify-center p-4 overflow-hidden">
+        <div className="flex-1 min-h-0 flex items-center justify-center p-4 overflow-hidden overscroll-y-contain">
           {preview && (
             <img
               src={preview.url}
@@ -247,7 +264,7 @@ export const GifPicker = ({
   }
 
   // ── Browse/search view ──
-  return (
+  return wrap(
     <div ref={pickerRef} className={PICKER_CONTAINER}>
       {/* Tabs */}
       <div className="flex border-b border-blue-800/30">
@@ -325,7 +342,7 @@ export const GifPicker = ({
       ) : null}
 
       {/* Content grid */}
-      <div ref={gridRef} className="flex-1 min-h-0 md:h-[300px] md:flex-none overflow-y-auto custom-scrollbar p-2">
+      <div ref={gridRef} className="flex-1 min-h-0 md:h-[300px] md:flex-none overflow-y-auto custom-scrollbar p-2 overscroll-y-contain">
         {loading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="w-6 h-6 animate-spin text-blue-600" />

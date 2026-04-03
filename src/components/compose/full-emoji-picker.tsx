@@ -12,7 +12,7 @@ export function FullEmojiPicker({ onEmojiSelect, onClose }: FullEmojiPickerProps
         onEmojiSelect(emoji.emoji);
         onClose();
       }}
-      className="w-[352px] h-[435px] flex flex-col overflow-hidden bg-[#0a1628] rounded-xl border border-blue-800/40 [--frimousse-bg:transparent] [--frimousse-border-color:theme(colors.blue.800/40%)]"
+      className="w-[352px] h-[435px] max-w-full max-h-full flex flex-col overflow-hidden bg-[#0a1628] rounded-xl md:border md:border-blue-800/40 [--frimousse-bg:transparent] [--frimousse-border-color:theme(colors.blue.800/40%)]"
     >
       <EmojiPicker.Search
         className="mx-2 mt-2 mb-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-white/30 outline-none focus:border-[#34F080]/50"
