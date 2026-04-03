@@ -2,15 +2,18 @@
 # (c)=client component. UI primitives (shadcn/radix) omitted.
 
 ## src
+    AboutPage
     AlertNotification
     chunk-error-boundary
     clearCommunityCache
     community-page
+    ComparePage
     ComposePanel
     CurrencyToggle
     EmojiPickerButton
     emojiToCodepoint
     extractFirstUrl
+    FaqPage
     FileMessage
     FormattedMessage
     FullEmojiPicker
@@ -42,6 +45,7 @@
     NotificationToggle
     PreSignupTutorial
     PrivacyToggle
+    PublicNav
     ReactionEmojiPicker
     ReactionPills
     ReplyBanner

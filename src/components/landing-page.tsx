@@ -4,7 +4,6 @@ import { usePageMeta } from "../hooks/usePageMeta";
 import { AnimatedEmoji } from "./messages/animated-emoji";
 import {
   ArrowRight,
-  ChevronRight,
   Check,
   Eye,
   Lock,
@@ -47,8 +46,10 @@ export const LandingPage = () => {
 
       mm.add(
         {
-          isDesktop: "(min-width: 768px) and (prefers-reduced-motion: no-preference)",
-          isMobile: "(max-width: 767px) and (prefers-reduced-motion: no-preference)",
+          isDesktop:
+            "(min-width: 768px) and (prefers-reduced-motion: no-preference)",
+          isMobile:
+            "(max-width: 767px) and (prefers-reduced-motion: no-preference)",
           isReduced: "(prefers-reduced-motion: reduce)",
         },
         (context) => {
@@ -58,14 +59,14 @@ export const LandingPage = () => {
           if (isReduced) {
             gsap.set(
               ".hero-badge, .hero-title, .hero-desc, .hero-cta, .hero-mockup, " +
-              ".features-heading, .feature-card, " +
-              ".showcase-heading, .showcase-feature > *, .showcase-mini, " +
-              ".tech-heading, .tech-subhead, " +
-              ".tech-code, .tech-card, .tech-footer, " +
-              ".community-heading, .community-card, .community-cta, " +
-              ".cta-heading, .cta-button, " +
-              ".cta-badge, .support-icon, .support-heading, .support-desc, " +
-              ".support-btn, .landing-footer",
+                ".features-heading, .feature-card, " +
+                ".showcase-heading, .showcase-feature > *, .showcase-mini, " +
+                ".tech-heading, .tech-subhead, " +
+                ".tech-code, .tech-card, .tech-footer, " +
+                ".community-heading, .community-card, .community-cta, " +
+                ".cta-heading, .cta-button, " +
+                ".cta-badge, .support-icon, .support-heading, .support-desc, " +
+                ".support-btn, .landing-footer",
               { autoAlpha: 1, y: 0, x: 0, scale: 1 }
             );
             return;
@@ -87,14 +88,32 @@ export const LandingPage = () => {
 
           hero
             .from(".hero-badge", { x: isMobile ? -15 : -30, autoAlpha: 0 })
-            .from(".hero-title", { y: isMobile ? 20 : 40, autoAlpha: 0, duration: isMobile ? 0.6 : 1 }, "<0.15")
-            .from(".hero-desc", { x: isMobile ? -10 : -20, autoAlpha: 0 }, "<0.2")
+            .from(
+              ".hero-title",
+              {
+                y: isMobile ? 20 : 40,
+                autoAlpha: 0,
+                duration: isMobile ? 0.6 : 1,
+              },
+              "<0.15"
+            )
+            .from(
+              ".hero-desc",
+              { x: isMobile ? -10 : -20, autoAlpha: 0 },
+              "<0.2"
+            )
             .from(".hero-cta", { y: isMobile ? 14 : 24, autoAlpha: 0 }, "<0.15")
             .from(
               ".hero-mockup",
               isMobile
                 ? { y: 20, autoAlpha: 0, duration: 0.7, ease: "power2.out" }
-                : { x: 60, autoAlpha: 0, rotateY: -8, duration: 1.2, ease: "power2.out" },
+                : {
+                    x: 60,
+                    autoAlpha: 0,
+                    rotateY: -8,
+                    duration: 1.2,
+                    ease: "power2.out",
+                  },
               "<0.1"
             );
 
@@ -111,7 +130,8 @@ export const LandingPage = () => {
 
           // ── Dividers animate width on scroll ──
           gsap.utils.toArray<HTMLElement>(".landing-divider").forEach((div) => {
-            gsap.fromTo(div,
+            gsap.fromTo(
+              div,
               { scaleX: 0 },
               {
                 scaleX: 1,
@@ -127,7 +147,8 @@ export const LandingPage = () => {
           });
 
           // ── Features section ──
-          gsap.fromTo(".features-heading",
+          gsap.fromTo(
+            ".features-heading",
             { y: d.md, autoAlpha: 0 },
             {
               y: 0,
@@ -144,15 +165,23 @@ export const LandingPage = () => {
 
           ScrollTrigger.batch(".feature-card", {
             onEnter: (elements) =>
-              gsap.fromTo(elements,
+              gsap.fromTo(
+                elements,
                 { y: d.md, autoAlpha: 0 },
-                { y: 0, autoAlpha: 1, duration: isMobile ? 0.5 : 0.7, stagger: d.stagger, ease: "power3.out" }
+                {
+                  y: 0,
+                  autoAlpha: 1,
+                  duration: isMobile ? 0.5 : 0.7,
+                  stagger: d.stagger,
+                  ease: "power3.out",
+                }
               ),
             start,
           });
 
           // ── Feature Showcase section ──
-          gsap.fromTo(".showcase-heading",
+          gsap.fromTo(
+            ".showcase-heading",
             { y: d.md, autoAlpha: 0 },
             {
               y: 0,
@@ -168,7 +197,8 @@ export const LandingPage = () => {
           );
 
           gsap.utils.toArray<HTMLElement>(".showcase-feature").forEach((el) => {
-            gsap.fromTo(el.children,
+            gsap.fromTo(
+              el.children,
               { y: d.lg, autoAlpha: 0 },
               {
                 y: 0,
@@ -187,9 +217,16 @@ export const LandingPage = () => {
 
           ScrollTrigger.batch(".showcase-mini", {
             onEnter: (elements) =>
-              gsap.fromTo(elements,
+              gsap.fromTo(
+                elements,
                 { y: d.sm, autoAlpha: 0 },
-                { y: 0, autoAlpha: 1, duration: isMobile ? 0.35 : 0.5, stagger: d.stagger, ease: "power3.out" }
+                {
+                  y: 0,
+                  autoAlpha: 1,
+                  duration: isMobile ? 0.35 : 0.5,
+                  stagger: d.stagger,
+                  ease: "power3.out",
+                }
               ),
             start,
           });
@@ -205,20 +242,42 @@ export const LandingPage = () => {
           });
 
           techTl
-            .fromTo(".tech-heading", { y: d.md, autoAlpha: 0 }, { y: 0, autoAlpha: 1 })
-            .fromTo(".tech-subhead", { y: d.sm, autoAlpha: 0 }, { y: 0, autoAlpha: 1 }, "<0.1")
-            .fromTo(".tech-code", { y: d.lg, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: isMobile ? 0.6 : 1 }, "<0.15");
+            .fromTo(
+              ".tech-heading",
+              { y: d.md, autoAlpha: 0 },
+              { y: 0, autoAlpha: 1 }
+            )
+            .fromTo(
+              ".tech-subhead",
+              { y: d.sm, autoAlpha: 0 },
+              { y: 0, autoAlpha: 1 },
+              "<0.1"
+            )
+            .fromTo(
+              ".tech-code",
+              { y: d.lg, autoAlpha: 0 },
+              { y: 0, autoAlpha: 1, duration: isMobile ? 0.6 : 1 },
+              "<0.15"
+            );
 
           ScrollTrigger.batch(".tech-card", {
             onEnter: (elements) =>
-              gsap.fromTo(elements,
+              gsap.fromTo(
+                elements,
                 { y: d.md, autoAlpha: 0 },
-                { y: 0, autoAlpha: 1, duration: isMobile ? 0.5 : 0.7, stagger: isMobile ? 0.08 : 0.15, ease: "power3.out" }
+                {
+                  y: 0,
+                  autoAlpha: 1,
+                  duration: isMobile ? 0.5 : 0.7,
+                  stagger: isMobile ? 0.08 : 0.15,
+                  ease: "power3.out",
+                }
               ),
             start,
           });
 
-          gsap.fromTo(".tech-footer",
+          gsap.fromTo(
+            ".tech-footer",
             { y: d.sm, autoAlpha: 0 },
             {
               y: 0,
@@ -243,14 +302,30 @@ export const LandingPage = () => {
           });
 
           communityTl
-            .fromTo(".community-heading", { y: d.md, autoAlpha: 0 }, { y: 0, autoAlpha: 1 })
-            .fromTo(".community-cta", { y: d.sm, autoAlpha: 0 }, { y: 0, autoAlpha: 1 }, "<0.3");
+            .fromTo(
+              ".community-heading",
+              { y: d.md, autoAlpha: 0 },
+              { y: 0, autoAlpha: 1 }
+            )
+            .fromTo(
+              ".community-cta",
+              { y: d.sm, autoAlpha: 0 },
+              { y: 0, autoAlpha: 1 },
+              "<0.3"
+            );
 
           ScrollTrigger.batch(".community-card", {
             onEnter: (elements) =>
-              gsap.fromTo(elements,
+              gsap.fromTo(
+                elements,
                 { y: d.md, autoAlpha: 0 },
-                { y: 0, autoAlpha: 1, duration: isMobile ? 0.5 : 0.7, stagger: isMobile ? 0.08 : 0.15, ease: "power3.out" }
+                {
+                  y: 0,
+                  autoAlpha: 1,
+                  duration: isMobile ? 0.5 : 0.7,
+                  stagger: isMobile ? 0.08 : 0.15,
+                  ease: "power3.out",
+                }
               ),
             start,
           });
@@ -266,9 +341,23 @@ export const LandingPage = () => {
           });
 
           ctaTl
-            .fromTo(".cta-heading", { y: d.lg, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: isMobile ? 0.6 : 1 })
-            .fromTo(".cta-button", { scale: 0.95, autoAlpha: 0 }, { scale: 1, autoAlpha: 1 }, "<0.2")
-            .fromTo(".cta-badge", { y: d.sm, autoAlpha: 0 }, { y: 0, autoAlpha: 1, stagger: 0.08 }, "<0.15");
+            .fromTo(
+              ".cta-heading",
+              { y: d.lg, autoAlpha: 0 },
+              { y: 0, autoAlpha: 1, duration: isMobile ? 0.6 : 1 }
+            )
+            .fromTo(
+              ".cta-button",
+              { scale: 0.95, autoAlpha: 0 },
+              { scale: 1, autoAlpha: 1 },
+              "<0.2"
+            )
+            .fromTo(
+              ".cta-badge",
+              { y: d.sm, autoAlpha: 0 },
+              { y: 0, autoAlpha: 1, stagger: 0.08 },
+              "<0.15"
+            );
 
           // ── Support section ──
           const supportTl = gsap.timeline({
@@ -281,13 +370,33 @@ export const LandingPage = () => {
           });
 
           supportTl
-            .fromTo(".support-icon", { scale: 0, autoAlpha: 0 }, { scale: 1, autoAlpha: 1, ease: "back.out(1.7)" })
-            .fromTo(".support-heading", { y: d.sm, autoAlpha: 0 }, { y: 0, autoAlpha: 1 }, "<0.15")
-            .fromTo(".support-desc", { y: d.sm, autoAlpha: 0 }, { y: 0, autoAlpha: 1 }, "<0.1")
-            .fromTo(".support-btn", { y: d.sm, autoAlpha: 0 }, { y: 0, autoAlpha: 1 }, "<0.1");
+            .fromTo(
+              ".support-icon",
+              { scale: 0, autoAlpha: 0 },
+              { scale: 1, autoAlpha: 1, ease: "back.out(1.7)" }
+            )
+            .fromTo(
+              ".support-heading",
+              { y: d.sm, autoAlpha: 0 },
+              { y: 0, autoAlpha: 1 },
+              "<0.15"
+            )
+            .fromTo(
+              ".support-desc",
+              { y: d.sm, autoAlpha: 0 },
+              { y: 0, autoAlpha: 1 },
+              "<0.1"
+            )
+            .fromTo(
+              ".support-btn",
+              { y: d.sm, autoAlpha: 0 },
+              { y: 0, autoAlpha: 1 },
+              "<0.1"
+            );
 
           // ── Footer ──
-          gsap.fromTo(".landing-footer",
+          gsap.fromTo(
+            ".landing-footer",
             { y: d.sm, autoAlpha: 0 },
             {
               y: 0,
@@ -308,7 +417,10 @@ export const LandingPage = () => {
   }, []);
 
   return (
-    <div ref={root} className="min-h-screen bg-[#0F1520] text-white selection:bg-[#34F080]/30 selection:text-white relative overflow-x-clip">
+    <div
+      ref={root}
+      className="min-h-screen bg-[#0F1520] text-white selection:bg-[#34F080]/30 selection:text-white relative overflow-x-clip"
+    >
       <SeoStructuredData />
       {/* Atmospheric Orbs */}
       <div className="landing-orb w-[1000px] h-[1000px] bg-[#34F080] bottom-[20%] -left-[400px] opacity-[0.10]" />
@@ -325,18 +437,38 @@ export const LandingPage = () => {
               alt="ChatOn"
               className="w-8 h-8 md:w-10 md:h-10 rounded-xl"
             />
-            <span className="text-xl md:text-2xl font-black tracking-tighter">ChatOn</span>
+            <span className="text-xl md:text-2xl font-black tracking-tighter">
+              ChatOn
+            </span>
           </div>
-          <div className="hidden md:flex items-center gap-12 text-xs font-bold tracking-[0.2em] uppercase text-gray-400">
-            <a href="#features" className="hover:text-[#34F080] transition-colors">Features</a>
-            <a href="#technology" className="hover:text-[#34F080] transition-colors">Technology</a>
-            <a href="/community" className="hover:text-[#34F080] transition-colors flex items-center gap-1.5">
+          <div className="hidden md:flex items-center gap-10 text-xs font-bold tracking-[0.2em] uppercase text-gray-400">
+            <a
+              href="#features"
+              className="hover:text-[#34F080] transition-colors"
+            >
+              Features
+            </a>
+            <a
+              href="#technology"
+              className="hover:text-[#34F080] transition-colors"
+            >
+              Technology
+            </a>
+            <a
+              href="/compare"
+              className="hover:text-[#34F080] transition-colors"
+            >
+              Compare
+            </a>
+            <a
+              href="/community"
+              className="hover:text-[#34F080] transition-colors flex items-center gap-1.5"
+            >
               <Users className="w-3 h-3" />
               Community
             </a>
-            <a href="/support" className="hover:text-[#34F080] transition-colors flex items-center gap-1.5">
-              <Heart className="w-3 h-3" />
-              Donate
+            <a href="/about" className="hover:text-[#34F080] transition-colors">
+              About
             </a>
           </div>
           <div className="flex items-center gap-2 md:gap-3">
@@ -371,10 +503,12 @@ export const LandingPage = () => {
               Messaging that no one can shut down.
             </h1>
             <p className="hero-desc text-base md:text-2xl text-gray-400 leading-relaxed max-w-2xl font-medium border-l-4 border-[#34F080]/25 pl-5 md:pl-8 mb-8 md:mb-14">
-              ChatOn is end-to-end encrypted messaging on the DeSo
-              blockchain. Your messages, media, and metadata are unreadable
-              to everyone except you and your recipients.{" "}
-              <span className="text-white">Built to scale. Impossible to censor.</span>
+              ChatOn is end-to-end encrypted messaging on the DeSo blockchain.
+              Your messages, media, and metadata are unreadable to everyone
+              except you and your recipients.{" "}
+              <span className="text-white">
+                Built to scale. Impossible to censor.
+              </span>
             </p>
             <div className="hero-cta flex flex-col sm:flex-row gap-5 md:gap-6">
               <button
@@ -404,7 +538,9 @@ export const LandingPage = () => {
                     className="w-10 h-10 lg:w-14 lg:h-14 rounded-xl lg:rounded-2xl"
                   />
                   <div className="text-left">
-                    <div className="text-base lg:text-xl font-black">Satoshi_N</div>
+                    <div className="text-base lg:text-xl font-black">
+                      Satoshi_N
+                    </div>
                     <div className="text-[9px] lg:text-[10px] text-[#34F080] uppercase font-black tracking-widest">
                       Encrypted
                     </div>
@@ -414,7 +550,8 @@ export const LandingPage = () => {
                 <div className="space-y-3 lg:space-y-6">
                   <div className="relative bg-[#34F080]/8 border border-[#34F080]/20 p-4 lg:p-6 rounded-2xl lg:rounded-[30px] rounded-tr-none ml-4 lg:ml-8">
                     <p className="text-xs lg:text-sm font-semibold text-[#34F080] text-left">
-                      Messages stored on-chain, encrypted with your keys. No one else can read them.
+                      Messages stored on-chain, encrypted with your keys. No one
+                      else can read them.
                     </p>
                     <span className="absolute -bottom-3 right-4 bg-[#1a2233] border border-white/10 rounded-full px-1.5 py-0.5 flex items-center justify-center">
                       <AnimatedEmoji emoji="🔒" size={18} />
@@ -422,7 +559,8 @@ export const LandingPage = () => {
                   </div>
                   <div className="relative bg-white/5 border border-white/10 p-4 lg:p-6 rounded-2xl lg:rounded-[30px] rounded-tl-none mr-4 lg:mr-8">
                     <p className="text-xs lg:text-sm font-semibold text-gray-300 text-left">
-                      The blockchain knows we talked. But only we know what we said.
+                      The blockchain knows we talked. But only we know what we
+                      said.
                     </p>
                     <span className="absolute -bottom-3 left-4 bg-[#1a2233] border border-white/10 rounded-full px-1.5 py-0.5 flex items-center justify-center">
                       <AnimatedEmoji emoji="🤝" size={18} />
@@ -454,14 +592,16 @@ export const LandingPage = () => {
           <div className="features-heading text-center mb-10 md:mb-24">
             <h2 className="text-3xl md:text-7xl font-black tracking-tight mb-5 md:mb-8 max-w-4xl mx-auto leading-tight landing-heading-glow">
               No single company should{" "}
-              <span className="text-[#40B8E0]">control your conversations.</span>
+              <span className="text-[#40B8E0]">
+                control your conversations.
+              </span>
             </h2>
             <p className="text-base md:text-xl text-gray-400 max-w-3xl mx-auto font-medium leading-relaxed">
               Traditional messengers keep your data on servers owned and
-              operated by one company. One breach, one policy change, one
-              outage — and your conversations are gone. ChatOn encrypts your
-              messages and stores them across a decentralized network of DeSo
-              nodes that no single entity controls.
+              operated by one company. One breach, one policy change, one outage
+              — and your conversations are gone. ChatOn encrypts your messages
+              and stores them across a decentralized network of DeSo nodes that
+              no single entity controls.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
@@ -543,12 +683,14 @@ export const LandingPage = () => {
           <div className="showcase-heading text-center mb-12 md:mb-24">
             <h2 className="text-3xl md:text-7xl font-black tracking-tight mb-5 md:mb-8 max-w-5xl mx-auto leading-tight landing-heading-glow">
               A full-featured messenger.{" "}
-              <span className="landing-text-logo-gradient">On the blockchain.</span>
+              <span className="landing-text-logo-gradient">
+                On the blockchain.
+              </span>
             </h2>
             <p className="text-base md:text-xl text-gray-400 max-w-3xl mx-auto font-medium leading-relaxed">
               Group chats, reactions, GIFs, video, replies, typing indicators,
-              and spam filtering — everything you expect from a modern messenger,
-              built on infrastructure you actually own.
+              and spam filtering — everything you expect from a modern
+              messenger, built on infrastructure you actually own.
             </p>
           </div>
 
@@ -563,54 +705,69 @@ export const LandingPage = () => {
                 Group chats that live on-chain.
               </h3>
               <p className="text-base md:text-lg text-gray-400 font-medium leading-relaxed">
-                Create encrypted group conversations with custom names and profile
-                images. Add or remove members anytime. Every group is a portable
-                on-chain access group that works across the entire DeSo ecosystem.
+                Create encrypted group conversations with custom names and
+                profile images. Add or remove members anytime. Every group is a
+                portable on-chain access group that works across the entire DeSo
+                ecosystem.
               </p>
             </div>
             <div className="landing-mockup-wrap">
               <div className="landing-mockup-inner">
-              <div className="landing-glass-card rounded-3xl p-5 md:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
-                <div className="flex items-center gap-3 mb-5 pb-4 border-b border-white/5">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#34F080] to-[#40B8E0] flex items-center justify-center text-sm font-black text-black shrink-0">
-                    DT
-                  </div>
-                  <div className="text-left flex-1 min-w-0">
-                    <div className="text-sm font-black">Design Team</div>
-                    <div className="text-[10px] text-gray-500">Alex, Maya, Jordan</div>
-                  </div>
-                  <div className="flex -space-x-2 shrink-0">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#34F080]/40 to-[#34F080]/10 border-2 border-[#141c28]" />
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#40B8E0]/40 to-[#40B8E0]/10 border-2 border-[#141c28]" />
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#3090D0]/40 to-[#3090D0]/10 border-2 border-[#141c28]" />
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex gap-2 items-end">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#34F080]/30 to-[#34F080]/10 shrink-0" />
-                    <div className="bg-white/5 border border-white/8 px-3 py-2 rounded-2xl rounded-bl-sm max-w-[80%]">
-                      <div className="text-[10px] text-[#34F080] font-bold mb-0.5">Alex</div>
-                      <div className="text-xs text-gray-300">Just pushed the new brand assets to the repo</div>
+                <div className="landing-glass-card rounded-3xl p-5 md:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
+                  <div className="flex items-center gap-3 mb-5 pb-4 border-b border-white/5">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#34F080] to-[#40B8E0] flex items-center justify-center text-sm font-black text-black shrink-0">
+                      DT
+                    </div>
+                    <div className="text-left flex-1 min-w-0">
+                      <div className="text-sm font-black">Design Team</div>
+                      <div className="text-[10px] text-gray-500">
+                        Alex, Maya, Jordan
+                      </div>
+                    </div>
+                    <div className="flex -space-x-2 shrink-0">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#34F080]/40 to-[#34F080]/10 border-2 border-[#141c28]" />
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#40B8E0]/40 to-[#40B8E0]/10 border-2 border-[#141c28]" />
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#3090D0]/40 to-[#3090D0]/10 border-2 border-[#141c28]" />
                     </div>
                   </div>
-                  <div className="flex gap-2 items-end">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#40B8E0]/30 to-[#40B8E0]/10 shrink-0" />
-                    <div className="bg-white/5 border border-white/8 px-3 py-2 rounded-2xl rounded-bl-sm max-w-[80%]">
-                      <div className="text-[10px] text-[#40B8E0] font-bold mb-0.5">Maya</div>
-                      <div className="text-xs text-gray-300">Love them! The new palette is perfect</div>
+                  <div className="space-y-3">
+                    <div className="flex gap-2 items-end">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#34F080]/30 to-[#34F080]/10 shrink-0" />
+                      <div className="bg-white/5 border border-white/8 px-3 py-2 rounded-2xl rounded-bl-sm max-w-[80%]">
+                        <div className="text-[10px] text-[#34F080] font-bold mb-0.5">
+                          Alex
+                        </div>
+                        <div className="text-xs text-gray-300">
+                          Just pushed the new brand assets to the repo
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 items-end">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#40B8E0]/30 to-[#40B8E0]/10 shrink-0" />
+                      <div className="bg-white/5 border border-white/8 px-3 py-2 rounded-2xl rounded-bl-sm max-w-[80%]">
+                        <div className="text-[10px] text-[#40B8E0] font-bold mb-0.5">
+                          Maya
+                        </div>
+                        <div className="text-xs text-gray-300">
+                          Love them! The new palette is perfect
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <div className="bg-[#34F080]/10 border border-[#34F080]/20 px-3 py-2 rounded-2xl rounded-br-sm max-w-[80%]">
+                        <div className="text-xs text-[#34F080]/90">
+                          Shipping the update tonight 🚀
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex justify-end">
-                    <div className="bg-[#34F080]/10 border border-[#34F080]/20 px-3 py-2 rounded-2xl rounded-br-sm max-w-[80%]">
-                      <div className="text-xs text-[#34F080]/90">Shipping the update tonight 🚀</div>
-                    </div>
+                  <div className="mt-4 flex items-center gap-2 bg-white/3 border border-white/5 rounded-full px-4 py-2.5">
+                    <span className="text-[11px] text-gray-600 flex-1">
+                      Type a message...
+                    </span>
+                    <Send className="w-3.5 h-3.5 text-gray-600" />
                   </div>
                 </div>
-                <div className="mt-4 flex items-center gap-2 bg-white/3 border border-white/5 rounded-full px-4 py-2.5">
-                  <span className="text-[11px] text-gray-600 flex-1">Type a message...</span>
-                  <Send className="w-3.5 h-3.5 text-gray-600" />
-                </div>
-              </div>
               </div>
             </div>
           </div>
@@ -619,59 +776,73 @@ export const LandingPage = () => {
           <div className="showcase-feature grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16 items-center mb-16 md:mb-32">
             <div className="order-2 lg:order-1 landing-mockup-wrap">
               <div className="landing-mockup-inner face-right">
-              <div className="landing-glass-card rounded-3xl p-5 md:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
-                <div className="space-y-4">
-                  {/* Message with reactions */}
-                  <div className="flex gap-2 items-end">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#20E0AA]/30 to-[#20E0AA]/10 shrink-0" />
-                    <div>
-                      <div className="bg-white/5 border border-white/8 px-3 py-2 rounded-2xl rounded-bl-sm">
-                        <div className="text-xs text-gray-300">The new landing page looks incredible!</div>
-                      </div>
-                      <div className="flex gap-1.5 mt-1.5 ml-1">
-                        <div className="flex items-center gap-1 bg-[#34F080]/10 border border-[#34F080]/20 rounded-full px-2 py-0.5">
-                          <AnimatedEmoji emoji="👍" size={14} />
-                          <span className="text-[9px] font-bold text-[#34F080]">2</span>
+                <div className="landing-glass-card rounded-3xl p-5 md:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
+                  <div className="space-y-4">
+                    {/* Message with reactions */}
+                    <div className="flex gap-2 items-end">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#20E0AA]/30 to-[#20E0AA]/10 shrink-0" />
+                      <div>
+                        <div className="bg-white/5 border border-white/8 px-3 py-2 rounded-2xl rounded-bl-sm">
+                          <div className="text-xs text-gray-300">
+                            The new landing page looks incredible!
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
-                          <AnimatedEmoji emoji="❤️" size={14} />
-                          <span className="text-[9px] font-bold text-gray-400">3</span>
-                        </div>
-                        <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
-                          <AnimatedEmoji emoji="🔥" size={14} />
-                          <span className="text-[9px] font-bold text-gray-400">1</span>
+                        <div className="flex gap-1.5 mt-1.5 ml-1">
+                          <div className="flex items-center gap-1 bg-[#34F080]/10 border border-[#34F080]/20 rounded-full px-2 py-0.5">
+                            <AnimatedEmoji emoji="👍" size={14} />
+                            <span className="text-[9px] font-bold text-[#34F080]">
+                              2
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
+                            <AnimatedEmoji emoji="❤️" size={14} />
+                            <span className="text-[9px] font-bold text-gray-400">
+                              3
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
+                            <AnimatedEmoji emoji="🔥" size={14} />
+                            <span className="text-[9px] font-bold text-gray-400">
+                              1
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                  {/* Big emoji message — sent by you */}
-                  <div className="flex items-end justify-end gap-2 pr-1">
-                    <AnimatedEmoji emoji="🎉" size={56} />
-                    <AnimatedEmoji emoji="🙌" size={56} />
-                  </div>
-                  {/* Reply preview + message */}
-                  <div className="flex gap-2 items-end">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#20E0AA]/30 to-[#20E0AA]/10 shrink-0" />
-                    <div className="bg-white/5 border border-white/8 rounded-2xl rounded-bl-sm overflow-hidden max-w-[85%]">
-                      <div className="bg-white/3 border-l-2 border-[#20E0AA] px-3 py-1.5 mx-2 mt-2 rounded-r-lg">
-                        <div className="text-[9px] text-[#20E0AA] font-bold">You</div>
-                        <div className="text-[10px] text-gray-500 truncate">Shipping the update tonight 🚀</div>
-                      </div>
-                      <div className="px-3 py-2">
-                        <div className="text-xs text-gray-300">Can't wait to see it live!</div>
+                    {/* Big emoji message — sent by you */}
+                    <div className="flex items-end justify-end gap-2 pr-1">
+                      <AnimatedEmoji emoji="🎉" size={56} />
+                      <AnimatedEmoji emoji="🙌" size={56} />
+                    </div>
+                    {/* Reply preview + message */}
+                    <div className="flex gap-2 items-end">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#20E0AA]/30 to-[#20E0AA]/10 shrink-0" />
+                      <div className="bg-white/5 border border-white/8 rounded-2xl rounded-bl-sm overflow-hidden max-w-[85%]">
+                        <div className="bg-white/3 border-l-2 border-[#20E0AA] px-3 py-1.5 mx-2 mt-2 rounded-r-lg">
+                          <div className="text-[9px] text-[#20E0AA] font-bold">
+                            You
+                          </div>
+                          <div className="text-[10px] text-gray-500 truncate">
+                            Shipping the update tonight 🚀
+                          </div>
+                        </div>
+                        <div className="px-3 py-2">
+                          <div className="text-xs text-gray-300">
+                            Can't wait to see it live!
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  {/* Big emoji reply */}
-                  <div className="flex gap-2 items-end">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#20E0AA]/30 to-[#20E0AA]/10 shrink-0" />
-                    <div className="flex items-center gap-1 py-1">
-                      <AnimatedEmoji emoji="👍" size={48} />
-                      <AnimatedEmoji emoji="💯" size={48} />
+                    {/* Big emoji reply */}
+                    <div className="flex gap-2 items-end">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#20E0AA]/30 to-[#20E0AA]/10 shrink-0" />
+                      <div className="flex items-center gap-1 py-1">
+                        <AnimatedEmoji emoji="👍" size={48} />
+                        <AnimatedEmoji emoji="💯" size={48} />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
               </div>
             </div>
             <div className="order-1 lg:order-2">
@@ -684,9 +855,9 @@ export const LandingPage = () => {
               </h3>
               <p className="text-base md:text-lg text-gray-400 font-medium leading-relaxed">
                 Tap to react with any emoji — they aggregate into tappable pills
-                below each message. Quote-reply for threaded context. Share GIFs,
-                images, videos, and files — all encrypted and stored on-chain
-                alongside your conversations.
+                below each message. Quote-reply for threaded context. Share
+                GIFs, images, videos, and files — all encrypted and stored
+                on-chain alongside your conversations.
               </p>
             </div>
           </div>
@@ -702,72 +873,76 @@ export const LandingPage = () => {
                 Your inbox. Your rules.
               </h3>
               <p className="text-base md:text-lg text-gray-400 font-medium leading-relaxed">
-                Messages from people you don't follow land in Requests — not your
-                main inbox. Accept to start chatting, block to dismiss.
-                Classification uses on-chain follows and associations. No backend,
-                no middleman.
+                Messages from people you don't follow land in Requests — not
+                your main inbox. Accept to start chatting, block to dismiss.
+                Classification uses on-chain follows and associations. No
+                backend, no middleman.
               </p>
             </div>
             <div className="landing-mockup-wrap">
               <div className="landing-mockup-inner">
-              <div className="landing-glass-card rounded-3xl p-5 md:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
-                <div className="flex gap-1 mb-5 bg-white/3 rounded-xl p-1">
-                  <div className="flex-1 text-center py-2 text-[11px] font-black text-gray-500 rounded-lg">
-                    Chats
+                <div className="landing-glass-card rounded-3xl p-5 md:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
+                  <div className="flex gap-1 mb-5 bg-white/3 rounded-xl p-1">
+                    <div className="flex-1 text-center py-2 text-[11px] font-black text-gray-500 rounded-lg">
+                      Chats
+                    </div>
+                    <div className="flex-1 text-center py-2 text-[11px] font-black bg-[#40B8E0]/10 text-[#40B8E0] rounded-lg border border-[#40B8E0]/15">
+                      Requests{" "}
+                      <span className="bg-[#40B8E0] text-black text-[9px] px-1.5 py-0.5 rounded-full ml-0.5">
+                        2
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex-1 text-center py-2 text-[11px] font-black bg-[#40B8E0]/10 text-[#40B8E0] rounded-lg border border-[#40B8E0]/15">
-                    Requests{" "}
-                    <span className="bg-[#40B8E0] text-black text-[9px] px-1.5 py-0.5 rounded-full ml-0.5">
-                      2
+                  <div className="space-y-3">
+                    <div className="bg-white/3 border border-white/5 rounded-xl p-3">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3090D0]/30 to-[#3090D0]/10 shrink-0" />
+                        <div className="text-left flex-1 min-w-0">
+                          <div className="text-xs font-bold text-gray-300">
+                            CryptoFan_42
+                          </div>
+                          <div className="text-[10px] text-gray-600 truncate">
+                            Hey, have you seen the latest DeSo upd...
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="flex-1 text-center text-[10px] font-black py-1.5 rounded-lg bg-[#34F080]/10 text-[#34F080] border border-[#34F080]/20">
+                          Accept
+                        </div>
+                        <div className="flex-1 text-center text-[10px] font-black py-1.5 rounded-lg bg-white/5 text-gray-500 border border-white/10">
+                          Block
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-white/3 border border-white/5 rounded-xl p-3">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-600 to-gray-800 shrink-0" />
+                        <div className="text-left flex-1 min-w-0">
+                          <div className="text-xs font-bold text-gray-300">
+                            NewUser_2024
+                          </div>
+                          <div className="text-[10px] text-gray-600 truncate">
+                            Hello! I'm new to DeSo and wanted to...
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="flex-1 text-center text-[10px] font-black py-1.5 rounded-lg bg-[#34F080]/10 text-[#34F080] border border-[#34F080]/20">
+                          Accept
+                        </div>
+                        <div className="flex-1 text-center text-[10px] font-black py-1.5 rounded-lg bg-white/5 text-gray-500 border border-white/10">
+                          Block
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-white/5 text-center">
+                    <span className="text-[9px] text-gray-600 font-bold uppercase tracking-widest">
+                      Automatic classification · no backend required
                     </span>
                   </div>
                 </div>
-                <div className="space-y-3">
-                  <div className="bg-white/3 border border-white/5 rounded-xl p-3">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3090D0]/30 to-[#3090D0]/10 shrink-0" />
-                      <div className="text-left flex-1 min-w-0">
-                        <div className="text-xs font-bold text-gray-300">CryptoFan_42</div>
-                        <div className="text-[10px] text-gray-600 truncate">
-                          Hey, have you seen the latest DeSo upd...
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <div className="flex-1 text-center text-[10px] font-black py-1.5 rounded-lg bg-[#34F080]/10 text-[#34F080] border border-[#34F080]/20">
-                        Accept
-                      </div>
-                      <div className="flex-1 text-center text-[10px] font-black py-1.5 rounded-lg bg-white/5 text-gray-500 border border-white/10">
-                        Block
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-white/3 border border-white/5 rounded-xl p-3">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-600 to-gray-800 shrink-0" />
-                      <div className="text-left flex-1 min-w-0">
-                        <div className="text-xs font-bold text-gray-300">NewUser_2024</div>
-                        <div className="text-[10px] text-gray-600 truncate">
-                          Hello! I'm new to DeSo and wanted to...
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <div className="flex-1 text-center text-[10px] font-black py-1.5 rounded-lg bg-[#34F080]/10 text-[#34F080] border border-[#34F080]/20">
-                        Accept
-                      </div>
-                      <div className="flex-1 text-center text-[10px] font-black py-1.5 rounded-lg bg-white/5 text-gray-500 border border-white/10">
-                        Block
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4 pt-3 border-t border-white/5 text-center">
-                  <span className="text-[9px] text-gray-600 font-bold uppercase tracking-widest">
-                    Automatic classification · no backend required
-                  </span>
-                </div>
-              </div>
               </div>
             </div>
           </div>
@@ -781,19 +956,61 @@ export const LandingPage = () => {
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
               {[
-                { color: "#34F080", title: "Edit & Delete", desc: "Fix typos or remove messages after sending" },
-                { color: "#20E0AA", title: "Typing Indicators", desc: "See when someone is composing a reply" },
-                { color: "#40B8E0", title: "Push Notifications", desc: "Real-time alerts via WebSocket relay" },
-                { color: "#3090D0", title: "Mute Conversations", desc: "Silence noisy chats without leaving" },
-                { color: "#34F080", title: "Send $DESO", desc: "Tip friends with crypto in any chat" },
-                { color: "#20E0AA", title: "Multi-Account", desc: "Switch between DeSo identities instantly" },
-                { color: "#40B8E0", title: "Message Status", desc: "Sending, sent, and confirmed indicators" },
-                { color: "#3090D0", title: "Leave & Archive", desc: "Leave groups and rejoin anytime from Archived" },
+                {
+                  color: "#34F080",
+                  title: "Edit & Delete",
+                  desc: "Fix typos or remove messages after sending",
+                },
+                {
+                  color: "#20E0AA",
+                  title: "Typing Indicators",
+                  desc: "See when someone is composing a reply",
+                },
+                {
+                  color: "#40B8E0",
+                  title: "Push Notifications",
+                  desc: "Real-time alerts via WebSocket relay",
+                },
+                {
+                  color: "#3090D0",
+                  title: "Mute Conversations",
+                  desc: "Silence noisy chats without leaving",
+                },
+                {
+                  color: "#34F080",
+                  title: "Send $DESO",
+                  desc: "Tip friends with crypto in any chat",
+                },
+                {
+                  color: "#20E0AA",
+                  title: "Multi-Account",
+                  desc: "Switch between DeSo identities instantly",
+                },
+                {
+                  color: "#40B8E0",
+                  title: "Message Status",
+                  desc: "Sending, sent, and confirmed indicators",
+                },
+                {
+                  color: "#3090D0",
+                  title: "Leave & Archive",
+                  desc: "Leave groups and rejoin anytime from Archived",
+                },
               ].map((f) => (
-                <div key={f.title} className="showcase-mini landing-glass-card p-4 md:p-5 rounded-2xl text-left">
-                  <div className="w-2 h-2 rounded-full mb-3" style={{ background: f.color }} />
-                  <div className="text-sm font-bold text-white mb-1">{f.title}</div>
-                  <div className="text-[11px] text-gray-500 leading-relaxed">{f.desc}</div>
+                <div
+                  key={f.title}
+                  className="showcase-mini landing-glass-card p-4 md:p-5 rounded-2xl text-left"
+                >
+                  <div
+                    className="w-2 h-2 rounded-full mb-3"
+                    style={{ background: f.color }}
+                  />
+                  <div className="text-sm font-bold text-white mb-1">
+                    {f.title}
+                  </div>
+                  <div className="text-[11px] text-gray-500 leading-relaxed">
+                    {f.desc}
+                  </div>
                 </div>
               ))}
             </div>
@@ -804,7 +1021,10 @@ export const LandingPage = () => {
       <div className="landing-divider mx-auto max-w-5xl" />
 
       {/* Technology Section */}
-      <section id="technology" className="tech-section py-12 md:py-28 px-4 md:px-6">
+      <section
+        id="technology"
+        className="tech-section py-12 md:py-28 px-4 md:px-6"
+      >
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-24 items-start mb-10 md:mb-24">
             <div className="text-left">
@@ -826,27 +1046,56 @@ export const LandingPage = () => {
                     <p>
                       <span className="text-[#20E0AA]">async function</span>{" "}
                       <span className="text-[#40B8E0]">encryptMessage</span>
-                      (content: <span className="text-[#34F080]">string</span>, recipientKey:{" "}
+                      (content: <span className="text-[#34F080]">string</span>,
+                      recipientKey:{" "}
                       <span className="text-[#34F080]">string</span>) {"{"}
                     </p>
-                    <p>&nbsp;&nbsp;<span className="text-gray-600">// AES-128-CTR + ECDH key exchange — runs in your browser</span></p>
                     <p>
-                      &nbsp;&nbsp;<span className="text-[#20E0AA]">const</span> shared ={" "}
-                      <span className="text-[#40B8E0]">deriveSharedSecret</span>(myKey, recipientKey);
+                      &nbsp;&nbsp;
+                      <span className="text-gray-600">
+                        {
+                          "// AES-128-CTR + ECDH key exchange — runs in your browser"
+                        }
+                      </span>
                     </p>
                     <p>
-                      &nbsp;&nbsp;<span className="text-[#20E0AA]">const</span> encrypted ={" "}
-                      <span className="text-[#40B8E0]">aes128ctr</span>(content, shared);
+                      &nbsp;&nbsp;<span className="text-[#20E0AA]">const</span>{" "}
+                      shared ={" "}
+                      <span className="text-[#40B8E0]">deriveSharedSecret</span>
+                      (myKey, recipientKey);
+                    </p>
+                    <p>
+                      &nbsp;&nbsp;<span className="text-[#20E0AA]">const</span>{" "}
+                      encrypted ={" "}
+                      <span className="text-[#40B8E0]">aes128ctr</span>(content,
+                      shared);
                     </p>
                     <p>&nbsp;</p>
-                    <p>&nbsp;&nbsp;<span className="text-gray-600">// Only ciphertext reaches the blockchain</span></p>
                     <p>
-                      &nbsp;&nbsp;<span className="text-[#20E0AA]">await</span> deso.
-                      <span className="text-[#34F080]">sendDMMessage</span>(encrypted);
+                      &nbsp;&nbsp;
+                      <span className="text-gray-600">
+                        {"// Only ciphertext reaches the blockchain"}
+                      </span>
+                    </p>
+                    <p>
+                      &nbsp;&nbsp;<span className="text-[#20E0AA]">await</span>{" "}
+                      deso.
+                      <span className="text-[#34F080]">sendDMMessage</span>
+                      (encrypted);
                     </p>
                     <p>&nbsp;</p>
-                    <p>&nbsp;&nbsp;<span className="text-gray-600">// Anyone can see this transaction happened.</span></p>
-                    <p>&nbsp;&nbsp;<span className="text-gray-600">// No one can read what it says.</span></p>
+                    <p>
+                      &nbsp;&nbsp;
+                      <span className="text-gray-600">
+                        {"// Anyone can see this transaction happened."}
+                      </span>
+                    </p>
+                    <p>
+                      &nbsp;&nbsp;
+                      <span className="text-gray-600">
+                        {"// No one can read what it says."}
+                      </span>
+                    </p>
                     <p>{"}"}</p>
                   </div>
                 </div>
@@ -873,7 +1122,8 @@ export const LandingPage = () => {
                   </li>
                 </ul>
                 <div className="mt-10 pt-6 border-t border-white/5 text-[10px] text-gray-500 italic">
-                  Like a postal service: the addresses on the envelope are visible.
+                  Like a postal service: the addresses on the envelope are
+                  visible.
                 </div>
               </div>
               <div className="tech-card landing-glass-card p-6 md:p-10 rounded-2xl md:rounded-[40px] border-[#3090D0]/10 text-left">
@@ -900,17 +1150,19 @@ export const LandingPage = () => {
                   </li>
                 </ul>
                 <div className="mt-10 pt-6 border-t border-white/5 text-[10px] text-gray-500 italic">
-                  The letter inside is sealed — including every attachment. Only sender and recipient hold the keys.
+                  The letter inside is sealed — including every attachment. Only
+                  sender and recipient hold the keys.
                 </div>
               </div>
             </div>
           </div>
           <div className="tech-footer max-w-4xl mx-auto text-center">
             <p className="text-gray-500 font-medium leading-relaxed italic">
-              DeSo is a public blockchain — anyone can run a node and verify that
-              message content is stored as ciphertext, and that no one (including
-              ChatOn) can decrypt it without your private key. This is how we
-              prove our privacy claims instead of just asking you to believe them.
+              DeSo is a public blockchain — anyone can run a node and verify
+              that message content is stored as ciphertext, and that no one
+              (including ChatOn) can decrypt it without your private key. This
+              is how we prove our privacy claims instead of just asking you to
+              believe them.
             </p>
           </div>
         </div>
@@ -928,7 +1180,9 @@ export const LandingPage = () => {
             </div>
             <h2 className="text-3xl md:text-7xl font-black tracking-tight mb-5 md:mb-8 max-w-5xl mx-auto leading-tight landing-heading-glow">
               Find your people.{" "}
-              <span className="landing-text-logo-gradient">Join the conversation.</span>
+              <span className="landing-text-logo-gradient">
+                Join the conversation.
+              </span>
             </h2>
             <p className="text-base md:text-xl text-gray-400 max-w-3xl mx-auto font-medium leading-relaxed">
               Explore public group chats created by the community — from crypto
@@ -969,13 +1223,19 @@ export const LandingPage = () => {
                 <div className="flex items-center gap-3.5 mb-4">
                   <div
                     className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-black text-black shrink-0"
-                    style={{ background: `linear-gradient(135deg, ${group.color}, ${group.color}80)` }}
+                    style={{
+                      background: `linear-gradient(135deg, ${group.color}, ${group.color}80)`,
+                    }}
                   >
                     {group.initials}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-base font-bold text-white truncate">{group.name}</h4>
-                    <p className="text-[11px] text-gray-500">{group.members} members</p>
+                    <h4 className="text-base font-bold text-white truncate">
+                      {group.name}
+                    </h4>
+                    <p className="text-[11px] text-gray-500">
+                      {group.members} members
+                    </p>
                   </div>
                 </div>
                 <p className="text-sm text-gray-400 leading-relaxed mb-5 line-clamp-2">
@@ -983,7 +1243,9 @@ export const LandingPage = () => {
                 </p>
                 <div
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-black text-black"
-                  style={{ background: `linear-gradient(135deg, ${group.color}, ${group.color}90)` }}
+                  style={{
+                    background: `linear-gradient(135deg, ${group.color}, ${group.color}90)`,
+                  }}
                 >
                   Join
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -1026,23 +1288,33 @@ export const LandingPage = () => {
             <div className="flex flex-wrap justify-center gap-6 md:gap-14">
               <div className="cta-badge flex flex-col items-center gap-2 md:gap-3">
                 <ShieldCheck className="w-7 h-7 text-[#34F080]" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">E2E Encrypted</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">
+                  E2E Encrypted
+                </span>
               </div>
               <div className="cta-badge flex flex-col items-center gap-3">
                 <Code className="w-7 h-7 text-[#20E0AA]" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Open Source</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">
+                  Open Source
+                </span>
               </div>
               <div className="cta-badge flex flex-col items-center gap-3">
                 <Ban className="w-7 h-7 text-[#40B8E0]" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Zero Ads</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">
+                  Zero Ads
+                </span>
               </div>
               <div className="cta-badge flex flex-col items-center gap-3">
                 <UserCheck className="w-7 h-7 text-[#3090D0]" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">No Lock-in</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">
+                  No Lock-in
+                </span>
               </div>
               <div className="cta-badge flex flex-col items-center gap-3">
                 <Globe className="w-7 h-7 text-[#34F080]" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Global Network</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">
+                  Global Network
+                </span>
               </div>
             </div>
           </div>
@@ -1085,7 +1357,9 @@ export const LandingPage = () => {
                 alt="ChatOn"
                 className="w-12 h-12 rounded-2xl"
               />
-              <span className="font-black tracking-tighter text-4xl">ChatOn</span>
+              <span className="font-black tracking-tighter text-4xl">
+                ChatOn
+              </span>
             </div>
             <div className="flex flex-wrap justify-center gap-10 md:gap-16 text-xs font-black uppercase tracking-[0.4em] text-gray-500">
               <a
@@ -1096,14 +1370,30 @@ export const LandingPage = () => {
               >
                 GitHub
               </a>
-              <a href="/support" className="hover:text-[#34F080] transition-colors">Support</a>
-              <a href="/privacy" className="hover:text-[#34F080] transition-colors">Privacy</a>
-              <a href="/terms" className="hover:text-[#34F080] transition-colors">Terms</a>
+              <a
+                href="/support"
+                className="hover:text-[#34F080] transition-colors"
+              >
+                Support
+              </a>
+              <a
+                href="/privacy"
+                className="hover:text-[#34F080] transition-colors"
+              >
+                Privacy
+              </a>
+              <a
+                href="/terms"
+                className="hover:text-[#34F080] transition-colors"
+              >
+                Terms
+              </a>
             </div>
           </div>
           <div className="mt-12 md:mt-32 text-center">
             <p className="text-[10px] text-gray-600 font-bold tracking-[0.4em] uppercase leading-loose">
-              &copy; {new Date().getFullYear()} CHATON. END-TO-END ENCRYPTED MESSAGING ON DESO BLOCKCHAIN.
+              &copy; {new Date().getFullYear()} CHATON. END-TO-END ENCRYPTED
+              MESSAGING ON DESO BLOCKCHAIN.
             </p>
             <p className="text-[10px] text-gray-600 font-bold tracking-[0.3em] uppercase mt-3">
               Built by{" "}

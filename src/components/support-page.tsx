@@ -1,17 +1,14 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { identity, sendDeso } from "deso-protocol";
 import { usePageMeta } from "../hooks/usePageMeta";
-import {
-  Heart,
-  ArrowRight,
-  Sparkles,
-} from "lucide-react";
+import { Heart, ArrowRight, Sparkles } from "lucide-react";
 import gsap from "gsap";
 import { toast } from "sonner";
 import { AppUser, useStore } from "../store";
 import { CHATON_DONATION_PUBLIC_KEY } from "../utils/constants";
 import { desoNanosToDeso } from "../utils/helpers";
 import { withAuth } from "../utils/with-auth";
+import { PublicNav, PublicFooter } from "./public-layout";
 
 const PRESET_AMOUNTS = [0.1, 0.5, 1, 5] as const;
 
@@ -73,25 +70,7 @@ export const SupportPage = () => {
       <div className="landing-orb w-[600px] h-[600px] bg-[#20E0AA] top-[30%] right-[-200px] opacity-[0.05]" />
       <div className="landing-orb w-[700px] h-[700px] bg-[#40B8E0] bottom-[-100px] left-[20%] opacity-[0.04]" />
 
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-[#0F1520]/90 backdrop-blur-2xl border-b border-white/5">
-        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <img
-              src="/ChatOn-Logo-Small.png"
-              alt="ChatOn"
-              className="w-9 h-9 rounded-xl"
-            />
-            <span className="text-xl font-black tracking-tighter">ChatOn</span>
-          </a>
-          <button
-            onClick={() => identity.login()}
-            className="px-6 py-2 landing-btn-vivid text-white text-xs font-black rounded-full transition-all cursor-pointer"
-          >
-            LAUNCH APP
-          </button>
-        </div>
-      </nav>
+      <PublicNav />
 
       <main className="relative pt-28 md:pt-36 pb-16 md:pb-24 px-4 md:px-6">
         <div className="max-w-3xl mx-auto">
@@ -111,10 +90,10 @@ export const SupportPage = () => {
 
             <p className="sp-subtitle text-base md:text-xl text-gray-400 font-medium leading-relaxed max-w-2xl mx-auto">
               ChatOn is free, open-source, and costs{" "}
-              <span className="text-white font-semibold">$0/month</span> to
-              run. No ads. No data harvesting. No VC funding.
-              Just a developer building messaging that belongs to its users.
-              Your support keeps it that way.
+              <span className="text-white font-semibold">$0/month</span> to run.
+              No ads. No data harvesting. No VC funding. Just a developer
+              building messaging that belongs to its users. Your support keeps
+              it that way.
             </p>
           </div>
 
@@ -143,31 +122,7 @@ export const SupportPage = () => {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-white/5 bg-[#0F1520]">
-        <div className="max-w-5xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-600">
-          <p>
-            &copy; {new Date().getFullYear()} ChatOn. End-to-end encrypted
-            messaging on DeSo.
-          </p>
-          <div className="flex gap-6">
-            <a
-              href="https://github.com/sungkhum/chaton"
-              target="_blank"
-              rel="noreferrer"
-              className="hover:text-gray-400 transition-colors"
-            >
-              GitHub
-            </a>
-            <a href="/privacy" className="hover:text-gray-400 transition-colors">
-              Privacy
-            </a>
-            <a href="/terms" className="hover:text-gray-400 transition-colors">
-              Terms
-            </a>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 };

@@ -1,6 +1,6 @@
-import { identity } from "deso-protocol";
-import { Heart, RefreshCw, Search, Users, X } from "lucide-react";
+import { RefreshCw, Search, Users, X } from "lucide-react";
 import { usePageMeta } from "../hooks/usePageMeta";
+import { PublicNav, PublicFooter } from "./public-layout";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   EnrichedCommunityListing,
@@ -9,7 +9,6 @@ import {
 } from "../services/community.service";
 import { containsProfanity } from "../utils/profanity-filter";
 import { buildInviteUrl } from "../utils/invite-link";
-import { useStore } from "../store";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 
 const CACHE_KEY = "chaton:community-cache";
@@ -36,7 +35,9 @@ function setCachedListings(listings: EnrichedCommunityListing[]) {
       CACHE_KEY,
       JSON.stringify({ listings, timestamp: Date.now() })
     );
-  } catch {}
+  } catch {
+    // sessionStorage quota exceeded — ignore
+  }
 }
 
 const CommunityPage = () => {
@@ -47,7 +48,6 @@ const CommunityPage = () => {
     path: "/community",
   });
 
-  const appUser = useStore((s) => s.appUser);
   const [listings, setListings] = useState<EnrichedCommunityListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +76,9 @@ const CommunityPage = () => {
       if (cancelled) return;
 
       const clean = raw.filter(
-        (l) => !containsProfanity(l.groupKeyName) && !containsProfanity(l.description)
+        (l) =>
+          !containsProfanity(l.groupKeyName) &&
+          !containsProfanity(l.description)
       );
 
       if (clean.length === 0) {
@@ -103,13 +105,19 @@ const CommunityPage = () => {
       loadingRef.current = false;
     }
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     let cleanup: (() => void) | undefined;
-    loadListings().then((fn) => { cleanup = fn; });
-    return () => { cleanup?.(); };
+    loadListings().then((fn) => {
+      cleanup = fn;
+    });
+    return () => {
+      cleanup?.();
+    };
   }, [loadListings]);
 
   const filteredListings = useMemo(() => {
@@ -128,10 +136,6 @@ const CommunityPage = () => {
     [listings]
   );
 
-  const handleLogin = () => {
-    identity.login().catch(() => {});
-  };
-
   return (
     <div className="min-h-screen bg-[#0F1520] text-white selection:bg-[#34F080]/30 selection:text-white relative overflow-x-clip">
       {/* Atmospheric Orbs */}
@@ -139,56 +143,7 @@ const CommunityPage = () => {
       <div className="landing-orb w-[700px] h-[700px] bg-[#20E0AA] top-[40%] -right-[200px] opacity-[0.04]" />
       <div className="landing-orb w-[800px] h-[800px] bg-[#40B8E0] bottom-[10%] left-[10%] opacity-[0.03]" />
 
-      {/* Navigation — matches landing page pattern */}
-      <nav className="fixed top-0 w-full z-50 bg-[#0F1520]/90 backdrop-blur-2xl border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-4 md:px-12 h-16 md:h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 md:gap-4">
-            <a href="/" className="flex items-center gap-2.5 md:gap-4">
-              <img
-                src="/ChatOn-Logo-Small.png"
-                alt="ChatOn"
-                className="w-8 h-8 md:w-10 md:h-10 rounded-xl"
-              />
-              <span className="text-xl md:text-2xl font-black tracking-tighter">ChatOn</span>
-            </a>
-          </div>
-
-          <div className="hidden md:flex items-center gap-12 text-xs font-bold tracking-[0.2em] uppercase text-gray-400">
-            <a href="/#features" className="hover:text-[#34F080] transition-colors">Features</a>
-            <span className="text-[#34F080] border-b-2 border-[#34F080] pb-0.5">Community</span>
-            <a href="/support" className="hover:text-[#34F080] transition-colors flex items-center gap-1.5">
-              <Heart className="w-3 h-3" />
-              Donate
-            </a>
-          </div>
-
-          <div className="flex items-center gap-2 md:gap-3">
-            {appUser ? (
-              <a
-                href="/"
-                className="px-3 md:px-5 py-2 md:py-2.5 text-gray-400 hover:text-white text-[11px] md:text-xs font-bold md:font-black tracking-wide transition-colors"
-              >
-                Back to Chats
-              </a>
-            ) : (
-              <>
-                <button
-                  onClick={handleLogin}
-                  className="px-3 md:px-5 py-2 md:py-2.5 text-gray-400 hover:text-white text-[11px] md:text-xs font-bold md:font-black tracking-wide transition-colors cursor-pointer"
-                >
-                  Log in
-                </button>
-                <button
-                  onClick={handleLogin}
-                  className="px-4 md:px-6 py-2 md:py-2.5 landing-btn-vivid text-white text-[11px] md:text-xs font-black rounded-full transition-all cursor-pointer"
-                >
-                  Sign up
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
+      <PublicNav />
 
       {/* Hero Section */}
       <section className="relative pt-28 md:pt-36 pb-6 md:pb-10 px-4 md:px-6">
@@ -237,7 +192,9 @@ const CommunityPage = () => {
       {!loading && !error && listings.length > 0 && (
         <div className="max-w-7xl mx-auto px-4 md:px-12 pb-4 md:pb-6">
           <p className="text-xs md:text-sm text-gray-500 font-medium">
-            {listings.length} {listings.length === 1 ? "community" : "communities"} · {totalMembers} total members
+            {listings.length}{" "}
+            {listings.length === 1 ? "community" : "communities"} ·{" "}
+            {totalMembers} total members
           </p>
         </div>
       )}
@@ -311,12 +268,18 @@ const CommunityPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {filteredListings.map((listing) => {
                 const ownerUsername = listing.ownerProfile?.Username;
-                const displayName = listing.groupDisplayName ?? listing.groupKeyName.replace(/\0/g, "");
+                const displayName =
+                  listing.groupDisplayName ??
+                  listing.groupKeyName.replace(/\0/g, "");
 
                 return (
                   <a
                     key={listing.associationId}
-                    href={listing.inviteCode ? buildInviteUrl(listing.inviteCode) : undefined}
+                    href={
+                      listing.inviteCode
+                        ? buildInviteUrl(listing.inviteCode)
+                        : undefined
+                    }
                     className="landing-glass-card rounded-2xl md:rounded-3xl p-5 md:p-6 block group cursor-pointer"
                   >
                     {/* Header: Avatar + Name */}
@@ -332,7 +295,9 @@ const CommunityPage = () => {
                           {displayName}
                         </h3>
                         {ownerUsername && (
-                          <p className="text-xs text-gray-500 truncate">by @{ownerUsername}</p>
+                          <p className="text-xs text-gray-500 truncate">
+                            by @{ownerUsername}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -350,7 +315,9 @@ const CommunityPage = () => {
                       <div className="flex items-center gap-1.5 text-xs text-gray-500">
                         <Users className="w-3.5 h-3.5" />
                         <span>
-                          {listing.memberCountCapped ? "50+" : listing.memberCount}{" "}
+                          {listing.memberCountCapped
+                            ? "50+"
+                            : listing.memberCount}{" "}
                           {listing.memberCount === 1 ? "member" : "members"}
                         </span>
                       </div>
@@ -366,20 +333,7 @@ const CommunityPage = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-white/5 py-8 md:py-12 px-4 md:px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-600">
-          <div className="flex items-center gap-2">
-            <img src="/ChatOn-Logo-Small.png" alt="" className="w-5 h-5 rounded-md opacity-50" />
-            <span>ChatOn — Messaging that no one can shut down</span>
-          </div>
-          <div className="flex items-center gap-6">
-            <a href="/privacy" className="hover:text-gray-400 transition-colors">Privacy</a>
-            <a href="/terms" className="hover:text-gray-400 transition-colors">Terms</a>
-            <a href="/support" className="hover:text-gray-400 transition-colors">Support</a>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 };

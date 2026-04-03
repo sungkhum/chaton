@@ -2,10 +2,12 @@
 
 > ChatOn is a free, decentralized, end-to-end encrypted messaging app built on the
 > DeSo blockchain. Available as a progressive web app at getchaton.com. No phone
-> number required. Zero infrastructure cost. Censorship-resistant message delivery.
+> number required. Near-zero infrastructure cost. Censorship-resistant message delivery.
 
 ## About
-- [Homepage](https://getchaton.com): ChatOn landing page with features overview
+- [What is ChatOn](https://getchaton.com/about): Overview of ChatOn, how it works, features, and tradeoffs
+- [FAQ](https://getchaton.com/faq): Frequently asked questions about ChatOn, encryption, and DeSo
+- [Compare](https://getchaton.com/compare): Honest feature comparison of ChatOn vs Signal, Telegram, WhatsApp, and Session
 - [Community Directory](https://getchaton.com/community): Browse and join public ChatOn groups
 - [Privacy Policy](https://getchaton.com/privacy): ChatOn privacy policy
 - [Terms of Service](https://getchaton.com/terms): ChatOn terms of service
@@ -15,10 +17,12 @@
 - [GitHub](https://github.com/sungkhum/chaton): ChatOn open source repository
 
 ## Key Facts
-- End-to-end encrypted by default (all messages, DMs and groups)
+- End-to-end encrypted by default using ECDH key exchange and AES-128-CTR (all messages, DMs and groups)
 - No phone number or email required to sign up
-- Messages stored on the DeSo blockchain (censorship-resistant)
+- Messages stored as encrypted transactions on the DeSo blockchain
 - Progressive Web App (no app store required, works on any device)
-- $0/month infrastructure cost (DeSo blockchain is the data layer)
-- Open source
-- Features: group chats, emoji reactions, GIFs, media sharing, push notifications, community directory
+- Near-zero infrastructure cost (DeSo blockchain is the data layer)
+- Open source (GitHub: github.com/sungkhum/chaton)
+- Each message costs roughly $0.000017 in DESO transaction fees
+- Features: encrypted group chats, emoji reactions, GIFs and stickers, image/video sharing, file attachments, reply threads, push notifications, community directory, unread badges
+- ChatOn (getchaton.com) is a decentralized messaging app. It is not related to chaton.ai or Samsung's discontinued ChatON service.

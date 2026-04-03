@@ -18,11 +18,20 @@ import { RouteErrorBoundary } from "./components/route-error-boundary";
 
 // bundle-dynamic-imports: Lazy-load route pages so GSAP and page code
 // stay out of the main chunk. Logged-in users never download landing page code.
-const LandingPage = lazy(() => import("./components/landing-page").then(m => ({ default: m.LandingPage })));
-const LegalPage = lazy(() => import("./components/legal-page").then(m => ({ default: m.LegalPage })));
-const SupportPage = lazy(() => import("./components/support-page").then(m => ({ default: m.SupportPage })));
+const LandingPage = lazy(() =>
+  import("./components/landing-page").then((m) => ({ default: m.LandingPage }))
+);
+const LegalPage = lazy(() =>
+  import("./components/legal-page").then((m) => ({ default: m.LegalPage }))
+);
+const SupportPage = lazy(() =>
+  import("./components/support-page").then((m) => ({ default: m.SupportPage }))
+);
 const JoinGroupPage = lazy(() => import("./components/join-group-page"));
 const CommunityPage = lazy(() => import("./components/community-page"));
+const FaqPage = lazy(() => import("./components/faq-page"));
+const AboutPage = lazy(() => import("./components/about-page"));
+const ComparePage = lazy(() => import("./components/compare-page"));
 import { AppUser, useStore } from "./store";
 import { useShallow } from "zustand/react/shallow";
 import { withAuth } from "./utils/with-auth";
@@ -73,7 +82,9 @@ checkCacheVersion();
 
 // If opened from a push notification, stash the conversation key so
 // messaging-app can navigate to it after conversations load.
-const conversationParam = new URLSearchParams(window.location.search).get("conversation");
+const conversationParam = new URLSearchParams(window.location.search).get(
+  "conversation"
+);
 if (conversationParam) {
   useStore.getState().setPendingConversationKey(conversationParam);
   window.history.replaceState({}, "", window.location.pathname);
@@ -81,9 +92,14 @@ if (conversationParam) {
 
 function App() {
   // ── Hydrate a logged-in user (cache-first, background revalidation) ──
-  const hydrateUser = useRef<((publicKey: string, messagingKey: string) => void) | null>(null);
-  hydrateUser.current = (publicKey: string, messagingPublicKeyBase58Check: string) => {
-    const { setAppUser, setIsLoadingUser, setAllAccessGroups } = useStore.getState();
+  const hydrateUser = useRef<
+    ((publicKey: string, messagingKey: string) => void) | null
+  >(null);
+  hydrateUser.current = (
+    publicKey: string,
+    messagingPublicKeyBase58Check: string
+  ) => {
+    const { setAppUser, setIsLoadingUser } = useStore.getState();
     let pollingId = 0;
 
     useStore.getState().resetChatRequestState();
@@ -111,7 +127,9 @@ function App() {
             messagingPublicKeyBase58Check,
             accessGroupsOwned: AccessGroupsOwned,
           };
-          const allGroups = (AccessGroupsOwned || []).concat(AccessGroupsMember || []);
+          const allGroups = (AccessGroupsOwned || []).concat(
+            AccessGroupsMember || []
+          );
           setAppUser(freshAppUser);
           useStore.setState({ allAccessGroups: allGroups });
           cacheUserProfile(publicKey, freshAppUser, allGroups);
@@ -129,7 +147,9 @@ function App() {
             }, 3000);
           }
         })
-        .catch(() => { /* Background refresh failed — cached data is still showing */ });
+        .catch(() => {
+          /* Background refresh failed — cached data is still showing */
+        });
     } else {
       // Cache miss or first-time setup — blocking flow
       setIsLoadingUser(true);
@@ -140,7 +160,8 @@ function App() {
         .then(([userRes, { AccessGroupsOwned, AccessGroupsMember }]) => {
           if (
             !AccessGroupsOwned?.find(
-              ({ AccessGroupKeyName }) => AccessGroupKeyName === DEFAULT_KEY_MESSAGING_GROUP_NAME
+              ({ AccessGroupKeyName }) =>
+                AccessGroupKeyName === DEFAULT_KEY_MESSAGING_GROUP_NAME
             )
           ) {
             return withAuth(() =>
@@ -151,24 +172,38 @@ function App() {
                 MinFeeRateNanosPerKB: 1000,
               })
             ).then(() =>
-              getAllAccessGroups({ PublicKeyBase58Check: publicKey }).then((groups) => {
-                const user: User | null = userRes.UserList?.[0] ?? null;
-                const appUser: AppUser | null = user
-                  ? { ...user, messagingPublicKeyBase58Check, accessGroupsOwned: groups.AccessGroupsOwned }
-                  : null;
-                const allGroups = (AccessGroupsOwned || []).concat(AccessGroupsMember || []);
-                setAppUser(appUser);
-                useStore.setState({ allAccessGroups: allGroups });
-                if (appUser) cacheUserProfile(publicKey, appUser, allGroups);
-                return user;
-              })
+              getAllAccessGroups({ PublicKeyBase58Check: publicKey }).then(
+                (groups) => {
+                  const user: User | null = userRes.UserList?.[0] ?? null;
+                  const appUser: AppUser | null = user
+                    ? {
+                        ...user,
+                        messagingPublicKeyBase58Check,
+                        accessGroupsOwned: groups.AccessGroupsOwned,
+                      }
+                    : null;
+                  const allGroups = (AccessGroupsOwned || []).concat(
+                    AccessGroupsMember || []
+                  );
+                  setAppUser(appUser);
+                  useStore.setState({ allAccessGroups: allGroups });
+                  if (appUser) cacheUserProfile(publicKey, appUser, allGroups);
+                  return user;
+                }
+              )
             );
           } else {
             const user: User | null = userRes.UserList?.[0] ?? null;
             const appUser: AppUser | null = user
-              ? { ...user, messagingPublicKeyBase58Check, accessGroupsOwned: AccessGroupsOwned }
+              ? {
+                  ...user,
+                  messagingPublicKeyBase58Check,
+                  accessGroupsOwned: AccessGroupsOwned,
+                }
               : null;
-            const allGroups = (AccessGroupsOwned || []).concat(AccessGroupsMember || []);
+            const allGroups = (AccessGroupsOwned || []).concat(
+              AccessGroupsMember || []
+            );
             setAppUser(appUser);
             useStore.setState({ allAccessGroups: allGroups });
             if (appUser) cacheUserProfile(publicKey, appUser, allGroups);
@@ -200,36 +235,42 @@ function App() {
   };
 
   const { setAppUser, setIsLoadingUser } = useStore(
-    useShallow((s) => ({ setAppUser: s.setAppUser, setIsLoadingUser: s.setIsLoadingUser }))
+    useShallow((s) => ({
+      setAppUser: s.setAppUser,
+      setIsLoadingUser: s.setIsLoadingUser,
+    }))
   );
 
-  useEffect(
-    () => {
-      // ── Snapshot-based init (like Diamond app) ──
-      // Use identity.snapshot() to read current state synchronously from
-      // localStorage. No iframe, no callbacks, no waiting. Instant.
-      try {
-        const { currentUser } = identity.snapshot() as { currentUser: any };
-        if (currentUser) {
-          const messagingKey = currentUser.primaryDerivedKey?.messagingPublicKeyBase58Check;
-          if (messagingKey) {
-            hydrateUser.current?.(currentUser.publicKey, messagingKey);
-          } else {
-            console.warn("[ChatOn] Missing messagingPublicKeyBase58Check — resetting");
-            setIsLoadingUser(false);
-          }
+  useEffect(() => {
+    // ── Snapshot-based init (like Diamond app) ──
+    // Use identity.snapshot() to read current state synchronously from
+    // localStorage. No iframe, no callbacks, no waiting. Instant.
+    try {
+      const { currentUser } = identity.snapshot() as { currentUser: any };
+      if (currentUser) {
+        const messagingKey =
+          currentUser.primaryDerivedKey?.messagingPublicKeyBase58Check;
+        if (messagingKey) {
+          hydrateUser.current?.(currentUser.publicKey, messagingKey);
         } else {
-          // No user in localStorage — logged out. Render landing page instantly.
+          console.warn(
+            "[ChatOn] Missing messagingPublicKeyBase58Check — resetting"
+          );
           setIsLoadingUser(false);
         }
-      } catch (err) {
-        console.error("[ChatOn] identity.snapshot() failed:", err);
+      } else {
+        // No user in localStorage — logged out. Render landing page instantly.
         setIsLoadingUser(false);
       }
+    } catch (err) {
+      console.error("[ChatOn] identity.snapshot() failed:", err);
+      setIsLoadingUser(false);
+    }
 
-      // ── Subscribe for ongoing state changes (login, logout, user switch) ──
-      // This handles events AFTER initial load — not needed for boot.
-      identity.subscribe(({ event, currentUser, alternateUsers }) => {
+    // ── Subscribe for ongoing state changes (login, logout, user switch) ──
+    // This handles events AFTER initial load — not needed for boot.
+    identity
+      .subscribe(({ event, currentUser, alternateUsers }) => {
         const store = useStore.getState();
 
         // Ignore intermediate authorization events — only act on final states
@@ -276,11 +317,14 @@ function App() {
           ].includes(event)
         ) {
           clearDecryptionCaches();
-          const messagingKey = currentUser.primaryDerivedKey?.messagingPublicKeyBase58Check;
+          const messagingKey =
+            currentUser.primaryDerivedKey?.messagingPublicKeyBase58Check;
           if (messagingKey) {
             hydrateUser.current?.(currentUser.publicKey, messagingKey);
           } else {
-            console.warn("[ChatOn] Missing messagingPublicKeyBase58Check — resetting");
+            console.warn(
+              "[ChatOn] Missing messagingPublicKeyBase58Check — resetting"
+            );
             setAppUser(null);
             setIsLoadingUser(false);
           }
@@ -294,15 +338,13 @@ function App() {
         ) {
           setIsLoadingUser(false);
         }
-      }).catch((err) => {
+      })
+      .catch((err) => {
         console.error("[ChatOn] identity.subscribe failed:", err);
         setAppUser(null);
         setIsLoadingUser(false);
       });
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
+  }, []);
 
   const { appUser, isLoadingUser } = useStore(
     useShallow((s) => ({ appUser: s.appUser, isLoadingUser: s.isLoadingUser }))
@@ -312,7 +354,17 @@ function App() {
 
   // Remove splash once content is ready (not during loading)
   const isJoinRoute = path === "/join" || path.startsWith("/join/");
-  const contentReady = !isLoadingUser || !!appUser || path === "/privacy" || path === "/terms" || path === "/support" || path === "/community" || isJoinRoute;
+  const contentReady =
+    !isLoadingUser ||
+    !!appUser ||
+    path === "/privacy" ||
+    path === "/terms" ||
+    path === "/support" ||
+    path === "/community" ||
+    path === "/faq" ||
+    path === "/about" ||
+    path === "/compare" ||
+    isJoinRoute;
   useEffect(() => {
     if (!contentReady || splashRemovedRef.current) return;
     splashRemovedRef.current = true;
@@ -353,10 +405,22 @@ function App() {
 
   // Legal pages are always accessible regardless of auth state
   if (path === "/privacy") {
-    return <RouteErrorBoundary><Suspense fallback={routeFallback}><LegalPage type="privacy" /></Suspense></RouteErrorBoundary>;
+    return (
+      <RouteErrorBoundary>
+        <Suspense fallback={routeFallback}>
+          <LegalPage type="privacy" />
+        </Suspense>
+      </RouteErrorBoundary>
+    );
   }
   if (path === "/terms") {
-    return <RouteErrorBoundary><Suspense fallback={routeFallback}><LegalPage type="terms" /></Suspense></RouteErrorBoundary>;
+    return (
+      <RouteErrorBoundary>
+        <Suspense fallback={routeFallback}>
+          <LegalPage type="terms" />
+        </Suspense>
+      </RouteErrorBoundary>
+    );
   }
   if (path === "/support") {
     return (
@@ -374,6 +438,39 @@ function App() {
       <RouteErrorBoundary>
         <Suspense fallback={routeFallback}>
           <CommunityPage />
+          <Toaster position="top-right" theme="dark" />
+        </Suspense>
+      </RouteErrorBoundary>
+    );
+  }
+
+  if (path === "/faq") {
+    return (
+      <RouteErrorBoundary>
+        <Suspense fallback={routeFallback}>
+          <FaqPage />
+          <Toaster position="top-right" theme="dark" />
+        </Suspense>
+      </RouteErrorBoundary>
+    );
+  }
+
+  if (path === "/about") {
+    return (
+      <RouteErrorBoundary>
+        <Suspense fallback={routeFallback}>
+          <AboutPage />
+          <Toaster position="top-right" theme="dark" />
+        </Suspense>
+      </RouteErrorBoundary>
+    );
+  }
+
+  if (path === "/compare") {
+    return (
+      <RouteErrorBoundary>
+        <Suspense fallback={routeFallback}>
+          <ComparePage />
           <Toaster position="top-right" theme="dark" />
         </Suspense>
       </RouteErrorBoundary>

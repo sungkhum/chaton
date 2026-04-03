@@ -26,7 +26,7 @@ const DIST = join(process.cwd(), "dist");
 const PORT = 4199;
 
 /** Public routes to pre-render. */
-const ROUTES = ["/", "/privacy", "/terms", "/support", "/community"];
+const ROUTES = ["/", "/privacy", "/terms", "/support", "/community", "/faq", "/about", "/compare"];
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
