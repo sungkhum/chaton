@@ -198,9 +198,11 @@ async function pollUserThreads(
     const senderKey = thread.SenderInfo.OwnerPublicKeyBase58Check;
     if (senderKey === publicKey) continue;
 
-    // Skip reaction messages — they're metadata, not chat messages
+    // Skip non-content messages — reactions, tips, system events (join/leave),
+    // edits, and deletions don't warrant push notifications
     const extraData = thread.MessageInfo.ExtraData || {};
-    if (extraData["msg:type"] === "reaction") continue;
+    const msgType = extraData["msg:type"];
+    if (msgType === "reaction" || msgType === "system" || msgType === "tip") continue;
 
     const senderName = profiles[senderKey]?.Username || "Someone";
 
