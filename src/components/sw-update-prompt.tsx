@@ -14,7 +14,7 @@ export function SwUpdatePrompt() {
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[80] w-[calc(100%-2rem)] max-w-sm
                     flex items-center gap-3 px-4 py-3 rounded-xl
-                    bg-[rgba(15,21,32,0.85)] backdrop-blur-[24px]
+                    bg-white/5 backdrop-blur-[20px]
                     border border-white/10
                     shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_8px_40px_rgba(0,0,0,0.5),0_0_0_0.5px_rgba(255,255,255,0.04)]
                     animate-[slideUp_300ms_cubic-bezier(0.16,1,0.3,1)]">
