@@ -5,13 +5,13 @@ import { ChevronDown, Menu, X } from "lucide-react";
 /** Links shown directly in the desktop nav bar (highest priority). */
 const PRIMARY_LINKS = [
   { href: "/about", label: "About" },
-  { href: "/compare", label: "Compare" },
+  { href: "/blog", label: "Blog" },
   { href: "/community", label: "Community" },
 ];
 
 /** Links inside the desktop "More" dropdown. */
 const MORE_LINKS = [
-  { href: "/blog", label: "Blog" },
+  { href: "/compare", label: "Compare" },
   { href: "/faq", label: "FAQ" },
   { href: "/support", label: "Support" },
 ];
