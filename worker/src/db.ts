@@ -228,3 +228,57 @@ export async function resetFailureCount(
     .bind(endpoint)
     .run();
 }
+
+// ---------------------------------------------------------------------------
+// Read cursor sync (cross-device)
+// ---------------------------------------------------------------------------
+
+/** Fetch all read cursors for a user. Returns { conversationKey: timestampNanos }. */
+export async function getReadCursors(
+  db: D1Database,
+  publicKey: string
+): Promise<Record<string, string>> {
+  const { results } = await db
+    .prepare(
+      `SELECT conversation_key, timestamp_nanos FROM read_cursors WHERE user_public_key = ?`
+    )
+    .bind(publicKey)
+    .all<{ conversation_key: string; timestamp_nanos: string }>();
+
+  const map: Record<string, string> = {};
+  for (const row of results) {
+    map[row.conversation_key] = row.timestamp_nanos;
+  }
+  return map;
+}
+
+/** Batch upsert read cursors, keeping the newer timestamp per conversation. */
+export async function upsertReadCursors(
+  db: D1Database,
+  publicKey: string,
+  cursors: Array<{ conversationKey: string; timestampNanos: string }>
+): Promise<void> {
+  if (cursors.length === 0) return;
+
+  // D1 batch limit is ~100 statements; chunk to be safe
+  const CHUNK_SIZE = 50;
+  for (let i = 0; i < cursors.length; i += CHUNK_SIZE) {
+    const chunk = cursors.slice(i, i + CHUNK_SIZE);
+    const stmts = chunk.map(({ conversationKey, timestampNanos }) =>
+      db
+        .prepare(
+          `INSERT INTO read_cursors (user_public_key, conversation_key, timestamp_nanos)
+           VALUES (?, ?, ?)
+           ON CONFLICT (user_public_key, conversation_key) DO UPDATE SET
+             timestamp_nanos = CASE
+               WHEN CAST(excluded.timestamp_nanos AS INTEGER) > CAST(read_cursors.timestamp_nanos AS INTEGER)
+               THEN excluded.timestamp_nanos
+               ELSE read_cursors.timestamp_nanos
+             END,
+             updated_at = datetime('now')`
+        )
+        .bind(publicKey, conversationKey, timestampNanos)
+    );
+    await db.batch(stmts);
+  }
+}

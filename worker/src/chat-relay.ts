@@ -1,10 +1,10 @@
 import { DurableObject } from "cloudflare:workers";
 import { sendPushNotification, PushSubscriptionData } from "./web-push";
 import { validateDesoJwt } from "./jwt";
-import { updateLastSeen } from "./db";
+import { updateLastSeen, getReadCursors, upsertReadCursors } from "./db";
 
 interface WsMessage {
-  type: "notify" | "typing" | "read" | "register";
+  type: "notify" | "typing" | "read" | "register" | "read-sync-init";
   publicKey?: string;
   jwt?: string;
   threadId?: string;
@@ -13,6 +13,8 @@ interface WsMessage {
   fromUsername?: string;
   conversationKey?: string;
   groupName?: string;
+  timestamp?: string;
+  cursors?: Record<string, string>;
 }
 
 interface ConnectedClient {
@@ -31,6 +33,9 @@ export interface RelayEnv {
 export class ChatRelay extends DurableObject<RelayEnv> {
   private clients: Map<string, ConnectedClient[]> = new Map();
   private dbReady = false;
+  // Pending read cursor updates, keyed by publicKey -> (conversationKey -> timestampNanos)
+  private pendingCursors: Map<string, Map<string, string>> = new Map();
+  private flushScheduled = false;
 
   private ensureDb() {
     if (this.dbReady) return;
@@ -148,6 +153,9 @@ export class ChatRelay extends DurableObject<RelayEnv> {
         case "read":
           this.handleRead(ws, message);
           break;
+        case "read-sync-init":
+          this.handleReadSyncInit(ws, message);
+          break;
       }
     } catch {
       // Ignore malformed messages
@@ -176,6 +184,19 @@ export class ChatRelay extends DurableObject<RelayEnv> {
     existing.push({ ws, publicKey, lastSeen: Date.now() });
     this.clients.set(publicKey, existing);
     this.broadcastPresence();
+
+    // Send stored read cursors from D1 so the client can merge with localStorage
+    this.ctx.waitUntil(
+      getReadCursors(this.env.DB, publicKey)
+        .then((cursors) => {
+          if (Object.keys(cursors).length > 0) {
+            try {
+              ws.send(JSON.stringify({ type: "read-sync", cursors }));
+            } catch { /* client may have disconnected */ }
+          }
+        })
+        .catch(() => { /* best-effort */ })
+    );
   }
 
   private async handleNotify(message: WsMessage) {
@@ -276,18 +297,108 @@ export class ChatRelay extends DurableObject<RelayEnv> {
   }
 
   private handleRead(ws: WebSocket, message: WsMessage) {
-    const { conversationKey } = message;
+    const { conversationKey, timestamp } = message;
     if (!conversationKey) return;
 
     const senderKey = this.findPublicKey(ws);
     if (!senderKey) return;
 
+    // Broadcast read receipt to OTHER users (existing behavior)
     for (const [pubKey, clients] of this.clients) {
       if (pubKey === senderKey) continue;
       for (const client of clients) {
         try {
           client.ws.send(JSON.stringify({ type: "read", from: senderKey, conversationKey }));
         } catch { /* ignore */ }
+      }
+    }
+
+    // If timestamp provided, relay to sender's OTHER devices for cross-device sync
+    if (timestamp) {
+      const senderClients = this.clients.get(senderKey) || [];
+      for (const client of senderClients) {
+        if (client.ws === ws) continue; // Don't echo back to originator
+        try {
+          client.ws.send(JSON.stringify({ type: "read-sync", conversationKey, timestamp }));
+        } catch { /* ignore */ }
+      }
+
+      // Buffer for batched D1 flush
+      this.bufferCursor(senderKey, conversationKey, timestamp);
+    }
+  }
+
+  /** Handle bulk cursor upload from a client (sent after merging with server cursors). */
+  private handleReadSyncInit(ws: WebSocket, message: WsMessage) {
+    const { cursors } = message;
+    if (!cursors || typeof cursors !== "object") return;
+
+    const senderKey = this.findPublicKey(ws);
+    if (!senderKey) return;
+
+    const senderClients = this.clients.get(senderKey) || [];
+
+    for (const [conversationKey, timestamp] of Object.entries(cursors)) {
+      if (typeof timestamp !== "string") continue;
+
+      // Buffer for D1 flush
+      this.bufferCursor(senderKey, conversationKey, timestamp);
+
+      // Relay to sender's other devices
+      for (const client of senderClients) {
+        if (client.ws === ws) continue;
+        try {
+          client.ws.send(JSON.stringify({ type: "read-sync", conversationKey, timestamp }));
+        } catch { /* ignore */ }
+      }
+    }
+  }
+
+  /** Buffer a read cursor update for batched D1 flush (take-max per conversation). */
+  private bufferCursor(publicKey: string, conversationKey: string, timestamp: string) {
+    let userCursors = this.pendingCursors.get(publicKey);
+    if (!userCursors) {
+      userCursors = new Map();
+      this.pendingCursors.set(publicKey, userCursors);
+    }
+    const existing = userCursors.get(conversationKey);
+    if (!existing || BigInt(timestamp) > BigInt(existing)) {
+      userCursors.set(conversationKey, timestamp);
+    }
+    this.scheduleFlush();
+  }
+
+  /** Schedule an alarm to flush pending cursors to D1 in 30 seconds. */
+  private scheduleFlush() {
+    if (this.flushScheduled) return;
+    this.flushScheduled = true;
+    this.ctx.storage.setAlarm(Date.now() + 30_000);
+  }
+
+  /** Alarm handler — flush all pending cursors to D1. */
+  async alarm() {
+    this.flushScheduled = false;
+    await this.flushPendingCursors();
+  }
+
+  /** Write all buffered cursors to D1 and clear the buffer. */
+  private async flushPendingCursors() {
+    if (this.pendingCursors.size === 0) return;
+
+    const snapshot = this.pendingCursors;
+    this.pendingCursors = new Map();
+
+    for (const [publicKey, cursorMap] of snapshot) {
+      const cursors = Array.from(cursorMap.entries()).map(
+        ([conversationKey, timestampNanos]) => ({ conversationKey, timestampNanos })
+      );
+      try {
+        await upsertReadCursors(this.env.DB, publicKey, cursors);
+      } catch {
+        // Re-buffer on failure so the next flush retries
+        for (const { conversationKey, timestampNanos } of cursors) {
+          this.bufferCursor(publicKey, conversationKey, timestampNanos);
+        }
       }
     }
   }
@@ -316,6 +427,17 @@ export class ChatRelay extends DurableObject<RelayEnv> {
       const filtered = clients.filter((c) => c.ws !== ws);
       if (filtered.length === 0) {
         this.clients.delete(pubKey);
+        // Flush any pending read cursors for this user before they go offline
+        const userCursors = this.pendingCursors.get(pubKey);
+        if (userCursors && userCursors.size > 0) {
+          const cursors = Array.from(userCursors.entries()).map(
+            ([conversationKey, timestampNanos]) => ({ conversationKey, timestampNanos })
+          );
+          this.pendingCursors.delete(pubKey);
+          this.ctx.waitUntil(
+            upsertReadCursors(this.env.DB, pubKey, cursors).catch(() => {})
+          );
+        }
         this.ctx.waitUntil(
           updateLastSeen(this.env.DB, pubKey).catch(() => {/* best-effort */})
         );

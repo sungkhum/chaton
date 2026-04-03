@@ -439,6 +439,52 @@ export function getCachedLastReadTimestamps(
   return lsGet<Record<string, number>>(publicKey, "lastRead") || {};
 }
 
+/**
+ * Merge remote read cursors (from server) with local ones (localStorage).
+ * Takes the max timestamp per conversation. Returns the merged map and any
+ * cursors where local is newer (to send back to the server).
+ */
+export function mergeReadCursors(
+  publicKey: string,
+  remoteCursors: Record<string, string>
+): { merged: Record<string, number>; localNewer: Record<string, string> } {
+  const local = getCachedLastReadTimestamps(publicKey);
+  const localNewer: Record<string, string> = {};
+  const merged = { ...local };
+
+  for (const [key, remoteTs] of Object.entries(remoteCursors)) {
+    const remoteNum = Number(remoteTs);
+    const localNum = local[key] || 0;
+    if (remoteNum > localNum) {
+      merged[key] = remoteNum;
+    } else if (localNum > remoteNum) {
+      localNewer[key] = String(localNum);
+    }
+  }
+
+  // Also include local-only cursors (not present on server)
+  for (const [key, localNum] of Object.entries(local)) {
+    if (!(key in remoteCursors)) {
+      localNewer[key] = String(localNum);
+    }
+  }
+
+  lsSet(publicKey, "lastRead", merged);
+  return { merged, localNewer };
+}
+
+/** Convert local read cursors to string map for sending over WebSocket. */
+export function getReadCursorsForSync(
+  publicKey: string
+): Record<string, string> {
+  const cursors = getCachedLastReadTimestamps(publicKey);
+  const result: Record<string, string> = {};
+  for (const [key, val] of Object.entries(cursors)) {
+    result[key] = String(val);
+  }
+  return result;
+}
+
 // ---------------------------------------------------------------------------
 // Housekeeping
 // ---------------------------------------------------------------------------

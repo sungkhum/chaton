@@ -13,6 +13,8 @@ interface WsCallbacks {
   onTyping?: (from: string, conversationKey: string) => void;
   onPresence?: (users: Record<string, "online" | "offline">) => void;
   onRead?: (from: string, conversationKey: string) => void;
+  onReadSync?: (conversationKey: string, timestamp: string) => void;
+  onReadSyncBulk?: (cursors: Record<string, string>) => void;
 }
 
 export function useWebSocket(callbacks: WsCallbacks) {
@@ -79,6 +81,13 @@ export function useWebSocket(callbacks: WsCallbacks) {
             case "read":
               callbacksRef.current.onRead?.(data.from, data.conversationKey);
               break;
+            case "read-sync":
+              if (data.cursors) {
+                callbacksRef.current.onReadSyncBulk?.(data.cursors);
+              } else if (data.conversationKey && data.timestamp) {
+                callbacksRef.current.onReadSync?.(data.conversationKey, data.timestamp);
+              }
+              break;
           }
         } catch {
           // Ignore malformed messages
@@ -140,13 +149,25 @@ export function useWebSocket(callbacks: WsCallbacks) {
   );
 
   const sendRead = useCallback(
-    (conversationKey: string) => {
+    (conversationKey: string, timestamp?: string) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(
           JSON.stringify({
             type: "read",
             conversationKey,
+            ...(timestamp && { timestamp }),
           })
+        );
+      }
+    },
+    []
+  );
+
+  const sendReadSyncInit = useCallback(
+    (cursors: Record<string, string>) => {
+      if (wsRef.current?.readyState === WebSocket.OPEN && Object.keys(cursors).length > 0) {
+        wsRef.current.send(
+          JSON.stringify({ type: "read-sync-init", cursors })
         );
       }
     },
@@ -194,7 +215,7 @@ export function useWebSocket(callbacks: WsCallbacks) {
     };
   }, [connect]);
 
-  return { sendNotify, sendTyping, sendRead, isConnected: !!wsRef.current };
+  return { sendNotify, sendTyping, sendRead, sendReadSyncInit, isConnected: !!wsRef.current };
 }
 
 /**

@@ -62,6 +62,7 @@ import {
   getCachedPrivacyMode,
   getCachedUsernameMap,
   getCachedUserProfile,
+  mergeReadCursors,
 } from "../services/cache.service";
 import {
   ASSOCIATION_TYPE_BLOCKED,
@@ -702,11 +703,53 @@ export const MessagingApp: FC = () => {
   const setOnlineUsers = useStore((s) => s.setOnlineUsers);
   const { getPresence, getOnlineCount, fetchPresenceForKeys } = usePresence();
 
-  const { sendNotify, sendTyping, sendRead } = useWebSocket({
+  const { sendNotify, sendTyping, sendRead, sendReadSyncInit } = useWebSocket({
     onNewMessage: handleWsNewMessage,
     onTyping: onTypingReceived,
     onPresence: (users) => {
       setOnlineUsers(new Set(Object.keys(users)));
+    },
+    onReadSync: (conversationKey, timestamp) => {
+      // Another device read this conversation — update local state
+      const user = useStore.getState().appUser;
+      if (!user) return;
+      const ts = Number(timestamp);
+      cacheLastReadTimestamp(user.PublicKeyBase58Check, conversationKey, ts);
+      // Clear unread if cursor >= latest message
+      const convo = conversationsRef.current[conversationKey];
+      const latestTs = convo?.messages[0]?.MessageInfo?.TimestampNanos;
+      if (latestTs && ts >= latestTs) {
+        clearUnread(conversationKey);
+        removeUnreadConversation(conversationKey);
+      }
+    },
+    onReadSyncBulk: (cursors) => {
+      const user = useStore.getState().appUser;
+      if (!user) return;
+      const pk = user.PublicKeyBase58Check;
+      const { merged, localNewer } = mergeReadCursors(pk, cursors);
+      // Send back any cursors that are newer locally
+      if (Object.keys(localNewer).length > 0) {
+        sendReadSyncInit(localNewer);
+      }
+      // Recompute unread badges from merged cursors
+      const store = useStore.getState();
+      const convos = conversationsRef.current;
+      const unreadMap = new Map<string, number>();
+      for (const [k, convo] of Object.entries(convos)) {
+        if (store.mutedConversations.has(k) || store.archivedGroups.has(k)) continue;
+        const latestMsg = convo.messages[0];
+        if (!latestMsg || latestMsg.IsSender) continue;
+        const msgTs = latestMsg.MessageInfo.TimestampNanos;
+        const lastRead = merged[k];
+        if (lastRead !== undefined && msgTs > lastRead) {
+          unreadMap.set(k, 1);
+        }
+      }
+      syncUnreadConversations(Array.from(unreadMap.keys()));
+      if (unreadMap.size > 0) {
+        initializeUnread(unreadMap);
+      }
     },
   });
 
@@ -2190,12 +2233,13 @@ export const MessagingApp: FC = () => {
                     if (unreadByConversation.has(key)) {
                       clearUnread(key);
                       removeUnreadConversation(key);
-                      sendRead(key);
-                      if (appUser && conversations[key]?.messages[0]) {
+                      const ts = conversations[key]?.messages[0]?.MessageInfo?.TimestampNanos;
+                      sendRead(key, ts ? String(ts) : undefined);
+                      if (appUser && ts) {
                         cacheLastReadTimestamp(
                           appUser.PublicKeyBase58Check,
                           key,
-                          conversations[key].messages[0].MessageInfo.TimestampNanos
+                          ts
                         );
                       }
                     }
@@ -2208,15 +2252,12 @@ export const MessagingApp: FC = () => {
                   setReplyToMessage(null);
                   clearUnread(key);
                   removeUnreadConversation(key);
-                  sendRead(key);
-
-                  // Persist last-read timestamp for this conversation
-                  if (appUser && conversations[key]?.messages[0]) {
-                    cacheLastReadTimestamp(
-                      appUser.PublicKeyBase58Check,
-                      key,
-                      conversations[key].messages[0].MessageInfo.TimestampNanos
-                    );
+                  {
+                    const ts = conversations[key]?.messages[0]?.MessageInfo?.TimestampNanos;
+                    sendRead(key, ts ? String(ts) : undefined);
+                    if (appUser && ts) {
+                      cacheLastReadTimestamp(appUser.PublicKeyBase58Check, key, ts);
+                    }
                   }
 
                   // Cache the last selected conversation

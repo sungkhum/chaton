@@ -131,6 +131,17 @@ Stored via `createAccessGroup` / `updateAccessGroup`. Any DeSo messaging app can
 - Sonner for toasts
 - Cloudflare Workers + Durable Objects for WebSocket relay
 
+## Worker deployment
+
+D1 migrations are **not** auto-applied by `wrangler deploy`. When adding or
+modifying D1 migrations, always run them explicitly before deploying:
+
+```bash
+cd worker
+npx wrangler d1 migrations apply chaton-push --remote
+npx wrangler deploy
+```
+
 ## Testing
 
 Playwright e2e tests live in `e2e/tests/`. Use the `/playwright-best-practices` skill
