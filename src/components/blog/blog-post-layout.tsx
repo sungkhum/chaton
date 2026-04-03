@@ -40,10 +40,29 @@ export const BlogPostLayout = ({
       mm.add("(prefers-reduced-motion: no-preference)", () => {
         gsap
           .timeline({ defaults: { ease: "power3.out", duration: 0.8 } })
-          .from(".bp-back", { x: -20, autoAlpha: 0, duration: 0.5 })
-          .from(".bp-title", { y: 30, autoAlpha: 0, duration: 1 }, "<0.1")
-          .from(".bp-meta", { y: 15, autoAlpha: 0 }, "<0.15")
-          .from(".bp-body", { y: 20, autoAlpha: 0 }, "<0.2");
+          .fromTo(
+            ".bp-back",
+            { x: -20, autoAlpha: 0 },
+            { x: 0, autoAlpha: 1, duration: 0.5 }
+          )
+          .fromTo(
+            ".bp-title",
+            { y: 30, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1, duration: 1 },
+            "<0.1"
+          )
+          .fromTo(
+            ".bp-meta",
+            { y: 15, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1 },
+            "<0.15"
+          )
+          .fromTo(
+            ".bp-body",
+            { y: 20, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1 },
+            "<0.2"
+          );
       });
 
       mm.add("(prefers-reduced-motion: reduce)", () => {

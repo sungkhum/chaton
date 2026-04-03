@@ -22,19 +22,31 @@ export const BlogIndex = () => {
       const mm = gsap.matchMedia();
 
       mm.add("(prefers-reduced-motion: no-preference)", () => {
+        // Use fromTo (not from) for StrictMode resilience — explicit
+        // start+end states survive the mount→revert→remount cycle.
         gsap
           .timeline({ defaults: { ease: "power3.out", duration: 0.8 } })
-          .from(".blog-badge", { y: -20, autoAlpha: 0, duration: 0.6 })
-          .from(".blog-title", { y: 40, autoAlpha: 0, duration: 1 }, "<0.1")
-          .from(".blog-subtitle", { y: 20, autoAlpha: 0 }, "<0.15")
-          .from(
+          .fromTo(
+            ".blog-badge",
+            { y: -20, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1, duration: 0.6 }
+          )
+          .fromTo(
+            ".blog-title",
+            { y: 40, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1, duration: 1 },
+            "<0.1"
+          )
+          .fromTo(
+            ".blog-subtitle",
+            { y: 20, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1 },
+            "<0.15"
+          )
+          .fromTo(
             ".blog-card",
-            {
-              y: 25,
-              autoAlpha: 0,
-              stagger: 0.08,
-              duration: 0.6,
-            },
+            { y: 25, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1, stagger: 0.08, duration: 0.6 },
             "<0.2"
           );
       });
