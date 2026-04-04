@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 interface ImageMessageProps {
@@ -13,17 +14,33 @@ function touchDistance(a: Touch, b: Touch): number {
   return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
 }
 
-export const ImageMessage = ({ imageUrl, alt, width, height, caption }: ImageMessageProps) => {
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const aspectRatio = width && height ? width / height : undefined;
+// rerender-memo-with-default-value: hoisted constants avoid new refs each render
+const TOUCH_ACTION_NONE = { touchAction: "none" } as const;
+const TRANSFORM_ORIGIN_CENTER = { transformOrigin: "center center" } as const;
+const SKELETON_MIN_HEIGHT = { minHeight: 200 } as const;
 
+// bundle-conditional: lightbox + pinch-to-zoom logic only mounts when opened
+function ImageLightbox({
+  imageUrl,
+  alt,
+  onClose,
+}: {
+  imageUrl: string;
+  alt?: string;
+  onClose: () => void;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const gesture = useRef({
-    scale: 1, tx: 0, ty: 0,
-    dist0: 0, scale0: 1,
-    px0: 0, py0: 0, tx0: 0, ty0: 0,
+    scale: 1,
+    tx: 0,
+    ty: 0,
+    dist0: 0,
+    scale0: 1,
+    px0: 0,
+    py0: 0,
+    tx0: 0,
+    ty0: 0,
     moved: false,
   });
 
@@ -31,15 +48,23 @@ export const ImageMessage = ({ imageUrl, alt, width, height, caption }: ImageMes
     const img = imgRef.current;
     if (!img) return;
     const { scale, tx, ty } = gesture.current;
-    img.style.transform = scale === 1 && tx === 0 && ty === 0
-      ? "" : `translate(${tx}px, ${ty}px) scale(${scale})`;
+    img.style.transform =
+      scale === 1 && tx === 0 && ty === 0
+        ? ""
+        : `translate(${tx}px, ${ty}px) scale(${scale})`;
   }, []);
 
   const resetZoom = useCallback(() => {
     const img = imgRef.current;
     if (img) {
       img.style.transition = "transform 0.2s ease-out";
-      img.addEventListener("transitionend", () => { img.style.transition = ""; }, { once: true });
+      img.addEventListener(
+        "transitionend",
+        () => {
+          img.style.transition = "";
+        },
+        { once: true }
+      );
     }
     Object.assign(gesture.current, { scale: 1, tx: 0, ty: 0 });
     applyTransform();
@@ -47,12 +72,10 @@ export const ImageMessage = ({ imageUrl, alt, width, height, caption }: ImageMes
 
   // Non-passive touch listeners for pinch-to-zoom and pan
   useEffect(() => {
-    if (!lightboxOpen) return;
     const el = containerRef.current;
     if (!el) return;
 
     const g = gesture.current;
-    Object.assign(g, { scale: 1, tx: 0, ty: 0, moved: false });
 
     const onStart = (e: TouchEvent) => {
       const img = imgRef.current;
@@ -76,7 +99,10 @@ export const ImageMessage = ({ imageUrl, alt, width, height, caption }: ImageMes
         g.moved = true;
         const d = touchDistance(e.touches[0], e.touches[1]);
         g.scale = Math.min(Math.max(g.scale0 * (d / g.dist0), 1), 5);
-        if (g.scale <= 1) { g.tx = 0; g.ty = 0; }
+        if (g.scale <= 1) {
+          g.tx = 0;
+          g.ty = 0;
+        }
         applyTransform();
       } else if (e.touches.length === 1 && g.scale > 1) {
         e.preventDefault();
@@ -102,14 +128,62 @@ export const ImageMessage = ({ imageUrl, alt, width, height, caption }: ImageMes
       el.removeEventListener("touchmove", onMove);
       el.removeEventListener("touchend", onEnd);
     };
-  }, [lightboxOpen, applyTransform, resetZoom]);
+  }, [applyTransform, resetZoom]);
 
   const handleOverlayClick = useCallback(() => {
     const g = gesture.current;
-    if (g.moved) { g.moved = false; return; }
-    if (g.scale > 1) { resetZoom(); return; }
-    setLightboxOpen(false);
-  }, [resetZoom]);
+    if (g.moved) {
+      g.moved = false;
+      return;
+    }
+    if (g.scale > 1) {
+      resetZoom();
+      return;
+    }
+    onClose();
+  }, [resetZoom, onClose]);
+
+  return createPortal(
+    <div
+      ref={containerRef}
+      className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 select-none"
+      style={TOUCH_ACTION_NONE}
+      onClick={handleOverlayClick}
+    >
+      <button
+        className="absolute top-4 right-4 text-white cursor-pointer z-10"
+        onClick={(e) => {
+          e.stopPropagation();
+          resetZoom();
+          onClose();
+        }}
+      >
+        <X className="w-8 h-8" />
+      </button>
+      <img
+        ref={imgRef}
+        src={imageUrl}
+        alt={alt || "Image"}
+        className="max-w-full max-h-full object-contain will-change-transform"
+        style={TRANSFORM_ORIGIN_CENTER}
+      />
+    </div>,
+    document.body
+  );
+}
+
+export const ImageMessage = ({
+  imageUrl,
+  alt,
+  width,
+  height,
+  caption,
+}: ImageMessageProps) => {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const aspectRatio = width && height ? width / height : undefined;
+
+  const closeLightbox = useCallback(() => setLightboxOpen(false), []);
 
   return (
     <>
@@ -122,13 +196,15 @@ export const ImageMessage = ({ imageUrl, alt, width, height, caption }: ImageMes
           {!loaded && (
             <div
               className="absolute inset-0 bg-white/10 animate-pulse rounded-lg"
-              style={aspectRatio ? { aspectRatio } : { minHeight: 200 }}
+              style={aspectRatio ? { aspectRatio } : SKELETON_MIN_HEIGHT}
             />
           )}
           <img
             src={imageUrl}
             alt={alt || "Image"}
-            className={`w-full h-auto object-cover transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"}`}
+            className={`w-full h-auto object-cover transition-opacity duration-200 ${
+              loaded ? "opacity-100" : "opacity-0"
+            }`}
             style={aspectRatio ? { aspectRatio } : undefined}
             loading="lazy"
             onLoad={() => setLoaded(true)}
@@ -143,30 +219,7 @@ export const ImageMessage = ({ imageUrl, alt, width, height, caption }: ImageMes
       </div>
 
       {lightboxOpen && (
-        <div
-          ref={containerRef}
-          className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 select-none"
-          style={{ touchAction: "none" }}
-          onClick={handleOverlayClick}
-        >
-          <button
-            className="absolute top-4 right-4 text-white cursor-pointer z-10"
-            onClick={(e) => {
-              e.stopPropagation();
-              resetZoom();
-              setLightboxOpen(false);
-            }}
-          >
-            <X className="w-8 h-8" />
-          </button>
-          <img
-            ref={imgRef}
-            src={imageUrl}
-            alt={alt || "Image"}
-            className="max-w-full max-h-full object-contain will-change-transform"
-            style={{ transformOrigin: "center center" }}
-          />
-        </div>
+        <ImageLightbox imageUrl={imageUrl} alt={alt} onClose={closeLightbox} />
       )}
     </>
   );
