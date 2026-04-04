@@ -441,34 +441,22 @@ export const LandingPage = () => {
               ChatOn
             </span>
           </div>
-          <div className="hidden md:flex items-center gap-10 text-xs font-bold tracking-[0.2em] uppercase text-gray-400">
-            <a
-              href="#features"
-              className="hover:text-[#34F080] transition-colors"
-            >
-              Features
-            </a>
-            <a
-              href="#technology"
-              className="hover:text-[#34F080] transition-colors"
-            >
-              Technology
-            </a>
-            <a
-              href="/compare"
-              className="hover:text-[#34F080] transition-colors"
-            >
-              Compare
-            </a>
+          <div className="flex items-center gap-5 sm:gap-7 md:gap-10 text-[10px] sm:text-xs font-bold tracking-[0.15em] sm:tracking-[0.2em] uppercase text-gray-400">
             <a
               href="/community"
               className="hover:text-[#34F080] transition-colors flex items-center gap-1.5"
             >
-              <Users className="w-3 h-3" />
+              <Users className="w-3 h-3 hidden sm:block" />
               Community
             </a>
-            <a href="/about" className="hover:text-[#34F080] transition-colors">
-              About
+            <a href="/blog" className="hover:text-[#34F080] transition-colors">
+              Blog
+            </a>
+            <a
+              href="/compare"
+              className="hover:text-[#34F080] transition-colors hidden sm:block"
+            >
+              Compare
             </a>
           </div>
           <div className="flex items-center gap-2 md:gap-3">
@@ -1362,6 +1350,12 @@ export const LandingPage = () => {
               </span>
             </div>
             <div className="flex flex-wrap justify-center gap-10 md:gap-16 text-xs font-black uppercase tracking-[0.4em] text-gray-500">
+              <a
+                href="/about"
+                className="hover:text-[#34F080] transition-colors"
+              >
+                About
+              </a>
               <a
                 href="https://github.com/sungkhum/chaton"
                 target="_blank"
