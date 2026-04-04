@@ -59,15 +59,20 @@ export function usePageMeta({
     setMetaTag("og:url", canonicalUrl);
     setMetaTag("og:title", ogTitle ?? title);
     setMetaTag("og:description", ogDescription ?? description);
-    setMetaTag("twitter:title", ogTitle ?? title);
-    setMetaTag("twitter:description", ogDescription ?? description);
+    setMetaTag("twitter:title", ogTitle ?? title, "name");
+    setMetaTag("twitter:description", ogDescription ?? description, "name");
 
     if (ogImage) {
       const imageUrl = ogImage.startsWith("http")
         ? ogImage
         : BASE_URL + ogImage;
       setMetaTag("og:image", imageUrl);
-      setMetaTag("twitter:image", imageUrl);
+      setMetaTag(
+        "og:image:type",
+        ogImage.endsWith(".png") ? "image/png" : "image/webp"
+      );
+      setMetaTag("og:image:alt", ogTitle ?? title);
+      setMetaTag("twitter:image", imageUrl, "name");
     }
 
     return () => {

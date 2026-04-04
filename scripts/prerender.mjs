@@ -25,14 +25,59 @@ const ROUTES = [
   "/blog", "/blog/near-zero-infrastructure",
 ];
 
+const BASE_URL = "https://getchaton.com";
+
 /** Blog posts that need OG images. */
 const OG_POSTS = [
   {
     slug: "near-zero-infrastructure",
     title: "How We Run a Messaging App for Near-Zero Cost",
+    description:
+      "Most messaging apps spend millions on servers. ChatOn uses the DeSo blockchain as its entire backend — no database, no custom API, no server bill.",
     date: "April 3, 2026",
   },
 ];
+
+/** Map slug → metadata for OG tag injection during prerender. */
+const OG_POST_MAP = Object.fromEntries(OG_POSTS.map((p) => [p.slug, p]));
+
+/**
+ * Replace OG/Twitter meta tags in pre-rendered HTML for blog posts.
+ * Ensures social crawlers see correct tags even if React hydration
+ * didn't update them in time.
+ */
+function injectBlogOgTags(html, route) {
+  const match = route.match(/^\/blog\/(.+)$/);
+  if (!match) return html;
+
+  const post = OG_POST_MAP[match[1]];
+  if (!post) return html;
+
+  const ogTitle = `${post.title} — ChatOn Blog`;
+  const ogImage = `${BASE_URL}/og/blog/${post.slug}.png`;
+  const ogUrl = `${BASE_URL}/blog/${post.slug}`;
+
+  const replacements = [
+    [/(<meta\s+property="og:title"\s+content=")[^"]*(")/,           `$1${ogTitle}$2`],
+    [/(<meta\s+property="og:description"\s+content=")[^"]*(")/,     `$1${post.description}$2`],
+    [/(<meta\s+property="og:image"\s+content=")[^"]*(")/,           `$1${ogImage}$2`],
+    [/(<meta\s+property="og:image:type"\s+content=")[^"]*(")/,      `$1image/png$2`],
+    [/(<meta\s+property="og:image:alt"\s+content=")[^"]*(")/,       `$1${ogTitle}$2`],
+    [/(<meta\s+property="og:url"\s+content=")[^"]*(")/,             `$1${ogUrl}$2`],
+    [/(<meta\s+name="twitter:title"\s+content=")[^"]*(")/,          `$1${ogTitle}$2`],
+    [/(<meta\s+name="twitter:description"\s+content=")[^"]*(")/,    `$1${post.description}$2`],
+    [/(<meta\s+name="twitter:image"\s+content=")[^"]*(")/,          `$1${ogImage}$2`],
+    [/(<meta\s+name="description"\s+content=")[^"]*(")/,            `$1${post.description}$2`],
+    [/(<link\s+rel="canonical"\s+href=")[^"]*(")/,                  `$1${ogUrl}$2`],
+    [/(<title>)[^<]*(<\/title>)/,                                   `$1${ogTitle}$2`],
+  ];
+
+  for (const [pattern, replacement] of replacements) {
+    html = html.replace(pattern, replacement);
+  }
+
+  return html;
+}
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -175,7 +220,8 @@ async function prerender() {
         await page.waitForSelector("#root > *", { timeout: 15000 });
         await page.waitForTimeout(2000);
 
-        const html = await page.content();
+        let html = await page.content();
+        html = injectBlogOgTags(html, route);
 
         if (route === "/") {
           await writeFile(join(DIST, "index.html"), html, "utf-8");
