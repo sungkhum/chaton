@@ -55,6 +55,7 @@ import { ImageMessage } from "./messages/image-message";
 import { GifMessage } from "./messages/gif-message";
 import { StickerMessage } from "./messages/sticker-message";
 import { VideoMessage } from "./messages/video-message";
+import { AudioMessage } from "./messages/audio-message";
 import { FileMessage } from "./messages/file-message";
 import { ReplyPreview } from "./messages/reply-preview";
 import { ReactionPills } from "./messages/reaction-pills";
@@ -217,6 +218,17 @@ function MessageContent({
         <FormattedMessage>{messageToShow}</FormattedMessage>
       );
     }
+
+    case "audio":
+      return parsed.audioUrl ? (
+        <AudioMessage
+          audioUrl={parsed.audioUrl}
+          duration={parsed.duration}
+          waveformSeed={message.MessageInfo.TimestampNanosString}
+        />
+      ) : (
+        <FormattedMessage>{messageToShow}</FormattedMessage>
+      );
 
     case "file":
       return (

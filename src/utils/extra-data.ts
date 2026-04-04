@@ -98,6 +98,7 @@ export type RichMessageType =
   | "gif"
   | "sticker"
   | "video"
+  | "audio"
   | "file"
   | "reaction"
   | "tip"
@@ -118,6 +119,8 @@ export interface ParsedMessage {
   gifUrl?: string;
   gifTitle?: string;
   videoUrl?: string;
+  /** Cloudflare Stream URL for audio messages. */
+  audioUrl?: string;
   /** Local-only thumbnail data URL for optimistic video messages (not stored on-chain). */
   localThumbnail?: string;
   duration?: number;
@@ -159,9 +162,33 @@ function parseDeSoAppMedia(extra: Record<string, string>): {
   type?: RichMessageType;
   videoUrl?: string;
   imageUrl?: string;
+  audioUrl?: string;
+  duration?: number;
   mediaWidth?: number;
   mediaHeight?: number;
 } {
+  // Audio from DeSo app — encryptedAudioURLs is decrypted to a URL by this point.
+  // Check before video since both use Cloudflare Stream.
+  const decryptedAudioUrls = extra["encryptedAudioURLs"];
+  if (decryptedAudioUrls && !decryptedAudioUrls.startsWith("04")) {
+    let audioUrl: string | undefined;
+    try {
+      const parsed = JSON.parse(decryptedAudioUrls);
+      audioUrl = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      audioUrl = decryptedAudioUrls;
+    }
+    if (audioUrl) {
+      return {
+        type: "audio",
+        audioUrl,
+        duration: extra["audio.0.duration"]
+          ? parseFloat(extra["audio.0.duration"])
+          : undefined,
+      };
+    }
+  }
+
   // Video from DeSo app — encryptedVideoURLs is decrypted to a URL by this point
   const decryptedVideoUrls = extra["encryptedVideoURLs"];
   if (decryptedVideoUrls && !decryptedVideoUrls.startsWith("04")) {
@@ -235,8 +262,11 @@ export function parseMessageType(
     gifUrl: extra[MSG_GIF_URL],
     gifTitle: extra[MSG_GIF_TITLE],
     videoUrl: extra[MSG_VIDEO_URL] || desoAppMedia.videoUrl,
+    audioUrl: desoAppMedia.audioUrl,
     localThumbnail: extra["_localThumbnail"],
-    duration: extra[MSG_DURATION] ? parseFloat(extra[MSG_DURATION]) : undefined,
+    duration: extra[MSG_DURATION]
+      ? parseFloat(extra[MSG_DURATION])
+      : desoAppMedia.duration,
     mediaWidth: extra[MSG_MEDIA_WIDTH]
       ? parseInt(extra[MSG_MEDIA_WIDTH])
       : desoAppMedia.mediaWidth,

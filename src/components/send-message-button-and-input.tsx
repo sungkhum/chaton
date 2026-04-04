@@ -20,6 +20,7 @@ import {
   Check,
   Paperclip,
   CircleDollarSign,
+  Mic,
 } from "lucide-react";
 import { toast } from "sonner";
 import { EmojiPickerButton } from "./compose/emoji-picker-button";
@@ -34,6 +35,7 @@ import {
   trackShare,
 } from "../services/klipy.service";
 import { uploadImage, uploadVideoFile } from "../services/media.service";
+import { AudioRecorderPanel } from "./compose/audio-recorder-panel";
 import { ReplyBanner } from "./compose/reply-banner";
 import {
   LinkAttachmentPanel,
@@ -107,6 +109,7 @@ export const SendMessageButtonAndInput = forwardRef<
     } | null>(null);
     const [pendingGif, setPendingGif] = useState<KlipyItem | null>(null);
     const [showLinkPanel, setShowLinkPanel] = useState(false);
+    const [isRecordingAudio, setIsRecordingAudio] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const inputBarRef = useRef<HTMLDivElement>(null);
@@ -580,6 +583,42 @@ export const SendMessageButtonAndInput = forwardRef<
       setShowLinkPanel(false);
     };
 
+    const handleAudioSend = async (blob: Blob, duration: number) => {
+      setIsRecordingAudio(false);
+      setIsUploading(true);
+      try {
+        // Lazy-load mediabunny only when first audio is sent (zero initial bundle cost).
+        // Compresses to 64kbps AAC in mp4 — smaller files, faster uploads,
+        // and DeSo's upload-video endpoint requires video/* MIME type.
+        const { compressAudioToMp4 } = await import(
+          "../services/ffmpeg.service"
+        );
+        const compressed = await compressAudioToMp4(blob);
+        const file = new File([compressed], `recording-${Date.now()}.mp4`, {
+          type: "video/mp4",
+        });
+        const result = await uploadVideoFile(file);
+        const extraData: Record<string, string> = {
+          "msg:type": "audio",
+          encryptedAudioURLs: JSON.stringify([result.url]),
+          "audio.0.duration": String(duration),
+          "audio.0.clientId": crypto
+            .randomUUID()
+            .replace(/-/g, "")
+            .slice(0, 24),
+          "audio.0.title": `Recording ${new Date()
+            .toISOString()
+            .replace(/[:.]/g, "-")}`,
+        };
+        // Call onClick directly — sendMessage("", ...) would pick up draft text
+        await onClick("", extraData);
+      } catch (err: any) {
+        toast.error(`Audio upload failed: ${err.message || err}`);
+      } finally {
+        setIsUploading(false);
+      }
+    };
+
     /** Unified send: routes to link/image/video/gif confirm when media is staged, otherwise normal send */
     const handleSend = async () => {
       if (showLinkPanel && linkPanelRef.current) {
@@ -631,6 +670,15 @@ export const SendMessageButtonAndInput = forwardRef<
     const showMentionPicker =
       mentionQuery !== null && filteredMentions.length > 0;
     const isExpanded = isFocused || messageToSend.length > 0;
+    const showMicButton =
+      !messageToSend.trim() &&
+      !pendingImage &&
+      !pendingVideo &&
+      !pendingGif &&
+      !showLinkPanel &&
+      !editingMessage &&
+      !isRecordingAudio &&
+      !isUploading;
 
     return (
       <div
@@ -764,232 +812,248 @@ export const SendMessageButtonAndInput = forwardRef<
             </ViewTransition>
           )}
 
-          {/* Action buttons — compact toolbar row on mobile, inline on desktop */}
-          <div className="flex items-center gap-1 md:hidden pb-1.5 mb-0.5 border-b border-white/[0.06]">
-            <button
-              onClick={() =>
-                startTransition(() => {
-                  setShowLinkPanel((v) => !v);
-                  setShowGifPicker(false);
-                  if (pendingImage) cancelImage();
-                  if (pendingVideo) cancelVideo();
-                })
-              }
-              aria-label="Attach a link"
-              title="Share a link"
-              className="p-1.5 text-gray-500 hover:text-[#34F080] active:text-[#34F080] cursor-pointer shrink-0 transition-colors rounded-lg hover:bg-white/[0.04] active:bg-white/[0.06]"
-              type="button"
-            >
-              <Paperclip className="w-4 h-4" />
-            </button>
-
-            <label
-              className={`p-1.5 text-gray-500 hover:text-[#34F080] active:text-[#34F080] cursor-pointer shrink-0 transition-colors rounded-lg hover:bg-white/[0.04] active:bg-white/[0.06] ${
-                isUploading ? "opacity-50 pointer-events-none" : ""
-              }`}
-            >
-              {isUploading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Image className="w-4 h-4" />
-              )}
-              <input
-                type="file"
-                accept="image/*,video/*"
-                className="hidden"
-                onChange={handleMediaSelect}
-                disabled={isUploading}
-              />
-            </label>
-
-            <button
-              onClick={() => {
-                const opening = !showGifPicker;
-                startTransition(() => {
-                  setShowGifPicker(opening);
-                  setShowLinkPanel(false);
-                  if (pendingImage) cancelImage();
-                  if (pendingVideo) cancelVideo();
-                });
-                if (opening) textareaRef.current?.blur();
-              }}
-              className="px-1.5 py-1.5 text-gray-500 hover:text-[#34F080] active:text-[#34F080] cursor-pointer font-bold text-[10px] tracking-wide transition-colors shrink-0 rounded-lg hover:bg-white/[0.04] active:bg-white/[0.06]"
-              type="button"
-            >
-              GIF
-            </button>
-
-            <div className="shrink-0">
-              <EmojiPickerButton onEmojiSelect={insertAtCursor} />
-            </div>
-
-            {onTipClick && (
-              <button
-                onClick={() => {
-                  setShowGifPicker(false);
-                  setShowLinkPanel(false);
-                  onTipClick();
-                }}
-                aria-label="Send a tip"
-                title="Send a tip"
-                className="p-1.5 text-gray-500 hover:text-white active:text-white cursor-pointer shrink-0 transition-colors rounded-lg hover:bg-white/[0.04] active:bg-white/[0.06]"
-                type="button"
-              >
-                <CircleDollarSign className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Input row — icons inline on desktop, textarea + send always */}
-          <div className="flex items-center gap-x-1">
-            <div className="hidden md:flex items-center gap-0.5 shrink-0">
-              <button
-                onClick={() =>
-                  startTransition(() => {
-                    setShowLinkPanel((v) => !v);
-                    setShowGifPicker(false);
-                    if (pendingImage) cancelImage();
-                    if (pendingVideo) cancelVideo();
-                  })
-                }
-                aria-label="Attach a link"
-                title="Share a link"
-                className="p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors"
-                type="button"
-              >
-                <Paperclip className="w-[18px] h-[18px]" />
-              </button>
-
-              <label
-                className={`p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors ${
-                  isUploading ? "opacity-50 pointer-events-none" : ""
-                }`}
-              >
-                {isUploading ? (
-                  <Loader2 className="w-[18px] h-[18px] animate-spin" />
-                ) : (
-                  <Image className="w-[18px] h-[18px]" />
-                )}
-                <input
-                  type="file"
-                  accept="image/*,video/*"
-                  className="hidden"
-                  onChange={handleMediaSelect}
-                  disabled={isUploading}
-                />
-              </label>
-
-              <button
-                onClick={() => {
-                  const opening = !showGifPicker;
-                  startTransition(() => {
-                    setShowGifPicker(opening);
-                    setShowLinkPanel(false);
-                    if (pendingImage) cancelImage();
-                    if (pendingVideo) cancelVideo();
-                  });
-                  if (opening) textareaRef.current?.blur();
-                }}
-                className="px-1.5 py-2 text-gray-500 hover:text-[#34F080] cursor-pointer font-extrabold text-[11px] tracking-wide transition-colors shrink-0"
-                type="button"
-              >
-                GIF
-              </button>
-
-              <div className="shrink-0">
-                <EmojiPickerButton onEmojiSelect={insertAtCursor} />
-              </div>
-
-              {onTipClick && (
+          {isRecordingAudio ? (
+            <AudioRecorderPanel
+              onSend={handleAudioSend}
+              onCancel={() => setIsRecordingAudio(false)}
+            />
+          ) : (
+            <>
+              {/* Action buttons — compact toolbar row on mobile, inline on desktop */}
+              <div className="flex items-center gap-1 md:hidden pb-1.5 mb-0.5 border-b border-white/[0.06]">
                 <button
-                  onClick={() => {
-                    setShowGifPicker(false);
-                    setShowLinkPanel(false);
-                    onTipClick();
-                  }}
-                  aria-label="Send a tip"
-                  title="Send a tip"
-                  className="p-2 text-gray-500 hover:text-white cursor-pointer shrink-0 transition-colors"
+                  onClick={() =>
+                    startTransition(() => {
+                      setShowLinkPanel((v) => !v);
+                      setShowGifPicker(false);
+                      if (pendingImage) cancelImage();
+                      if (pendingVideo) cancelVideo();
+                    })
+                  }
+                  aria-label="Attach a link"
+                  title="Share a link"
+                  className="p-1.5 text-gray-500 hover:text-[#34F080] active:text-[#34F080] cursor-pointer shrink-0 transition-colors rounded-lg hover:bg-white/[0.04] active:bg-white/[0.06]"
                   type="button"
                 >
-                  <CircleDollarSign className="w-[18px] h-[18px]" />
+                  <Paperclip className="w-4 h-4" />
                 </button>
-              )}
-            </div>
 
-            <textarea
-              ref={textareaRef}
-              className="flex-1 min-w-0 bg-transparent text-white text-[15px] outline-none resize-none min-h-[36px] max-h-[150px] py-[7px] placeholder:text-gray-500 leading-snug"
-              placeholder="Type a message..."
-              value={messageToSend}
-              onChange={handleTextareaChange}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              onKeyDown={async (e) => {
-                if (e.key === "Escape" && editingMessage) {
-                  e.preventDefault();
-                  onCancelEdit?.();
-                  setMessageToSend(
-                    conversationKey ? getDraft(conversationKey) : ""
-                  );
-                  return;
-                }
-                if (showMentionPicker) {
-                  if (e.key === "ArrowDown") {
-                    e.preventDefault();
-                    setMentionSelectedIdx((i) =>
-                      i < filteredMentions.length - 1 ? i + 1 : 0
-                    );
-                    return;
-                  }
-                  if (e.key === "ArrowUp") {
-                    e.preventDefault();
-                    setMentionSelectedIdx((i) =>
-                      i > 0 ? i - 1 : filteredMentions.length - 1
-                    );
-                    return;
-                  }
-                  if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
-                    e.preventDefault();
-                    const selected = filteredMentions[mentionSelectedIdx];
-                    if (selected) selectMention(selected);
-                    return;
-                  }
-                  if (e.key === "Escape") {
-                    e.preventDefault();
-                    setMentionQuery(null);
-                    return;
-                  }
-                }
-                if (canSend(e)) {
-                  e.preventDefault();
-                  await handleSend();
-                }
-              }}
-              onPaste={handlePaste}
-              rows={1}
-            />
+                <label
+                  className={`p-1.5 text-gray-500 hover:text-[#34F080] active:text-[#34F080] cursor-pointer shrink-0 transition-colors rounded-lg hover:bg-white/[0.04] active:bg-white/[0.06] ${
+                    isUploading ? "opacity-50 pointer-events-none" : ""
+                  }`}
+                >
+                  {isUploading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Image className="w-4 h-4" />
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    className="hidden"
+                    onChange={handleMediaSelect}
+                    disabled={isUploading}
+                  />
+                </label>
 
-            {/* Send / Save button */}
-            <button
-              onClick={() => handleSend()}
-              disabled={isSending || isUploading}
-              className={`p-2 rounded-full shrink-0 cursor-pointer transition-all ${
-                editingMessage
-                  ? "glass-send-edit text-blue-300 hover:border-blue-400/60"
-                  : "glass-fab text-[#34F080] hover:border-[#34F080]/60"
-              }`}
-              type="button"
-            >
-              {isSending || isUploading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : editingMessage ? (
-                <Check className="w-5 h-5" />
-              ) : (
-                <Send className="w-5 h-5" />
-              )}
-            </button>
-          </div>
+                <button
+                  onClick={() => {
+                    const opening = !showGifPicker;
+                    startTransition(() => {
+                      setShowGifPicker(opening);
+                      setShowLinkPanel(false);
+                      if (pendingImage) cancelImage();
+                      if (pendingVideo) cancelVideo();
+                    });
+                    if (opening) textareaRef.current?.blur();
+                  }}
+                  className="px-1.5 py-1.5 text-gray-500 hover:text-[#34F080] active:text-[#34F080] cursor-pointer font-bold text-[10px] tracking-wide transition-colors shrink-0 rounded-lg hover:bg-white/[0.04] active:bg-white/[0.06]"
+                  type="button"
+                >
+                  GIF
+                </button>
+
+                <div className="shrink-0">
+                  <EmojiPickerButton onEmojiSelect={insertAtCursor} />
+                </div>
+
+                {onTipClick && (
+                  <button
+                    onClick={() => {
+                      setShowGifPicker(false);
+                      setShowLinkPanel(false);
+                      onTipClick();
+                    }}
+                    aria-label="Send a tip"
+                    title="Send a tip"
+                    className="p-1.5 text-gray-500 hover:text-white active:text-white cursor-pointer shrink-0 transition-colors rounded-lg hover:bg-white/[0.04] active:bg-white/[0.06]"
+                    type="button"
+                  >
+                    <CircleDollarSign className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Input row — icons inline on desktop, textarea + send always */}
+              <div className="flex items-center gap-x-1">
+                <div className="hidden md:flex items-center gap-0.5 shrink-0">
+                  <button
+                    onClick={() =>
+                      startTransition(() => {
+                        setShowLinkPanel((v) => !v);
+                        setShowGifPicker(false);
+                        if (pendingImage) cancelImage();
+                        if (pendingVideo) cancelVideo();
+                      })
+                    }
+                    aria-label="Attach a link"
+                    title="Share a link"
+                    className="p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors"
+                    type="button"
+                  >
+                    <Paperclip className="w-[18px] h-[18px]" />
+                  </button>
+
+                  <label
+                    className={`p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors ${
+                      isUploading ? "opacity-50 pointer-events-none" : ""
+                    }`}
+                  >
+                    {isUploading ? (
+                      <Loader2 className="w-[18px] h-[18px] animate-spin" />
+                    ) : (
+                      <Image className="w-[18px] h-[18px]" />
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*,video/*"
+                      className="hidden"
+                      onChange={handleMediaSelect}
+                      disabled={isUploading}
+                    />
+                  </label>
+
+                  <button
+                    onClick={() => {
+                      const opening = !showGifPicker;
+                      startTransition(() => {
+                        setShowGifPicker(opening);
+                        setShowLinkPanel(false);
+                        if (pendingImage) cancelImage();
+                        if (pendingVideo) cancelVideo();
+                      });
+                      if (opening) textareaRef.current?.blur();
+                    }}
+                    className="px-1.5 py-2 text-gray-500 hover:text-[#34F080] cursor-pointer font-extrabold text-[11px] tracking-wide transition-colors shrink-0"
+                    type="button"
+                  >
+                    GIF
+                  </button>
+
+                  <div className="shrink-0">
+                    <EmojiPickerButton onEmojiSelect={insertAtCursor} />
+                  </div>
+
+                  {onTipClick && (
+                    <button
+                      onClick={() => {
+                        setShowGifPicker(false);
+                        setShowLinkPanel(false);
+                        onTipClick();
+                      }}
+                      aria-label="Send a tip"
+                      title="Send a tip"
+                      className="p-2 text-gray-500 hover:text-white cursor-pointer shrink-0 transition-colors"
+                      type="button"
+                    >
+                      <CircleDollarSign className="w-[18px] h-[18px]" />
+                    </button>
+                  )}
+                </div>
+
+                <textarea
+                  ref={textareaRef}
+                  className="flex-1 min-w-0 bg-transparent text-white text-[15px] outline-none resize-none min-h-[36px] max-h-[150px] py-[7px] placeholder:text-gray-500 leading-snug"
+                  placeholder="Type a message..."
+                  value={messageToSend}
+                  onChange={handleTextareaChange}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
+                  onKeyDown={async (e) => {
+                    if (e.key === "Escape" && editingMessage) {
+                      e.preventDefault();
+                      onCancelEdit?.();
+                      setMessageToSend(
+                        conversationKey ? getDraft(conversationKey) : ""
+                      );
+                      return;
+                    }
+                    if (showMentionPicker) {
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setMentionSelectedIdx((i) =>
+                          i < filteredMentions.length - 1 ? i + 1 : 0
+                        );
+                        return;
+                      }
+                      if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        setMentionSelectedIdx((i) =>
+                          i > 0 ? i - 1 : filteredMentions.length - 1
+                        );
+                        return;
+                      }
+                      if (
+                        e.key === "Tab" ||
+                        (e.key === "Enter" && !e.shiftKey)
+                      ) {
+                        e.preventDefault();
+                        const selected = filteredMentions[mentionSelectedIdx];
+                        if (selected) selectMention(selected);
+                        return;
+                      }
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        setMentionQuery(null);
+                        return;
+                      }
+                    }
+                    if (canSend(e)) {
+                      e.preventDefault();
+                      await handleSend();
+                    }
+                  }}
+                  onPaste={handlePaste}
+                  rows={1}
+                />
+
+                {/* Send / Mic / Save button */}
+                <button
+                  onClick={() =>
+                    showMicButton ? setIsRecordingAudio(true) : handleSend()
+                  }
+                  disabled={isSending || isUploading}
+                  className={`p-2 rounded-full shrink-0 cursor-pointer transition-all ${
+                    editingMessage
+                      ? "glass-send-edit text-blue-300 hover:border-blue-400/60"
+                      : "glass-fab text-[#34F080] hover:border-[#34F080]/60"
+                  }`}
+                  type="button"
+                >
+                  {isSending || isUploading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : editingMessage ? (
+                    <Check className="w-5 h-5" />
+                  ) : showMicButton ? (
+                    <Mic className="w-5 h-5" />
+                  ) : (
+                    <Send className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         <p className="text-gray-600 text-[10px] mt-1 ml-2 hidden md:block">

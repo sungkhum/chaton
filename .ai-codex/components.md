@@ -4,6 +4,8 @@
 ## src
     AboutPage
     AlertNotification
+    AudioMessage
+    AudioRecorderPanel
     BlogIndex
     BlogPostLayout
     chunk-error-boundary
