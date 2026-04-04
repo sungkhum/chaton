@@ -140,6 +140,18 @@ Stored via `createAccessGroup` / `updateAccessGroup`. Any DeSo messaging app can
 - Sonner for toasts
 - Cloudflare Workers + Durable Objects for WebSocket relay
 
+## Tipping fees
+
+- Tips < $0.10 USD: no fee, full amount goes to recipient
+- Tips >= $0.10 USD: 10% platform fee sent to `CHATON_DONATION_PUBLIC_KEY` (@GetChatOnApp)
+- DESO tips: two `sendDeso` calls wrapped in a single atomic transaction via
+  `api/v0/create-atomic-txns-wrapper` + `identity.signAndSubmitAtomic()`
+- USDC tips: two `transferDeSoToken` calls wrapped atomically the same way
+- Tip message ExtraData records the FULL tip amount (what the user chose), not the split
+- Constants: `TIP_FEE_RATE = 0.1`, `TIP_FEE_THRESHOLD_USD = 1` in `src/utils/constants.ts`
+- Fee calculation: `src/utils/tip-fees.ts`
+- Atomic transaction helpers: `src/utils/atomic-tip.ts`
+
 ## Worker deployment
 
 D1 migrations are **not** auto-applied by `wrangler deploy`. When adding or

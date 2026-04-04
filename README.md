@@ -601,6 +601,8 @@ If ChatOn is useful to you, consider sending a tip in $DESO:
 
 All tips go directly on-chain to [@GetChatOn](https://focus.xyz/GetChatOn). Transparent and verifiable by anyone.
 
+A 10% platform fee on in-app tips of $0.10 or more helps sustain development. Tips under $0.10 are fee-free. Both the tip and the fee are sent in a single atomic transaction on-chain.
+
 ## License
 
 Open source. Built by [@nathanwells](https://focus.xyz/nathanwells).

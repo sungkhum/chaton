@@ -20,7 +20,11 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
   },
   {
     q: "Is ChatOn free to use?",
-    a: "ChatOn is free to download and use. Each message is a blockchain transaction that costs roughly $0.000017 — far less than one-hundredth of a penny. The free starter DESO you receive during signup covers thousands of messages. There are no subscription fees, no ads, and no premium tiers.",
+    a: "ChatOn is free to download and use. Each message is a blockchain transaction that costs roughly $0.000017 — far less than one-hundredth of a penny. The free starter DESO you receive during signup covers thousands of messages. There are no subscription fees, no ads, and no premium tiers. When you send tips of $0.10 or more, a 10% platform fee supports ongoing development.",
+  },
+  {
+    q: "Does ChatOn take a fee on tips?",
+    a: "Tips under $0.10 go entirely to the recipient with no fee. For tips of $0.10 or more, a 10% platform fee is applied to support ChatOn development. For example, on a $5 tip, $4.50 goes to the recipient and $0.50 goes to ChatOn. A tiny DeSo network fee (fractions of a penny) also applies to all on-chain transactions, including tips. The ChatOn fee is clearly disclosed before you confirm every tip, and both transfers are sent in a single atomic transaction on-chain — transparent and verifiable by anyone.",
   },
   {
     q: "Where are my messages stored?",

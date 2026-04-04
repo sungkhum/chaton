@@ -30,7 +30,8 @@ export const ASSOCIATION_TYPE_GROUP_JOIN_REQUEST = "chaton:group-join-request";
 // Join rejected — owner rejects a join request.
 // Transactor = group owner, Target = requester's public key,
 // Value = access group key name.
-export const ASSOCIATION_TYPE_GROUP_JOIN_REJECTED = "chaton:group-join-rejected";
+export const ASSOCIATION_TYPE_GROUP_JOIN_REJECTED =
+  "chaton:group-join-rejected";
 
 // Invite code registry — maps a short alphanumeric code to a group chat.
 // Transactor = group owner, Target = CHATON_REGISTRY_PUBLIC_KEY,
@@ -130,6 +131,10 @@ export const BASE_TITLE = "DeSo Chat Protocol";
 export const TITLE_DIVIDER = " · ";
 export const CHATON_DONATION_PUBLIC_KEY: Readonly<string> =
   "BC1YLibU7KwQRTnWJ3nDyVzitNFdyDa28LjZDEnH5Y6xP9oHa59J5xK";
+/** Platform fee rate applied to tips >= TIP_FEE_THRESHOLD_USD. 0.1 = 10%. */
+export const TIP_FEE_RATE = 0.1;
+/** Minimum tip amount (USD) that triggers the platform fee. */
+export const TIP_FEE_THRESHOLD_USD = 0.1;
 export const USDC_CREATOR_PUBLIC_KEY: Readonly<string> =
   "BC1YLiwTN3DbkU8VmD7F7wXcRR1tFX6jDEkLyruHD2WsH3URomimxLX";
 export const CHATON_SIGNING_PUBLIC_KEY: Readonly<string> =
