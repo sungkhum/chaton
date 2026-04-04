@@ -6,13 +6,25 @@ import {
   ProfileEntryResponse,
 } from "deso-protocol";
 import { usePageMeta } from "../hooks/usePageMeta";
-import { Loader2, LogIn, UserPlus, CheckCircle2, MessageSquare, AlertCircle, Users, Clock } from "lucide-react";
+import {
+  Loader2,
+  LogIn,
+  UserPlus,
+  CheckCircle2,
+  MessageSquare,
+  AlertCircle,
+  Users,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
 import { extractInviteCode, resolveInviteCode } from "../utils/invite-link";
-import { cleanupOwnJoinRequests, createJoinRequest, hasExistingJoinRequest } from "../services/conversations.service";
+import {
+  cleanupOwnJoinRequests,
+  createJoinRequest,
+  hasExistingJoinRequest,
+} from "../services/conversations.service";
 import { GROUP_DISPLAY_NAME, GROUP_IMAGE_URL } from "../utils/extra-data";
 import { PreSignupTutorial } from "./onboarding/pre-signup-tutorial";
 
@@ -22,10 +34,8 @@ type PageState =
   | "group-not-found"
   | "not-logged-in"
   | "already-member"
-  | "request-pending"
   | "can-request"
   | "submitting"
-  | "submitted"
   | "is-owner";
 
 interface GroupInfo {
@@ -45,7 +55,13 @@ export const JoinGroupPage = () => {
       "Join an encrypted group chat on the DeSo blockchain. End-to-end encrypted, decentralized, and free.",
   });
 
-  const { appUser, allAccessGroups, isLoadingUser } = useStore(useShallow((s) => ({ appUser: s.appUser, allAccessGroups: s.allAccessGroups, isLoadingUser: s.isLoadingUser })));
+  const { appUser, allAccessGroups, isLoadingUser } = useStore(
+    useShallow((s) => ({
+      appUser: s.appUser,
+      allAccessGroups: s.allAccessGroups,
+      isLoadingUser: s.isLoadingUser,
+    }))
+  );
   const [pageState, setPageState] = useState<PageState>("loading");
   const [groupInfo, setGroupInfo] = useState<GroupInfo | null>(null);
   const [showTutorial, setShowTutorial] = useState(false);
@@ -116,15 +132,19 @@ export const JoinGroupPage = () => {
         const ownerIncluded = membersList.includes(ownerKey);
         const memberCount = rawMemberCount + (ownerIncluded ? 0 : 1);
         const groupEntry = groupRes.AccessGroupEntries?.[0];
-        const groupImageUrl = groupEntry?.ExtraData?.[GROUP_IMAGE_URL] || undefined;
-        const groupDisplayName = groupEntry?.ExtraData?.[GROUP_DISPLAY_NAME] || undefined;
+        const groupImageUrl =
+          groupEntry?.ExtraData?.[GROUP_IMAGE_URL] || undefined;
+        const groupDisplayName =
+          groupEntry?.ExtraData?.[GROUP_DISPLAY_NAME] || undefined;
 
         // Preload the group image immediately — don't wait for React render cycle.
         // The browser will cache it, so the <img> renders instantly when the card appears.
         if (groupImageUrl && !cancelled) {
           const img = new Image();
           img.src = groupImageUrl;
-          img.onload = () => { if (!cancelled) setImageLoaded(true); };
+          img.onload = () => {
+            if (!cancelled) setImageLoaded(true);
+          };
           preloadRef.current = img;
         }
 
@@ -172,9 +192,12 @@ export const JoinGroupPage = () => {
           groupKeyName
         );
         if (cancelled) return;
-        // Show "request-pending" only if there's an existing request.
-        // The user can always submit again (DeSo allows duplicate associations).
-        setPageState(hasPending ? "request-pending" : "can-request");
+        if (hasPending) {
+          // Redirect into the app and show pending modal there
+          redirectToAppWithConfirmation(info, "pending");
+          return;
+        }
+        setPageState("can-request");
       } catch (err) {
         console.error("Failed to load join page:", err);
         if (!cancelled) setPageState("invalid");
@@ -212,7 +235,8 @@ export const JoinGroupPage = () => {
         groupInfo.ownerKey,
         groupInfo.groupKeyName
       );
-      setPageState("submitted");
+      // Redirect into the app and show confirmation modal there
+      redirectToAppWithConfirmation(groupInfo, "submitted");
     } catch (err: any) {
       console.error("Join request failed:", err);
       const msg = err?.message || err?.toString?.() || "";
@@ -226,8 +250,15 @@ export const JoinGroupPage = () => {
       if (!isAuthError) {
         if (msg.includes("RuleError")) {
           // DeSo blockchain rule error — show the specific reason
-          const ruleMsg = msg.replace(/^.*RuleError/i, "").replace(/['"]/g, "").trim();
-          toast.error(`Request failed: ${ruleMsg || "blockchain rejected the transaction"}`);
+          const ruleMsg = msg
+            .replace(/^.*RuleError/i, "")
+            .replace(/['"]/g, "")
+            .trim();
+          toast.error(
+            `Request failed: ${
+              ruleMsg || "blockchain rejected the transaction"
+            }`
+          );
         } else {
           toast.error("Failed to send join request. Please try again.");
         }
@@ -238,20 +269,39 @@ export const JoinGroupPage = () => {
     }
   };
 
+  const redirectToAppWithConfirmation = (
+    group: GroupInfo,
+    status: "submitted" | "pending"
+  ) => {
+    const groupName =
+      group.groupDisplayName ?? group.groupKeyName?.replace(/\0/g, "") ?? "";
+    // Persist through the full-page navigation via sessionStorage
+    sessionStorage.setItem(
+      "pendingJoinConfirmation",
+      JSON.stringify({ groupName, groupImageUrl: group.groupImageUrl, status })
+    );
+    window.location.href = "/";
+  };
+
   const handleLogin = () => {
     identity.login().catch(() => {});
   };
 
   const handleOpenChat = () => {
     if (!groupInfo) return;
-    const conversationKey =
-      groupInfo.ownerKey + groupInfo.groupKeyName;
-    window.location.href = `/?conversation=${encodeURIComponent(conversationKey)}`;
+    const conversationKey = groupInfo.ownerKey + groupInfo.groupKeyName;
+    window.location.href = `/?conversation=${encodeURIComponent(
+      conversationKey
+    )}`;
   };
 
-  const groupName = groupInfo?.groupDisplayName ?? groupInfo?.groupKeyName?.replace(/\0/g, "") ?? "";
+  const groupName =
+    groupInfo?.groupDisplayName ??
+    groupInfo?.groupKeyName?.replace(/\0/g, "") ??
+    "";
   const ownerUsername = groupInfo
-    ? groupInfo.ownerProfile?.Username ?? groupInfo.ownerKey.slice(0, 12) + "..."
+    ? groupInfo.ownerProfile?.Username ??
+      groupInfo.ownerKey.slice(0, 12) + "..."
     : "";
 
   return (
@@ -313,8 +363,6 @@ export const JoinGroupPage = () => {
           {(pageState === "not-logged-in" ||
             pageState === "can-request" ||
             pageState === "submitting" ||
-            pageState === "submitted" ||
-            pageState === "request-pending" ||
             pageState === "already-member" ||
             pageState === "is-owner") &&
             groupInfo && (
@@ -344,7 +392,9 @@ export const JoinGroupPage = () => {
                     Created by{" "}
                     <span className="text-[#34F080]">@{ownerUsername}</span>
                     {" \u00b7 "}
-                    {groupInfo.memberCountCapped ? "50+" : groupInfo.memberCount}{" "}
+                    {groupInfo.memberCountCapped
+                      ? "50+"
+                      : groupInfo.memberCount}{" "}
                     members
                   </p>
                 </div>
@@ -383,53 +433,21 @@ export const JoinGroupPage = () => {
                     </button>
                     <div className="bg-white/5 rounded-lg px-4 py-3">
                       <p className="text-gray-400 text-xs text-center leading-relaxed">
-                        The group owner will be notified and can approve your request.
-                        You'll see this group in your chats once approved.
+                        The group owner will be notified and can approve your
+                        request. You'll see this group in your chats once
+                        approved.
                       </p>
                     </div>
                   </div>
                 )}
 
                 {pageState === "submitting" && (
-                  <div className="w-full flex flex-col items-center gap-3 mt-2" role="status">
+                  <div
+                    className="w-full flex flex-col items-center gap-3 mt-2"
+                    role="status"
+                  >
                     <Loader2 className="w-6 h-6 text-[#34F080] animate-spin" />
-                    <p className="text-gray-400 text-sm">
-                      Sending request...
-                    </p>
-                  </div>
-                )}
-
-                {pageState === "submitted" && (
-                  <div className="w-full flex flex-col items-center gap-4 mt-2">
-                    <CheckCircle2 className="w-10 h-10 text-[#34F080]" />
-                    <div className="text-center">
-                      <p className="text-white text-sm font-semibold mb-1">
-                        Request sent!
-                      </p>
-                      <p className="text-gray-400 text-xs leading-relaxed">
-                        The group owner has been notified. Once they approve
-                        your request, this group will appear in your chats automatically.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {pageState === "request-pending" && (
-                  <div className="w-full flex flex-col items-center gap-3 mt-2 bg-white/5 rounded-xl p-4">
-                    <Clock className="w-8 h-8 text-yellow-400/80" />
-                    <div className="text-center">
-                      <p className="text-gray-300 text-sm font-medium mb-1">Waiting for approval</p>
-                      <p className="text-gray-500 text-xs leading-relaxed">
-                        The group owner has your request. This group will appear
-                        in your chats once they approve it.
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleRequestJoin}
-                      className="text-gray-500 hover:text-gray-300 text-xs cursor-pointer transition-colors"
-                    >
-                      Request again
-                    </button>
+                    <p className="text-gray-400 text-sm">Sending request...</p>
                   </div>
                 )}
 

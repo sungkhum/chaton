@@ -321,6 +321,12 @@ function App() {
           clearDecryptionCaches();
           const messagingKey =
             currentUser.primaryDerivedKey?.messagingPublicKeyBase58Check;
+          // Navigate to root if logging in from a public route.
+          // Exclude /join — that page handles its own redirect after the join flow completes.
+          const p = window.location.pathname;
+          if (p !== "/" && !p.startsWith("/join")) {
+            window.history.replaceState(null, "", "/");
+          }
           if (messagingKey) {
             hydrateUser.current?.(currentUser.publicKey, messagingKey);
           } else {
