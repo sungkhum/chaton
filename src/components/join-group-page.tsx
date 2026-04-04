@@ -49,12 +49,6 @@ interface GroupInfo {
 }
 
 export const JoinGroupPage = () => {
-  usePageMeta({
-    title: "Join Group — ChatOn",
-    description:
-      "Join an encrypted group chat on the DeSo blockchain. End-to-end encrypted, decentralized, and free.",
-  });
-
   const { appUser, allAccessGroups, isLoadingUser } = useStore(
     useShallow((s) => ({
       appUser: s.appUser,
@@ -68,6 +62,22 @@ export const JoinGroupPage = () => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const preloadRef = useRef<HTMLImageElement | null>(null);
   const submittingRef = useRef(false);
+
+  const groupName =
+    groupInfo?.groupDisplayName ??
+    groupInfo?.groupKeyName?.replace(/\0/g, "") ??
+    "";
+
+  usePageMeta({
+    title: groupName
+      ? `You're invited to ${groupName} — ChatOn`
+      : "You're invited — ChatOn",
+    description: groupName
+      ? `You're invited to join ${groupName} on ChatOn — end-to-end encrypted, decentralized, and free.`
+      : "You're invited to join a private, end-to-end encrypted group chat on ChatOn.",
+    path: window.location.pathname,
+    ogImage: "/chaton-invited.webp",
+  });
 
   // Stable key for the main data-loading effect — avoid re-fetching when
   // allAccessGroups array reference changes (membership check is separate).
@@ -295,10 +305,6 @@ export const JoinGroupPage = () => {
     )}`;
   };
 
-  const groupName =
-    groupInfo?.groupDisplayName ??
-    groupInfo?.groupKeyName?.replace(/\0/g, "") ??
-    "";
   const ownerUsername = groupInfo
     ? groupInfo.ownerProfile?.Username ??
       groupInfo.ownerKey.slice(0, 12) + "..."
