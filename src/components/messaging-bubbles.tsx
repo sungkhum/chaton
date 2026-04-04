@@ -19,6 +19,7 @@ import {
   CircleDollarSign,
   Copy,
   Ban,
+  Heart,
 } from "lucide-react";
 import React, {
   FC,
@@ -2018,7 +2019,10 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
               unreadReactionTargets.length === 1 ? "" : "s"
             }`}
           >
-            <span>❤️</span>
+            <Heart
+              className="w-5 h-5 text-[#34F080] drop-shadow-[0_0_6px_rgba(52,240,128,0.5)]"
+              strokeWidth={2}
+            />
             {unreadReactionTargets.length > 1 && (
               <span className="text-[10px] font-bold text-[#34F080]">
                 {unreadReactionTargets.length}

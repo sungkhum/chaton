@@ -19,6 +19,7 @@ import {
   Users,
   Video,
   X,
+  Heart,
 } from "lucide-react";
 import {
   FC,
@@ -632,10 +633,13 @@ export const MessagingConversationAccount: FC<{
                                     )}
                                     {highlights?.hasReaction && (
                                       <span
-                                        className="text-[13px] leading-none"
+                                        className="leading-none"
                                         aria-label="New reactions"
                                       >
-                                        ❤️
+                                        <Heart
+                                          className="w-4 h-4 text-[#34F080] drop-shadow-[0_0_6px_rgba(52,240,128,0.5)]"
+                                          strokeWidth={2}
+                                        />
                                       </span>
                                     )}
                                     {highlights?.hasMention && (
