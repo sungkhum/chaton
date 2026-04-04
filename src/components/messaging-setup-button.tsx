@@ -11,8 +11,16 @@ import { SendFundsDialog } from "./send-funds-dialog";
 
 export const MessagingSetupButton = () => {
   const { appUser, isLoadingUser, setAccessGroups, setAllAccessGroups } =
-    useStore(useShallow((s) => ({ appUser: s.appUser, isLoadingUser: s.isLoadingUser, setAccessGroups: s.setAccessGroups, setAllAccessGroups: s.setAllAccessGroups })));
-  const [isSettingUpMessage, setIsSettingUpMessaging] = useState<boolean>(false);
+    useStore(
+      useShallow((s) => ({
+        appUser: s.appUser,
+        isLoadingUser: s.isLoadingUser,
+        setAccessGroups: s.setAccessGroups,
+        setAllAccessGroups: s.setAllAccessGroups,
+      }))
+    );
+  const [isSettingUpMessage, setIsSettingUpMessaging] =
+    useState<boolean>(false);
   const [openDialog, setOpenDialog] = useState<boolean>(false);
 
   if (hasSetupMessaging(appUser)) {
@@ -21,8 +29,8 @@ export const MessagingSetupButton = () => {
 
   if (isLoadingUser) {
     return (
-      <div className="flex justify-center">
-        <Loader2 className="w-11 h-11 mt-4 animate-spin text-[#34F080]" />
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-10">
+        <Loader2 className="w-11 h-11 animate-spin text-[#34F080]" />
       </div>
     );
   }
@@ -65,7 +73,8 @@ export const MessagingSetupButton = () => {
         try {
           await withAuth(() =>
             createAccessGroup({
-              AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+              AccessGroupOwnerPublicKeyBase58Check:
+                appUser.PublicKeyBase58Check,
               AccessGroupPublicKeyBase58Check:
                 appUser.messagingPublicKeyBase58Check,
               AccessGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,

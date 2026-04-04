@@ -410,7 +410,7 @@ function App() {
   // instead of flashing a blank white screen on slow connections.
   const routeFallback = (
     <div className="App flex items-center justify-center">
-      <Loader2 className="w-8 h-8 animate-spin text-[#34F080]" />
+      <Loader2 className="w-11 h-11 animate-spin text-[#34F080]" />
     </div>
   );
 
@@ -559,7 +559,7 @@ function App() {
   if (isLoadingUser && !appUser) {
     return (
       <div className="App flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#34F080]" />
+        <Loader2 className="w-11 h-11 animate-spin text-[#34F080]" />
       </div>
     );
   }

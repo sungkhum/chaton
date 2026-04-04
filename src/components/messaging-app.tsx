@@ -2793,8 +2793,8 @@ export const MessagingApp: FC = () => {
                   isLoadingUser ||
                   loading ||
                   (!conversationsReady && hasSetupMessaging(appUser))) && (
-                  <div className="text-center">
-                    <Loader2 className="w-11 h-11 mt-4 animate-spin text-[#34F080] mx-auto" />
+                  <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-10">
+                    <Loader2 className="w-11 h-11 animate-spin text-[#34F080]" />
                   </div>
                 )}
                 {!autoFetchConversations &&
