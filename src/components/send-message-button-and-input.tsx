@@ -549,12 +549,21 @@ export const SendMessageButtonAndInput = forwardRef<
           e.preventDefault();
           const file = item.getAsFile();
           if (file) stageImage(file);
+          // Re-focus textarea so cursor stays in the input after the preview renders
+          requestAnimationFrame(() => {
+            textareaRef.current?.focus();
+            textareaRef.current?.scrollIntoView({ block: "nearest" });
+          });
           return;
         }
         if (item.type.startsWith("video/")) {
           e.preventDefault();
           const file = item.getAsFile();
           if (file) stageVideo(file);
+          requestAnimationFrame(() => {
+            textareaRef.current?.focus();
+            textareaRef.current?.scrollIntoView({ block: "nearest" });
+          });
           return;
         }
       }
