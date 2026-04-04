@@ -25,6 +25,16 @@
   to { opacity: 1; }
 }
 
+/* Brief highlight flash when scrolling to a mention or reaction.
+   No border-radius — the message wrapper already has its own grouping radius. */
+@keyframes highlight-flash {
+  0% { background-color: rgba(52, 240, 128, 0.15); }
+  100% { background-color: transparent; }
+}
+.highlight-flash {
+  animation: highlight-flash 1.5s ease-out;
+}
+
 @keyframes slideUp {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }

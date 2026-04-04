@@ -9,6 +9,7 @@ import {
   GetPaginatedMessagesForGroupChatThreadResponse,
 } from "deso-protocol";
 import {
+  ArrowDown,
   Loader2,
   Lock,
   Reply,
@@ -18,7 +19,7 @@ import {
   CircleDollarSign,
   Copy,
 } from "lucide-react";
-import {
+import React, {
   FC,
   lazy,
   Suspense,
@@ -67,16 +68,20 @@ import {
 } from "./messages/animated-emoji";
 import { shortenLongWord } from "./search-users";
 
-// rerender-memo-with-default-value: hoisted constant avoids new object each render
+// rerender-memo-with-default-value: hoisted constants avoid new refs each render
 const NO_CALLOUT_STYLE = {
   WebkitTouchCallout: "none",
 } as React.CSSProperties & { WebkitTouchCallout: string };
+const EMPTY_STRINGS: string[] = [];
 
 export interface MessagingBubblesProps {
   conversations: ConversationMap;
   conversationPublicKey: string;
   getUsernameByPublicKey: { [k: string]: string };
   profilePicByPublicKey?: { [k: string]: string };
+  /** Timestamp (nanos) of the last message the user had read when they opened
+   *  this conversation. Used to render the "New messages" divider and auto-scroll. */
+  lastReadTimestampNanos?: number | null;
   onScroll: (e: Array<DecryptedMessageEntryResponse>) => void;
   onReply?: (message: DecryptedMessageEntryResponse) => void;
   onReact?: (timestampNanosString: string, emoji: string) => void;
@@ -283,6 +288,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   conversationPublicKey,
   getUsernameByPublicKey,
   profilePicByPublicKey,
+  lastReadTimestampNanos,
   onScroll,
   onReply,
   onReact,
@@ -319,6 +325,11 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
       return false;
     }
   });
+  // --- Unread divider & jump-to-latest ---
+  const unreadDividerRef = useRef<HTMLDivElement>(null);
+  const hasScrolledToUnreadRef = useRef(false);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+
   // Micro-tip button color based on user's preferred currency (DESO=blue, USDC=green)
   const tipCurrencyPref = appUser
     ? getCachedTipCurrency(appUser.PublicKeyBase58Check)
@@ -680,6 +691,42 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     });
   }, [visibleMessages]);
 
+  // Auto-scroll to the unread divider on first render with messages
+  useEffect(() => {
+    if (hasScrolledToUnreadRef.current) return;
+    if (!unreadDividerRef.current || !messageAreaRef.current) return;
+    hasScrolledToUnreadRef.current = true;
+    // Use requestAnimationFrame so the DOM has laid out the divider
+    requestAnimationFrame(() => {
+      unreadDividerRef.current?.scrollIntoView({ block: "center" });
+    });
+  }, [visibleMessages.length]); // re-check when messages arrive (including from cache)
+
+  // rerender-use-ref-transient-values: track scroll position in ref, only
+  // setState when the boolean actually flips to avoid re-renders during momentum scroll.
+  const showJumpRef = useRef(false);
+  useEffect(() => {
+    const el = messageAreaRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      // scrollTop is <= 0 in a flex-col-reverse container
+      const shouldShow = el.scrollTop < -300;
+      if (shouldShow !== showJumpRef.current) {
+        showJumpRef.current = shouldShow;
+        setShowJumpToLatest(shouldShow);
+      }
+    };
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToLatest = useCallback(() => {
+    const el = messageAreaRef.current;
+    if (!el) return;
+    const stub = el.querySelector(".scroller-end-stub");
+    stub?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
   const loadMore = useCallback(async () => {
     if (!appUser || isLoadingMore) return;
     if (visibleMessages.length < MESSAGES_ONE_REQUEST_LIMIT) {
@@ -773,837 +820,1074 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
 
   // Filter out reaction messages (aggregated), hidden messages (delete for me),
   // and small tip messages (≤$5) that are attached to another message (shown on pill instead)
-  const SMALL_TIP_DESO_NANOS = 1e9; // ~1 DESO
-  const SMALL_TIP_USDC_BASE = 5_000_000; // $5 USDC
-  const displayMessages = visibleMessages.filter((msg) => {
-    const parsed = parseMessageType(msg);
-    if (parsed.type === "reaction") return false;
-    if (hiddenMessageIds?.has(msg.MessageInfo.TimestampNanosString))
-      return false;
-    // Hide small tips that are attached to a parent message — they show on the tip pill
-    if (parsed.type === "tip" && parsed.tipReplyTo) {
-      const isSmallDeso =
-        (!parsed.tipCurrency || parsed.tipCurrency === "DESO") &&
-        (parsed.tipAmountNanos || 0) <= SMALL_TIP_DESO_NANOS;
-      const isSmallUsdc =
-        parsed.tipCurrency === "USDC" &&
-        BigInt(parsed.tipAmountUsdcBaseUnits || "0") <=
-          BigInt(SMALL_TIP_USDC_BASE);
-      if (isSmallDeso || isSmallUsdc) return false;
+  const displayMessages = useMemo(() => {
+    const SMALL_TIP_DESO_NANOS = 1e9; // ~1 DESO
+    const SMALL_TIP_USDC_BASE = 5_000_000; // $5 USDC
+    return visibleMessages.filter((msg) => {
+      const parsed = parseMessageType(msg);
+      if (parsed.type === "reaction") return false;
+      if (hiddenMessageIds?.has(msg.MessageInfo.TimestampNanosString))
+        return false;
+      // Hide small tips that are attached to a parent message — they show on the tip pill
+      if (parsed.type === "tip" && parsed.tipReplyTo) {
+        const isSmallDeso =
+          (!parsed.tipCurrency || parsed.tipCurrency === "DESO") &&
+          (parsed.tipAmountNanos || 0) <= SMALL_TIP_DESO_NANOS;
+        const isSmallUsdc =
+          parsed.tipCurrency === "USDC" &&
+          BigInt(parsed.tipAmountUsdcBaseUnits || "0") <=
+            BigInt(SMALL_TIP_USDC_BASE);
+        if (isSmallDeso || isSmallUsdc) return false;
+      }
+      return true;
+    });
+  }, [visibleMessages, hiddenMessageIds]);
+
+  // js-combine-iterations: find divider index and count unreads in a single pass.
+  // Messages are sorted newest-first (index 0 = newest). The divider goes right
+  // before the first message whose timestamp <= lastReadTimestampNanos.
+  const { unreadDividerIndex, unreadCount } = useMemo(() => {
+    if (lastReadTimestampNanos == null || displayMessages.length === 0)
+      return { unreadDividerIndex: -1, unreadCount: 0 };
+    let dividerIdx = -1;
+    let count = 0;
+    for (let i = 0; i < displayMessages.length; i++) {
+      const msg = displayMessages[i];
+      const ts = msg.MessageInfo.TimestampNanos;
+      if (ts <= lastReadTimestampNanos) {
+        dividerIdx = i;
+        break;
+      }
+      if (!msg.IsSender) count++;
     }
-    return true;
-  });
+    // No messages at or below the last-read timestamp → all are unread
+    if (dividerIdx === -1 && count > 0)
+      return { unreadDividerIndex: displayMessages.length, unreadCount: count };
+    // No unread messages from others
+    if (count === 0) return { unreadDividerIndex: -1, unreadCount: 0 };
+    return { unreadDividerIndex: dividerIdx, unreadCount: count };
+  }, [displayMessages, lastReadTimestampNanos]);
+
+  // --- Unread mentions & reactions (Telegram-style indicators) ---
+
+  // Messages from others that @mention the current user (unread only)
+  const myPublicKey = appUser?.PublicKeyBase58Check;
+  const unreadMentionTimestamps = useMemo(() => {
+    if (!lastReadTimestampNanos || !myPublicKey) return EMPTY_STRINGS;
+    const result: string[] = [];
+    for (const msg of displayMessages) {
+      if (msg.IsSender) continue;
+      if (msg.MessageInfo.TimestampNanos <= lastReadTimestampNanos) break; // sorted newest-first
+      const parsed = parseMessageType(msg);
+      if (
+        parsed.mentions &&
+        parsed.mentions.some((m) => m.pk === myPublicKey)
+      ) {
+        result.push(msg.MessageInfo.TimestampNanosString);
+      }
+    }
+    return result.length > 0 ? result : EMPTY_STRINGS;
+  }, [displayMessages, lastReadTimestampNanos, myPublicKey]);
+
+  // Unread reactions to the current user's messages — returns timestamps of
+  // the *target* messages (the user's messages that were reacted to)
+  const unreadReactionTargets = useMemo(() => {
+    if (!lastReadTimestampNanos || !myPublicKey) return EMPTY_STRINGS;
+    // Build a set of the current user's message timestamps for quick lookup
+    const myTimestamps = new Set<string>();
+    for (const msg of visibleMessages) {
+      if (msg.IsSender) {
+        myTimestamps.add(msg.MessageInfo.TimestampNanosString);
+      }
+    }
+    const targets = new Set<string>();
+    for (const msg of visibleMessages) {
+      if (msg.IsSender) continue;
+      if (msg.MessageInfo.TimestampNanos <= lastReadTimestampNanos) break; // sorted newest-first
+      const parsed = parseMessageType(msg);
+      if (
+        parsed.type === "reaction" &&
+        parsed.replyTo &&
+        parsed.action !== "remove" &&
+        myTimestamps.has(parsed.replyTo)
+      ) {
+        targets.add(parsed.replyTo);
+      }
+    }
+    if (targets.size === 0) return EMPTY_STRINGS;
+    return Array.from(targets);
+  }, [visibleMessages, lastReadTimestampNanos, myPublicKey]);
+
+  // Cycling index for scroll-to-mention / scroll-to-reaction buttons
+  const mentionIdxRef = useRef(0);
+  const reactionIdxRef = useRef(0);
+
+  // Reset cycling indices when the lists change
+  useEffect(() => {
+    mentionIdxRef.current = 0;
+  }, [unreadMentionTimestamps]);
+  useEffect(() => {
+    reactionIdxRef.current = 0;
+  }, [unreadReactionTargets]);
+
+  const scrollToMessage = useCallback((ts: string) => {
+    const el = messageAreaRef.current?.querySelector<HTMLElement>(
+      `[data-ts="${ts}"]`
+    );
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Brief highlight flash
+      el.classList.add("highlight-flash");
+      setTimeout(() => el.classList.remove("highlight-flash"), 1500);
+    }
+  }, []);
+
+  const scrollToNextMention = useCallback(() => {
+    if (unreadMentionTimestamps.length === 0) return;
+    const idx = mentionIdxRef.current % unreadMentionTimestamps.length;
+    scrollToMessage(unreadMentionTimestamps[idx]);
+    mentionIdxRef.current = idx + 1;
+  }, [unreadMentionTimestamps, scrollToMessage]);
+
+  const scrollToNextReaction = useCallback(() => {
+    if (unreadReactionTargets.length === 0) return;
+    const idx = reactionIdxRef.current % unreadReactionTargets.length;
+    scrollToMessage(unreadReactionTargets[idx]);
+    reactionIdxRef.current = idx + 1;
+  }, [unreadReactionTargets, scrollToMessage]);
 
   return (
-    <div
-      className={`h-full flex flex-col-reverse custom-scrollbar px-3 md:px-6 pb-2 overflow-y-auto [contain:layout_style] ${
-        isMobile ? "select-none" : ""
-      }`}
-      style={isMobile ? NO_CALLOUT_STYLE : undefined}
-      ref={messageAreaRef}
-      id="scrollableArea"
-    >
-      {/* Mobile long-press backdrop — portaled to body to escape [contain:layout_style] stacking context */}
-      {isMobile &&
-        mobileActionFor &&
-        createPortal(
-          <div
-            className="fixed inset-0 bg-black/40 z-40"
-            onClick={closeMobileAction}
-            onTouchStart={(e) => {
-              e.preventDefault();
-              closeMobileAction();
-            }}
-          />,
-          document.body
-        )}
+    <div className="relative h-full">
+      <div
+        className={`h-full flex flex-col-reverse custom-scrollbar px-3 md:px-6 pb-2 overflow-y-auto [contain:layout_style] ${
+          isMobile ? "select-none" : ""
+        }`}
+        style={isMobile ? NO_CALLOUT_STYLE : undefined}
+        ref={messageAreaRef}
+        id="scrollableArea"
+      >
+        {/* Mobile long-press backdrop — portaled to body to escape [contain:layout_style] stacking context */}
+        {isMobile &&
+          mobileActionFor &&
+          createPortal(
+            <div
+              className="fixed inset-0 bg-black/40 z-40"
+              onClick={closeMobileAction}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                closeMobileAction();
+              }}
+            />,
+            document.body
+          )}
 
-      {/* Mobile emoji bottom sheet — portaled to body to escape [contain:layout_style] stacking context */}
-      {isMobile &&
-        reactionPickerFor &&
-        createPortal(
-          <div
-            ref={pickerRef}
-            className="fixed inset-x-0 bottom-0 z-[65] bg-[#141c2b] rounded-t-2xl border-t border-white/10 pb-[env(safe-area-inset-bottom)]"
-          >
-            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-2 mb-1" />
-            <ChunkErrorBoundary>
-              <Suspense
-                fallback={
-                  <div className="w-full h-[320px] flex items-center justify-center text-blue-400/40 text-sm">
-                    Loading...
+        {/* Mobile emoji bottom sheet — portaled to body to escape [contain:layout_style] stacking context */}
+        {isMobile &&
+          reactionPickerFor &&
+          createPortal(
+            <div
+              ref={pickerRef}
+              className="fixed inset-x-0 bottom-0 z-[65] bg-[#141c2b] rounded-t-2xl border-t border-white/10 pb-[env(safe-area-inset-bottom)]"
+            >
+              <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-2 mb-1" />
+              <ChunkErrorBoundary>
+                <Suspense
+                  fallback={
+                    <div className="w-full h-[320px] flex items-center justify-center text-blue-400/40 text-sm">
+                      Loading...
+                    </div>
+                  }
+                >
+                  <LazyReactionEmojiPicker
+                    onSelect={(emoji) => {
+                      onReact?.(reactionPickerFor, emoji);
+                      closeMobileAction();
+                    }}
+                    className="w-full h-[320px] flex flex-col overflow-hidden bg-transparent [--frimousse-bg:transparent] [--frimousse-border-color:theme(colors.white/10%)]"
+                    searchClassName="mx-3 mt-1 mb-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-base placeholder:text-white/30 outline-none focus:border-[#34F080]/50"
+                    emojiSize="w-11 h-11 text-2xl"
+                    categoryBg="bg-[#141c2b]"
+                    autoFocusSearch={false}
+                  />
+                </Suspense>
+              </ChunkErrorBoundary>
+            </div>,
+            document.body
+          )}
+
+        <div className="flex flex-col-reverse">
+          <div className="scroller-end-stub"></div>
+
+          {displayMessages.map((message, i: number) => {
+            // Render the "New messages" divider between read and unread messages.
+            // In flex-col-reverse, higher indices are visually higher (older), so
+            // the divider at unreadDividerIndex appears above the unread block.
+            const divider =
+              i === unreadDividerIndex && unreadCount > 0 ? (
+                <div
+                  key="unread-divider"
+                  ref={unreadDividerRef}
+                  className="flex items-center gap-3 my-3 px-2"
+                >
+                  <div className="flex-1 h-px bg-[#34F080]/40" />
+                  <span className="text-xs font-semibold text-[#34F080] whitespace-nowrap">
+                    {unreadCount === 1
+                      ? "1 new message"
+                      : `${unreadCount} new messages`}
+                  </span>
+                  <div className="flex-1 h-px bg-[#34F080]/40" />
+                </div>
+              ) : null;
+
+            const parsed = parseMessageType(message);
+
+            // System log messages render as centered, un-bubbled text
+            if (parsed.type === "system") {
+              const messageKey =
+                (message as any)._localId ||
+                message.MessageInfo.TimestampNanosString ||
+                `msg-${i}`;
+              const actionText =
+                parsed.systemAction === "member-left"
+                  ? " left the group"
+                  : " joined the group";
+              return (
+                <React.Fragment key={messageKey}>
+                  {divider}
+                  <div className="flex justify-center my-2 px-4">
+                    <span className="text-xs text-gray-500 bg-white/5 rounded-full px-3 py-1 text-center">
+                      {parsed.systemMembers?.length
+                        ? parsed.systemMembers
+                            .map((m, j) => (
+                              <span key={m.pk}>
+                                {j > 0 &&
+                                  (j === parsed.systemMembers!.length - 1
+                                    ? " and "
+                                    : ", ")}
+                                <span className="text-[#34F080] font-medium">
+                                  {m.un || m.pk.slice(0, 8)}
+                                </span>
+                              </span>
+                            ))
+                            .concat([<span key="action">{actionText}</span>])
+                        : message.DecryptedMessage || ""}
+                    </span>
                   </div>
-                }
-              >
-                <LazyReactionEmojiPicker
-                  onSelect={(emoji) => {
-                    onReact?.(reactionPickerFor, emoji);
-                    closeMobileAction();
-                  }}
-                  className="w-full h-[320px] flex flex-col overflow-hidden bg-transparent [--frimousse-bg:transparent] [--frimousse-border-color:theme(colors.white/10%)]"
-                  searchClassName="mx-3 mt-1 mb-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-base placeholder:text-white/30 outline-none focus:border-[#34F080]/50"
-                  emojiSize="w-11 h-11 text-2xl"
-                  categoryBg="bg-[#141c2b]"
-                  autoFocusSearch={false}
-                />
-              </Suspense>
-            </ChunkErrorBoundary>
-          </div>,
-          document.body
-        )}
+                </React.Fragment>
+              );
+            }
 
-      <div className="flex flex-col-reverse">
-        <div className="scroller-end-stub"></div>
+            const IsSender =
+              message.IsSender ||
+              message.SenderInfo.OwnerPublicKeyBase58Check ===
+                appUser?.PublicKeyBase58Check;
 
-        {displayMessages.map((message, i: number) => {
-          const parsed = parseMessageType(message);
+            let senderStyles = "glass-received text-gray-200";
+            if (IsSender) {
+              senderStyles = "glass-sent text-white";
+            }
+            if (message.error && !message.DecryptedMessage) {
+              senderStyles = "bg-white/5 border border-white/10 text-gray-500";
+            }
 
-          // System log messages render as centered, un-bubbled text
-          if (parsed.type === "system") {
+            // For media messages, keep glass style (overflow handled by media components)
+            const isMedia = ["image", "gif", "sticker", "video"].includes(
+              parsed.type
+            );
+            if (isMedia) {
+              senderStyles = IsSender
+                ? "glass-sent text-white"
+                : "glass-received text-gray-200";
+            }
+
+            // Tip messages get a tinted bubble with accent left border (DESO = blue, USDC = green)
+            if (parsed.type === "tip") {
+              const isUsdc = parsed.tipCurrency === "USDC";
+              senderStyles = isUsdc
+                ? IsSender
+                  ? "bg-[#082414] border border-[#34F080]/25 text-white border-l-2 border-l-[#34F080]"
+                  : "bg-[#081a12] border border-[#34F080]/15 text-gray-200 border-l-2 border-l-[#34F080]"
+                : IsSender
+                ? "bg-[#081424] border border-[#2775ca]/25 text-white border-l-2 border-l-[#2775ca]"
+                : "bg-[#081220] border border-[#2775ca]/15 text-gray-200 border-l-2 border-l-[#2775ca]";
+            }
+
+            // Emoji-only messages float without a bubble
+            const messageText = message.DecryptedMessage || "";
+            const isEmojiOnly =
+              parsed.type === "text" &&
+              !message.error &&
+              !!parseEmojiOnlyMessage(messageText);
+            if (isEmojiOnly) {
+              senderStyles = "";
+            }
+
             const messageKey =
               (message as any)._localId ||
               message.MessageInfo.TimestampNanosString ||
               `msg-${i}`;
-            const actionText =
-              parsed.systemAction === "member-left"
-                ? " left the group"
-                : " joined the group";
-            return (
-              <div key={messageKey} className="flex justify-center my-2 px-4">
-                <span className="text-xs text-gray-500 bg-white/5 rounded-full px-3 py-1 text-center">
-                  {parsed.systemMembers?.length
-                    ? parsed.systemMembers
-                        .map((m, j) => (
-                          <span key={m.pk}>
-                            {j > 0 &&
-                              (j === parsed.systemMembers!.length - 1
-                                ? " and "
-                                : ", ")}
-                            <span className="text-[#34F080] font-medium">
-                              {m.un || m.pk.slice(0, 8)}
-                            </span>
-                          </span>
-                        ))
-                        .concat([<span key="action">{actionText}</span>])
-                    : message.DecryptedMessage || ""}
-                </span>
+            const reactions =
+              reactionsByTimestamp[message.MessageInfo.TimestampNanosString];
+            const tips =
+              tipsByTimestamp[message.MessageInfo.TimestampNanosString];
+
+            // Message grouping: collapse consecutive messages from the same sender within 5 min
+            // Skip system/tip messages — they render separately and shouldn't break visual groups
+            const senderKey = message.SenderInfo.OwnerPublicKeyBase58Check;
+            const isGroupable = (m: (typeof displayMessages)[0]) => {
+              const t = parseMessageType(m).type;
+              return t !== "system" && t !== "tip";
+            };
+            let prevMessage: (typeof displayMessages)[0] | undefined;
+            for (let j = i + 1; j < displayMessages.length; j++) {
+              if (isGroupable(displayMessages[j])) {
+                prevMessage = displayMessages[j];
+                break;
+              }
+            }
+            let nextMessage: (typeof displayMessages)[0] | undefined;
+            for (let j = i - 1; j >= 0; j--) {
+              if (isGroupable(displayMessages[j])) {
+                nextMessage = displayMessages[j];
+                break;
+              }
+            }
+
+            // Use BigInt for nanosecond timestamp comparison — values exceed Number.MAX_SAFE_INTEGER
+            const msgNanos = BigInt(
+              message.MessageInfo.TimestampNanosString ||
+                String(message.MessageInfo.TimestampNanos)
+            );
+            const gapNs = BigInt(GROUP_TIME_GAP_NS);
+
+            const isFirstInGroup = (() => {
+              if (!prevMessage) return true;
+              if (
+                prevMessage.SenderInfo.OwnerPublicKeyBase58Check !== senderKey
+              )
+                return true;
+              const prevNanos = BigInt(
+                prevMessage.MessageInfo.TimestampNanosString ||
+                  String(prevMessage.MessageInfo.TimestampNanos)
+              );
+              const diff =
+                msgNanos > prevNanos
+                  ? msgNanos - prevNanos
+                  : prevNanos - msgNanos;
+              return diff > gapNs;
+            })();
+
+            const isLastInGroup = (() => {
+              if (!nextMessage) return true;
+              if (
+                nextMessage.SenderInfo.OwnerPublicKeyBase58Check !== senderKey
+              )
+                return true;
+              const nextNanos = BigInt(
+                nextMessage.MessageInfo.TimestampNanosString ||
+                  String(nextMessage.MessageInfo.TimestampNanos)
+              );
+              const diff =
+                nextNanos > msgNanos
+                  ? nextNanos - msgNanos
+                  : msgNanos - nextNanos;
+              return diff > gapNs;
+            })();
+
+            // Grouped bubble border-radius: connected corners for consecutive messages
+            const R = 20; // full corner
+            const C = 3; // connected corner (adjacent message in group)
+            const bubbleRadiusStyle = isEmojiOnly
+              ? {}
+              : IsSender
+              ? {
+                  borderTopLeftRadius: R,
+                  borderTopRightRadius: isFirstInGroup ? R : C,
+                  borderBottomLeftRadius: R,
+                  borderBottomRightRadius: isLastInGroup ? R : C,
+                }
+              : {
+                  borderTopLeftRadius: isFirstInGroup ? R : C,
+                  borderTopRightRadius: R,
+                  borderBottomLeftRadius: isLastInGroup ? R : C,
+                  borderBottomRightRadius: R,
+                };
+
+            const messagingDisplayAvatar = (
+              <div
+                className={`w-[36px] shrink-0 ${IsSender ? "ml-3" : "mr-3"}`}
+              >
+                <MessagingDisplayAvatar
+                  username={
+                    getUsernameByPublicKey[
+                      message.SenderInfo.OwnerPublicKeyBase58Check
+                    ]
+                  }
+                  publicKey={message.SenderInfo.OwnerPublicKeyBase58Check}
+                  extraDataPicUrl={
+                    profilePicByPublicKey?.[
+                      message.SenderInfo.OwnerPublicKeyBase58Check
+                    ]
+                  }
+                  diameter={36}
+                  classNames="relative"
+                />
               </div>
             );
-          }
 
-          const IsSender =
-            message.IsSender ||
-            message.SenderInfo.OwnerPublicKeyBase58Check ===
-              appUser?.PublicKeyBase58Check;
-
-          let senderStyles = "glass-received text-gray-200";
-          if (IsSender) {
-            senderStyles = "glass-sent text-white";
-          }
-          if (message.error && !message.DecryptedMessage) {
-            senderStyles = "bg-white/5 border border-white/10 text-gray-500";
-          }
-
-          // For media messages, keep glass style (overflow handled by media components)
-          const isMedia = ["image", "gif", "sticker", "video"].includes(
-            parsed.type
-          );
-          if (isMedia) {
-            senderStyles = IsSender
-              ? "glass-sent text-white"
-              : "glass-received text-gray-200";
-          }
-
-          // Tip messages get a tinted bubble with accent left border (DESO = blue, USDC = green)
-          if (parsed.type === "tip") {
-            const isUsdc = parsed.tipCurrency === "USDC";
-            senderStyles = isUsdc
-              ? IsSender
-                ? "bg-[#082414] border border-[#34F080]/25 text-white border-l-2 border-l-[#34F080]"
-                : "bg-[#081a12] border border-[#34F080]/15 text-gray-200 border-l-2 border-l-[#34F080]"
-              : IsSender
-              ? "bg-[#081424] border border-[#2775ca]/25 text-white border-l-2 border-l-[#2775ca]"
-              : "bg-[#081220] border border-[#2775ca]/15 text-gray-200 border-l-2 border-l-[#2775ca]";
-          }
-
-          // Emoji-only messages float without a bubble
-          const messageText = message.DecryptedMessage || "";
-          const isEmojiOnly =
-            parsed.type === "text" &&
-            !message.error &&
-            !!parseEmojiOnlyMessage(messageText);
-          if (isEmojiOnly) {
-            senderStyles = "";
-          }
-
-          const messageKey =
-            (message as any)._localId ||
-            message.MessageInfo.TimestampNanosString ||
-            `msg-${i}`;
-          const reactions =
-            reactionsByTimestamp[message.MessageInfo.TimestampNanosString];
-          const tips =
-            tipsByTimestamp[message.MessageInfo.TimestampNanosString];
-
-          // Message grouping: collapse consecutive messages from the same sender within 5 min
-          // Skip system/tip messages — they render separately and shouldn't break visual groups
-          const senderKey = message.SenderInfo.OwnerPublicKeyBase58Check;
-          const isGroupable = (m: (typeof displayMessages)[0]) => {
-            const t = parseMessageType(m).type;
-            return t !== "system" && t !== "tip";
-          };
-          let prevMessage: (typeof displayMessages)[0] | undefined;
-          for (let j = i + 1; j < displayMessages.length; j++) {
-            if (isGroupable(displayMessages[j])) {
-              prevMessage = displayMessages[j];
-              break;
-            }
-          }
-          let nextMessage: (typeof displayMessages)[0] | undefined;
-          for (let j = i - 1; j >= 0; j--) {
-            if (isGroupable(displayMessages[j])) {
-              nextMessage = displayMessages[j];
-              break;
-            }
-          }
-
-          // Use BigInt for nanosecond timestamp comparison — values exceed Number.MAX_SAFE_INTEGER
-          const msgNanos = BigInt(
-            message.MessageInfo.TimestampNanosString ||
-              String(message.MessageInfo.TimestampNanos)
-          );
-          const gapNs = BigInt(GROUP_TIME_GAP_NS);
-
-          const isFirstInGroup = (() => {
-            if (!prevMessage) return true;
-            if (prevMessage.SenderInfo.OwnerPublicKeyBase58Check !== senderKey)
-              return true;
-            const prevNanos = BigInt(
-              prevMessage.MessageInfo.TimestampNanosString ||
-                String(prevMessage.MessageInfo.TimestampNanos)
-            );
-            const diff =
-              msgNanos > prevNanos
-                ? msgNanos - prevNanos
-                : prevNanos - msgNanos;
-            return diff > gapNs;
-          })();
-
-          const isLastInGroup = (() => {
-            if (!nextMessage) return true;
-            if (nextMessage.SenderInfo.OwnerPublicKeyBase58Check !== senderKey)
-              return true;
-            const nextNanos = BigInt(
-              nextMessage.MessageInfo.TimestampNanosString ||
-                String(nextMessage.MessageInfo.TimestampNanos)
-            );
-            const diff =
-              nextNanos > msgNanos
-                ? nextNanos - msgNanos
-                : msgNanos - nextNanos;
-            return diff > gapNs;
-          })();
-
-          // Grouped bubble border-radius: connected corners for consecutive messages
-          const R = 20; // full corner
-          const C = 3; // connected corner (adjacent message in group)
-          const bubbleRadiusStyle = isEmojiOnly
-            ? {}
-            : IsSender
-            ? {
-                borderTopLeftRadius: R,
-                borderTopRightRadius: isFirstInGroup ? R : C,
-                borderBottomLeftRadius: R,
-                borderBottomRightRadius: isLastInGroup ? R : C,
-              }
-            : {
-                borderTopLeftRadius: isFirstInGroup ? R : C,
-                borderTopRightRadius: R,
-                borderBottomLeftRadius: isLastInGroup ? R : C,
-                borderBottomRightRadius: R,
-              };
-
-          const messagingDisplayAvatar = (
-            <div className={`w-[36px] shrink-0 ${IsSender ? "ml-3" : "mr-3"}`}>
-              <MessagingDisplayAvatar
-                username={
-                  getUsernameByPublicKey[
-                    message.SenderInfo.OwnerPublicKeyBase58Check
-                  ]
-                }
-                publicKey={message.SenderInfo.OwnerPublicKeyBase58Check}
-                extraDataPicUrl={
-                  profilePicByPublicKey?.[
-                    message.SenderInfo.OwnerPublicKeyBase58Check
-                  ]
-                }
-                diameter={36}
-                classNames="relative"
-              />
-            </div>
-          );
-
-          // Invisible spacer matching avatar column width for continuation messages
-          const avatarSpacer = (
-            <div
-              className={`w-[36px] shrink-0 ${IsSender ? "ml-3" : "mr-3"}`}
-            />
-          );
-
-          const showActionBar = isMobile
-            ? mobileActionFor === messageKey && !reactionPickerFor
-            : hoveredMessage === messageKey || reactionPickerFor === messageKey;
-
-          return (
-            <div
-              className={`mx-0 last:pt-4 ${
-                IsSender ? "ml-auto justify-end" : "mr-auto justify-start"
-              } max-w-[80%] md:max-w-[65%] ${
-                isLastInGroup ? "mb-4" : "mb-0.5"
-              } inline-flex items-end text-left group ${
-                mobileActionFor === messageKey ? "relative z-50" : ""
-              } ${isMobile ? "mobile-no-select" : ""}`}
-              style={isMobile ? NO_CALLOUT_STYLE : undefined}
-              key={messageKey}
-              onTouchStart={
-                isMobile ? (e) => handleTouchStart(e, messageKey) : undefined
-              }
-              onTouchMove={isMobile ? handleTouchMove : undefined}
-              onTouchEnd={isMobile ? handleTouchEnd : undefined}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                const bubble = (
-                  e.currentTarget as HTMLElement
-                ).querySelector<HTMLElement>(".relative.inline-block");
-                computeFlip(bubble);
-                activeBubbleRef.current = bubble;
-                if (isMobile) {
-                  setReactionPickerFor(null);
-                  setMobileActionFor(messageKey);
-                } else {
-                  setHoveredMessage(messageKey);
-                }
-              }}
-            >
-              {!IsSender &&
-                (isLastInGroup ? messagingDisplayAvatar : avatarSpacer)}
+            // Invisible spacer matching avatar column width for continuation messages
+            const avatarSpacer = (
               <div
-                className={`w-full ${IsSender ? "text-right" : "text-left"}`}
-              >
-                {/* Message bubble */}
-                <div className="relative inline-block">
-                  <div
-                    className={`${senderStyles} mt-auto ${
-                      isMedia
-                        ? "p-0"
-                        : isEmojiOnly
-                        ? "p-0"
-                        : "py-1.5 px-3 md:px-4"
-                    } break-words ${
-                      isMedia || isEmojiOnly
-                        ? "inline-flex flex-col items-stretch"
-                        : "inline-block"
-                    } text-left relative overflow-hidden`}
-                    style={bubbleRadiusStyle}
-                  >
-                    {/* Sender name inside bubble (Telegram-style) */}
-                    {isFirstInGroup && !IsSender && (
-                      <div
-                        className={`text-[#34F080] text-[11px] font-semibold ${
-                          isMedia ? "px-3 pt-1.5 pb-0.5" : "mb-0.5"
-                        }`}
-                      >
-                        {getUsernameByPublicKey[
-                          message.SenderInfo.OwnerPublicKeyBase58Check
-                        ]
-                          ? getUsernameByPublicKey[
-                              message.SenderInfo.OwnerPublicKeyBase58Check
-                            ]
-                          : shortenLongWord(
-                              message.SenderInfo.OwnerPublicKeyBase58Check
-                            )}
-                      </div>
-                    )}
-                    {/* Reply preview inside the bubble (Telegram-style) */}
-                    {parsed.replyTo && parsed.replyPreview && (
-                      <div className={`mb-1.5 mt-0.5 ${isMedia ? "px-3" : ""}`}>
-                        <ReplyPreview
-                          replyPreview={parsed.replyPreview}
-                          replySender={parsed.replySender}
-                        />
-                      </div>
-                    )}
-                    <MessageContent message={message} />
-                    {/* Inline timestamp: invisible spacer reserves room, real timestamp is absolute-positioned */}
-                    {(() => {
-                      const msgText = message.DecryptedMessage || "";
-                      const mediaHasCaption =
-                        isMedia &&
-                        (() => {
-                          if (parsed.type === "image")
-                            return (
-                              !!msgText && !/\.\w{2,5}$/.test(msgText.trim())
-                            );
-                          if (parsed.type === "gif")
-                            return (
-                              !!msgText &&
-                              msgText !== parsed.gifTitle &&
-                              msgText !== "GIF"
-                            );
-                          if (parsed.type === "video")
-                            return !!msgText && msgText !== "video";
-                          return false;
-                        })();
-                      const timestampInside =
-                        (!isMedia && !isEmojiOnly) || mediaHasCaption;
-                      const timeText = `${
-                        parsed.edited && !parsed.deleted ? "(edited) " : ""
-                      }${convertTstampToDateTime(
-                        message.MessageInfo.TimestampNanos
-                      )}`;
-                      const timeColor = IsSender
-                        ? "text-[#34F080]/50"
-                        : "text-gray-500/80";
+                className={`w-[36px] shrink-0 ${IsSender ? "ml-3" : "mr-3"}`}
+              />
+            );
 
-                      if (timestampInside && !isMedia) {
-                        // Telegram-style float: sits on the same line as short text,
-                        // drops to its own right-aligned line when the text fills the width.
-                        return (
-                          <span className="float-right ml-3 mt-1 leading-none">
-                            <span
-                              className={`${timeColor} text-[10px] whitespace-nowrap`}
-                              title={new Date(
-                                message.MessageInfo.TimestampNanos / 1e6
-                              ).toLocaleString()}
-                            >
-                              {timeText}
-                            </span>
-                          </span>
-                        );
-                      }
-                      if (timestampInside && isMedia) {
-                        // Media with caption: timestamp below caption
-                        return (
-                          <div className="flex justify-end mt-0.5 px-3 pb-1.5">
-                            <span
-                              className={`${timeColor} text-[10px] whitespace-nowrap leading-none`}
-                              title={new Date(
-                                message.MessageInfo.TimestampNanos / 1e6
-                              ).toLocaleString()}
-                            >
-                              {timeText}
-                            </span>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </div>
+            const showActionBar = isMobile
+              ? mobileActionFor === messageKey && !reactionPickerFor
+              : hoveredMessage === messageKey ||
+                reactionPickerFor === messageKey;
 
-                  {/* Timestamp outside bubble — only for bare media (no caption) and emoji-only */}
-                  {(() => {
-                    const msgText = message.DecryptedMessage || "";
-                    const mediaHasCaption =
-                      isMedia &&
-                      (() => {
-                        if (parsed.type === "image")
-                          return (
-                            !!msgText && !/\.\w{2,5}$/.test(msgText.trim())
-                          );
-                        if (parsed.type === "gif")
-                          return (
-                            !!msgText &&
-                            msgText !== parsed.gifTitle &&
-                            msgText !== "GIF"
-                          );
-                        if (parsed.type === "video")
-                          return !!msgText && msgText !== "video";
-                        return false;
-                      })();
-                    const timestampOutside =
-                      (isMedia && !mediaHasCaption) || isEmojiOnly;
-
-                    if (timestampOutside) {
-                      return (
-                        <div
-                          className={`text-[10px] mt-0.5 px-1 text-right ${
-                            IsSender ? "text-[#34F080]/50" : "text-gray-500/80"
-                          }`}
-                          title={new Date(
-                            message.MessageInfo.TimestampNanos / 1e6
-                          ).toLocaleString()}
-                        >
-                          {parsed.edited && !parsed.deleted ? "(edited) " : ""}
-                          {convertTstampToDateTime(
-                            message.MessageInfo.TimestampNanos
-                          )}
-                        </div>
-                      );
+            return (
+              <React.Fragment key={messageKey}>
+                {divider}
+                <div
+                  data-ts={message.MessageInfo.TimestampNanosString}
+                  className={`mx-0 last:pt-4 ${
+                    IsSender ? "ml-auto justify-end" : "mr-auto justify-start"
+                  } max-w-[80%] md:max-w-[65%] ${
+                    isLastInGroup ? "mb-4" : "mb-0.5"
+                  } inline-flex items-end text-left group ${
+                    mobileActionFor === messageKey ? "relative z-50" : ""
+                  } ${isMobile ? "mobile-no-select" : ""}`}
+                  style={isMobile ? NO_CALLOUT_STYLE : undefined}
+                  onTouchStart={
+                    isMobile
+                      ? (e) => handleTouchStart(e, messageKey)
+                      : undefined
+                  }
+                  onTouchMove={isMobile ? handleTouchMove : undefined}
+                  onTouchEnd={isMobile ? handleTouchEnd : undefined}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    const bubble = (
+                      e.currentTarget as HTMLElement
+                    ).querySelector<HTMLElement>(".relative.inline-block");
+                    computeFlip(bubble);
+                    activeBubbleRef.current = bubble;
+                    if (isMobile) {
+                      setReactionPickerFor(null);
+                      setMobileActionFor(messageKey);
+                    } else {
+                      setHoveredMessage(messageKey);
                     }
-                    return null;
-                  })()}
-
-                  {/* Status indicator – only on last bubble in a sender group (or failed) to avoid overlap */}
-                  {IsSender &&
-                    (message as any)._status &&
-                    (isLastInGroup ||
-                      (message as any)._status === "failed") && (
-                      <div className="absolute -bottom-4 right-0 z-10">
-                        <MessageStatusIndicator
-                          status={(message as any)._status}
-                          onRetry={
-                            (message as any)._localId &&
-                            (message as any)._status === "failed"
-                              ? () => onRetry?.((message as any)._localId)
-                              : undefined
-                          }
-                          onDelete={
-                            (message as any)._localId &&
-                            (message as any)._status === "failed"
-                              ? () =>
-                                  onDeleteFailed?.((message as any)._localId)
-                              : undefined
-                          }
-                        />
-                      </div>
-                    )}
-
-                  {/* Telegram-style split: reactions above bubble, action menu below */}
-                  {showActionBar &&
-                    !parsed.deleted &&
-                    (() => {
-                      // Reactions row — portaled above the bubble
-                      const reactionsRow = onReact
-                        ? createPortal(
-                            <div ref={actionBarRef} className="fixed z-50">
-                              <div
-                                className={`flex items-center gap-0.5 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg ${
-                                  isMobile ? "px-1.5 py-1.5" : "px-1 py-1"
-                                }`}
-                              >
-                                {/* Micro-tip button — first, before emoji reactions */}
-                                {onMicroTip && !IsSender && (
-                                  <>
-                                    <div className="relative">
-                                      <button
-                                        onClick={() => {
-                                          if (showTipTooltip) {
-                                            setShowTipTooltip(false);
-                                            try {
-                                              localStorage.setItem(
-                                                "hasSeenTipTooltip",
-                                                "1"
-                                              );
-                                            } catch {
-                                              /* ignore storage errors */
-                                            }
-                                          }
-                                          if (navigator.vibrate)
-                                            navigator.vibrate(10);
-                                          onMicroTip(message);
-                                          closeMobileAction();
-                                        }}
-                                        aria-label={`Tip $0.01 ${
-                                          microTipIsDeso ? "DESO" : "USDC"
-                                        }`}
-                                        className={`${
-                                          isMobile ? "h-11 px-2" : "h-9 px-1.5"
-                                        } flex flex-col items-center justify-center rounded-lg cursor-pointer transition-colors`}
-                                        style={{
-                                          backgroundColor: `${microTipColor}15`,
-                                          border: `1px solid ${microTipColor}33`,
-                                        }}
-                                        title={`Tip $0.01 ${
-                                          microTipIsDeso ? "DESO" : "USDC"
-                                        }`}
-                                      >
-                                        <CircleDollarSign
-                                          className={`${
-                                            isMobile ? "w-5 h-5" : "w-4 h-4"
-                                          } ${microTipTextColor}`}
-                                        />
-                                        <span
-                                          className={`${microTipTextColor} text-[10px] font-semibold leading-none mt-0.5`}
-                                        >
-                                          $0.01
-                                        </span>
-                                      </button>
-                                      {showTipTooltip && (
-                                        <div
-                                          className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-max max-w-[180px] px-3 py-2 bg-[#1a2436] rounded-lg shadow-lg text-[11px] text-gray-300 text-center z-50 pointer-events-none"
-                                          style={{
-                                            border: `1px solid ${microTipColor}50`,
-                                          }}
-                                        >
-                                          <span
-                                            className={`${microTipTextColor} font-semibold`}
-                                          >
-                                            Tip $0.01
-                                          </span>{" "}
-                                          — send a penny to show appreciation
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="w-px self-stretch my-1.5 mx-1 bg-white/10" />
-                                  </>
-                                )}
-                                {QUICK_REACTIONS.map((emoji) => (
-                                  <button
-                                    key={emoji}
-                                    onClick={() => {
-                                      onReact(
-                                        message.MessageInfo
-                                          .TimestampNanosString,
-                                        emoji
-                                      );
-                                      setReactionPickerFor(null);
-                                      closeMobileAction();
-                                    }}
-                                    className={`${
-                                      isMobile ? "w-11 h-11" : "w-9 h-9"
-                                    } flex items-center justify-center hover:bg-white/10 rounded-lg cursor-pointer transition-colors leading-none`}
-                                  >
-                                    <AnimatedEmoji
-                                      emoji={emoji}
-                                      size={isMobile ? 28 : 24}
-                                      eager
-                                    />
-                                  </button>
-                                ))}
-                                <button
-                                  onClick={() =>
-                                    setReactionPickerFor(
-                                      reactionPickerFor === messageKey
-                                        ? null
-                                        : messageKey
-                                    )
-                                  }
-                                  className={`${
-                                    isMobile ? "w-11 h-11" : "w-9 h-9"
-                                  } flex items-center justify-center hover:bg-white/10 rounded-lg cursor-pointer transition-colors`}
-                                  title="More reactions"
-                                >
-                                  <Plus
-                                    className={`${
-                                      isMobile ? "w-5 h-5" : "w-4 h-4"
-                                    } text-gray-400`}
-                                  />
-                                </button>
-                              </div>
-                            </div>,
-                            document.body
-                          )
-                        : null;
-
-                      // Action menu — portaled below the bubble
-                      const actionMenu = createPortal(
-                        <div
-                          ref={actionMenuRef}
-                          className={`fixed z-50 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg ${
-                            isMobile
-                              ? "py-1.5 min-w-[200px]"
-                              : "py-1 min-w-[180px]"
-                          }`}
-                        >
-                          {onReply && (
-                            <button
-                              onClick={() => {
-                                onReply(message);
-                                closeMobileAction();
-                              }}
-                              className={`w-full flex items-center gap-3 ${
-                                isMobile ? "px-4 py-3" : "px-3 py-2"
-                              } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
-                            >
-                              <Reply className="w-4 h-4 text-gray-400 shrink-0" />
-                              Reply
-                            </button>
-                          )}
-                          {message.DecryptedMessage &&
-                            parsed.type !== "reaction" && (
-                              <button
-                                onClick={() => {
-                                  navigator.clipboard.writeText(
-                                    message.DecryptedMessage
-                                  );
-                                  closeMobileAction();
-                                }}
-                                className={`w-full flex items-center gap-3 ${
-                                  isMobile ? "px-4 py-3" : "px-3 py-2"
-                                } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
-                              >
-                                <Copy className="w-4 h-4 text-gray-400 shrink-0" />
-                                Copy
-                              </button>
-                            )}
-                          {onTip && !IsSender && !(message as any)._localId && (
-                            <button
-                              onClick={() => {
-                                onTip(message);
-                                closeMobileAction();
-                              }}
-                              className={`w-full flex items-center gap-3 ${
-                                isMobile ? "px-4 py-3" : "px-3 py-2"
-                              } text-sm text-[#34F080] hover:bg-white/8 cursor-pointer transition-colors`}
-                            >
-                              <CircleDollarSign className="w-4 h-4 text-[#34F080] shrink-0" />
-                              Tip
-                            </button>
-                          )}
-                          {onEdit &&
-                            IsSender &&
-                            parsed.type === "text" &&
-                            !(message as any)._localId && (
-                              <button
-                                onClick={() => {
-                                  onEdit(message);
-                                  closeMobileAction();
-                                }}
-                                className={`w-full flex items-center gap-3 ${
-                                  isMobile ? "px-4 py-3" : "px-3 py-2"
-                                } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
-                              >
-                                <Pencil className="w-4 h-4 text-gray-400 shrink-0" />
-                                Edit
-                              </button>
-                            )}
-                          {onDeleteForMe && !(message as any)._localId && (
-                            <button
-                              onClick={() => {
-                                onDeleteForMe(
-                                  message.MessageInfo.TimestampNanosString
-                                );
-                                closeMobileAction();
-                              }}
-                              className={`w-full flex items-center gap-3 ${
-                                isMobile ? "px-4 py-3" : "px-3 py-2"
-                              } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
-                            >
-                              <Trash2 className="w-4 h-4 text-gray-400 shrink-0" />
-                              Delete for me
-                            </button>
-                          )}
-                          {onDeleteForEveryone &&
-                            IsSender &&
-                            !(message as any)._localId && (
-                              <button
-                                onClick={() => {
-                                  onDeleteForEveryone(message);
-                                  closeMobileAction();
-                                }}
-                                className={`w-full flex items-center gap-3 ${
-                                  isMobile ? "px-4 py-3" : "px-3 py-2"
-                                } text-sm text-red-400 hover:bg-white/8 cursor-pointer transition-colors`}
-                              >
-                                <Trash2 className="w-4 h-4 text-red-400 shrink-0" />
-                                Delete for everyone
-                              </button>
-                            )}
-                        </div>,
-                        document.body
-                      );
-
-                      return (
-                        <>
-                          {reactionsRow}
-                          {actionMenu}
-                        </>
-                      );
-                    })()}
-
-                  {/* Desktop emoji picker — portaled to escape [contain:layout_style] */}
-                  {reactionPickerFor === messageKey &&
-                    !isMobile &&
-                    createPortal(
-                      <div ref={pickerRef} className="fixed z-[65]">
-                        <ChunkErrorBoundary>
-                          <Suspense
-                            fallback={
-                              <div className="w-[352px] h-[300px] flex items-center justify-center bg-[#141c2b] rounded-xl border border-white/10 text-blue-400/40 text-sm">
-                                Loading...
-                              </div>
-                            }
-                          >
-                            <LazyReactionEmojiPicker
-                              onSelect={(emoji) => {
-                                onReact?.(
-                                  message.MessageInfo.TimestampNanosString,
-                                  emoji
-                                );
-                                setReactionPickerFor(null);
-                              }}
-                            />
-                          </Suspense>
-                        </ChunkErrorBoundary>
-                      </div>,
-                      document.body
-                    )}
-                </div>
-
-                {/* Reaction pills + Tip pills */}
-                {(reactions ||
-                  tips ||
-                  pendingTipTimestamps?.has(
-                    message.MessageInfo.TimestampNanosString
-                  )) && (
+                  }}
+                >
+                  {!IsSender &&
+                    (isLastInGroup ? messagingDisplayAvatar : avatarSpacer)}
                   <div
-                    className={`-mt-1.5 relative z-10 flex flex-wrap items-center gap-1 ${
-                      IsSender ? "justify-end" : ""
+                    className={`w-full ${
+                      IsSender ? "text-right" : "text-left"
                     }`}
                   >
-                    {reactions && (
-                      <ReactionPills
-                        reactions={reactions}
-                        currentUserKey={appUser?.PublicKeyBase58Check}
-                        onReactionClick={(emoji) =>
-                          onReact?.(
-                            message.MessageInfo.TimestampNanosString,
-                            emoji
-                          )
+                    {/* Message bubble */}
+                    <div className="relative inline-block">
+                      <div
+                        className={`${senderStyles} mt-auto ${
+                          isMedia
+                            ? "p-0"
+                            : isEmojiOnly
+                            ? "p-0"
+                            : "py-1.5 px-3 md:px-4"
+                        } break-words ${
+                          isMedia || isEmojiOnly
+                            ? "inline-flex flex-col items-stretch"
+                            : "inline-block"
+                        } text-left relative overflow-hidden`}
+                        style={bubbleRadiusStyle}
+                      >
+                        {/* Sender name inside bubble (Telegram-style) */}
+                        {isFirstInGroup && !IsSender && (
+                          <div
+                            className={`text-[#34F080] text-[11px] font-semibold ${
+                              isMedia ? "px-3 pt-1.5 pb-0.5" : "mb-0.5"
+                            }`}
+                          >
+                            {getUsernameByPublicKey[
+                              message.SenderInfo.OwnerPublicKeyBase58Check
+                            ]
+                              ? getUsernameByPublicKey[
+                                  message.SenderInfo.OwnerPublicKeyBase58Check
+                                ]
+                              : shortenLongWord(
+                                  message.SenderInfo.OwnerPublicKeyBase58Check
+                                )}
+                          </div>
+                        )}
+                        {/* Reply preview inside the bubble (Telegram-style) */}
+                        {parsed.replyTo && parsed.replyPreview && (
+                          <div
+                            className={`mb-1.5 mt-0.5 ${isMedia ? "px-3" : ""}`}
+                          >
+                            <ReplyPreview
+                              replyPreview={parsed.replyPreview}
+                              replySender={parsed.replySender}
+                            />
+                          </div>
+                        )}
+                        <MessageContent message={message} />
+                        {/* Inline timestamp: invisible spacer reserves room, real timestamp is absolute-positioned */}
+                        {(() => {
+                          const msgText = message.DecryptedMessage || "";
+                          const mediaHasCaption =
+                            isMedia &&
+                            (() => {
+                              if (parsed.type === "image")
+                                return (
+                                  !!msgText &&
+                                  !/\.\w{2,5}$/.test(msgText.trim())
+                                );
+                              if (parsed.type === "gif")
+                                return (
+                                  !!msgText &&
+                                  msgText !== parsed.gifTitle &&
+                                  msgText !== "GIF"
+                                );
+                              if (parsed.type === "video")
+                                return !!msgText && msgText !== "video";
+                              return false;
+                            })();
+                          const timestampInside =
+                            (!isMedia && !isEmojiOnly) || mediaHasCaption;
+                          const timeText = `${
+                            parsed.edited && !parsed.deleted ? "(edited) " : ""
+                          }${convertTstampToDateTime(
+                            message.MessageInfo.TimestampNanos
+                          )}`;
+                          const timeColor = IsSender
+                            ? "text-[#34F080]/50"
+                            : "text-gray-500/80";
+
+                          if (timestampInside && !isMedia) {
+                            // Telegram-style float: sits on the same line as short text,
+                            // drops to its own right-aligned line when the text fills the width.
+                            return (
+                              <span className="float-right ml-3 mt-1 leading-none">
+                                <span
+                                  className={`${timeColor} text-[10px] whitespace-nowrap`}
+                                  title={new Date(
+                                    message.MessageInfo.TimestampNanos / 1e6
+                                  ).toLocaleString()}
+                                >
+                                  {timeText}
+                                </span>
+                              </span>
+                            );
+                          }
+                          if (timestampInside && isMedia) {
+                            // Media with caption: timestamp below caption
+                            return (
+                              <div className="flex justify-end mt-0.5 px-3 pb-1.5">
+                                <span
+                                  className={`${timeColor} text-[10px] whitespace-nowrap leading-none`}
+                                  title={new Date(
+                                    message.MessageInfo.TimestampNanos / 1e6
+                                  ).toLocaleString()}
+                                >
+                                  {timeText}
+                                </span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+
+                      {/* Timestamp outside bubble — only for bare media (no caption) and emoji-only */}
+                      {(() => {
+                        const msgText = message.DecryptedMessage || "";
+                        const mediaHasCaption =
+                          isMedia &&
+                          (() => {
+                            if (parsed.type === "image")
+                              return (
+                                !!msgText && !/\.\w{2,5}$/.test(msgText.trim())
+                              );
+                            if (parsed.type === "gif")
+                              return (
+                                !!msgText &&
+                                msgText !== parsed.gifTitle &&
+                                msgText !== "GIF"
+                              );
+                            if (parsed.type === "video")
+                              return !!msgText && msgText !== "video";
+                            return false;
+                          })();
+                        const timestampOutside =
+                          (isMedia && !mediaHasCaption) || isEmojiOnly;
+
+                        if (timestampOutside) {
+                          return (
+                            <div
+                              className={`text-[10px] mt-0.5 px-1 text-right ${
+                                IsSender
+                                  ? "text-[#34F080]/50"
+                                  : "text-gray-500/80"
+                              }`}
+                              title={new Date(
+                                message.MessageInfo.TimestampNanos / 1e6
+                              ).toLocaleString()}
+                            >
+                              {parsed.edited && !parsed.deleted
+                                ? "(edited) "
+                                : ""}
+                              {convertTstampToDateTime(
+                                message.MessageInfo.TimestampNanos
+                              )}
+                            </div>
+                          );
                         }
-                        getUsernameByPublicKey={getUsernameByPublicKey}
-                        profilePicByPublicKey={profilePicByPublicKey}
-                      />
-                    )}
-                    {tips && (
-                      <TipPills
-                        tips={tips}
-                        currentUserKey={appUser?.PublicKeyBase58Check}
-                        getUsernameByPublicKey={getUsernameByPublicKey}
-                        profilePicByPublicKey={profilePicByPublicKey}
-                      />
-                    )}
-                    {pendingTipTimestamps?.has(
-                      message.MessageInfo.TimestampNanosString
-                    ) && (
-                      <div className="flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-full text-xs bg-white/5 border border-white/10 animate-pulse">
-                        <Loader2 className="w-3.5 h-3.5 text-gray-400 animate-spin" />
-                        <span className="text-gray-400 text-[11px] font-semibold">
-                          Tipping...
-                        </span>
+                        return null;
+                      })()}
+
+                      {/* Status indicator – only on last bubble in a sender group (or failed) to avoid overlap */}
+                      {IsSender &&
+                        (message as any)._status &&
+                        (isLastInGroup ||
+                          (message as any)._status === "failed") && (
+                          <div className="absolute -bottom-4 right-0 z-10">
+                            <MessageStatusIndicator
+                              status={(message as any)._status}
+                              onRetry={
+                                (message as any)._localId &&
+                                (message as any)._status === "failed"
+                                  ? () => onRetry?.((message as any)._localId)
+                                  : undefined
+                              }
+                              onDelete={
+                                (message as any)._localId &&
+                                (message as any)._status === "failed"
+                                  ? () =>
+                                      onDeleteFailed?.(
+                                        (message as any)._localId
+                                      )
+                                  : undefined
+                              }
+                            />
+                          </div>
+                        )}
+
+                      {/* Telegram-style split: reactions above bubble, action menu below */}
+                      {showActionBar &&
+                        !parsed.deleted &&
+                        (() => {
+                          // Reactions row — portaled above the bubble
+                          const reactionsRow = onReact
+                            ? createPortal(
+                                <div ref={actionBarRef} className="fixed z-50">
+                                  <div
+                                    className={`flex items-center gap-0.5 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg ${
+                                      isMobile ? "px-1.5 py-1.5" : "px-1 py-1"
+                                    }`}
+                                  >
+                                    {/* Micro-tip button — first, before emoji reactions */}
+                                    {onMicroTip && !IsSender && (
+                                      <>
+                                        <div className="relative">
+                                          <button
+                                            onClick={() => {
+                                              if (showTipTooltip) {
+                                                setShowTipTooltip(false);
+                                                try {
+                                                  localStorage.setItem(
+                                                    "hasSeenTipTooltip",
+                                                    "1"
+                                                  );
+                                                } catch {
+                                                  /* ignore storage errors */
+                                                }
+                                              }
+                                              if (navigator.vibrate)
+                                                navigator.vibrate(10);
+                                              onMicroTip(message);
+                                              closeMobileAction();
+                                            }}
+                                            aria-label={`Tip $0.01 ${
+                                              microTipIsDeso ? "DESO" : "USDC"
+                                            }`}
+                                            className={`${
+                                              isMobile
+                                                ? "h-11 px-2"
+                                                : "h-9 px-1.5"
+                                            } flex flex-col items-center justify-center rounded-lg cursor-pointer transition-colors`}
+                                            style={{
+                                              backgroundColor: `${microTipColor}15`,
+                                              border: `1px solid ${microTipColor}33`,
+                                            }}
+                                            title={`Tip $0.01 ${
+                                              microTipIsDeso ? "DESO" : "USDC"
+                                            }`}
+                                          >
+                                            <CircleDollarSign
+                                              className={`${
+                                                isMobile ? "w-5 h-5" : "w-4 h-4"
+                                              } ${microTipTextColor}`}
+                                            />
+                                            <span
+                                              className={`${microTipTextColor} text-[10px] font-semibold leading-none mt-0.5`}
+                                            >
+                                              $0.01
+                                            </span>
+                                          </button>
+                                          {showTipTooltip && (
+                                            <div
+                                              className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-max max-w-[180px] px-3 py-2 bg-[#1a2436] rounded-lg shadow-lg text-[11px] text-gray-300 text-center z-50 pointer-events-none"
+                                              style={{
+                                                border: `1px solid ${microTipColor}50`,
+                                              }}
+                                            >
+                                              <span
+                                                className={`${microTipTextColor} font-semibold`}
+                                              >
+                                                Tip $0.01
+                                              </span>{" "}
+                                              — send a penny to show
+                                              appreciation
+                                            </div>
+                                          )}
+                                        </div>
+                                        <div className="w-px self-stretch my-1.5 mx-1 bg-white/10" />
+                                      </>
+                                    )}
+                                    {QUICK_REACTIONS.map((emoji) => (
+                                      <button
+                                        key={emoji}
+                                        onClick={() => {
+                                          onReact(
+                                            message.MessageInfo
+                                              .TimestampNanosString,
+                                            emoji
+                                          );
+                                          setReactionPickerFor(null);
+                                          closeMobileAction();
+                                        }}
+                                        className={`${
+                                          isMobile ? "w-11 h-11" : "w-9 h-9"
+                                        } flex items-center justify-center hover:bg-white/10 rounded-lg cursor-pointer transition-colors leading-none`}
+                                      >
+                                        <AnimatedEmoji
+                                          emoji={emoji}
+                                          size={isMobile ? 28 : 24}
+                                          eager
+                                        />
+                                      </button>
+                                    ))}
+                                    <button
+                                      onClick={() =>
+                                        setReactionPickerFor(
+                                          reactionPickerFor === messageKey
+                                            ? null
+                                            : messageKey
+                                        )
+                                      }
+                                      className={`${
+                                        isMobile ? "w-11 h-11" : "w-9 h-9"
+                                      } flex items-center justify-center hover:bg-white/10 rounded-lg cursor-pointer transition-colors`}
+                                      title="More reactions"
+                                    >
+                                      <Plus
+                                        className={`${
+                                          isMobile ? "w-5 h-5" : "w-4 h-4"
+                                        } text-gray-400`}
+                                      />
+                                    </button>
+                                  </div>
+                                </div>,
+                                document.body
+                              )
+                            : null;
+
+                          // Action menu — portaled below the bubble
+                          const actionMenu = createPortal(
+                            <div
+                              ref={actionMenuRef}
+                              className={`fixed z-50 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg ${
+                                isMobile
+                                  ? "py-1.5 min-w-[200px]"
+                                  : "py-1 min-w-[180px]"
+                              }`}
+                            >
+                              {onReply && (
+                                <button
+                                  onClick={() => {
+                                    onReply(message);
+                                    closeMobileAction();
+                                  }}
+                                  className={`w-full flex items-center gap-3 ${
+                                    isMobile ? "px-4 py-3" : "px-3 py-2"
+                                  } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
+                                >
+                                  <Reply className="w-4 h-4 text-gray-400 shrink-0" />
+                                  Reply
+                                </button>
+                              )}
+                              {message.DecryptedMessage &&
+                                parsed.type !== "reaction" && (
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(
+                                        message.DecryptedMessage
+                                      );
+                                      closeMobileAction();
+                                    }}
+                                    className={`w-full flex items-center gap-3 ${
+                                      isMobile ? "px-4 py-3" : "px-3 py-2"
+                                    } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
+                                  >
+                                    <Copy className="w-4 h-4 text-gray-400 shrink-0" />
+                                    Copy
+                                  </button>
+                                )}
+                              {onTip &&
+                                !IsSender &&
+                                !(message as any)._localId && (
+                                  <button
+                                    onClick={() => {
+                                      onTip(message);
+                                      closeMobileAction();
+                                    }}
+                                    className={`w-full flex items-center gap-3 ${
+                                      isMobile ? "px-4 py-3" : "px-3 py-2"
+                                    } text-sm text-[#34F080] hover:bg-white/8 cursor-pointer transition-colors`}
+                                  >
+                                    <CircleDollarSign className="w-4 h-4 text-[#34F080] shrink-0" />
+                                    Tip
+                                  </button>
+                                )}
+                              {onEdit &&
+                                IsSender &&
+                                parsed.type === "text" &&
+                                !(message as any)._localId && (
+                                  <button
+                                    onClick={() => {
+                                      onEdit(message);
+                                      closeMobileAction();
+                                    }}
+                                    className={`w-full flex items-center gap-3 ${
+                                      isMobile ? "px-4 py-3" : "px-3 py-2"
+                                    } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
+                                  >
+                                    <Pencil className="w-4 h-4 text-gray-400 shrink-0" />
+                                    Edit
+                                  </button>
+                                )}
+                              {onDeleteForMe && !(message as any)._localId && (
+                                <button
+                                  onClick={() => {
+                                    onDeleteForMe(
+                                      message.MessageInfo.TimestampNanosString
+                                    );
+                                    closeMobileAction();
+                                  }}
+                                  className={`w-full flex items-center gap-3 ${
+                                    isMobile ? "px-4 py-3" : "px-3 py-2"
+                                  } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
+                                >
+                                  <Trash2 className="w-4 h-4 text-gray-400 shrink-0" />
+                                  Delete for me
+                                </button>
+                              )}
+                              {onDeleteForEveryone &&
+                                IsSender &&
+                                !(message as any)._localId && (
+                                  <button
+                                    onClick={() => {
+                                      onDeleteForEveryone(message);
+                                      closeMobileAction();
+                                    }}
+                                    className={`w-full flex items-center gap-3 ${
+                                      isMobile ? "px-4 py-3" : "px-3 py-2"
+                                    } text-sm text-red-400 hover:bg-white/8 cursor-pointer transition-colors`}
+                                  >
+                                    <Trash2 className="w-4 h-4 text-red-400 shrink-0" />
+                                    Delete for everyone
+                                  </button>
+                                )}
+                            </div>,
+                            document.body
+                          );
+
+                          return (
+                            <>
+                              {reactionsRow}
+                              {actionMenu}
+                            </>
+                          );
+                        })()}
+
+                      {/* Desktop emoji picker — portaled to escape [contain:layout_style] */}
+                      {reactionPickerFor === messageKey &&
+                        !isMobile &&
+                        createPortal(
+                          <div ref={pickerRef} className="fixed z-[65]">
+                            <ChunkErrorBoundary>
+                              <Suspense
+                                fallback={
+                                  <div className="w-[352px] h-[300px] flex items-center justify-center bg-[#141c2b] rounded-xl border border-white/10 text-blue-400/40 text-sm">
+                                    Loading...
+                                  </div>
+                                }
+                              >
+                                <LazyReactionEmojiPicker
+                                  onSelect={(emoji) => {
+                                    onReact?.(
+                                      message.MessageInfo.TimestampNanosString,
+                                      emoji
+                                    );
+                                    setReactionPickerFor(null);
+                                  }}
+                                />
+                              </Suspense>
+                            </ChunkErrorBoundary>
+                          </div>,
+                          document.body
+                        )}
+                    </div>
+
+                    {/* Reaction pills + Tip pills */}
+                    {(reactions ||
+                      tips ||
+                      pendingTipTimestamps?.has(
+                        message.MessageInfo.TimestampNanosString
+                      )) && (
+                      <div
+                        className={`-mt-1.5 relative z-10 flex flex-wrap items-center gap-1 ${
+                          IsSender ? "justify-end" : ""
+                        }`}
+                      >
+                        {reactions && (
+                          <ReactionPills
+                            reactions={reactions}
+                            currentUserKey={appUser?.PublicKeyBase58Check}
+                            onReactionClick={(emoji) =>
+                              onReact?.(
+                                message.MessageInfo.TimestampNanosString,
+                                emoji
+                              )
+                            }
+                            getUsernameByPublicKey={getUsernameByPublicKey}
+                            profilePicByPublicKey={profilePicByPublicKey}
+                          />
+                        )}
+                        {tips && (
+                          <TipPills
+                            tips={tips}
+                            currentUserKey={appUser?.PublicKeyBase58Check}
+                            getUsernameByPublicKey={getUsernameByPublicKey}
+                            profilePicByPublicKey={profilePicByPublicKey}
+                          />
+                        )}
+                        {pendingTipTimestamps?.has(
+                          message.MessageInfo.TimestampNanosString
+                        ) && (
+                          <div className="flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-full text-xs bg-white/5 border border-white/10 animate-pulse">
+                            <Loader2 className="w-3.5 h-3.5 text-gray-400 animate-spin" />
+                            <span className="text-gray-400 text-[11px] font-semibold">
+                              Tipping...
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
-              {/* Own messages don't need avatar — green bubble alignment is enough */}
-            </div>
-          );
-        })}
+                  {/* Own messages don't need avatar — green bubble alignment is enough */}
+                </div>
+              </React.Fragment>
+            );
+          })}
 
-        {/* Sentinel for infinite scroll */}
-        {allowScrolling && (
-          <div
-            ref={sentinelRef}
-            className="py-4 flex items-center justify-center"
+          {/* Unread divider at the very top when ALL messages are unread */}
+          {unreadDividerIndex === displayMessages.length && unreadCount > 0 && (
+            <div
+              ref={unreadDividerRef}
+              className="flex items-center gap-3 my-3 px-2"
+            >
+              <div className="flex-1 h-px bg-[#34F080]/40" />
+              <span className="text-xs font-semibold text-[#34F080] whitespace-nowrap">
+                {unreadCount === 1
+                  ? "1 new message"
+                  : `${unreadCount} new messages`}
+              </span>
+              <div className="flex-1 h-px bg-[#34F080]/40" />
+            </div>
+          )}
+
+          {/* Sentinel for infinite scroll */}
+          {allowScrolling && (
+            <div
+              ref={sentinelRef}
+              className="py-4 flex items-center justify-center"
+            >
+              {isLoadingMore && (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin text-[#34F080]" />
+                  Loading...
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      {/* Floating indicators — stacked on the right, above Jump to Latest */}
+      <div className="absolute bottom-4 right-4 z-30 flex flex-col items-end gap-2 pointer-events-none">
+        {/* Unread reactions to your messages */}
+        {unreadReactionTargets.length > 0 && (
+          <button
+            onClick={scrollToNextReaction}
+            className={`pointer-events-auto flex items-center gap-1 justify-center bg-[#141c2b] hover:bg-[#1a2538] border border-white/10 rounded-full shadow-lg text-sm cursor-pointer transition-all ${
+              isMobile ? "w-11 h-11" : "w-10 h-10"
+            }`}
+            aria-label={`${unreadReactionTargets.length} unread reaction${
+              unreadReactionTargets.length === 1 ? "" : "s"
+            }`}
           >
-            {isLoadingMore && (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin text-[#34F080]" />
-                Loading...
-              </>
+            <span>❤️</span>
+            {unreadReactionTargets.length > 1 && (
+              <span className="text-[10px] font-bold text-gray-300">
+                {unreadReactionTargets.length}
+              </span>
             )}
-          </div>
+          </button>
+        )}
+        {/* Unread @mentions */}
+        {unreadMentionTimestamps.length > 0 && (
+          <button
+            onClick={scrollToNextMention}
+            className={`pointer-events-auto flex items-center justify-center bg-[#141c2b] hover:bg-[#1a2538] border border-[#34F080]/30 rounded-full shadow-lg cursor-pointer transition-all ${
+              isMobile ? "w-11 h-11" : "w-10 h-10"
+            }`}
+            aria-label={`${unreadMentionTimestamps.length} unread mention${
+              unreadMentionTimestamps.length === 1 ? "" : "s"
+            }`}
+          >
+            <span className="text-[#34F080] text-sm font-bold">
+              @
+              {unreadMentionTimestamps.length > 1
+                ? unreadMentionTimestamps.length
+                : ""}
+            </span>
+          </button>
+        )}
+        {/* Jump to latest */}
+        {showJumpToLatest && (
+          <button
+            onClick={scrollToLatest}
+            className={`pointer-events-auto flex items-center justify-center bg-[#141c2b] hover:bg-[#1a2538] border border-white/10 rounded-full shadow-lg cursor-pointer transition-all ${
+              isMobile ? "w-11 h-11" : "w-10 h-10"
+            }`}
+            aria-label="Jump to latest"
+          >
+            <ArrowDown className="w-4 h-4 text-gray-300" />
+          </button>
         )}
       </div>
     </div>
