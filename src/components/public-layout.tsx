@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { identity } from "deso-protocol";
 import { ChevronDown, Menu, X } from "lucide-react";
+import { useStore } from "../store";
 
 /** Links shown directly in the desktop nav bar (highest priority). */
 const PRIMARY_LINKS = [
@@ -24,6 +25,15 @@ export const PublicNav = () => {
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const path = window.location.pathname;
+
+  const handleLaunchApp = () => {
+    // Read store at click time — avoids subscribing to appUser and causing re-renders
+    if (useStore.getState().appUser) {
+      window.location.href = "/";
+    } else {
+      identity.login();
+    }
+  };
 
   // Close desktop "More" dropdown when clicking outside
   useEffect(() => {
@@ -107,7 +117,7 @@ export const PublicNav = () => {
         {/* Right side */}
         <div className="flex items-center gap-3">
           <button
-            onClick={() => identity.login()}
+            onClick={handleLaunchApp}
             className="hidden md:block px-6 py-2 landing-btn-vivid text-white text-xs font-black rounded-full transition-all cursor-pointer"
           >
             LAUNCH APP
@@ -148,7 +158,7 @@ export const PublicNav = () => {
             ))}
             <div className="pt-3 mt-2 border-t border-white/5">
               <button
-                onClick={() => identity.login()}
+                onClick={handleLaunchApp}
                 className="w-full py-3 landing-btn-vivid text-white text-sm font-black rounded-xl transition-all cursor-pointer"
               >
                 LAUNCH APP
