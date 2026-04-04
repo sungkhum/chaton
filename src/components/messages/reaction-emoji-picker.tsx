@@ -1,13 +1,56 @@
+/* eslint-disable react/prop-types */
 import { EmojiPicker } from "frimousse";
 import { useState } from "react";
 
 const POPULAR_EMOJI = [
-  "😀", "😂", "🥹", "❤️", "🔥", "👍", "👎", "🙏",
-  "😭", "😍", "🥰", "😘", "😎", "🤔", "😱", "😡",
-  "👀", "💯", "🎉", "✨", "💀", "🤣", "😊", "🥺",
-  "😏", "🫠", "🤗", "🤩", "😤", "🥳", "😈", "👻",
-  "🫶", "🤝", "✌️", "🤞", "💪", "👏", "🙌", "💅",
-  "❤️‍🔥", "💔", "💕", "⭐", "🌈", "☀️", "🍕", "🎶",
+  "😀",
+  "😂",
+  "🥹",
+  "❤️",
+  "🔥",
+  "👍",
+  "👎",
+  "🙏",
+  "😭",
+  "😍",
+  "🥰",
+  "😘",
+  "😎",
+  "🤔",
+  "😱",
+  "😡",
+  "👀",
+  "💯",
+  "🎉",
+  "✨",
+  "💀",
+  "🤣",
+  "😊",
+  "🥺",
+  "😏",
+  "🫠",
+  "🤗",
+  "🤩",
+  "😤",
+  "🥳",
+  "😈",
+  "👻",
+  "🫶",
+  "🤝",
+  "✌️",
+  "🤞",
+  "💪",
+  "👏",
+  "🙌",
+  "💅",
+  "❤️‍🔥",
+  "💔",
+  "💕",
+  "⭐",
+  "🌈",
+  "☀️",
+  "🍕",
+  "🎶",
 ];
 
 interface ReactionEmojiPickerProps {
@@ -38,7 +81,9 @@ export function ReactionEmojiPicker({
         className={searchClassName}
         placeholder="Search emoji..."
         autoFocus={autoFocusSearch}
-        onInput={(e) => setIsSearching((e.target as HTMLInputElement).value.length > 0)}
+        onInput={(e) =>
+          setIsSearching((e.target as HTMLInputElement).value.length > 0)
+        }
       />
       <div className="relative flex-1 min-h-0">
         {/* Frimousse search results — hidden until user types */}
@@ -61,7 +106,9 @@ export function ReactionEmojiPicker({
               Emoji: ({ className: cls, emoji: emojiData, ...props }) => (
                 <button
                   {...props}
-                  className={`${cls || ""} flex items-center justify-center ${emojiSize} rounded-md hover:bg-white/10 cursor-pointer transition-colors`}
+                  className={`${
+                    cls || ""
+                  } flex items-center justify-center ${emojiSize} rounded-md hover:bg-white/10 cursor-pointer transition-colors`}
                 >
                   {emojiData.emoji}
                 </button>
@@ -69,7 +116,9 @@ export function ReactionEmojiPicker({
               CategoryHeader: ({ category, className: cls, ...props }) => (
                 <div
                   {...props}
-                  className={`${cls || ""} px-2 py-1.5 text-xs font-semibold text-white/40 sticky top-0 ${categoryBg} z-10`}
+                  className={`${
+                    cls || ""
+                  } px-2 py-1.5 text-xs font-semibold text-white/40 sticky top-0 ${categoryBg} z-10`}
                 >
                   {category.label}
                 </div>
@@ -84,7 +133,9 @@ export function ReactionEmojiPicker({
             isSearching ? "opacity-0 pointer-events-none" : "opacity-100"
           }`}
         >
-          <div className={`px-1 py-1.5 text-xs font-semibold text-white/40 sticky top-0 ${categoryBg} z-10`}>
+          <div
+            className={`px-1 py-1.5 text-xs font-semibold text-white/40 sticky top-0 ${categoryBg} z-10`}
+          >
             Popular
           </div>
           <div className="flex flex-wrap gap-0.5 px-0.5">

@@ -72,7 +72,6 @@ test.describe("Landing page", () => {
       openedUrls.push(url);
     });
     await page.evaluate(() => {
-      const origOpen = window.open;
       window.open = function (...args: Parameters<typeof window.open>) {
         const url =
           typeof args[0] === "string"

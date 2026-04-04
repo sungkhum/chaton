@@ -66,15 +66,6 @@ async function idbSet(key: string, value: unknown): Promise<void> {
   }
 }
 
-async function idbDel(key: string): Promise<void> {
-  if (!idbStore) return;
-  try {
-    await del(key, idbStore);
-  } catch {
-    // ignore
-  }
-}
-
 function stripOptimisticMessages(convos: ConversationMap): ConversationMap {
   const clean: ConversationMap = {};
   for (const [key, convo] of Object.entries(convos)) {
@@ -92,8 +83,10 @@ function trimConversations(convos: ConversationMap): ConversationMap {
   if (entries.length <= MAX_CACHED_CONVERSATIONS) return convos;
 
   entries.sort(([, a], [, b]) => {
-    const aLast = a.messages[a.messages.length - 1]?.MessageInfo?.TimestampNanos ?? 0;
-    const bLast = b.messages[b.messages.length - 1]?.MessageInfo?.TimestampNanos ?? 0;
+    const aLast =
+      a.messages[a.messages.length - 1]?.MessageInfo?.TimestampNanos ?? 0;
+    const bLast =
+      b.messages[b.messages.length - 1]?.MessageInfo?.TimestampNanos ?? 0;
     return Number(BigInt(bLast) - BigInt(aLast));
   });
 
@@ -184,9 +177,13 @@ export function cacheClassificationData(
     approvedAssociationIds: Array.from(data.approvedAssociationIds.entries()),
     blockedAssociationIds: Array.from(data.blockedAssociationIds.entries()),
     archivedGroups: Array.from(data.archivedGroups),
-    archivedGroupAssociationIds: Array.from(data.archivedGroupAssociationIds.entries()),
+    archivedGroupAssociationIds: Array.from(
+      data.archivedGroupAssociationIds.entries()
+    ),
     archivedChats: Array.from(data.archivedChats),
-    archivedChatAssociationIds: Array.from(data.archivedChatAssociationIds.entries()),
+    archivedChatAssociationIds: Array.from(
+      data.archivedChatAssociationIds.entries()
+    ),
     dismissedUsers: Array.from(data.dismissedUsers),
     dismissedAssociationIds: Array.from(data.dismissedAssociationIds.entries()),
   };
@@ -258,16 +255,11 @@ export function getCachedUsernameMap(
 // Last selected conversation (localStorage — sync)
 // ---------------------------------------------------------------------------
 
-export function cacheLastConversationKey(
-  publicKey: string,
-  key: string
-): void {
+export function cacheLastConversationKey(publicKey: string, key: string): void {
   lsSet(publicKey, "lastConversation", key);
 }
 
-export function getCachedLastConversationKey(
-  publicKey: string
-): string | null {
+export function getCachedLastConversationKey(publicKey: string): string | null {
   return lsGet<string>(publicKey, "lastConversation");
 }
 
@@ -346,9 +338,7 @@ export function cacheMutedConversations(
   idbSet("mutedConversations:active", arr);
 }
 
-export function getCachedMutedConversations(
-  publicKey: string
-): Set<string> {
+export function getCachedMutedConversations(publicKey: string): Set<string> {
   const arr = lsGet<string[]>(publicKey, "mutedConversations");
   return new Set(arr || []);
 }
@@ -357,11 +347,12 @@ export function getCachedMutedConversations(
 // Logged-in account profiles (localStorage — sync)
 // ---------------------------------------------------------------------------
 
-export function cacheAccountProfiles(
-  profiles: Record<string, unknown>
-): void {
+export function cacheAccountProfiles(profiles: Record<string, unknown>): void {
   try {
-    localStorage.setItem(`${LS_PREFIX}:accountProfiles`, JSON.stringify(profiles));
+    localStorage.setItem(
+      `${LS_PREFIX}:accountProfiles`,
+      JSON.stringify(profiles)
+    );
   } catch {
     // ignore
   }
@@ -491,12 +482,24 @@ export function getReadCursorsForSync(
 
 export async function clearCacheForUser(publicKey: string): Promise<void> {
   // localStorage
-  const lsTypes = ["profile", "classification", "usernames", "lastConversation", "mutedConversations", "lastRead", "privacyMode"];
+  const lsTypes = [
+    "profile",
+    "classification",
+    "usernames",
+    "lastConversation",
+    "mutedConversations",
+    "lastRead",
+    "privacyMode",
+  ];
   for (const t of lsTypes) {
     lsDel(publicKey, t);
   }
   // Draft messages use a separate prefix
-  try { localStorage.removeItem(`chaton:drafts:${publicKey}`); } catch { /* ignore */ }
+  try {
+    localStorage.removeItem(`chaton:drafts:${publicKey}`);
+  } catch {
+    /* ignore */
+  }
 
   // IndexedDB — remove all keys starting with publicKey + global active mute key
   if (!idbStore) return;

@@ -40,6 +40,7 @@ export async function fetchCommunityListings(): Promise<CommunityListing[]> {
   const results: CommunityListing[] = [];
   let lastId = "";
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const res = await getUserAssociations({
       TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
@@ -166,7 +167,11 @@ export async function updateCommunityListing(
   groupKeyName: string,
   description: string
 ): Promise<string> {
-  const newId = await listGroupInCommunity(ownerPublicKey, groupKeyName, description);
+  const newId = await listGroupInCommunity(
+    ownerPublicKey,
+    groupKeyName,
+    description
+  );
   // Best-effort delete of the old association
   try {
     await unlistGroupFromCommunity(ownerPublicKey, oldAssociationId);
@@ -198,8 +203,8 @@ export async function enrichCommunityListings(
 
   // 1. Batch fetch group metadata (images, display names) via getBulkAccessGroups
   //    Also tracks which groups actually exist on-chain to filter out fakes.
-  let groupImageMap = new Map<string, string>();
-  let groupDisplayNameMap = new Map<string, string>();
+  const groupImageMap = new Map<string, string>();
+  const groupDisplayNameMap = new Map<string, string>();
   const groupsNotFound = new Set<string>();
   try {
     const groupRes = await getBulkAccessGroups({
@@ -235,6 +240,7 @@ export async function enrichCommunityListings(
   const inviteCodeMap = new Map<string, string>();
   try {
     let lastId = "";
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       const res = await getUserAssociations({
         TransactorPublicKeyBase58Check: CHATON_SIGNING_PUBLIC_KEY,
@@ -300,5 +306,9 @@ export async function enrichCommunityListings(
         memberCountCapped: memberInfo.capped,
       };
     })
-    .filter((l) => l.inviteCode !== null && !groupsNotFound.has(l.ownerKey + "|" + l.groupKeyName));
+    .filter(
+      (l) =>
+        l.inviteCode !== null &&
+        !groupsNotFound.has(l.ownerKey + "|" + l.groupKeyName)
+    );
 }

@@ -28,20 +28,25 @@ export function useSwUpdate() {
     }
 
     listen();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const applyUpdate = useCallback(() => {
     if (!("serviceWorker" in navigator)) return;
-    const reg = navigator.serviceWorker.controller;
     // Tell the waiting SW to activate
     navigator.serviceWorker.ready.then((registration) => {
       registration.waiting?.postMessage({ type: "skip-waiting" });
     });
     // Reload once the new SW takes over
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
-      window.location.reload();
-    }, { once: true });
+    navigator.serviceWorker.addEventListener(
+      "controllerchange",
+      () => {
+        window.location.reload();
+      },
+      { once: true }
+    );
   }, []);
 
   const dismissUpdate = useCallback(() => {

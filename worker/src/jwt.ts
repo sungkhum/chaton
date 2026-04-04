@@ -11,7 +11,7 @@
  */
 
 import { sha256 } from "@noble/hashes/sha256";
-import { verify as ecVerify, utils as ecUtils } from "@noble/secp256k1";
+import { verify as ecVerify } from "@noble/secp256k1";
 import bs58 from "bs58";
 
 /** DeSo mainnet public key prefix bytes. */

@@ -332,7 +332,7 @@ async function deliverPush(env: Env, job: PushJob): Promise<void> {
         await deactivateSubscription(env.DB, sub.endpoint);
         break;
 
-      case "error":
+      case "error": {
         // Non-retriable error (not 5xx) — increment failure counter
         // and deactivate if threshold exceeded
         const count = await incrementFailureCount(env.DB, sub.endpoint);
@@ -343,6 +343,7 @@ async function deliverPush(env: Env, job: PushJob): Promise<void> {
           await deactivateSubscription(env.DB, sub.endpoint);
         }
         break;
+      }
     }
   }
 }

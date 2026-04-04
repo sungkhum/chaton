@@ -58,8 +58,8 @@ function ManualIosContent() {
       <ol className="space-y-3 text-sm text-gray-200">
         <Step n={1}>
           Tap the <strong>Share</strong> button{" "}
-          <IosShareIcon className="inline h-5 w-5 -mt-0.5 text-[#40B8E0]" />{" "}
-          in the Safari toolbar
+          <IosShareIcon className="inline h-5 w-5 -mt-0.5 text-[#40B8E0]" /> in
+          the Safari toolbar
         </Step>
         <Step n={2}>
           Scroll down and tap{" "}
@@ -86,13 +86,10 @@ function ManualIosOtherContent() {
         <Step n={1}>
           Copy this URL or open <strong>Safari</strong>
         </Step>
-        <Step n={2}>
-          Navigate to this page in Safari
-        </Step>
+        <Step n={2}>Navigate to this page in Safari</Step>
         <Step n={3}>
-          Tap{" "}
-          <IosShareIcon className="inline h-5 w-5 -mt-0.5 text-[#40B8E0]" />{" "}
-          then <strong>"Add to Home Screen"</strong>
+          Tap <IosShareIcon className="inline h-5 w-5 -mt-0.5 text-[#40B8E0]" />{" "}
+          then <strong>&ldquo;Add to Home Screen&rdquo;</strong>
         </Step>
       </ol>
     </>
@@ -108,11 +105,11 @@ function ManualFirefoxContent() {
       <ol className="space-y-3 text-sm text-gray-200">
         <Step n={1}>
           Tap the menu{" "}
-          <MoreVertical className="inline h-4 w-4 -mt-0.5 text-[#40B8E0]" />{" "}
-          in the bottom-right corner
+          <MoreVertical className="inline h-4 w-4 -mt-0.5 text-[#40B8E0]" /> in
+          the bottom-right corner
         </Step>
         <Step n={2}>
-          Tap <strong>"Install"</strong>
+          Tap <strong>&ldquo;Install&rdquo;</strong>
         </Step>
         <Step n={3}>
           Tap <strong>Install</strong> to confirm
@@ -142,7 +139,7 @@ function ManualSamsungContent() {
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/10 text-white text-xs font-medium">
             <Plus className="h-3 w-3" /> Add page to
           </span>{" "}
-          then <strong>"Home screen"</strong>
+          then <strong>&ldquo;Home screen&rdquo;</strong>
         </Step>
         <Step n={3}>
           Tap <strong>Add</strong> to confirm
@@ -166,7 +163,7 @@ function ManualMacosContent() {
           Share button)
         </Step>
         <Step n={2}>
-          Click <strong>"Add to Dock"</strong>
+          Click <strong>&ldquo;Add to Dock&rdquo;</strong>
         </Step>
         <Step n={3}>
           ChatOn will appear in your Dock and Launchpad as a standalone app
@@ -247,7 +244,7 @@ export function InstallPrompt() {
 
   if (installType === "none") return null;
 
-  const { title, icon, Body } = CONTENT[installType];
+  const { title, Body } = CONTENT[installType];
 
   const handleInstall = async () => {
     const outcome = await triggerNativeInstall();

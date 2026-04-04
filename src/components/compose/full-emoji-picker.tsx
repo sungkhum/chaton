@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { EmojiPicker } from "frimousse";
 
 interface FullEmojiPickerProps {
@@ -5,7 +6,10 @@ interface FullEmojiPickerProps {
   onClose: () => void;
 }
 
-export function FullEmojiPicker({ onEmojiSelect, onClose }: FullEmojiPickerProps) {
+export function FullEmojiPicker({
+  onEmojiSelect,
+  onClose,
+}: FullEmojiPickerProps) {
   return (
     <EmojiPicker.Root
       onEmojiSelect={(emoji: { emoji: string }) => {
@@ -34,7 +38,9 @@ export function FullEmojiPicker({ onEmojiSelect, onClose }: FullEmojiPickerProps
             Emoji: ({ className: cls, emoji: emojiData, ...props }) => (
               <button
                 {...props}
-                className={`${cls || ""} flex items-center justify-center w-9 h-9 rounded-md text-xl hover:bg-white/10 cursor-pointer transition-colors`}
+                className={`${
+                  cls || ""
+                } flex items-center justify-center w-9 h-9 rounded-md text-xl hover:bg-white/10 cursor-pointer transition-colors`}
               >
                 {emojiData.emoji}
               </button>
@@ -42,7 +48,9 @@ export function FullEmojiPicker({ onEmojiSelect, onClose }: FullEmojiPickerProps
             CategoryHeader: ({ category, className: cls, ...props }) => (
               <div
                 {...props}
-                className={`${cls || ""} px-2 py-1.5 text-xs font-semibold text-white/40 sticky top-0 bg-[#0a1628] z-10`}
+                className={`${
+                  cls || ""
+                } px-2 py-1.5 text-xs font-semibold text-white/40 sticky top-0 bg-[#0a1628] z-10`}
               >
                 {category.label}
               </div>

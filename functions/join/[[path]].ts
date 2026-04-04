@@ -55,8 +55,8 @@ export const onRequest: PagesFunction = async (context) => {
 
   // Rewrite OG meta tags on the edge
   return new HTMLRewriter()
-    .on('meta[property^="og:"]', new OGMetaRewriter())
-    .on('meta[name^="twitter:"]', new OGMetaRewriter())
+    .on("meta[property^=\"og:\"]", new OGMetaRewriter())
+    .on("meta[name^=\"twitter:\"]", new OGMetaRewriter())
     .on("title", new TitleRewriter())
     .transform(response);
 };

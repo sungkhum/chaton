@@ -29,7 +29,7 @@ async function fetchAllGroupMembers(
   const allProfiles: PublicKeyToProfileEntryResponseMap = {};
   let cursor = "";
 
-  while (true) {
+  for (;;) {
     const res = await getPaginatedAccessGroupMembers({
       AccessGroupOwnerPublicKeyBase58Check: ownerKey,
       AccessGroupKeyName: groupKeyName,
@@ -102,8 +102,7 @@ export function useMembers(
                 SkipForLeaderboard: true,
               });
               if (cancelled) return;
-              const ownerProfile =
-                ownerRes.UserList?.[0]?.ProfileEntryResponse;
+              const ownerProfile = ownerRes.UserList?.[0]?.ProfileEntryResponse;
               if (ownerProfile) profiles[ownerKey] = ownerProfile;
             } catch {
               // Non-fatal — will show formatted key as fallback
@@ -174,7 +173,7 @@ export function useMembers(
       }
 
       setMembers((state) => [...state, member]);
-      onAdded && onAdded();
+      if (onAdded) onAdded();
     } catch (err: any) {
       toast.error(
         `Cannot validate the selected user.\nError: ${err.toString()}`

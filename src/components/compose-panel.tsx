@@ -1,11 +1,6 @@
 import { ArrowLeft, Loader2, Users } from "lucide-react";
 import { FC, useEffect, useRef, useState } from "react";
-import {
-  getProfiles,
-  getSingleProfile,
-  identity,
-  ProfileEntryResponse,
-} from "deso-protocol";
+import { getProfiles, getSingleProfile, identity } from "deso-protocol";
 import { toast } from "sonner";
 import { useStore } from "../store";
 import { DEFAULT_KEY_MESSAGING_GROUP_NAME } from "../utils/constants";
@@ -64,9 +59,11 @@ export const ComposePanel: FC<ComposePanelProps> = ({
   const searchProfiles = async (q: string) => {
     try {
       if (isMaybeENSName(q) || isMaybeETHAddress(q)) {
-        let address = q;
+        const address = q;
         if (isMaybeENSName(q)) return; // ENS resolution disabled
-        const desoPublicKey = await identity.ethereumAddressToDesoAddress(address);
+        const desoPublicKey = await identity.ethereumAddressToDesoAddress(
+          address
+        );
         await searchForPublicKey(desoPublicKey);
         return;
       } else if (isMaybeDeSoPublicKey(q)) {
@@ -182,7 +179,10 @@ export const ComposePanel: FC<ComposePanelProps> = ({
       )}
 
       {/* Search results */}
-      <div className="overflow-y-auto custom-scrollbar" style={{ maxHeight: "calc(100% - 140px)" }}>
+      <div
+        className="overflow-y-auto custom-scrollbar"
+        style={{ maxHeight: "calc(100% - 140px)" }}
+      >
         {loading && (
           <div className="flex justify-center py-6">
             <Loader2 className="w-6 h-6 animate-spin text-[#34F080]" />

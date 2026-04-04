@@ -21,7 +21,10 @@ export const ReactionPills = ({
   getUsernameByPublicKey,
   profilePicByPublicKey,
 }: ReactionPillsProps) => {
-  const entries = Object.entries(reactions).filter(([_, keys]) => keys.length > 0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const entries = Object.entries(reactions).filter(
+    ([_emoji, keys]) => keys.length > 0
+  );
   const [popupEmoji, setPopupEmoji] = useState<string | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -95,7 +98,10 @@ export const ReactionPills = ({
               {/* Mini avatar stack */}
               <div className="flex -space-x-1.5">
                 {avatarKeys.map((pk) => (
-                  <div key={pk} className="rounded-full ring-1 ring-[#141c2b] overflow-hidden">
+                  <div
+                    key={pk}
+                    className="rounded-full ring-1 ring-[#141c2b] overflow-hidden"
+                  >
                     <MessagingDisplayAvatar
                       publicKey={pk}
                       username={getUsernameByPublicKey?.[pk]}
@@ -106,7 +112,9 @@ export const ReactionPills = ({
                 ))}
               </div>
               {keys.length > 3 && (
-                <span className="text-gray-400 text-[10px]">+{keys.length - 3}</span>
+                <span className="text-gray-400 text-[10px]">
+                  +{keys.length - 3}
+                </span>
               )}
             </button>
 
@@ -136,7 +144,9 @@ export const ReactionPills = ({
                         {username ? username : `${pk.slice(0, 8)}...`}
                       </span>
                       {pk === currentUserKey && (
-                        <span className="text-[10px] text-[#34F080] ml-auto">you</span>
+                        <span className="text-[10px] text-[#34F080] ml-auto">
+                          you
+                        </span>
                       )}
                     </div>
                   );

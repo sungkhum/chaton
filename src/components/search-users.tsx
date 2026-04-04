@@ -5,7 +5,7 @@ import {
   ProfileEntryResponse,
 } from "deso-protocol";
 import { Loader2 } from "lucide-react";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../store";
 import {
@@ -106,7 +106,10 @@ export const SearchUsers = ({
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -114,7 +117,9 @@ export const SearchUsers = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const searchForPublicKey = async (publicKey: string): Promise<SearchMenuItem> => {
+  const searchForPublicKey = async (
+    publicKey: string
+  ): Promise<SearchMenuItem> => {
     const res = await getSingleProfile({
       PublicKeyBase58Check: publicKey,
       NoErrorOnMissing: true,
@@ -136,12 +141,14 @@ export const SearchUsers = ({
   const _getProfiles = async (query: string) => {
     try {
       if (isMaybeENSName(query) || isMaybeETHAddress(query)) {
-        let address = query;
+        const address = query;
         if (isMaybeENSName(query)) {
           // ENS resolution disabled for now
           return;
         }
-        const desoPublicKey = await identity.ethereumAddressToDesoAddress(address);
+        const desoPublicKey = await identity.ethereumAddressToDesoAddress(
+          address
+        );
         await searchForPublicKey(desoPublicKey);
         return;
       } else if (isMaybeDeSoPublicKey(query)) {
@@ -152,7 +159,9 @@ export const SearchUsers = ({
       if (
         e?.message
           ?.toString()
-          .startsWith("GetSingleProfile: could not find profile for username or public key")
+          .startsWith(
+            "GetSingleProfile: could not find profile for username or public key"
+          )
       ) {
         return;
       }

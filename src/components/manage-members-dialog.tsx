@@ -16,7 +16,21 @@ import {
   waitForTransactionFound,
 } from "deso-protocol";
 import { withAuth } from "../utils/with-auth";
-import { Check, CheckCheck, Copy, Globe, Link2, Loader2, LogOut, Pencil, Share2, Trash2, UserPlus, Users, X } from "lucide-react";
+import {
+  Check,
+  CheckCheck,
+  Copy,
+  Globe,
+  Link2,
+  Loader2,
+  LogOut,
+  Pencil,
+  Share2,
+  Trash2,
+  UserPlus,
+  Users,
+  X,
+} from "lucide-react";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import useKeyDown from "../hooks/useKeyDown";
@@ -24,11 +38,13 @@ import { useMembers } from "../hooks/useMembers";
 import { useMobile } from "../hooks/useMobile";
 import { usePresence } from "../hooks/usePresence";
 import { formatLastSeen } from "../utils/helpers";
+import { DEFAULT_KEY_MESSAGING_GROUP_NAME } from "../utils/constants";
 import {
-  ASSOCIATION_TYPE_GROUP_JOIN_REQUEST,
-  DEFAULT_KEY_MESSAGING_GROUP_NAME,
-} from "../utils/constants";
-import { GROUP_DISPLAY_NAME, GROUP_IMAGE_URL, getGroupDisplayName, getGroupImageUrl } from "../utils/extra-data";
+  GROUP_DISPLAY_NAME,
+  GROUP_IMAGE_URL,
+  getGroupDisplayName,
+  getGroupImageUrl,
+} from "../utils/extra-data";
 import {
   createRejectAssociation,
   fetchPendingJoinRequests,
@@ -56,8 +72,14 @@ import { nameOrFormattedKey, SearchUsers } from "./search-users";
 
 export interface ManageMembersDialogProps {
   onSuccess: () => void;
-  onLeaveGroup: (conversationKey: string, groupOwnerPublicKey: string, groupKeyName: string) => void;
-  onOptimisticSystemMessage: (members: Array<{ pk: string; un: string }>) => void;
+  onLeaveGroup: (
+    conversationKey: string,
+    groupOwnerPublicKey: string,
+    groupKeyName: string
+  ) => void;
+  onOptimisticSystemMessage: (
+    members: Array<{ pk: string; un: string }>
+  ) => void;
   conversation: Conversation;
   conversationKey: string;
   isGroupOwner: boolean;
@@ -71,12 +93,24 @@ export const ManageMembersDialog = ({
   conversationKey,
   isGroupOwner,
 }: ManageMembersDialogProps) => {
-  const { appUser, allAccessGroups, decrementJoinRequestCount } = useStore(useShallow((s) => ({ appUser: s.appUser, allAccessGroups: s.allAccessGroups, decrementJoinRequestCount: s.decrementJoinRequestCount })));
+  const { appUser, allAccessGroups, decrementJoinRequestCount } = useStore(
+    useShallow((s) => ({
+      appUser: s.appUser,
+      allAccessGroups: s.allAccessGroups,
+      decrementJoinRequestCount: s.decrementJoinRequestCount,
+    }))
+  );
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
-  const { members, addMember, addMemberDirect, removeMember, onPairMissing, currentMemberKeys } =
-    useMembers(setLoading, open, conversation);
+  const {
+    members,
+    addMember,
+    addMemberDirect,
+    removeMember,
+    onPairMissing,
+    currentMemberKeys,
+  } = useMembers(setLoading, open, conversation);
   const membersAreaRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const { isMobile } = useMobile();
@@ -121,13 +155,17 @@ export const ManageMembersDialog = ({
 
   // Invite link state
   const [inviteCode, setInviteCode] = useState<string | null>(null);
-  const [inviteAssociationId, setInviteAssociationId] = useState<string | null>(null);
+  const [inviteAssociationId, setInviteAssociationId] = useState<string | null>(
+    null
+  );
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
 
   // Community listing state
   const [isCommunityListed, setIsCommunityListed] = useState(false);
-  const [communityAssociationId, setCommunityAssociationId] = useState<string | null>(null);
+  const [communityAssociationId, setCommunityAssociationId] = useState<
+    string | null
+  >(null);
   const [communityDescription, setCommunityDescription] = useState("");
   const [communityToggling, setCommunityToggling] = useState(false);
   const [communitySaving, setCommunitySaving] = useState(false);
@@ -136,7 +174,9 @@ export const ManageMembersDialog = ({
   // Join requests state
   const [joinRequests, setJoinRequests] = useState<JoinRequestEntry[]>([]);
   const [joinRequestsLoading, setJoinRequestsLoading] = useState(false);
-  const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
+  const [selectedRequests, setSelectedRequests] = useState<Set<string>>(
+    new Set()
+  );
   const [approvingKeys, setApprovingKeys] = useState<Set<string>>(new Set());
   const [rejectingKeys, setRejectingKeys] = useState<Set<string>>(new Set());
   const approvingRef = useRef(false);
@@ -146,12 +186,16 @@ export const ManageMembersDialog = ({
 
   const handleOpen = () => setOpen(!open);
   const groupName = conversation.messages[0].RecipientInfo.AccessGroupKeyName;
-  const groupOwnerKey = conversation.messages[0].RecipientInfo.OwnerPublicKeyBase58Check;
+  const groupOwnerKey =
+    conversation.messages[0].RecipientInfo.OwnerPublicKeyBase58Check;
 
-  const currentGroupImageUrl = getGroupImageUrl(allAccessGroups, groupOwnerKey, groupName) || "";
+  const currentGroupImageUrl =
+    getGroupImageUrl(allAccessGroups, groupOwnerKey, groupName) || "";
   const [groupImageUrl, setGroupImageUrl] = useState(currentGroupImageUrl);
 
-  const currentDisplayName = getGroupDisplayName(allAccessGroups, groupOwnerKey, groupName) || groupName.replace(/\0/g, "");
+  const currentDisplayName =
+    getGroupDisplayName(allAccessGroups, groupOwnerKey, groupName) ||
+    groupName.replace(/\0/g, "");
   const [editingName, setEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState(currentDisplayName);
   const [savingName, setSavingName] = useState(false);
@@ -187,14 +231,21 @@ export const ManageMembersDialog = ({
         if (cancelled) return;
         const memberKeys = membersRes?.AccessGroupMembersBase58Check ?? [];
         // Include the owner (not returned by the members API)
-        const memberSet = new Set([...memberKeys, appUser.PublicKeyBase58Check]);
+        const memberSet = new Set([
+          ...memberKeys,
+          appUser.PublicKeyBase58Check,
+        ]);
         const pending = requests.filter(
-          (r) => !memberSet.has(r.requesterPublicKey) && !rejectedKeys.has(r.requesterPublicKey)
+          (r) =>
+            !memberSet.has(r.requesterPublicKey) &&
+            !rejectedKeys.has(r.requesterPublicKey)
         );
         setJoinRequestBadge(pending.length);
       })
       .catch(() => {});
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [isGroupOwner, appUser, groupName, badgeTrigger]);
 
   // Refresh badge when dialog closes (skip the initial mount where open=false)
@@ -215,7 +266,8 @@ export const ManageMembersDialog = ({
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
   }, [isGroupOwner]);
 
   // Fetch invite code and join requests when dialog opens (owner only)
@@ -329,7 +381,8 @@ export const ManageMembersDialog = ({
         updateAccessGroup({
           AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
           AccessGroupKeyName: groupName,
-          AccessGroupPublicKeyBase58Check: group.AccessGroupPublicKeyBase58Check,
+          AccessGroupPublicKeyBase58Check:
+            group.AccessGroupPublicKeyBase58Check,
           MinFeeRateNanosPerKB: 1000,
           ExtraData: mergedExtraData,
         })
@@ -362,7 +415,12 @@ export const ManageMembersDialog = ({
   const handleGroupNameSave = async () => {
     if (nameSaveInFlightRef.current) return;
     const trimmed = editNameValue.trim();
-    if (!trimmed || trimmed === currentDisplayName || !appUser || !isGroupOwner) {
+    if (
+      !trimmed ||
+      trimmed === currentDisplayName ||
+      !appUser ||
+      !isGroupOwner
+    ) {
       setEditingName(false);
       setEditNameValue(currentDisplayName);
       return;
@@ -389,20 +447,27 @@ export const ManageMembersDialog = ({
         g.AccessGroupOwnerPublicKeyBase58Check === groupOwnerKey &&
         g.AccessGroupKeyName === groupName
       ) {
-        return { ...g, ExtraData: { ...(g.ExtraData || {}), [GROUP_DISPLAY_NAME]: trimmed } };
+        return {
+          ...g,
+          ExtraData: { ...(g.ExtraData || {}), [GROUP_DISPLAY_NAME]: trimmed },
+        };
       }
       return g;
     });
     useStore.setState({ allAccessGroups: updatedGroups });
 
     try {
-      const mergedExtraData = { ...(group.ExtraData || {}), [GROUP_DISPLAY_NAME]: trimmed };
+      const mergedExtraData = {
+        ...(group.ExtraData || {}),
+        [GROUP_DISPLAY_NAME]: trimmed,
+      };
 
       await withAuth(() =>
         updateAccessGroup({
           AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
           AccessGroupKeyName: groupName,
-          AccessGroupPublicKeyBase58Check: group.AccessGroupPublicKeyBase58Check,
+          AccessGroupPublicKeyBase58Check:
+            group.AccessGroupPublicKeyBase58Check,
           MinFeeRateNanosPerKB: 1000,
           ExtraData: mergedExtraData,
         })
@@ -418,7 +483,13 @@ export const ManageMembersDialog = ({
           g.AccessGroupOwnerPublicKeyBase58Check === groupOwnerKey &&
           g.AccessGroupKeyName === groupName
         ) {
-          return { ...g, ExtraData: { ...(g.ExtraData || {}), [GROUP_DISPLAY_NAME]: oldDisplayName } };
+          return {
+            ...g,
+            ExtraData: {
+              ...(g.ExtraData || {}),
+              [GROUP_DISPLAY_NAME]: oldDisplayName,
+            },
+          };
         }
         return g;
       });
@@ -447,7 +518,9 @@ export const ManageMembersDialog = ({
     const currentSet = new Set(currentMemberKeys);
     const memberSet = new Set(memberKeys);
     const memberKeysToAdd = memberKeys.filter((k) => !currentSet.has(k));
-    const memberKeysToRemove = currentMemberKeys.filter((k) => !memberSet.has(k));
+    const memberKeysToRemove = currentMemberKeys.filter(
+      (k) => !memberSet.has(k)
+    );
 
     if (updating) return;
     setUpdating(true);
@@ -481,7 +554,10 @@ export const ManageMembersDialog = ({
     }
   };
 
-  const addMembersAction = async (groupName: string, memberKeys: Array<string>) => {
+  const addMembersAction = async (
+    groupName: string,
+    memberKeys: Array<string>
+  ) => {
     if (!appUser) return Promise.reject(new Error("You are not logged in."));
     return updateMembers(
       groupName,
@@ -495,7 +571,8 @@ export const ManageMembersDialog = ({
 
           const encryptedKey = (resp.AccessGroupsMember ?? []).find(
             (entry) =>
-              entry?.AccessGroupOwnerPublicKeyBase58Check === appUser.PublicKeyBase58Check &&
+              entry?.AccessGroupOwnerPublicKeyBase58Check ===
+                appUser.PublicKeyBase58Check &&
               entry?.AccessGroupKeyName === groupName &&
               entry?.AccessGroupMemberEntryResponse
           )?.AccessGroupMemberEntryResponse?.EncryptedKey;
@@ -509,13 +586,16 @@ export const ManageMembersDialog = ({
               AccessGroupKeyName: groupName,
             };
           }
-        } catch (e) {
-          accessGroupKeyInfo = await identity.accessGroupStandardDerivation(groupName);
+        } catch {
+          accessGroupKeyInfo = await identity.accessGroupStandardDerivation(
+            groupName
+          );
         }
 
         const memberList = await Promise.all(
           (groupEntries || []).map(async (entry) => ({
-            AccessGroupMemberPublicKeyBase58Check: entry.AccessGroupOwnerPublicKeyBase58Check,
+            AccessGroupMemberPublicKeyBase58Check:
+              entry.AccessGroupOwnerPublicKeyBase58Check,
             AccessGroupMemberKeyName: entry.AccessGroupKeyName,
             EncryptedKey: await encrypt(
               entry.AccessGroupPublicKeyBase58Check,
@@ -534,14 +614,19 @@ export const ManageMembersDialog = ({
         );
 
         if (!submittedTransactionResponse) {
-          throw new Error("Failed to submit transaction to add members to group.");
+          throw new Error(
+            "Failed to submit transaction to add members to group."
+          );
         }
         return waitForTransactionFound(submittedTransactionResponse.TxnHashHex);
       }
     );
   };
 
-  const removeMembersAction = async (groupName: string, memberKeys: Array<string>) => {
+  const removeMembersAction = async (
+    groupName: string,
+    memberKeys: Array<string>
+  ) => {
     if (!appUser) {
       toast.error("You are not logged in.");
       return;
@@ -555,7 +640,8 @@ export const ManageMembersDialog = ({
             AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
             AccessGroupKeyName: groupName,
             AccessGroupMemberList: (groupEntries || []).map((entry) => ({
-              AccessGroupMemberPublicKeyBase58Check: entry.AccessGroupOwnerPublicKeyBase58Check,
+              AccessGroupMemberPublicKeyBase58Check:
+                entry.AccessGroupOwnerPublicKeyBase58Check,
               AccessGroupMemberKeyName: entry.AccessGroupKeyName,
               EncryptedKey: "",
             })),
@@ -564,7 +650,9 @@ export const ManageMembersDialog = ({
         );
 
         if (!submittedTransactionResponse) {
-          throw new Error("Failed to submit transaction to update group members.");
+          throw new Error(
+            "Failed to submit transaction to update group members."
+          );
         }
         return waitForTransactionFound(submittedTransactionResponse.TxnHashHex);
       }
@@ -616,7 +704,12 @@ export const ManageMembersDialog = ({
 
   const handleRevokeInviteLink = async () => {
     if (!appUser || !inviteAssociationId) return;
-    if (!window.confirm("Revoke this invite link? Anyone with this link will no longer be able to join.")) return;
+    if (
+      !window.confirm(
+        "Revoke this invite link? Anyone with this link will no longer be able to join."
+      )
+    )
+      return;
     setInviteLoading(true);
     try {
       await revokeInviteCode(appUser.PublicKeyBase58Check, inviteAssociationId);
@@ -644,7 +737,10 @@ export const ManageMembersDialog = ({
 
     try {
       if (wasListed && prevAssociationId) {
-        await unlistGroupFromCommunity(appUser.PublicKeyBase58Check, prevAssociationId);
+        await unlistGroupFromCommunity(
+          appUser.PublicKeyBase58Check,
+          prevAssociationId
+        );
         setCommunityAssociationId(null);
         setCommunityDescription("");
         setSavedDescription("");
@@ -707,7 +803,9 @@ export const ManageMembersDialog = ({
 
       // Remove approved from the join requests list
       const approvedSet = new Set(keysToApprove);
-      const approvedRequests = joinRequests.filter((r) => approvedSet.has(r.requesterPublicKey));
+      const approvedRequests = joinRequests.filter((r) =>
+        approvedSet.has(r.requesterPublicKey)
+      );
       setJoinRequests((prev) =>
         prev.filter((r) => !approvedSet.has(r.requesterPublicKey))
       );
@@ -838,7 +936,9 @@ export const ManageMembersDialog = ({
     if (selectedRequests.size === joinRequests.length) {
       setSelectedRequests(new Set());
     } else {
-      setSelectedRequests(new Set(joinRequests.map((r) => r.requesterPublicKey)));
+      setSelectedRequests(
+        new Set(joinRequests.map((r) => r.requesterPublicKey))
+      );
     }
   };
 
@@ -887,7 +987,11 @@ export const ManageMembersDialog = ({
 
       {open && (
         <>
-          <div className="fixed inset-0 bg-black/60 z-[60] modal-backdrop-enter" onClick={() => setOpen(false)} role="presentation" />
+          <div
+            className="fixed inset-0 bg-black/60 z-[60] modal-backdrop-enter"
+            onClick={() => setOpen(false)}
+            role="presentation"
+          />
           <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4">
             <div
               ref={dialogRef}
@@ -940,11 +1044,20 @@ export const ManageMembersDialog = ({
                         <div className="flex items-center gap-1.5">
                           <span
                             id="manage-members-title"
-                            className={`text-lg sm:text-xl font-semibold truncate ${isGroupOwner ? "cursor-pointer" : ""}`}
-                            onClick={isGroupOwner && !savingName ? () => {
-                              setEditingName(true);
-                              setTimeout(() => nameInputRef.current?.select(), 0);
-                            } : undefined}
+                            className={`text-lg sm:text-xl font-semibold truncate ${
+                              isGroupOwner ? "cursor-pointer" : ""
+                            }`}
+                            onClick={
+                              isGroupOwner && !savingName
+                                ? () => {
+                                    setEditingName(true);
+                                    setTimeout(
+                                      () => nameInputRef.current?.select(),
+                                      0
+                                    );
+                                  }
+                                : undefined
+                            }
                           >
                             {savingName ? editNameValue : currentDisplayName}
                           </span>
@@ -953,7 +1066,10 @@ export const ManageMembersDialog = ({
                               type="button"
                               onClick={() => {
                                 setEditingName(true);
-                                setTimeout(() => nameInputRef.current?.select(), 0);
+                                setTimeout(
+                                  () => nameInputRef.current?.select(),
+                                  0
+                                );
                               }}
                               className="p-1 text-white/30 hover:text-white/60 cursor-pointer shrink-0"
                               aria-label="Rename group"
@@ -961,7 +1077,9 @@ export const ManageMembersDialog = ({
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
                           )}
-                          {savingName && <Loader2 className="w-4 h-4 animate-spin text-white/30 shrink-0" />}
+                          {savingName && (
+                            <Loader2 className="w-4 h-4 animate-spin text-white/30 shrink-0" />
+                          )}
                         </div>
                       )}
                       <div className="text-sm text-white/30">
@@ -1055,7 +1173,9 @@ export const ManageMembersDialog = ({
                         <Globe className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                         List in Community
                       </span>
-                      <p className="text-[11px] text-white/25">Let others discover this group</p>
+                      <p className="text-[11px] text-white/25">
+                        Let others discover this group
+                      </p>
                     </div>
                     <button
                       type="button"
@@ -1064,16 +1184,26 @@ export const ManageMembersDialog = ({
                       className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-[#34F080]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050e1d] ${
                         isCommunityListed ? "bg-[#34F080]" : "bg-white/10"
                       }`}
-                      aria-label={isCommunityListed ? "Remove from community directory" : "List in community directory"}
+                      aria-label={
+                        isCommunityListed
+                          ? "Remove from community directory"
+                          : "List in community directory"
+                      }
                     >
                       {communityToggling ? (
-                        <Loader2 className={`w-3.5 h-3.5 animate-spin absolute top-[5px] text-white ${
-                          isCommunityListed ? "right-[5px]" : "left-[5px]"
-                        }`} />
+                        <Loader2
+                          className={`w-3.5 h-3.5 animate-spin absolute top-[5px] text-white ${
+                            isCommunityListed ? "right-[5px]" : "left-[5px]"
+                          }`}
+                        />
                       ) : (
-                        <div className={`w-[18px] h-[18px] rounded-full bg-white absolute top-[3px] transition-transform ${
-                          isCommunityListed ? "translate-x-[21px]" : "translate-x-[3px]"
-                        }`} />
+                        <div
+                          className={`w-[18px] h-[18px] rounded-full bg-white absolute top-[3px] transition-transform ${
+                            isCommunityListed
+                              ? "translate-x-[21px]"
+                              : "translate-x-[3px]"
+                          }`}
+                        />
                       )}
                     </button>
                   </div>
@@ -1083,13 +1213,17 @@ export const ManageMembersDialog = ({
                     <div className="mt-1.5 space-y-1">
                       <textarea
                         value={communityDescription}
-                        onChange={(e) => setCommunityDescription(e.target.value.slice(0, 200))}
+                        onChange={(e) =>
+                          setCommunityDescription(e.target.value.slice(0, 200))
+                        }
                         placeholder="Add a short description..."
                         rows={2}
                         className="w-full rounded-lg px-3 py-1.5 text-sm text-white/80 placeholder:text-white/20 bg-white/5 border border-white/8 focus:border-white/15 outline-none resize-none"
                       />
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-white/25">{communityDescription.length}/200</span>
+                        <span className="text-[11px] text-white/25">
+                          {communityDescription.length}/200
+                        </span>
                         {communityDescription !== savedDescription && (
                           <button
                             type="button"
@@ -1111,7 +1245,11 @@ export const ManageMembersDialog = ({
                 </div>
               )}
 
-              <form name="start-group-chat-form" onSubmit={formSubmit} className="flex flex-col min-h-0 flex-1">
+              <form
+                name="start-group-chat-form"
+                onSubmit={formSubmit}
+                className="flex flex-col min-h-0 flex-1"
+              >
                 {/* Scrollable body */}
                 <div className="p-3 sm:p-4 pb-0 overflow-y-auto overflow-x-hidden flex-1 min-h-0 custom-scrollbar">
                   <div className="mb-0">
@@ -1200,9 +1338,7 @@ export const ManageMembersDialog = ({
                                     : "bg-white/[0.03] border-white/5"
                                 }`}
                                 onClick={() =>
-                                  toggleRequestSelection(
-                                    req.requesterPublicKey
-                                  )
+                                  toggleRequestSelection(req.requesterPublicKey)
                                 }
                               >
                                 {joinRequests.length > 1 && (
@@ -1246,13 +1382,17 @@ export const ManageMembersDialog = ({
                                     ) : (
                                       <Check className="w-3 h-3" />
                                     )}
-                                    <span className="hidden sm:inline">Approve</span>
+                                    <span className="hidden sm:inline">
+                                      Approve
+                                    </span>
                                   </button>
                                   <button
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleRejectRequests([req.requesterPublicKey]);
+                                      handleRejectRequests([
+                                        req.requesterPublicKey,
+                                      ]);
                                     }}
                                     disabled={isRejecting}
                                     className="rounded-full px-3 py-1.5 bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-medium hover:bg-red-500/30 cursor-pointer disabled:opacity-50 flex items-center gap-1"
@@ -1262,7 +1402,9 @@ export const ManageMembersDialog = ({
                                     ) : (
                                       <X className="w-3 h-3" />
                                     )}
-                                    <span className="hidden sm:inline">Reject</span>
+                                    <span className="hidden sm:inline">
+                                      Reject
+                                    </span>
                                   </button>
                                 </div>
                               </div>
@@ -1279,12 +1421,14 @@ export const ManageMembersDialog = ({
                       </div>
                     )}
 
-                    {isGroupOwner && !joinRequestsLoading && joinRequests.length === 0 && (
-                      <div className="text-xs sm:text-sm text-white/25 mb-2 flex items-center gap-1.5">
-                        <UserPlus className="w-3.5 h-3.5" />
-                        No pending join requests
-                      </div>
-                    )}
+                    {isGroupOwner &&
+                      !joinRequestsLoading &&
+                      joinRequests.length === 0 && (
+                        <div className="text-xs sm:text-sm text-white/25 mb-2 flex items-center gap-1.5">
+                          <UserPlus className="w-3.5 h-3.5" />
+                          No pending join requests
+                        </div>
+                      )}
 
                     {isGroupOwner && (
                       <SearchUsers
@@ -1292,17 +1436,17 @@ export const ManageMembersDialog = ({
                         onSelected={(member) =>
                           addMember(member, () => {
                             setTimeout(() => {
-                              membersAreaRef.current?.scrollTo(0, membersAreaRef.current.scrollHeight);
+                              membersAreaRef.current?.scrollTo(
+                                0,
+                                membersAreaRef.current.scrollHeight
+                              );
                             }, 0);
                           })
                         }
                       />
                     )}
 
-                    <div
-                      className="mt-2 pr-1"
-                      ref={membersAreaRef}
-                    >
+                    <div className="mt-2 pr-1" ref={membersAreaRef}>
                       {loading ? (
                         <div className="text-center">
                           <Loader2 className="w-11 h-11 mt-4 animate-spin text-[#34F080] mx-auto" />
@@ -1311,40 +1455,50 @@ export const ManageMembersDialog = ({
                         members.map((member) => {
                           const memberPresence = getPresence(member.id);
                           return (
-                          <div
-                            className="grid grid-cols-[auto_1fr_auto] gap-x-2 p-1.5 sm:p-2 items-center cursor-pointer text-white bg-white/[0.03] border border-white/5 rounded-xl my-1"
-                            key={member.id}
-                          >
-                            <MessagingDisplayAvatar
-                              username={member.text}
-                              publicKey={member.id}
-                              diameter={isMobile ? 36 : 40}
-                              classNames="mx-0"
-                              showOnlineDot={memberPresence.status === "online"}
-                            />
-                            <div className="min-w-0 text-left">
-                              <div className="font-medium truncate">{member.text}</div>
-                                {isGroupOwner && currentMemberKeys.includes(member.id) ? (
+                            <div
+                              className="grid grid-cols-[auto_1fr_auto] gap-x-2 p-1.5 sm:p-2 items-center cursor-pointer text-white bg-white/[0.03] border border-white/5 rounded-xl my-1"
+                              key={member.id}
+                            >
+                              <MessagingDisplayAvatar
+                                username={member.text}
+                                publicKey={member.id}
+                                diameter={isMobile ? 36 : 40}
+                                classNames="mx-0"
+                                showOnlineDot={
+                                  memberPresence.status === "online"
+                                }
+                              />
+                              <div className="min-w-0 text-left">
+                                <div className="font-medium truncate">
+                                  {member.text}
+                                </div>
+                                {isGroupOwner &&
+                                currentMemberKeys.includes(member.id) ? (
                                   <div className="text-xs md:text-sm text-white/40 mt-1">
                                     Already in the chat
                                   </div>
                                 ) : memberPresence.status === "online" ? (
-                                  <div className="text-xs text-[#34F080] mt-0.5">Online</div>
+                                  <div className="text-xs text-[#34F080] mt-0.5">
+                                    Online
+                                  </div>
                                 ) : memberPresence.status === "last-seen" ? (
-                                  <div className="text-xs text-gray-500 mt-0.5">{formatLastSeen(memberPresence.timestamp)}</div>
+                                  <div className="text-xs text-gray-500 mt-0.5">
+                                    {formatLastSeen(memberPresence.timestamp)}
+                                  </div>
                                 ) : null}
                               </div>
-                            {isGroupOwner && member.id !== appUser?.PublicKeyBase58Check ? (
-                              <button
-                                className="rounded-full px-3 py-2 glass-btn-danger text-red-400 text-sm md:px-4 cursor-pointer"
-                                onClick={() => removeMember(member.id)}
-                              >
-                                Remove
-                              </button>
-                            ) : (
-                              <span />
-                            )}
-                          </div>
+                              {isGroupOwner &&
+                              member.id !== appUser?.PublicKeyBase58Check ? (
+                                <button
+                                  className="rounded-full px-3 py-2 glass-btn-danger text-red-400 text-sm md:px-4 cursor-pointer"
+                                  onClick={() => removeMember(member.id)}
+                                >
+                                  Remove
+                                </button>
+                              ) : (
+                                <span />
+                              )}
+                            </div>
                           );
                         })
                       )}
@@ -1357,7 +1511,9 @@ export const ManageMembersDialog = ({
                   {!isGroupOwner && (
                     <button
                       onClick={() => {
-                        const ownerKey = conversation.messages[0]?.RecipientInfo?.OwnerPublicKeyBase58Check;
+                        const ownerKey =
+                          conversation.messages[0]?.RecipientInfo
+                            ?.OwnerPublicKeyBase58Check;
                         if (ownerKey) {
                           setOpen(false);
                           onLeaveGroup(conversationKey, ownerKey, groupName);
@@ -1385,7 +1541,9 @@ export const ManageMembersDialog = ({
                           className="glass-btn-primary text-[#34F080] font-semibold rounded-full py-2 text-sm px-4 flex items-center cursor-pointer transition-colors"
                           disabled={updating}
                         >
-                          {updating && <Loader2 className="w-5 h-5 mr-2 animate-spin" />}
+                          {updating && (
+                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                          )}
                           <span>Update Group</span>
                         </button>
                       </>

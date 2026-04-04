@@ -37,11 +37,19 @@ export async function withAuth<T>(fn: () => Promise<T>): Promise<T> {
         // the popup was cancelled (no END event fires on cancel).
         useStore.getState().setIsLoadingUser(false);
 
-        const reAuthStr = reAuthError?.message || reAuthError?.toString?.() || "";
-        if (reAuthStr.includes("user cancelled") || reAuthStr.includes("WINDOW_CLOSED")) {
-          toast.error("Authorization cancelled. You need to re-authorize to perform this action.");
+        const reAuthStr =
+          reAuthError?.message || reAuthError?.toString?.() || "";
+        if (
+          reAuthStr.includes("user cancelled") ||
+          reAuthStr.includes("WINDOW_CLOSED")
+        ) {
+          toast.error(
+            "Authorization cancelled. You need to re-authorize to perform this action."
+          );
         } else {
-          toast.error("Re-authorization failed. Please try logging out and back in.");
+          toast.error(
+            "Re-authorization failed. Please try logging out and back in."
+          );
         }
         throw reAuthError;
       }
@@ -76,13 +84,19 @@ export function needsPermissionUpgrade(): boolean {
   const publicKey = appUser?.PublicKeyBase58Check || "";
   if (!publicKey) return false;
 
-  const { GlobalDESOLimit, DAOCoinOperationLimitMap, ...structuralPermissions } =
-    getTransactionSpendingLimits(publicKey);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const {
+    GlobalDESOLimit,
+    DAOCoinOperationLimitMap,
+    ...structuralPermissions
+  } = getTransactionSpendingLimits(publicKey);
 
   // AUTHORIZE_DERIVED_KEY is a one-shot permission consumed during key creation,
   // so it always reads as 0 afterward — exclude it to avoid a false positive.
   if (structuralPermissions.TransactionCountLimitMap) {
-    const { AUTHORIZE_DERIVED_KEY, ...rest } = structuralPermissions.TransactionCountLimitMap;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { AUTHORIZE_DERIVED_KEY, ...rest } =
+      structuralPermissions.TransactionCountLimitMap;
     structuralPermissions.TransactionCountLimitMap = rest;
   }
 
@@ -95,7 +109,11 @@ export function needsPermissionUpgrade(): boolean {
     const { TransactionCountLimitMap } = structuralPermissions;
     if (TransactionCountLimitMap) {
       for (const [txnType, count] of Object.entries(TransactionCountLimitMap)) {
-        if (!identity.hasPermissions({ TransactionCountLimitMap: { [txnType]: count } })) {
+        if (
+          !identity.hasPermissions({
+            TransactionCountLimitMap: { [txnType]: count },
+          })
+        ) {
           missing.push(`txn:${txnType}`);
         }
       }
@@ -104,7 +122,9 @@ export function needsPermissionUpgrade(): boolean {
     // Check access group limits
     if (
       structuralPermissions.AccessGroupLimitMap &&
-      !identity.hasPermissions({ AccessGroupLimitMap: structuralPermissions.AccessGroupLimitMap })
+      !identity.hasPermissions({
+        AccessGroupLimitMap: structuralPermissions.AccessGroupLimitMap,
+      })
     ) {
       missing.push("AccessGroupLimitMap");
     }
@@ -112,7 +132,10 @@ export function needsPermissionUpgrade(): boolean {
     // Check access group member limits
     if (
       structuralPermissions.AccessGroupMemberLimitMap &&
-      !identity.hasPermissions({ AccessGroupMemberLimitMap: structuralPermissions.AccessGroupMemberLimitMap })
+      !identity.hasPermissions({
+        AccessGroupMemberLimitMap:
+          structuralPermissions.AccessGroupMemberLimitMap,
+      })
     ) {
       missing.push("AccessGroupMemberLimitMap");
     }
@@ -120,12 +143,17 @@ export function needsPermissionUpgrade(): boolean {
     // Check association limits
     if (
       structuralPermissions.AssociationLimitMap &&
-      !identity.hasPermissions({ AssociationLimitMap: structuralPermissions.AssociationLimitMap })
+      !identity.hasPermissions({
+        AssociationLimitMap: structuralPermissions.AssociationLimitMap,
+      })
     ) {
       missing.push("AssociationLimitMap");
     }
 
-    console.debug("[permissions] upgrade needed — missing:", missing.join(", ") || "(key invalid or unregistered)");
+    console.debug(
+      "[permissions] upgrade needed — missing:",
+      missing.join(", ") || "(key invalid or unregistered)"
+    );
   }
 
   return needsUpgrade;

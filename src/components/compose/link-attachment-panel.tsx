@@ -1,9 +1,25 @@
-import { X, Loader2, LinkIcon } from "lucide-react";
-import { useState, useRef, useEffect, KeyboardEvent, useCallback, forwardRef, useImperativeHandle } from "react";
-import { fetchOgData, OgData } from "../../services/og.service";
-import { detectLinkService, extractFileNameFromUrl } from "../../utils/link-services";
+import { X, LinkIcon } from "lucide-react";
 import {
-  SiGoogledrive, SiDropbox, SiGithub, SiFigma, SiNotion, SiYoutube,
+  useState,
+  useRef,
+  useEffect,
+  KeyboardEvent,
+  useCallback,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
+import { fetchOgData, OgData } from "../../services/og.service";
+import {
+  detectLinkService,
+  extractFileNameFromUrl,
+} from "../../utils/link-services";
+import {
+  SiGoogledrive,
+  SiDropbox,
+  SiGithub,
+  SiFigma,
+  SiNotion,
+  SiYoutube,
 } from "@icons-pack/react-simple-icons";
 
 interface LinkAttachmentPanelProps {
@@ -26,11 +42,10 @@ function isValidUrl(str: string): boolean {
   }
 }
 
-export const LinkAttachmentPanel = forwardRef<LinkAttachmentPanelHandle, LinkAttachmentPanelProps>(({
-  onSend,
-  onCancel,
-  isSending,
-}, ref) => {
+export const LinkAttachmentPanel = forwardRef<
+  LinkAttachmentPanelHandle,
+  LinkAttachmentPanelProps
+>(({ onSend, onCancel, isSending }, ref) => {
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
   const [urlTouched, setUrlTouched] = useState(false);
@@ -142,9 +157,16 @@ export const LinkAttachmentPanel = forwardRef<LinkAttachmentPanelHandle, LinkAtt
   // Prefer URL filename when OG title is just the service name, domain,
   // or a known-useless placeholder (e.g. Google Docs JS-rendered titles)
   const JUNK_TITLES = [
-    "loading google docs", "loading google sheets", "loading google slides",
-    "loading google forms", "google docs", "google sheets", "google slides",
-    "google forms", "google drive", "error",
+    "loading google docs",
+    "loading google sheets",
+    "loading google slides",
+    "loading google forms",
+    "google docs",
+    "google sheets",
+    "google slides",
+    "google forms",
+    "google drive",
+    "error",
   ];
   const ogDisplayTitle = (() => {
     const raw = ogData?.title;
@@ -160,7 +182,8 @@ export const LinkAttachmentPanel = forwardRef<LinkAttachmentPanelHandle, LinkAtt
     return raw;
   })();
 
-  const hasOgPreview = ogData && (ogDisplayTitle || ogData.description || ogData.image);
+  const hasOgPreview =
+    ogData && (ogDisplayTitle || ogData.description || ogData.image);
   const showNoPreview = ogFetched && !hasOgPreview && !ogLoading && validUrl;
 
   return (
@@ -173,7 +196,9 @@ export const LinkAttachmentPanel = forwardRef<LinkAttachmentPanelHandle, LinkAtt
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <LinkIcon className="w-3.5 h-3.5 text-blue-400" />
-          <span className="text-[11px] font-medium text-blue-400/80 uppercase tracking-wider">Share a link</span>
+          <span className="text-[11px] font-medium text-blue-400/80 uppercase tracking-wider">
+            Share a link
+          </span>
         </div>
         <button
           onClick={onCancel}
@@ -256,11 +281,15 @@ export const LinkAttachmentPanel = forwardRef<LinkAttachmentPanelHandle, LinkAtt
               )}
               <div className="p-2.5 flex items-start gap-2">
                 {service ? (
-                  <div className={`w-6 h-6 rounded flex items-center justify-center shrink-0 ${service.badgeBg}`}>
+                  <div
+                    className={`w-6 h-6 rounded flex items-center justify-center shrink-0 ${service.badgeBg}`}
+                  >
                     {service.icon ? (
                       <service.icon size={12} className={service.badgeText} />
                     ) : (
-                      <span className={`text-[9px] font-bold leading-none ${service.badgeText}`}>
+                      <span
+                        className={`text-[9px] font-bold leading-none ${service.badgeText}`}
+                      >
                         {service.badge}
                       </span>
                     )}
@@ -291,9 +320,12 @@ export const LinkAttachmentPanel = forwardRef<LinkAttachmentPanelHandle, LinkAtt
         )}
 
         {showNoPreview && (
-          <p className="text-gray-600 text-[11px] mt-1.5 ml-1">No preview available for this link</p>
+          <p className="text-gray-600 text-[11px] mt-1.5 ml-1">
+            No preview available for this link
+          </p>
         )}
       </div>
     </div>
   );
 });
+LinkAttachmentPanel.displayName = "LinkAttachmentPanel";

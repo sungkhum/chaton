@@ -28,7 +28,10 @@ const PrivacyContent: FC = () => (
     </Section>
 
     <Section title="Data We Do Not Collect">
-      <p>ChatOn does not use analytics, tracking pixels, or advertising SDKs. We do not collect:</p>
+      <p>
+        ChatOn does not use analytics, tracking pixels, or advertising SDKs. We
+        do not collect:
+      </p>
       <ul className="list-disc list-inside mt-3 space-y-1.5 text-gray-400">
         <li>Usage analytics or behavioral data</li>
         <li>Device fingerprints</li>
@@ -55,8 +58,7 @@ const PrivacyContent: FC = () => (
       <p className="mt-3">
         ChatOn cannot delete, modify, or access the plaintext of your messages.
         Blockchain data is permanent and public by design, though message
-        content is encrypted and only readable by the conversation
-        participants.
+        content is encrypted and only readable by the conversation participants.
       </p>
     </Section>
 
@@ -111,16 +113,16 @@ const PrivacyContent: FC = () => (
           all message data, profiles, and social graph
         </li>
         <li>
-          <strong className="text-gray-300">DeSo Identity</strong> —
-          handles authentication and key management
+          <strong className="text-gray-300">DeSo Identity</strong> — handles
+          authentication and key management
         </li>
         <li>
           <strong className="text-gray-300">Cloudflare</strong> — hosts our
           WebSocket relay worker and serves static assets
         </li>
         <li>
-          <strong className="text-gray-300">KLIPY</strong> — provides GIF
-          and sticker search when you use the content picker (subject to{" "}
+          <strong className="text-gray-300">KLIPY</strong> — provides GIF and
+          sticker search when you use the content picker (subject to{" "}
           <a
             href="https://klipy.com/support/api-terms"
             target="_blank"
@@ -153,8 +155,8 @@ const PrivacyContent: FC = () => (
     <Section title="Changes to This Policy">
       <p>
         We may update this policy to reflect changes in the app or applicable
-        law. The "Last updated" date at the top will change when we do.
-        Continued use of ChatOn after changes constitutes acceptance of the
+        law. The &ldquo;Last updated&rdquo; date at the top will change when we
+        do. Continued use of ChatOn after changes constitutes acceptance of the
         updated policy.
       </p>
     </Section>
@@ -243,19 +245,19 @@ const TermsContent: FC = () => (
 
     <Section title="Availability">
       <p>
-        ChatOn is provided on an "as available" basis. We do not guarantee
-        uninterrupted access. The app depends on the DeSo blockchain and
-        third-party infrastructure (Cloudflare, DeSo nodes) which are outside
-        our control. We may modify, suspend, or discontinue the app at any
-        time.
+        ChatOn is provided on an &ldquo;as available&rdquo; basis. We do not
+        guarantee uninterrupted access. The app depends on the DeSo blockchain
+        and third-party infrastructure (Cloudflare, DeSo nodes) which are
+        outside our control. We may modify, suspend, or discontinue the app at
+        any time.
       </p>
     </Section>
 
     <Section title="No Warranty">
       <p>
-        ChatOn is provided "as is" without warranties of any kind, express or
-        implied, including but not limited to warranties of merchantability,
-        fitness for a particular purpose, or non-infringement.
+        ChatOn is provided &ldquo;as is&rdquo; without warranties of any kind,
+        express or implied, including but not limited to warranties of
+        merchantability, fitness for a particular purpose, or non-infringement.
       </p>
     </Section>
 
@@ -285,9 +287,9 @@ const TermsContent: FC = () => (
 
     <Section title="Changes to These Terms">
       <p>
-        We may update these terms at any time. The "Last updated" date at the
-        top will reflect the most recent revision. Continued use of ChatOn
-        after changes constitutes acceptance of the updated terms.
+        We may update these terms at any time. The &ldquo;Last updated&rdquo;
+        date at the top will reflect the most recent revision. Continued use of
+        ChatOn after changes constitutes acceptance of the updated terms.
       </p>
     </Section>
 
@@ -320,7 +322,10 @@ const Section: FC<{ title: string; children: React.ReactNode }> = ({
 
 export const LegalPage: FC<{ type: "privacy" | "terms" }> = ({ type }) => {
   usePageMeta({
-    title: type === "privacy" ? "Privacy Policy — ChatOn" : "Terms of Service — ChatOn",
+    title:
+      type === "privacy"
+        ? "Privacy Policy — ChatOn"
+        : "Terms of Service — ChatOn",
     description:
       type === "privacy"
         ? "ChatOn does not collect analytics, tracking pixels, or advertising data. Learn how your privacy is protected."
@@ -329,48 +334,51 @@ export const LegalPage: FC<{ type: "privacy" | "terms" }> = ({ type }) => {
   });
 
   return (
-  <div className="min-h-screen bg-[#0A0E17] text-white">
-    <header className="border-b border-white/5 bg-[#0F1520]">
-      <div className="max-w-3xl mx-auto px-6 py-4 flex items-center gap-4">
-        <a href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-          <img
-            src="/ChatOn-Logo-Small.png"
-            alt="ChatOn"
-            className="w-8 h-8 rounded-xl"
-          />
-          <span className="font-black tracking-tight text-lg">ChatOn</span>
-        </a>
-      </div>
-    </header>
-    <main className="max-w-3xl mx-auto px-6 py-12 md:py-16">
-      {type === "privacy" ? <PrivacyContent /> : <TermsContent />}
-    </main>
-    <footer className="border-t border-white/5 bg-[#0F1520]">
-      <div className="max-w-3xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-600">
-        <p>
-          &copy; {new Date().getFullYear()} ChatOn. End-to-end encrypted
-          messaging on DeSo.
-        </p>
-        <div className="flex gap-6">
+    <div className="min-h-screen bg-[#0A0E17] text-white">
+      <header className="border-b border-white/5 bg-[#0F1520]">
+        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center gap-4">
           <a
-            href="/privacy"
-            className={`hover:text-gray-400 transition-colors ${
-              type === "privacy" ? "text-gray-400" : ""
-            }`}
+            href="/"
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           >
-            Privacy
-          </a>
-          <a
-            href="/terms"
-            className={`hover:text-gray-400 transition-colors ${
-              type === "terms" ? "text-gray-400" : ""
-            }`}
-          >
-            Terms
+            <img
+              src="/ChatOn-Logo-Small.png"
+              alt="ChatOn"
+              className="w-8 h-8 rounded-xl"
+            />
+            <span className="font-black tracking-tight text-lg">ChatOn</span>
           </a>
         </div>
-      </div>
-    </footer>
-  </div>
+      </header>
+      <main className="max-w-3xl mx-auto px-6 py-12 md:py-16">
+        {type === "privacy" ? <PrivacyContent /> : <TermsContent />}
+      </main>
+      <footer className="border-t border-white/5 bg-[#0F1520]">
+        <div className="max-w-3xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-600">
+          <p>
+            &copy; {new Date().getFullYear()} ChatOn. End-to-end encrypted
+            messaging on DeSo.
+          </p>
+          <div className="flex gap-6">
+            <a
+              href="/privacy"
+              className={`hover:text-gray-400 transition-colors ${
+                type === "privacy" ? "text-gray-400" : ""
+              }`}
+            >
+              Privacy
+            </a>
+            <a
+              href="/terms"
+              className={`hover:text-gray-400 transition-colors ${
+                type === "terms" ? "text-gray-400" : ""
+              }`}
+            >
+              Terms
+            </a>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 };
