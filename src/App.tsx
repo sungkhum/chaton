@@ -500,7 +500,7 @@ function App() {
   }
 
   if (path.startsWith("/blog/")) {
-    const slug = path.replace("/blog/", "");
+    const slug = path.replace("/blog/", "").replace(/\/$/, "");
     const PostComponent = lazyPost(slug);
     if (PostComponent) {
       return (
