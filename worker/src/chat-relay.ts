@@ -1,7 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { sendPushNotification, PushSubscriptionData } from "./web-push";
 import { validateDesoJwt } from "./jwt";
-import { updateLastSeen, getReadCursors, upsertReadCursors } from "./db";
+import { updateLastSeen, getReadCursors, upsertReadCursors, recordPushSent } from "./db";
 
 interface WsMessage {
   type: "notify" | "typing" | "read" | "register" | "read-sync-init";
@@ -286,6 +286,13 @@ export class ChatRelay extends DurableObject<RelayEnv> {
         "DELETE FROM push_subscriptions WHERE public_key = ? AND endpoint = ?",
         publicKey,
         endpoint
+      );
+    }
+
+    // Record in D1 so the cron/queue path skips this notification (best-effort)
+    if (rows.length > 0) {
+      this.ctx.waitUntil(
+        recordPushSent(this.env.DB, publicKey, threadId).catch(() => {})
       );
     }
   }

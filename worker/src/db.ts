@@ -246,6 +246,56 @@ export async function resetFailureCount(
 }
 
 // ---------------------------------------------------------------------------
+// Push notification dedup (cross-path: DO real-time vs cron/queue)
+// ---------------------------------------------------------------------------
+
+/** Record that a push was sent so the other delivery path can skip it. */
+export async function recordPushSent(
+  db: D1Database,
+  recipientPk: string,
+  conversationKey: string
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO notification_dedup (recipient_pk, conversation_key)
+       VALUES (?, ?)
+       ON CONFLICT (recipient_pk, conversation_key) DO UPDATE SET
+         sent_at = datetime('now')`
+    )
+    .bind(recipientPk, conversationKey)
+    .run();
+}
+
+/** Check if a push was recently sent for this recipient + conversation. */
+export async function wasRecentlyNotified(
+  db: D1Database,
+  recipientPk: string,
+  conversationKey: string,
+  withinSeconds: number = 90
+): Promise<boolean> {
+  const row = await db
+    .prepare(
+      `SELECT 1 FROM notification_dedup
+       WHERE recipient_pk = ? AND conversation_key = ?
+         AND sent_at > datetime('now', ?)`
+    )
+    .bind(recipientPk, conversationKey, `-${withinSeconds} seconds`)
+    .first();
+  return !!row;
+}
+
+/** Clean up old dedup records (called from cron). */
+export async function cleanupNotificationDedup(
+  db: D1Database
+): Promise<void> {
+  await db
+    .prepare(
+      "DELETE FROM notification_dedup WHERE sent_at < datetime('now', '-5 minutes')"
+    )
+    .run();
+}
+
+// ---------------------------------------------------------------------------
 // Read cursor sync (cross-device)
 // ---------------------------------------------------------------------------
 

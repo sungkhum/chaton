@@ -8,6 +8,7 @@ import {
   getOptedInUsers,
   getThreadStates,
   upsertThreadState,
+  cleanupNotificationDedup,
 } from "./db";
 
 // ── DeSo API types (only the fields we need) ──
@@ -128,6 +129,9 @@ async function fetchThreads(
 const MAX_USERS_PER_RUN = 100;
 
 export async function handleScheduled(env: Env): Promise<void> {
+  // Purge stale dedup records (older than 5 minutes)
+  await cleanupNotificationDedup(env.DB).catch(() => {});
+
   const users = await getOptedInUsers(env.DB);
   if (users.length === 0) return;
 

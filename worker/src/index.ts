@@ -11,6 +11,7 @@ import {
   incrementFailureCount,
   resetFailureCount,
   getLastSeenBatch,
+  wasRecentlyNotified,
 } from "./db";
 import { sendPushNotification, type PushSubscriptionData } from "./web-push";
 import { validateDesoJwt } from "./jwt";
@@ -292,6 +293,14 @@ async function handlePushUnsubscribe(
 const MAX_CONSECUTIVE_FAILURES = 5;
 
 async function deliverPush(env: Env, job: PushJob): Promise<void> {
+  // Skip if the real-time DO path already sent this notification
+  const alreadySent = await wasRecentlyNotified(
+    env.DB,
+    job.desoPublicKey,
+    job.conversationKey
+  );
+  if (alreadySent) return;
+
   const subs = await getSubscriptionsForUser(env.DB, job.userId);
   if (subs.length === 0) return;
 

@@ -1,6 +1,11 @@
 import { defaultCache } from "@serwist/vite/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { Serwist, NetworkOnly, StaleWhileRevalidate, ExpirationPlugin } from "serwist";
+import {
+  Serwist,
+  NetworkOnly,
+  StaleWhileRevalidate,
+  ExpirationPlugin,
+} from "serwist";
 import { createStore, get, set } from "idb-keyval";
 
 declare global {
@@ -116,15 +121,17 @@ self.addEventListener("push", (event) => {
       const rawConvKey = data.conversationKey as string | undefined;
       const fromPubKey = data.from as string | undefined;
       const isDM = rawConvKey?.endsWith("default-key");
-      const localConvKey = (fromPubKey && isDM)
-        ? fromPubKey + "default-key"
-        : rawConvKey;
+      const localConvKey =
+        fromPubKey && isDM ? fromPubKey + "default-key" : rawConvKey;
 
       // Check if this conversation is muted
       let isMuted = false;
       if (localConvKey) {
         try {
-          const mutedList = await get<string[]>("mutedConversations:active", idbStore);
+          const mutedList = await get<string[]>(
+            "mutedConversations:active",
+            idbStore
+          );
           if (mutedList?.includes(localConvKey)) {
             isMuted = true;
           }
@@ -152,12 +159,21 @@ self.addEventListener("push", (event) => {
       const isIOS = /iPad|iPhone|iPod/.test(self.navigator.userAgent);
       if (!isIOS && !isMuted && localConvKey) {
         try {
-          const windowClients = await self.clients.matchAll({ type: "window", includeUncontrolled: false });
+          const windowClients = await self.clients.matchAll({
+            type: "window",
+            includeUncontrolled: false,
+          });
           const focusedClient = windowClients.find(
-            (c) => c.visibilityState === "visible" && (c as { focused?: boolean }).focused
+            (c) =>
+              c.visibilityState === "visible" &&
+              (c as { focused?: boolean }).focused
           );
           const currentActiveKey = getActiveConversationKey();
-          if (focusedClient && currentActiveKey && currentActiveKey === localConvKey) {
+          if (
+            focusedClient &&
+            currentActiveKey &&
+            currentActiveKey === localConvKey
+          ) {
             // Forward to the focused client for in-app handling (e.g. scroll-to-bottom)
             focusedClient.postMessage({ type: "push-received", payload: data });
             return;
@@ -177,7 +193,9 @@ self.addEventListener("push", (event) => {
         });
         // Clean up the muted notification so it doesn't linger in the tray
         try {
-          const muted = await self.registration.getNotifications({ tag: "chaton-muted" });
+          const muted = await self.registration.getNotifications({
+            tag: "chaton-muted",
+          });
           for (const n of muted) n.close();
         } catch {
           // getNotifications not supported (some browsers) — notification stays
@@ -186,11 +204,18 @@ self.addEventListener("push", (event) => {
       }
 
       const title = (data.title as string) || "ChatOn";
+      // Use localConvKey for the tag so both delivery paths (real-time DO
+      // and cron/queue) produce the same tag after DM key translation.
+      // Without this, DM notifications arrive with different tags (sender's
+      // vs recipient's conversation key) and the browser shows both.
+      const normalizedTag = localConvKey
+        ? `thread-${localConvKey}`
+        : (data.tag as string) || "chaton-notification";
       const options: NotificationOptions = {
         body: (data.body as string) || "You have a new message",
         icon: "/favicon.png",
         badge: "/favicon.png",
-        tag: (data.tag as string) || "chaton-notification",
+        tag: normalizedTag,
         renotify: true,
         data: {
           url: data.url || "/",
@@ -203,12 +228,17 @@ self.addEventListener("push", (event) => {
       // Track unread conversation in IndexedDB and update badge count
       try {
         const convKey = localConvKey;
-        const unread: string[] = (await get<string[]>("unreadConversations:active", idbStore)) || [];
+        const unread: string[] =
+          (await get<string[]>("unreadConversations:active", idbStore)) || [];
         if (convKey && !unread.includes(convKey)) {
           unread.push(convKey);
           await set("unreadConversations:active", unread, idbStore);
         }
-        await (self.navigator as Navigator & { setAppBadge: (n: number) => Promise<void> }).setAppBadge(unread.length);
+        await (
+          self.navigator as Navigator & {
+            setAppBadge: (n: number) => Promise<void>;
+          }
+        ).setAppBadge(unread.length);
       } catch {
         // Badge API or IndexedDB not supported
       }
@@ -220,11 +250,13 @@ self.addEventListener("push", (event) => {
 // Re-subscribes and syncs the new subscription directly to the relay server.
 // This is critical when no client window is open — without this, the server
 // holds a dead endpoint and the user stops receiving push until they reopen the app.
-self.addEventListener("pushsubscriptionchange", ((event: Event & {
-  oldSubscription?: PushSubscription;
-  newSubscription?: PushSubscription;
-  waitUntil: (p: Promise<unknown>) => void;
-}) => {
+self.addEventListener("pushsubscriptionchange", ((
+  event: Event & {
+    oldSubscription?: PushSubscription;
+    newSubscription?: PushSubscription;
+    waitUntil: (p: Promise<unknown>) => void;
+  }
+) => {
   event.waitUntil(
     (async () => {
       try {
@@ -232,7 +264,8 @@ self.addEventListener("pushsubscriptionchange", ((event: Event & {
         if (!newSub && event.oldSubscription?.options?.applicationServerKey) {
           newSub = await self.registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: event.oldSubscription.options.applicationServerKey,
+            applicationServerKey:
+              event.oldSubscription.options.applicationServerKey,
           });
         }
 
@@ -275,27 +308,50 @@ self.addEventListener("pushsubscriptionchange", ((event: Event & {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = event.notification.data?.url || "/";
+  const conversationKey = event.notification.data?.conversationKey;
 
   event.waitUntil(
-    self.clients
-      .matchAll({ type: "window", includeUncontrolled: true })
-      .then((clients) => {
-        // Focus existing window if available
-        for (const client of clients) {
-          if (client.url.includes(self.location.origin)) {
-            client.focus();
-            client.postMessage({
-              type: "notification-click",
-              conversationKey: event.notification.data?.conversationKey,
-            });
-            return;
-          }
+    (async () => {
+      // Persist the target conversation in IndexedDB BEFORE focusing/opening.
+      // When the app resumes from a suspended state, postMessage is unreliable
+      // (the JS context may still be unfreezing). IndexedDB survives across all
+      // app states and the visibility-change handler picks it up on resume.
+      if (conversationKey) {
+        try {
+          await set(
+            "pendingNotificationConversation",
+            conversationKey,
+            idbStore
+          );
+        } catch {
+          // IndexedDB unavailable — fall through to postMessage/URL param
         }
-        // Otherwise open new window — pass conversationKey so the app can navigate
-        const conversationKey = event.notification.data?.conversationKey;
-        const openUrl = conversationKey ? `/?conversation=${conversationKey}` : url;
-        return self.clients.openWindow(openUrl);
-      })
+      }
+
+      const clients = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+
+      // Focus existing window if available
+      for (const client of clients) {
+        if (client.url.includes(self.location.origin)) {
+          await client.focus();
+          // Still send postMessage as a fast path for when the app is active
+          client.postMessage({
+            type: "notification-click",
+            conversationKey,
+          });
+          return;
+        }
+      }
+
+      // Otherwise open new window — pass conversationKey so the app can navigate
+      const openUrl = conversationKey
+        ? `/?conversation=${conversationKey}`
+        : url;
+      await self.clients.openWindow(openUrl);
+    })()
   );
 });
 
