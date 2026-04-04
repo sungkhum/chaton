@@ -57,6 +57,8 @@ export const MessagingDisplayAvatar: FC<{
   extraDataPicUrl?: string;
   /** Show a green online indicator dot */
   showOnlineDot?: boolean;
+  /** When true, render as a plain div instead of linking to profile */
+  disableLink?: boolean;
 }> = ({
   publicKey,
   username,
@@ -67,6 +69,7 @@ export const MessagingDisplayAvatar: FC<{
   groupImageUrl,
   extraDataPicUrl,
   showOnlineDot = false,
+  disableLink = false,
 }) => {
   const colorIndex = useMemo(
     () => hashToColorIndex(publicKey || username || ""),
@@ -85,7 +88,9 @@ export const MessagingDisplayAvatar: FC<{
     const sdkUrl = buildProfilePictureUrl(publicKey, { fallbackImageUrl: "" });
     if (sdkUrl) urls.push(sdkUrl);
     // Priority 3: Direct URL construction (fallback if SDK URL is malformed)
-    const directUrl = `${import.meta.env.VITE_NODE_URL}/api/v0/get-single-profile-picture/${publicKey}`;
+    const directUrl = `${
+      import.meta.env.VITE_NODE_URL
+    }/api/v0/get-single-profile-picture/${publicKey}`;
     if (!urls.includes(directUrl)) urls.push(directUrl);
     return urls;
   }, [publicKey, groupChat, groupImageUrl, extraDataPicUrl]);
@@ -103,22 +108,37 @@ export const MessagingDisplayAvatar: FC<{
 
   // Track the URL that successfully loaded — protects against stale onError from
   // browser cache revalidation firing AFTER onLoad.
-  const loadedUrlRef = useRef<string | null>(
-    imgLoaded ? profilePicUrl : null
-  );
+  const loadedUrlRef = useRef<string | null>(imgLoaded ? profilePicUrl : null);
+
+  // Reset fallback state during render when candidate URLs change (conversation
+  // switch, new group image, etc). Render-phase reset avoids the useEffect race
+  // where onLoad fires for a cached image before the effect can run.
+  const candidateKey = candidateUrls.join("|");
+  const prevCandidateKeyRef = useRef(candidateKey);
+  if (prevCandidateKeyRef.current !== candidateKey) {
+    prevCandidateKeyRef.current = candidateKey;
+    setUrlIndex(0);
+    setImgFailed(false);
+    const firstUrl = candidateUrls[0] || "";
+    setImgLoaded(!!firstUrl && loadedUrlCache.has(firstUrl));
+    loadedUrlRef.current = null;
+  }
 
   const showImage = !!profilePicUrl && !imgFailed;
   const initials = getInitials(
-    groupChat ? (publicKey || "") : (username || publicKey || "")
+    groupChat ? publicKey || "" : username || publicKey || ""
   );
   const fontSize = Math.round(diameter * 0.38);
 
   // rerender-memo-with-default-value: memoize style objects to avoid new allocations each render
-  const sizeStyle = useMemo(() => ({
-    width: `${diameter}px`,
-    maxWidth: `${diameter}px`,
-    minWidth: `${diameter}px`,
-  }), [diameter]);
+  const sizeStyle = useMemo(
+    () => ({
+      width: `${diameter}px`,
+      maxWidth: `${diameter}px`,
+      minWidth: `${diameter}px`,
+    }),
+    [diameter]
+  );
 
   const handleImgLoad = useCallback(() => {
     setImgLoaded(true);
@@ -149,7 +169,7 @@ export const MessagingDisplayAvatar: FC<{
       className={`block shrink-0 ${classNames}`}
       style={sizeStyle}
       href={getProfileURL(username)}
-      condition={!!username}
+      condition={!!username && !disableLink}
       target="_blank"
       onClick={(e) => e.stopPropagation()}
     >

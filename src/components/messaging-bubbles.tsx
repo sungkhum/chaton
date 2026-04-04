@@ -60,7 +60,7 @@ import { AudioMessage } from "./messages/audio-message";
 import { FileMessage } from "./messages/file-message";
 import { ReplyPreview } from "./messages/reply-preview";
 import { ReactionPills } from "./messages/reaction-pills";
-import { TipMessage } from "./messages/tip-message";
+import { TipMessage, TipFooter } from "./messages/tip-message";
 import { TipPills } from "./messages/tip-pills";
 import { FormattedMessage } from "./messages/formatted-message";
 import { LinkPreview, extractFirstUrl } from "./messages/link-preview";
@@ -102,6 +102,9 @@ const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
 
 const GROUP_TIME_GAP_NS = 5 * 60 * 1e9; // 5 minutes in nanoseconds
 
+/** Matches the auto-generated fallback text for tips: "Tipped @username" or "Tipped <8-char pubkey>" */
+const DEFAULT_TIP_TEXT_RE = /^Tipped (@\S+|\S{8})$/;
+
 function convertTstampToDateTime(tstampNanos: number) {
   const date = new Date(tstampNanos / 1e6);
   const currentDate = new Date();
@@ -120,8 +123,12 @@ function convertTstampToDateTime(tstampNanos: number) {
 
 function MessageContent({
   message,
+  tipRecipientUsername,
+  tipRecipientPicUrl,
 }: {
   message: DecryptedMessageEntryResponse;
+  tipRecipientUsername?: string;
+  tipRecipientPicUrl?: string;
 }) {
   const parsed = parseMessageType(message);
 
@@ -248,7 +255,27 @@ function MessageContent({
         />
       );
 
-    case "tip":
+    case "tip": {
+      // Custom message tips render message-first with a compact tip footer.
+      // Default fallback text is "Tipped @username" or "Tipped <pubkey8>" —
+      // anything else is a user-written custom message.
+      const hasCustomMessage =
+        !!messageToShow && !DEFAULT_TIP_TEXT_RE.test(messageToShow);
+      if (hasCustomMessage) {
+        return (
+          <div className="select-text">
+            <FormattedMessage>{messageToShow}</FormattedMessage>
+            <TipFooter
+              amountNanos={parsed.tipAmountNanos || 0}
+              amountUsdcBaseUnits={parsed.tipAmountUsdcBaseUnits}
+              currency={parsed.tipCurrency}
+              recipientUsername={tipRecipientUsername}
+              recipientPicUrl={tipRecipientPicUrl}
+              recipientPublicKey={parsed.tipRecipient}
+            />
+          </div>
+        );
+      }
       return (
         <TipMessage
           amountNanos={parsed.tipAmountNanos || 0}
@@ -259,6 +286,7 @@ function MessageContent({
           replySender={parsed.replySender}
         />
       );
+    }
 
     case "reaction":
       // Reactions are aggregated, not shown as standalone messages
@@ -871,16 +899,22 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
       if (parsed.type === "reaction") return false;
       if (hiddenMessageIds?.has(msg.MessageInfo.TimestampNanosString))
         return false;
-      // Hide small tips that are attached to a parent message — they show on the tip pill
+      // Hide small tips that are attached to a parent message — they show on the tip pill.
+      // Always keep tips with custom messages visible regardless of amount.
       if (parsed.type === "tip" && parsed.tipReplyTo) {
-        const isSmallDeso =
-          (!parsed.tipCurrency || parsed.tipCurrency === "DESO") &&
-          (parsed.tipAmountNanos || 0) <= SMALL_TIP_DESO_NANOS;
-        const isSmallUsdc =
-          parsed.tipCurrency === "USDC" &&
-          BigInt(parsed.tipAmountUsdcBaseUnits || "0") <=
-            BigInt(SMALL_TIP_USDC_BASE);
-        if (isSmallDeso || isSmallUsdc) return false;
+        const tipText = msg.DecryptedMessage || "";
+        const hasCustomMessage =
+          !!tipText && !DEFAULT_TIP_TEXT_RE.test(tipText);
+        if (!hasCustomMessage) {
+          const isSmallDeso =
+            (!parsed.tipCurrency || parsed.tipCurrency === "DESO") &&
+            (parsed.tipAmountNanos || 0) <= SMALL_TIP_DESO_NANOS;
+          const isSmallUsdc =
+            parsed.tipCurrency === "USDC" &&
+            BigInt(parsed.tipAmountUsdcBaseUnits || "0") <=
+              BigInt(SMALL_TIP_USDC_BASE);
+          if (isSmallDeso || isSmallUsdc) return false;
+        }
       }
       return true;
     });
@@ -1153,7 +1187,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                 : "glass-received text-gray-200";
             }
 
-            // Tip messages get a tinted bubble with accent left border (DESO = blue, USDC = green)
+            // Tip messages get a tinted bubble with accent left border (DESO = blue, USDC = green).
+            // Both receipt-style and custom-message tips use the tint — the content layout differs.
             if (parsed.type === "tip") {
               const isUsdc = parsed.tipCurrency === "USDC";
               senderStyles = isUsdc
@@ -1190,12 +1225,18 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
             const tips =
               tipsByTimestamp[message.MessageInfo.TimestampNanosString];
 
-            // Message grouping: collapse consecutive messages from the same sender within 5 min
-            // Skip system/tip messages — they render separately and shouldn't break visual groups
+            // Message grouping: collapse consecutive messages from the same sender within 5 min.
+            // Skip system messages and receipt-style tips — they render separately.
+            // Custom-message tips look like regular messages and should group normally.
             const senderKey = message.SenderInfo.OwnerPublicKeyBase58Check;
             const isGroupable = (m: (typeof displayMessages)[0]) => {
-              const t = parseMessageType(m).type;
-              return t !== "system" && t !== "tip";
+              const p = parseMessageType(m);
+              if (p.type === "system") return false;
+              if (p.type === "tip") {
+                const msg = m.DecryptedMessage || "";
+                return !!msg && !DEFAULT_TIP_TEXT_RE.test(msg);
+              }
+              return true;
             };
             let prevMessage: (typeof displayMessages)[0] | undefined;
             for (let j = i + 1; j < displayMessages.length; j++) {
@@ -1395,7 +1436,19 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                             />
                           </div>
                         )}
-                        <MessageContent message={message} />
+                        <MessageContent
+                          message={message}
+                          tipRecipientUsername={
+                            parsed.tipRecipient
+                              ? getUsernameByPublicKey[parsed.tipRecipient]
+                              : undefined
+                          }
+                          tipRecipientPicUrl={
+                            parsed.tipRecipient
+                              ? profilePicByPublicKey?.[parsed.tipRecipient]
+                              : undefined
+                          }
+                        />
                         {/* Inline timestamp: invisible spacer reserves room, real timestamp is absolute-positioned */}
                         {(() => {
                           const msgText = message.DecryptedMessage || "";

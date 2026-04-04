@@ -1,5 +1,5 @@
 import { Camera, Loader2, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { AVATAR_COLORS, hashToColorIndex, getInitials } from "../utils/avatar";
 import { uploadImage } from "../services/media.service";
@@ -23,10 +23,14 @@ export const GroupImagePicker = ({
   const [uploading, setUploading] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
 
-  // Reset loaded state when the URL changes (e.g., dialog reopen, store update)
-  useEffect(() => {
+  // Reset loaded state during render (not useEffect) when the URL changes.
+  // useEffect runs after paint, so if the browser fires onLoad for a cached
+  // image before the effect, the effect clobbers imgLoaded back to false.
+  const prevUrlRef = useRef(imageUrl);
+  if (prevUrlRef.current !== imageUrl) {
+    prevUrlRef.current = imageUrl;
     setImgLoaded(false);
-  }, [imageUrl]);
+  }
 
   const colorIndex = hashToColorIndex(groupName || "");
   const avatarColor = AVATAR_COLORS[colorIndex];

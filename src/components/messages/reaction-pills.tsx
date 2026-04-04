@@ -21,9 +21,8 @@ export const ReactionPills = ({
   getUsernameByPublicKey,
   profilePicByPublicKey,
 }: ReactionPillsProps) => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const entries = Object.entries(reactions).filter(
-    ([_emoji, keys]) => keys.length > 0
+    ([, keys]) => keys.length > 0
   );
   const [popupEmoji, setPopupEmoji] = useState<string | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
@@ -101,12 +100,14 @@ export const ReactionPills = ({
                   <div
                     key={pk}
                     className="rounded-full ring-1 ring-[#141c2b] overflow-hidden"
+                    title={getUsernameByPublicKey?.[pk] || pk.slice(0, 8)}
                   >
                     <MessagingDisplayAvatar
                       publicKey={pk}
                       username={getUsernameByPublicKey?.[pk]}
                       extraDataPicUrl={profilePicByPublicKey?.[pk]}
                       diameter={16}
+                      disableLink
                     />
                   </div>
                 ))}
@@ -139,6 +140,7 @@ export const ReactionPills = ({
                         username={username}
                         extraDataPicUrl={profilePicByPublicKey?.[pk]}
                         diameter={24}
+                        disableLink
                       />
                       <span className="text-sm text-gray-200 truncate">
                         {username ? username : `${pk.slice(0, 8)}...`}

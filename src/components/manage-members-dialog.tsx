@@ -618,7 +618,6 @@ export const ManageMembersDialog = ({
             "Failed to submit transaction to add members to group."
           );
         }
-        return waitForTransactionFound(submittedTransactionResponse.TxnHashHex);
       }
     );
   };
@@ -793,59 +792,57 @@ export const ManageMembersDialog = ({
 
   // ── Join Request Handlers ──
 
-  const handleApproveRequests = async (keysToApprove: string[]) => {
+  const handleApproveRequests = (keysToApprove: string[]) => {
     if (!appUser || keysToApprove.length === 0 || approvingRef.current) return;
     approvingRef.current = true;
 
+    // ── Optimistic UI: update everything immediately ──
+    const approvedSet = new Set(keysToApprove);
+    const approvedRequests = joinRequests.filter((r) =>
+      approvedSet.has(r.requesterPublicKey)
+    );
+
     setApprovingKeys(new Set(keysToApprove));
-    try {
-      await addMembersAction(groupName, keysToApprove);
+    setJoinRequests((prev) =>
+      prev.filter((r) => !approvedSet.has(r.requesterPublicKey))
+    );
+    setSelectedRequests(new Set());
+    setJoinRequestBadge((prev) => Math.max(0, prev - keysToApprove.length));
+    decrementJoinRequestCount(conversationKey, keysToApprove.length);
 
-      // Remove approved from the join requests list
-      const approvedSet = new Set(keysToApprove);
-      const approvedRequests = joinRequests.filter((r) =>
-        approvedSet.has(r.requesterPublicKey)
-      );
-      setJoinRequests((prev) =>
-        prev.filter((r) => !approvedSet.has(r.requesterPublicKey))
-      );
-      setSelectedRequests(new Set());
-      setJoinRequestBadge((prev) => Math.max(0, prev - keysToApprove.length));
-      decrementJoinRequestCount(conversationKey, keysToApprove.length);
+    for (const req of approvedRequests) {
+      addMemberDirect({
+        id: req.requesterPublicKey,
+        text: nameOrFormattedKey(req.profile, req.requesterPublicKey),
+        profile: req.profile,
+      });
+    }
 
-      // Optimistically add approved users to the members list
-      for (const req of approvedRequests) {
-        addMemberDirect({
-          id: req.requesterPublicKey,
-          text: nameOrFormattedKey(req.profile, req.requesterPublicKey),
-          profile: req.profile,
-        });
-      }
+    toast.success(
+      keysToApprove.length === 1
+        ? "Member approved"
+        : `${keysToApprove.length} members approved`
+    );
 
-      toast.success(
-        keysToApprove.length === 1
-          ? "Member approved"
-          : `${keysToApprove.length} members approved`
-      );
+    const approvedMembers = approvedRequests.map((r) => ({
+      pk: r.requesterPublicKey,
+      un: nameOrFormattedKey(r.profile, r.requesterPublicKey),
+    }));
+    onOptimisticSystemMessage(approvedMembers);
 
-      // Best-effort: send system log message for approved members
-      const approvedMembers = approvedRequests.map((r) => ({
-        pk: r.requesterPublicKey,
-        un: nameOrFormattedKey(r.profile, r.requesterPublicKey),
-      }));
-      onOptimisticSystemMessage(approvedMembers);
-      sendSystemMessage(
-        appUser.PublicKeyBase58Check,
-        groupOwnerKey,
-        groupName,
-        "member-joined",
-        approvedMembers
-      );
+    // ── Fire blockchain transaction in background ──
+    addMembersAction(groupName, keysToApprove)
+      .then(() => {
+        // Best-effort: send system log message
+        sendSystemMessage(
+          appUser.PublicKeyBase58Check,
+          groupOwnerKey,
+          groupName,
+          "member-joined",
+          approvedMembers
+        );
 
-      // Best-effort cleanup: delete join request associations on-chain.
-      // The owner is the target, not the creator — DeSo may reject this.
-      // If it fails, the filter-based approach keeps the UI correct.
-      if (appUser) {
+        // Best-effort cleanup: delete join request associations on-chain.
         const ownerKey = appUser.PublicKeyBase58Check;
         Promise.allSettled(
           approvedRequests.map((r) =>
@@ -858,13 +855,20 @@ export const ManageMembersDialog = ({
             )
           )
         ).catch(() => {});
-      }
-    } catch {
-      toast.error("Failed to approve members");
-    } finally {
-      approvingRef.current = false;
-      setApprovingKeys(new Set());
-    }
+      })
+      .catch(() => {
+        // ── Rollback: restore join requests and remove from members ──
+        setJoinRequests((prev) => [...prev, ...approvedRequests]);
+        setJoinRequestBadge((prev) => prev + keysToApprove.length);
+        for (const req of approvedRequests) {
+          removeMember(req.requesterPublicKey);
+        }
+        toast.error("Failed to approve members");
+      })
+      .finally(() => {
+        approvingRef.current = false;
+        setApprovingKeys(new Set());
+      });
   };
 
   const handleRejectRequests = async (keysToReject: string[]) => {
