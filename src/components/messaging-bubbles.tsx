@@ -1351,7 +1351,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                             : isEmojiOnly
                             ? "p-0"
                             : parsed.deleted
-                            ? "py-2.5 px-4"
+                            ? "py-3 px-5"
                             : "py-1.5 px-3 md:px-4"
                         } break-words ${
                           isMedia || isEmojiOnly

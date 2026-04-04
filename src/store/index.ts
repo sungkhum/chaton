@@ -1,8 +1,5 @@
 import { create } from "zustand";
-import {
-  AccessGroupEntryResponse,
-  User,
-} from "deso-protocol";
+import { AccessGroupEntryResponse, User } from "deso-protocol";
 import {
   cacheClassificationData,
   cacheMutedConversations,
@@ -17,7 +14,12 @@ export type AppUser = User & {
   accessGroupsOwned?: AccessGroupEntryResponse[];
 };
 
-export type MessageStatus = "sending" | "sent" | "confirmed" | "failed";
+export type MessageStatus =
+  | "processing"
+  | "sending"
+  | "sent"
+  | "confirmed"
+  | "failed";
 
 interface ChatOnState {
   // Auth
@@ -155,14 +157,20 @@ function classificationSnapshot(
     mutualFollows: overrides.mutualFollows ?? state.mutualFollows,
     approvedUsers: overrides.approvedUsers ?? state.approvedUsers,
     blockedUsers: overrides.blockedUsers ?? state.blockedUsers,
-    approvedAssociationIds: overrides.approvedAssociationIds ?? state.approvedAssociationIds,
-    blockedAssociationIds: overrides.blockedAssociationIds ?? state.blockedAssociationIds,
+    approvedAssociationIds:
+      overrides.approvedAssociationIds ?? state.approvedAssociationIds,
+    blockedAssociationIds:
+      overrides.blockedAssociationIds ?? state.blockedAssociationIds,
     archivedGroups: overrides.archivedGroups ?? state.archivedGroups,
-    archivedGroupAssociationIds: overrides.archivedGroupAssociationIds ?? state.archivedGroupAssociationIds,
+    archivedGroupAssociationIds:
+      overrides.archivedGroupAssociationIds ??
+      state.archivedGroupAssociationIds,
     archivedChats: overrides.archivedChats ?? state.archivedChats,
-    archivedChatAssociationIds: overrides.archivedChatAssociationIds ?? state.archivedChatAssociationIds,
+    archivedChatAssociationIds:
+      overrides.archivedChatAssociationIds ?? state.archivedChatAssociationIds,
     dismissedUsers: overrides.dismissedUsers ?? state.dismissedUsers,
-    dismissedAssociationIds: overrides.dismissedAssociationIds ?? state.dismissedAssociationIds,
+    dismissedAssociationIds:
+      overrides.dismissedAssociationIds ?? state.dismissedAssociationIds,
   };
 }
 
@@ -214,7 +222,8 @@ export const useStore = create<ChatOnState>((set) => ({
   lockRefresh: false,
   setLockRefresh: (lockRefresh) => set({ lockRefresh }),
   pendingConversationKey: null,
-  setPendingConversationKey: (pendingConversationKey) => set({ pendingConversationKey }),
+  setPendingConversationKey: (pendingConversationKey) =>
+    set({ pendingConversationKey }),
   pendingJoinCode: null,
   setPendingJoinCode: (pendingJoinCode) => set({ pendingJoinCode }),
 
@@ -240,8 +249,10 @@ export const useStore = create<ChatOnState>((set) => ({
       next.delete(conversationKey);
       let total = 0;
       for (const v of next.values()) total += v;
-      if (total === 0 && navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
-      else if (navigator.setAppBadge) navigator.setAppBadge(total).catch(() => {});
+      if (total === 0 && navigator.clearAppBadge)
+        navigator.clearAppBadge().catch(() => {});
+      else if (navigator.setAppBadge)
+        navigator.setAppBadge(total).catch(() => {});
       return { unreadByConversation: next, totalUnread: total };
     }),
 
@@ -254,7 +265,8 @@ export const useStore = create<ChatOnState>((set) => ({
       }
       let total = 0;
       for (const v of next.values()) total += v;
-      if (total > 0 && navigator.setAppBadge) navigator.setAppBadge(total).catch(() => {});
+      if (total > 0 && navigator.setAppBadge)
+        navigator.setAppBadge(total).catch(() => {});
       return { unreadByConversation: next, totalUnread: total };
     }),
 
@@ -331,11 +343,25 @@ export const useStore = create<ChatOnState>((set) => ({
       if (publicKey) cachePrivacyMode(publicKey, mode);
       return {
         privacyMode: mode,
-        ...(associationId !== undefined ? { privacyModeAssociationId: associationId } : {}),
+        ...(associationId !== undefined
+          ? { privacyModeAssociationId: associationId }
+          : {}),
       };
     }),
 
-  setClassificationData: (mutualFollows, approved, blocked, approvedIds, blockedIds, archived, archivedIds, archivedChatsSet, archivedChatIds, dismissed, dismissedIds) =>
+  setClassificationData: (
+    mutualFollows,
+    approved,
+    blocked,
+    approvedIds,
+    blockedIds,
+    archived,
+    archivedIds,
+    archivedChatsSet,
+    archivedChatIds,
+    dismissed,
+    dismissedIds
+  ) =>
     set((state) => {
       const publicKey = state.appUser?.PublicKeyBase58Check;
       if (publicKey) {
@@ -378,7 +404,11 @@ export const useStore = create<ChatOnState>((set) => ({
     set((state) => {
       const next = new Set([...state.approvedUsers, publicKey]);
       const myKey = state.appUser?.PublicKeyBase58Check;
-      if (myKey) cacheClassificationData(myKey, classificationSnapshot(state, { approvedUsers: next }));
+      if (myKey)
+        cacheClassificationData(
+          myKey,
+          classificationSnapshot(state, { approvedUsers: next })
+        );
       return { approvedUsers: next };
     }),
 
@@ -386,7 +416,11 @@ export const useStore = create<ChatOnState>((set) => ({
     set((state) => {
       const next = new Set([...state.blockedUsers, publicKey]);
       const myKey = state.appUser?.PublicKeyBase58Check;
-      if (myKey) cacheClassificationData(myKey, classificationSnapshot(state, { blockedUsers: next }));
+      if (myKey)
+        cacheClassificationData(
+          myKey,
+          classificationSnapshot(state, { blockedUsers: next })
+        );
       return { blockedUsers: next };
     }),
 
@@ -408,7 +442,11 @@ export const useStore = create<ChatOnState>((set) => ({
     set((state) => {
       const next = new Set([...state.archivedGroups, conversationKey]);
       const myKey = state.appUser?.PublicKeyBase58Check;
-      if (myKey) cacheClassificationData(myKey, classificationSnapshot(state, { archivedGroups: next }));
+      if (myKey)
+        cacheClassificationData(
+          myKey,
+          classificationSnapshot(state, { archivedGroups: next })
+        );
       return { archivedGroups: next };
     }),
 
@@ -419,7 +457,14 @@ export const useStore = create<ChatOnState>((set) => ({
       const nextIds = new Map(state.archivedGroupAssociationIds);
       nextIds.delete(conversationKey);
       const myKey = state.appUser?.PublicKeyBase58Check;
-      if (myKey) cacheClassificationData(myKey, classificationSnapshot(state, { archivedGroups: next, archivedGroupAssociationIds: nextIds }));
+      if (myKey)
+        cacheClassificationData(
+          myKey,
+          classificationSnapshot(state, {
+            archivedGroups: next,
+            archivedGroupAssociationIds: nextIds,
+          })
+        );
       return { archivedGroups: next, archivedGroupAssociationIds: nextIds };
     }),
 
@@ -451,7 +496,11 @@ export const useStore = create<ChatOnState>((set) => ({
     set((state) => {
       const next = new Set([...state.archivedChats, publicKey]);
       const myKey = state.appUser?.PublicKeyBase58Check;
-      if (myKey) cacheClassificationData(myKey, classificationSnapshot(state, { archivedChats: next }));
+      if (myKey)
+        cacheClassificationData(
+          myKey,
+          classificationSnapshot(state, { archivedChats: next })
+        );
       return { archivedChats: next };
     }),
 
@@ -462,7 +511,14 @@ export const useStore = create<ChatOnState>((set) => ({
       const nextIds = new Map(state.archivedChatAssociationIds);
       nextIds.delete(publicKey);
       const myKey = state.appUser?.PublicKeyBase58Check;
-      if (myKey) cacheClassificationData(myKey, classificationSnapshot(state, { archivedChats: next, archivedChatAssociationIds: nextIds }));
+      if (myKey)
+        cacheClassificationData(
+          myKey,
+          classificationSnapshot(state, {
+            archivedChats: next,
+            archivedChatAssociationIds: nextIds,
+          })
+        );
       return { archivedChats: next, archivedChatAssociationIds: nextIds };
     }),
 
@@ -494,7 +550,11 @@ export const useStore = create<ChatOnState>((set) => ({
     set((state) => {
       const next = new Set([...state.dismissedUsers, publicKey]);
       const myKey = state.appUser?.PublicKeyBase58Check;
-      if (myKey) cacheClassificationData(myKey, classificationSnapshot(state, { dismissedUsers: next }));
+      if (myKey)
+        cacheClassificationData(
+          myKey,
+          classificationSnapshot(state, { dismissedUsers: next })
+        );
       return { dismissedUsers: next };
     }),
 
@@ -505,7 +565,14 @@ export const useStore = create<ChatOnState>((set) => ({
       const nextIds = new Map(state.dismissedAssociationIds);
       nextIds.delete(publicKey);
       const myKey = state.appUser?.PublicKeyBase58Check;
-      if (myKey) cacheClassificationData(myKey, classificationSnapshot(state, { dismissedUsers: next, dismissedAssociationIds: nextIds }));
+      if (myKey)
+        cacheClassificationData(
+          myKey,
+          classificationSnapshot(state, {
+            dismissedUsers: next,
+            dismissedAssociationIds: nextIds,
+          })
+        );
       return { dismissedUsers: next, dismissedAssociationIds: nextIds };
     }),
 
@@ -540,7 +607,14 @@ export const useStore = create<ChatOnState>((set) => ({
       const nextIds = new Map(state.blockedAssociationIds);
       nextIds.delete(publicKey);
       const myKey = state.appUser?.PublicKeyBase58Check;
-      if (myKey) cacheClassificationData(myKey, classificationSnapshot(state, { blockedUsers: next, blockedAssociationIds: nextIds }));
+      if (myKey)
+        cacheClassificationData(
+          myKey,
+          classificationSnapshot(state, {
+            blockedUsers: next,
+            blockedAssociationIds: nextIds,
+          })
+        );
       return { blockedUsers: next, blockedAssociationIds: nextIds };
     }),
 
@@ -602,9 +676,11 @@ export const useStore = create<ChatOnState>((set) => ({
 
   // Tipping — tracks USD cents for both DESO and USDC tips
   sessionTipTotalUsdCents: 0,
-  addSessionTipUsd: (usdAmount) => set((s) => ({
-    sessionTipTotalUsdCents: s.sessionTipTotalUsdCents + Math.round(usdAmount * 100),
-  })),
+  addSessionTipUsd: (usdAmount) =>
+    set((s) => ({
+      sessionTipTotalUsdCents:
+        s.sessionTipTotalUsdCents + Math.round(usdAmount * 100),
+    })),
 }));
 
 // Expose store for Playwright tests (dev/test only)

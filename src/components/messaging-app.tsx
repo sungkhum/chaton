@@ -23,6 +23,7 @@ import {
   transferDeSoToken,
 } from "deso-protocol";
 import { useInterval } from "hooks/useInterval";
+import { useIdleDetection } from "hooks/useIdleDetection";
 import {
   FC,
   lazy,
@@ -102,7 +103,9 @@ import {
   MAX_MEMBERS_TO_REQUEST_IN_GROUP,
   MESSAGES_ONE_REQUEST_LIMIT,
   PUBLIC_KEY_LENGTH,
+  FOREGROUND_RESUME_DEBOUNCE_MS,
   REFRESH_MESSAGES_INTERVAL_MS,
+  REFRESH_MESSAGES_MAX_INTERVAL_MS,
   REFRESH_MESSAGES_MOBILE_INTERVAL_MS,
   TITLE_DIVIDER,
 } from "../utils/constants";
@@ -360,6 +363,22 @@ export const MessagingApp: FC = () => {
     name: string;
   } | null>(null);
   const { isMobile } = useMobile();
+  const isIdle = useIdleDetection();
+
+  // Adaptive polling: starts at base interval, backs off additively each cycle,
+  // resets on WebSocket activity, and pauses entirely when user is idle.
+  const baseDelay = isMobile
+    ? REFRESH_MESSAGES_MOBILE_INTERVAL_MS
+    : REFRESH_MESSAGES_INTERVAL_MS;
+  const [pollingDelay, setPollingDelay] = useState<number | null>(baseDelay);
+
+  // Pause polling when idle, resume at base rate when active
+  useEffect(() => {
+    setPollingDelay(isIdle ? null : baseDelay);
+  }, [isIdle, baseDelay]);
+
+  // Debounce foreground resume to prevent bursty API calls on rapid tab switches
+  const lastResumeRef = useRef(0);
 
   // Close DM menu, block dialog, and tip dialog when switching conversations
   useEffect(() => {
@@ -649,6 +668,9 @@ export const MessagingApp: FC = () => {
       if (!appUser || wsFetchingRef.current) return;
       wsFetchingRef.current = true;
 
+      // Reset polling backoff — real-time activity means the conversation is active
+      setPollingDelay(baseDelay);
+
       getConversations(appUser.PublicKeyBase58Check, allAccessGroups)
         .then(
           async ({
@@ -857,7 +879,13 @@ export const MessagingApp: FC = () => {
           wsFetchingRef.current = false;
         });
     },
-    [appUser, allAccessGroups, mergeConversationUpdate, simpleConversationMerge]
+    [
+      appUser,
+      allAccessGroups,
+      mergeConversationUpdate,
+      simpleConversationMerge,
+      baseDelay,
+    ]
   );
 
   const { onTypingReceived, getTypingUsersForConversation } =
@@ -1716,6 +1744,14 @@ export const MessagingApp: FC = () => {
           }
         });
 
+        // Debounce: skip if another resume happened within 2s (rapid tab switching)
+        const now = Date.now();
+        if (now - lastResumeRef.current < FOREGROUND_RESUME_DEBOUNCE_MS) return;
+        lastResumeRef.current = now;
+
+        // Reset polling backoff on foreground resume
+        setPollingDelay(baseDelay);
+
         // Refresh conversations (existing behavior)
         visibilityHandlerRef.current("", "");
 
@@ -1796,79 +1832,77 @@ export const MessagingApp: FC = () => {
     allAccessGroups,
   ]);
 
-  useInterval(
-    async () => {
-      const initConversationKey = selectedConversationPublicKey;
+  useInterval(async () => {
+    const initConversationKey = selectedConversationPublicKey;
+
+    if (
+      !appUser ||
+      !selectedConversationPublicKey ||
+      lockRefreshRef.current ||
+      pollingRef.current ||
+      !navigator.onLine
+    ) {
+      return;
+    }
+    pollingRef.current = true;
+    try {
+      const {
+        conversations,
+        updatedAllAccessGroups,
+        publicKeyToProfileEntryResponseMap: pollProfiles,
+      } = await getConversations(appUser.PublicKeyBase58Check, allAccessGroups);
+      setAllAccessGroups(updatedAllAccessGroups);
+
+      // Update username + profile pic maps from fresh profile data
+      const pollUsernames: Record<string, string> = {};
+      const pollPics: Record<string, string> = {};
+      for (const [pk, profile] of Object.entries(pollProfiles)) {
+        if (profile?.Username) pollUsernames[pk] = profile.Username;
+        const ed = profile?.ExtraData;
+        if (ed) {
+          const picUrl = ed.NFTProfilePictureUrl || ed.LargeProfilePicURL;
+          if (picUrl) pollPics[pk] = picUrl;
+        }
+      }
+      if (Object.keys(pollUsernames).length) {
+        mergeUsernames(pollUsernames);
+      }
+      if (Object.keys(pollPics).length) {
+        setProfilePicByPublicKey((s) => ({ ...s, ...pollPics }));
+      }
+      const { updatedConversations, pubKeyPlusGroupName } =
+        await getConversation(selectedConversationPublicKey, {
+          ...conversations,
+          [selectedConversationPublicKey]:
+            conversations[selectedConversationPublicKey],
+        });
 
       if (
-        !appUser ||
-        !selectedConversationPublicKey ||
-        lockRefreshRef.current ||
-        pollingRef.current ||
-        !navigator.onLine
+        !lockRefreshRef.current &&
+        conversations[selectedConversationPublicKey] &&
+        initConversationKey === selectedConversationPublicKeyRef.current
       ) {
-        return;
+        const updatedMessages =
+          updatedConversations[selectedConversationPublicKey]?.messages;
+        if (updatedMessages) {
+          mergeConversationUpdate(
+            updatedConversations,
+            selectedConversationPublicKey,
+            updatedMessages
+          );
+        }
+        setPubKeyPlusGroupName(pubKeyPlusGroupName);
       }
-      pollingRef.current = true;
-      try {
-        const {
-          conversations,
-          updatedAllAccessGroups,
-          publicKeyToProfileEntryResponseMap: pollProfiles,
-        } = await getConversations(
-          appUser.PublicKeyBase58Check,
-          allAccessGroups
-        );
-        setAllAccessGroups(updatedAllAccessGroups);
-
-        // Update username + profile pic maps from fresh profile data
-        const pollUsernames: Record<string, string> = {};
-        const pollPics: Record<string, string> = {};
-        for (const [pk, profile] of Object.entries(pollProfiles)) {
-          if (profile?.Username) pollUsernames[pk] = profile.Username;
-          const ed = profile?.ExtraData;
-          if (ed) {
-            const picUrl = ed.NFTProfilePictureUrl || ed.LargeProfilePicURL;
-            if (picUrl) pollPics[pk] = picUrl;
-          }
-        }
-        if (Object.keys(pollUsernames).length) {
-          mergeUsernames(pollUsernames);
-        }
-        if (Object.keys(pollPics).length) {
-          setProfilePicByPublicKey((s) => ({ ...s, ...pollPics }));
-        }
-        const { updatedConversations, pubKeyPlusGroupName } =
-          await getConversation(selectedConversationPublicKey, {
-            ...conversations,
-            [selectedConversationPublicKey]:
-              conversations[selectedConversationPublicKey],
-          });
-
-        if (
-          !lockRefreshRef.current &&
-          conversations[selectedConversationPublicKey] &&
-          initConversationKey === selectedConversationPublicKeyRef.current
-        ) {
-          const updatedMessages =
-            updatedConversations[selectedConversationPublicKey]?.messages;
-          if (updatedMessages) {
-            mergeConversationUpdate(
-              updatedConversations,
-              selectedConversationPublicKey,
-              updatedMessages
-            );
-          }
-          setPubKeyPlusGroupName(pubKeyPlusGroupName);
-        }
-      } finally {
-        pollingRef.current = false;
-      }
-    },
-    isMobile
-      ? REFRESH_MESSAGES_MOBILE_INTERVAL_MS
-      : REFRESH_MESSAGES_INTERVAL_MS
-  );
+    } finally {
+      pollingRef.current = false;
+      // Additive backoff: WS handles real-time, so slow down polling gradually
+      setPollingDelay((prev) =>
+        prev
+          ? Math.min(prev + baseDelay, REFRESH_MESSAGES_MAX_INTERVAL_MS)
+          : prev
+      );
+    }
+  }, pollingDelay);
 
   const fetchUsersStateless = async (newPublicKeysToGet: Array<string>) => {
     // Use the ref (always current) instead of state (stale in async callbacks)
@@ -3945,7 +3979,10 @@ export const MessagingApp: FC = () => {
                       }
                       onClick={async (
                         messageToSend: string,
-                        extraData?: Record<string, string>
+                        extraData?: Record<string, string>,
+                        options?: {
+                          prepare?: () => Promise<Record<string, string>>;
+                        }
                       ) => {
                         if (!selectedConversation) return;
                         // Merge reply data into extraData if replying
@@ -3975,10 +4012,13 @@ export const MessagingApp: FC = () => {
                             : selectedConversation.messages[0].RecipientInfo
                                 .AccessGroupKeyName;
                         const localId = `local-${Date.now()}-${Math.random()}`;
+                        const hasPrepare = !!options?.prepare;
                         const mockMessage = {
                           DecryptedMessage: messageToSend,
                           IsSender: true,
-                          _status: "sending" as const,
+                          _status: (hasPrepare
+                            ? "processing"
+                            : "sending") as string,
                           _localId: localId,
                           SenderInfo: {
                             OwnerPublicKeyBase58Check:
@@ -4000,7 +4040,7 @@ export const MessagingApp: FC = () => {
                           _localId: string;
                         };
 
-                        // Optimistic: insert immediately with "sending" status
+                        // Optimistic: insert immediately
                         const convKey = selectedConversationPublicKey;
                         setConversations((prev) => ({
                           ...prev,
@@ -4010,6 +4050,47 @@ export const MessagingApp: FC = () => {
                           },
                         }));
                         setLockRefresh(true);
+
+                        // If a prepare callback was provided (e.g. audio upload),
+                        // run it now to get the final extraData before sending.
+                        if (hasPrepare) {
+                          try {
+                            extraData = await options!.prepare!();
+                            // Update the bubble with the real data
+                            setConversations((prev) => ({
+                              ...prev,
+                              [convKey]: {
+                                ...prev[convKey],
+                                messages: prev[convKey].messages.map((m: any) =>
+                                  m._localId === localId
+                                    ? {
+                                        ...m,
+                                        _status: "sending",
+                                        MessageInfo: {
+                                          ...m.MessageInfo,
+                                          ExtraData: extraData,
+                                        },
+                                      }
+                                    : m
+                                ),
+                              },
+                            }));
+                          } catch (e: any) {
+                            // Remove the processing bubble on failure
+                            setConversations((prev) => ({
+                              ...prev,
+                              [convKey]: {
+                                ...prev[convKey],
+                                messages: prev[convKey].messages.filter(
+                                  (m: any) => m._localId !== localId
+                                ),
+                              },
+                            }));
+                            setLockRefresh(false);
+                            toast.error(`Upload failed: ${e.message || e}`);
+                            return;
+                          }
+                        }
 
                         // Persist to IndexedDB so the message survives app close.
                         // Awaited so the write lands before the blockchain call starts.

@@ -40,7 +40,7 @@ function toStreamUrl(url: string): string {
 }
 
 interface AudioMessageProps {
-  audioUrl: string;
+  audioUrl?: string;
   duration?: number;
   /** Seed for deterministic waveform (defaults to audioUrl) */
   waveformSeed?: string;
@@ -66,10 +66,13 @@ export const AudioMessage = ({
   const wantPlayRef = useRef(false);
 
   const waveform = useMemo(
-    () => generateWaveform(waveformSeed || audioUrl),
+    () => generateWaveform(waveformSeed || audioUrl || "processing"),
     [waveformSeed, audioUrl]
   );
-  const streamUrl = useMemo(() => toStreamUrl(audioUrl), [audioUrl]);
+  const streamUrl = useMemo(
+    () => (audioUrl ? toStreamUrl(audioUrl) : ""),
+    [audioUrl]
+  );
   const isHls = streamUrl.includes(".m3u8") || streamUrl.includes("/hls/");
   const displayDuration = loadedDuration || duration;
   const progress = displayDuration > 0 ? currentTime / displayDuration : 0;
@@ -115,7 +118,7 @@ export const AudioMessage = ({
   // Set up HLS or native source
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !streamUrl) return;
     retryCountRef.current = 0;
     clearTimeout(retryTimerRef.current);
 
@@ -219,37 +222,42 @@ export const AudioMessage = ({
     }
   };
 
+  const isProcessing = !audioUrl;
+
   return (
     <div className="flex items-center gap-3 px-3 py-2.5 min-w-[280px] select-none">
-      <audio
-        ref={audioRef}
-        onPlay={() => {
-          setIsPlaying(true);
-          setIsLoading(false);
-        }}
-        onPause={() => setIsPlaying(false)}
-        onEnded={() => {
-          setIsPlaying(false);
-          setCurrentTime(0);
-          wantPlayRef.current = false;
-        }}
-        onLoadedMetadata={() => {
-          const d = audioRef.current?.duration;
-          if (d && isFinite(d)) setLoadedDuration(d);
-        }}
-      />
+      {!isProcessing && (
+        <audio
+          ref={audioRef}
+          onPlay={() => {
+            setIsPlaying(true);
+            setIsLoading(false);
+          }}
+          onPause={() => setIsPlaying(false)}
+          onEnded={() => {
+            setIsPlaying(false);
+            setCurrentTime(0);
+            wantPlayRef.current = false;
+          }}
+          onLoadedMetadata={() => {
+            const d = audioRef.current?.duration;
+            if (d && isFinite(d)) setLoadedDuration(d);
+          }}
+        />
+      )}
 
       {/* Play / Pause / Loading */}
       <button
-        onClick={togglePlay}
+        onClick={isProcessing ? undefined : togglePlay}
         className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors cursor-pointer"
         style={{ backgroundColor: `${accentColor}18` }}
         type="button"
+        disabled={isProcessing}
       >
-        {isLoading ? (
+        {isProcessing || isLoading ? (
           <Loader2
             className="w-[18px] h-[18px] animate-spin"
-            style={{ color: accentColor }}
+            style={{ color: isProcessing ? "#9ca3af" : accentColor }}
           />
         ) : isPlaying ? (
           <Pause
@@ -276,16 +284,18 @@ export const AudioMessage = ({
         aria-valuenow={Math.round(progress * 100)}
       >
         {waveform.map((h, i) => {
-          const filled = i / WAVEFORM_BARS <= progress;
+          const filled = !isProcessing && i / WAVEFORM_BARS <= progress;
           return (
             <div
               key={i}
-              onClick={() => handleBarClick(i)}
+              onClick={isProcessing ? undefined : () => handleBarClick(i)}
               className="flex-1 min-w-[2px] rounded-full transition-colors duration-75"
               style={{
                 height: `${Math.max(15, Math.round(h * 100))}%`,
                 backgroundColor: filled
                   ? accentColor
+                  : isProcessing
+                  ? "rgba(255,255,255,0.08)"
                   : "rgba(255,255,255,0.15)",
               }}
             />
@@ -295,7 +305,11 @@ export const AudioMessage = ({
 
       {/* Duration / time */}
       <span className="text-[11px] text-gray-400 font-mono tabular-nums min-w-[28px] text-right shrink-0">
-        {isPlaying ? formatTime(currentTime) : formatTime(displayDuration)}
+        {isProcessing
+          ? formatTime(displayDuration)
+          : isPlaying
+          ? formatTime(currentTime)
+          : formatTime(displayDuration)}
       </span>
     </div>
   );

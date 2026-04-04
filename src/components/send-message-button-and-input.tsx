@@ -34,11 +34,7 @@ import {
   getDisplayUrl,
   trackShare,
 } from "../services/klipy.service";
-import {
-  uploadImage,
-  uploadVideoFile,
-  uploadAudioFile,
-} from "../services/media.service";
+import { uploadImage, uploadVideoFile } from "../services/media.service";
 import { AudioRecorderPanel } from "./compose/audio-recorder-panel";
 import { ReplyBanner } from "./compose/reply-banner";
 import {
@@ -55,7 +51,15 @@ import { useStore } from "../store";
 import { OgData } from "../services/og.service";
 
 export interface SendMessageButtonAndInputProps {
-  onClick: (messageToSend: string, extraData?: Record<string, string>) => void;
+  onClick: (
+    messageToSend: string,
+    extraData?: Record<string, string>,
+    options?: {
+      /** Async callback that resolves with final extraData. The message bubble
+       *  appears immediately with "processing" status while this runs. */
+      prepare?: () => Promise<Record<string, string>>;
+    }
+  ) => void;
   replyTo?: { text: string; timestamp: string; sender: string } | null;
   onCancelReply?: () => void;
   conversationKey?: string;
@@ -596,44 +600,40 @@ export const SendMessageButtonAndInput = forwardRef<
       setShowLinkPanel(false);
     };
 
-    const handleAudioSend = async (blob: Blob, duration: number) => {
+    const handleAudioSend = (blob: Blob, duration: number) => {
       setIsRecordingAudio(false);
-      setIsUploading(true);
-      try {
-        // Lazy-load mediabunny only when first audio is sent (zero initial bundle cost).
-        // Compresses to 64kbps AAC in mp4 — smaller files, faster uploads,
-        // and DeSo's upload-video endpoint requires video/* MIME type.
-        const { compressAudioToMp4 } = await import(
-          "../services/ffmpeg.service"
-        );
-        const compressed = await compressAudioToMp4(blob);
-        const file = new File([compressed], `recording-${Date.now()}.mp4`, {
-          type: "video/mp4",
-        });
-        const { hlsUrl, iframeUrl } = await uploadAudioFile(file);
-        const extraData: Record<string, string> = {
-          // ChatOn native: direct HLS URL for instant playback
-          "msg:type": "audio",
-          "msg:audioUrl": hlsUrl,
-          "msg:duration": String(duration),
-          // DeSo compat: iframe URL format that Focus/Diamond understand
-          encryptedAudioURLs: JSON.stringify([iframeUrl]),
-          "audio.0.duration": String(duration),
-          "audio.0.clientId": crypto
-            .randomUUID()
-            .replace(/-/g, "")
-            .slice(0, 24),
-          "audio.0.title": `Recording ${new Date()
-            .toISOString()
-            .replace(/[:.]/g, "-")}`,
-        };
-        // Call onClick directly — sendMessage("", ...) would pick up draft text
-        await onClick("", extraData);
-      } catch (err: any) {
-        toast.error(`Audio upload failed: ${err.message || err}`);
-      } finally {
-        setIsUploading(false);
-      }
+      // Show a "processing" bubble immediately — compose area stays free
+      // so the user can keep chatting while the audio uploads.
+      onClick(
+        "",
+        { "msg:type": "audio", "msg:duration": String(duration) },
+        {
+          prepare: async () => {
+            const { compressAudioToMp4 } = await import(
+              "../services/ffmpeg.service"
+            );
+            const compressed = await compressAudioToMp4(blob);
+            const file = new File([compressed], `recording-${Date.now()}.mp4`, {
+              type: "video/mp4",
+            });
+            const result = await uploadVideoFile(file);
+            return {
+              "msg:type": "audio",
+              "msg:audioUrl": result.url,
+              "msg:duration": String(duration),
+              encryptedAudioURLs: JSON.stringify([result.url]),
+              "audio.0.duration": String(duration),
+              "audio.0.clientId": crypto
+                .randomUUID()
+                .replace(/-/g, "")
+                .slice(0, 24),
+              "audio.0.title": `Recording ${new Date()
+                .toISOString()
+                .replace(/[:.]/g, "-")}`,
+            };
+          },
+        }
+      );
     };
 
     /** Unified send: routes to link/image/video/gif confirm when media is staged, otherwise normal send */
