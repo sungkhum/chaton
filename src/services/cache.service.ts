@@ -523,6 +523,26 @@ export async function clearCacheForUser(publicKey: string): Promise<void> {
  * identify the user during pushsubscriptionchange events (when no client
  * window may be open to provide a JWT).
  */
+/**
+ * Read and clear the pending notification conversation key written by the
+ * service worker's notificationclick handler.  Returns null if none is set.
+ */
+export async function consumePendingNotificationConversation(): Promise<
+  string | null
+> {
+  if (!idbStore) return null;
+  try {
+    const key = await get<string>("pendingNotificationConversation", idbStore);
+    if (key) {
+      await del("pendingNotificationConversation", idbStore);
+      return key;
+    }
+  } catch {
+    // IndexedDB unavailable
+  }
+  return null;
+}
+
 export function cachePushPublicKey(publicKey: string): void {
   if (!idbStore) return;
   set("push:publicKey", publicKey, idbStore).catch(() => {});

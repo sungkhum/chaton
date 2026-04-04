@@ -90,6 +90,7 @@ import {
   getCachedUsernameMap,
   getCachedUserProfile,
   mergeReadCursors,
+  consumePendingNotificationConversation,
 } from "../services/cache.service";
 import {
   ASSOCIATION_TYPE_BLOCKED,
@@ -1682,6 +1683,9 @@ export const MessagingApp: FC = () => {
       ) {
         setSelectedConversationPublicKey(event.data.conversationKey);
         clearUnread(event.data.conversationKey);
+        // Clear the IDB fallback so the visibility-change handler doesn't
+        // double-navigate when the fast path (postMessage) already worked.
+        consumePendingNotificationConversation();
       }
     };
     navigator.serviceWorker?.addEventListener("message", handler);
@@ -1702,6 +1706,16 @@ export const MessagingApp: FC = () => {
     const publicKey = appUser.PublicKeyBase58Check;
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && !loadingRef.current) {
+        // Check if a notification click wrote a pending conversation to IndexedDB.
+        // postMessage from the SW is unreliable when the app is resuming from a
+        // suspended/frozen state, so IndexedDB acts as the durable fallback.
+        consumePendingNotificationConversation().then((pendingKey) => {
+          if (pendingKey) {
+            setSelectedConversationPublicKey(pendingKey);
+            clearUnread(pendingKey);
+          }
+        });
+
         // Refresh conversations (existing behavior)
         visibilityHandlerRef.current("", "");
 
