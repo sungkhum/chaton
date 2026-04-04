@@ -119,6 +119,8 @@ export const SendMessageButtonAndInput = forwardRef<
     const [showLinkPanel, setShowLinkPanel] = useState(false);
     const [isRecordingAudio, setIsRecordingAudio] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+    const dragCounterRef = useRef(0);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const inputBarRef = useRef<HTMLDivElement>(null);
     const linkPanelRef = useRef<LinkAttachmentPanelHandle>(null);
@@ -573,6 +575,45 @@ export const SendMessageButtonAndInput = forwardRef<
       }
     };
 
+    const handleDragEnter = (e: React.DragEvent) => {
+      e.preventDefault();
+      dragCounterRef.current++;
+      if (
+        dragCounterRef.current === 1 &&
+        e.dataTransfer.types.includes("Files")
+      ) {
+        setIsDragging(true);
+      }
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+      e.preventDefault();
+      dragCounterRef.current--;
+      if (dragCounterRef.current === 0) {
+        setIsDragging(false);
+      }
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+      e.preventDefault();
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+      e.preventDefault();
+      dragCounterRef.current = 0;
+      setIsDragging(false);
+      const file = e.dataTransfer.files?.[0];
+      if (!file) return;
+      if (file.type.startsWith("video/")) {
+        stageVideo(file);
+      } else if (file.type.startsWith("image/")) {
+        stageImage(file);
+      }
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus();
+      });
+    };
+
     const handleLinkSend = (
       url: string,
       description?: string,
@@ -700,8 +741,20 @@ export const SendMessageButtonAndInput = forwardRef<
     return (
       <div
         ref={inputBarRef}
-        className="w-full px-3 pb-3 pt-2 md:px-6 md:pb-4 md:pt-3 border-t border-white/[0.06] bg-white/[0.02]"
+        className="w-full px-3 pb-3 pt-2 md:px-6 md:pb-4 md:pt-3 border-t border-white/[0.06] bg-white/[0.02] relative"
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
       >
+        {isDragging && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center rounded-2xl border-2 border-dashed border-[#34F080]/60 bg-[#34F080]/10 pointer-events-none">
+            <span className="text-sm font-medium text-[#34F080]">
+              Drop image or video
+            </span>
+          </div>
+        )}
+
         {typingLabel && (
           <div className="text-xs text-gray-400 px-2 pb-1 animate-pulse">
             {typingLabel}
