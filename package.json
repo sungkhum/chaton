@@ -31,9 +31,9 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/inject-blog-og.mjs",
     "prerender": "node scripts/prerender.mjs",
-    "build:production": "vite build",
+    "build:production": "vite build && node scripts/inject-blog-og.mjs",
     "preview": "vite preview",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",

@@ -48,6 +48,7 @@
     MyErrorLabel
     MyInput
     near-zero-infrastructure
+    NotFoundPage
     NotificationToggle
     PreSignupTutorial
     PrivacyToggle

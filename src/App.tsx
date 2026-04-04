@@ -32,6 +32,7 @@ const CommunityPage = lazy(() => import("./components/community-page"));
 const FaqPage = lazy(() => import("./components/faq-page"));
 const AboutPage = lazy(() => import("./components/about-page"));
 const ComparePage = lazy(() => import("./components/compare-page"));
+const NotFoundPage = lazy(() => import("./components/not-found-page"));
 const BlogIndex = lazy(() => import("./components/blog/blog-index"));
 import { lazyPost } from "./components/blog/blog-registry";
 import { AppUser, useStore } from "./store";
@@ -511,6 +512,14 @@ function App() {
         </RouteErrorBoundary>
       );
     }
+    // Unknown blog slug — show 404
+    return (
+      <RouteErrorBoundary>
+        <Suspense fallback={routeFallback}>
+          <NotFoundPage />
+        </Suspense>
+      </RouteErrorBoundary>
+    );
   }
 
   if (isJoinRoute) {
@@ -527,6 +536,16 @@ function App() {
   const showLanding = !appUser && !isLoadingUser;
 
   if (showLanding) {
+    // Unknown path for logged-out users — show 404 instead of landing page
+    if (path !== "/") {
+      return (
+        <RouteErrorBoundary>
+          <Suspense fallback={routeFallback}>
+            <NotFoundPage />
+          </Suspense>
+        </RouteErrorBoundary>
+      );
+    }
     return (
       <RouteErrorBoundary>
         <Suspense fallback={routeFallback}>
