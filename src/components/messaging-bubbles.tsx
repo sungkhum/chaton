@@ -128,7 +128,7 @@ function MessageContent({
   if (parsed.deleted) {
     const time = convertTstampToDateTime(message.MessageInfo.TimestampNanos);
     return (
-      <span className="text-white/30 italic text-[13px] select-text inline-flex items-center gap-1.5">
+      <span className="text-white/30 italic text-[13px] select-text inline-flex items-center gap-1.5 py-0.5 px-1">
         <Ban className="w-3 h-3 shrink-0 opacity-40" />
         This message was deleted
         <span className="text-[10px] not-italic text-white/20 ml-1">
