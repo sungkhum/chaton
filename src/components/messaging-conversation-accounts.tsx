@@ -6,7 +6,10 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  FileIcon,
+  Image as ImageIcon,
   MessageSquarePlus,
+  Mic,
   Plus,
   RotateCcw,
   Search,
@@ -14,6 +17,7 @@ import {
   ShieldOff,
   UserPlus,
   Users,
+  Video,
   X,
 } from "lucide-react";
 import {
@@ -32,7 +36,7 @@ import {
   MessageSearchResult,
   SearchProgress,
 } from "../services/message-search.service";
-import { getGroupImageUrl } from "../utils/extra-data";
+import { getGroupImageUrl, parseMessageType } from "../utils/extra-data";
 import {
   formatRelativeTimestamp,
   getChatNameFromConversation,
@@ -54,7 +58,52 @@ function PreviewText({ msg }: { msg: DecryptedMessageEntryResponse }) {
   if (!msg.DecryptedMessage && (msg as any).error) {
     return <span className="text-gray-600 italic">Unable to load</span>;
   }
-  return <>{msg.DecryptedMessage?.slice(0, 60) || ""}</>;
+
+  const parsed = parseMessageType(msg);
+  const text = parsed.text?.slice(0, 60);
+  const iconClass = "inline-block size-3.5 mr-1 -mt-px opacity-60";
+
+  switch (parsed.type) {
+    case "audio":
+      return (
+        <span className="flex items-center gap-0">
+          <Mic className={iconClass} />
+          {text || "Voice message"}
+        </span>
+      );
+    case "image":
+      return (
+        <span className="flex items-center gap-0">
+          <ImageIcon className={iconClass} />
+          {text || "Photo"}
+        </span>
+      );
+    case "video":
+      return (
+        <span className="flex items-center gap-0">
+          <Video className={iconClass} />
+          {text || "Video"}
+        </span>
+      );
+    case "gif":
+      return (
+        <span className="flex items-center gap-0">
+          <ImageIcon className={iconClass} />
+          {text || "GIF"}
+        </span>
+      );
+    case "sticker":
+      return <>{text || "Sticker"}</>;
+    case "file":
+      return (
+        <span className="flex items-center gap-0">
+          <FileIcon className={iconClass} />
+          {parsed.fileName || text || "File"}
+        </span>
+      );
+    default:
+      return <>{text || ""}</>;
+  }
 }
 
 import { ComposePanel } from "./compose-panel";
