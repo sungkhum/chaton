@@ -18,6 +18,7 @@ import {
   Trash2,
   CircleDollarSign,
   Copy,
+  Ban,
 } from "lucide-react";
 import React, {
   FC,
@@ -125,9 +126,14 @@ function MessageContent({
   const parsed = parseMessageType(message);
 
   if (parsed.deleted) {
+    const time = convertTstampToDateTime(message.MessageInfo.TimestampNanos);
     return (
-      <span className="text-gray-500 italic text-sm select-text">
+      <span className="text-white/30 italic text-[13px] select-text inline-flex items-center gap-1.5">
+        <Ban className="w-3 h-3 shrink-0 opacity-40" />
         This message was deleted
+        <span className="text-[10px] not-italic text-white/20 ml-1">
+          {time}
+        </span>
       </span>
     );
   }
@@ -220,14 +226,12 @@ function MessageContent({
     }
 
     case "audio":
-      return parsed.audioUrl ? (
+      return (
         <AudioMessage
           audioUrl={parsed.audioUrl}
           duration={parsed.duration}
           waveformSeed={message.MessageInfo.TimestampNanosString}
         />
-      ) : (
-        <FormattedMessage>{messageToShow}</FormattedMessage>
       );
 
     case "file":
@@ -1165,6 +1169,12 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
               senderStyles = "";
             }
 
+            // Deleted messages get a muted, dashed-border bubble
+            if (parsed.deleted) {
+              senderStyles =
+                "bg-white/[0.02] border border-dashed border-white/10 text-gray-500";
+            }
+
             const messageKey =
               (message as any)._localId ||
               message.MessageInfo.TimestampNanosString ||
@@ -1340,6 +1350,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                             ? "p-0"
                             : isEmojiOnly
                             ? "p-0"
+                            : parsed.deleted
+                            ? "py-2.5 px-4"
                             : "py-1.5 px-3 md:px-4"
                         } break-words ${
                           isMedia || isEmojiOnly
@@ -1399,6 +1411,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                                 return !!msgText && msgText !== "video";
                               return false;
                             })();
+                          // Deleted messages render their own inline timestamp via MessageContent
+                          if (parsed.deleted) return null;
                           const timestampInside =
                             (!isMedia && !isEmojiOnly) || mediaHasCaption;
                           const timeText = `${
@@ -1406,7 +1420,9 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                           }${convertTstampToDateTime(
                             message.MessageInfo.TimestampNanos
                           )}`;
-                          const timeColor = IsSender
+                          const timeColor = parsed.deleted
+                            ? "text-white/25"
+                            : IsSender
                             ? "text-[#34F080]/50"
                             : "text-gray-500/80";
 
@@ -1447,6 +1463,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
 
                       {/* Timestamp outside bubble — only for bare media (no caption) and emoji-only */}
                       {(() => {
+                        if (parsed.deleted) return null;
                         const msgText = message.DecryptedMessage || "";
                         const mediaHasCaption =
                           isMedia &&
@@ -1492,9 +1509,14 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                         return null;
                       })()}
 
-                      {/* Status indicator – only on last bubble in a sender group (or failed) to avoid overlap */}
+                      {/* Status indicator – only on last bubble in a sender group (or failed) to avoid overlap.
+                          Audio processing bubbles have their own internal spinner, so skip the external one. */}
                       {IsSender &&
                         (message as any)._status &&
+                        !(
+                          parsed.type === "audio" &&
+                          (message as any)._status === "processing"
+                        ) &&
                         (isLastInGroup ||
                           (message as any)._status === "failed") && (
                           <div className="absolute -bottom-4 right-0 z-10">
@@ -1886,7 +1908,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
         {unreadReactionTargets.length > 0 && (
           <button
             onClick={scrollToNextReaction}
-            className={`pointer-events-auto flex items-center gap-1 justify-center bg-[#141c2b] hover:bg-[#1a2538] border border-white/10 rounded-full shadow-lg text-sm cursor-pointer transition-all ${
+            className={`pointer-events-auto flex items-center gap-1 justify-center glass-btn-primary rounded-full shadow-[0_0_12px_rgba(52,240,128,0.15)] text-sm cursor-pointer transition-all ${
               isMobile ? "w-11 h-11" : "w-10 h-10"
             }`}
             aria-label={`${unreadReactionTargets.length} unread reaction${
@@ -1895,7 +1917,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
           >
             <span>❤️</span>
             {unreadReactionTargets.length > 1 && (
-              <span className="text-[10px] font-bold text-gray-300">
+              <span className="text-[10px] font-bold text-[#34F080]">
                 {unreadReactionTargets.length}
               </span>
             )}
