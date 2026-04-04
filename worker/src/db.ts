@@ -33,14 +33,16 @@ export async function upsertUser(
     .run();
 
   const row = await db
-    .prepare(`SELECT id FROM users WHERE deso_public_key = ?`)
+    .prepare("SELECT id FROM users WHERE deso_public_key = ?")
     .bind(desoPublicKey)
     .first<{ id: number }>();
 
   return row!.id;
 }
 
-/** Store a push subscription for a user. */
+/** Store a push subscription for a user.
+ *  Deactivates stale subscriptions from the same push service (same origin)
+ *  to prevent duplicate notifications when the browser rotates the endpoint. */
 export async function upsertSubscription(
   db: D1Database,
   userId: number,
@@ -48,18 +50,32 @@ export async function upsertSubscription(
   p256dh: string,
   auth: string
 ): Promise<void> {
-  await db
-    .prepare(
-      `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, is_active)
-       VALUES (?, ?, ?, ?, 1)
-       ON CONFLICT (endpoint) DO UPDATE SET
-         user_id = excluded.user_id,
-         p256dh = excluded.p256dh,
-         auth = excluded.auth,
-         is_active = 1`
-    )
-    .bind(userId, endpoint, p256dh, auth)
-    .run();
+  // Extract the push service origin (e.g. "https://web.push.apple.com")
+  // so we can deactivate old subscriptions from the same browser/service.
+  // Use SUBSTR prefix match instead of LIKE to avoid issues with % or _ in URLs.
+  const origin = new URL(endpoint).origin;
+
+  await db.batch([
+    // Deactivate stale subscriptions from the same push service for this user
+    db
+      .prepare(
+        `UPDATE push_subscriptions SET is_active = 0
+         WHERE user_id = ? AND endpoint != ? AND SUBSTR(endpoint, 1, ?) = ? AND is_active = 1`
+      )
+      .bind(userId, endpoint, origin.length, origin),
+    // Upsert the current subscription
+    db
+      .prepare(
+        `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, is_active)
+         VALUES (?, ?, ?, ?, 1)
+         ON CONFLICT (endpoint) DO UPDATE SET
+           user_id = excluded.user_id,
+           p256dh = excluded.p256dh,
+           auth = excluded.auth,
+           is_active = 1`
+      )
+      .bind(userId, endpoint, p256dh, auth),
+  ]);
 }
 
 /** Remove a push subscription. */
@@ -118,7 +134,7 @@ export async function getThreadStates(
 ): Promise<Map<string, string>> {
   const { results } = await db
     .prepare(
-      `SELECT thread_key, last_seen_timestamp FROM thread_state WHERE user_id = ?`
+      "SELECT thread_key, last_seen_timestamp FROM thread_state WHERE user_id = ?"
     )
     .bind(userId)
     .all<DbThreadState>();
@@ -155,7 +171,7 @@ export async function deactivateSubscription(
   endpoint: string
 ): Promise<void> {
   await db
-    .prepare(`UPDATE push_subscriptions SET is_active = 0 WHERE endpoint = ?`)
+    .prepare("UPDATE push_subscriptions SET is_active = 0 WHERE endpoint = ?")
     .bind(endpoint)
     .run();
 }
@@ -167,13 +183,13 @@ export async function incrementFailureCount(
 ): Promise<number> {
   await db
     .prepare(
-      `UPDATE push_subscriptions SET failure_count = failure_count + 1 WHERE endpoint = ?`
+      "UPDATE push_subscriptions SET failure_count = failure_count + 1 WHERE endpoint = ?"
     )
     .bind(endpoint)
     .run();
 
   const row = await db
-    .prepare(`SELECT failure_count FROM push_subscriptions WHERE endpoint = ?`)
+    .prepare("SELECT failure_count FROM push_subscriptions WHERE endpoint = ?")
     .bind(endpoint)
     .first<{ failure_count: number }>();
 
@@ -187,7 +203,7 @@ export async function updateLastSeen(
 ): Promise<void> {
   await db
     .prepare(
-      `UPDATE users SET last_seen_at = datetime('now') WHERE deso_public_key = ?`
+      "UPDATE users SET last_seen_at = datetime('now') WHERE deso_public_key = ?"
     )
     .bind(desoPublicKey)
     .run();
@@ -223,7 +239,7 @@ export async function resetFailureCount(
 ): Promise<void> {
   await db
     .prepare(
-      `UPDATE push_subscriptions SET failure_count = 0 WHERE endpoint = ?`
+      "UPDATE push_subscriptions SET failure_count = 0 WHERE endpoint = ?"
     )
     .bind(endpoint)
     .run();
@@ -240,7 +256,7 @@ export async function getReadCursors(
 ): Promise<Record<string, string>> {
   const { results } = await db
     .prepare(
-      `SELECT conversation_key, timestamp_nanos FROM read_cursors WHERE user_public_key = ?`
+      "SELECT conversation_key, timestamp_nanos FROM read_cursors WHERE user_public_key = ?"
     )
     .bind(publicKey)
     .all<{ conversation_key: string; timestamp_nanos: string }>();

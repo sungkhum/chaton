@@ -91,6 +91,17 @@ export class ChatRelay extends DurableObject<RelayEnv> {
       }
 
       this.ensureDb();
+      // Deactivate stale subscriptions from the same push service origin.
+      // Use SUBSTR prefix match instead of LIKE to avoid issues with % or _ in URLs.
+      const origin = new URL(subscription.endpoint).origin;
+      this.ctx.storage.sql.exec(
+        `DELETE FROM push_subscriptions
+         WHERE public_key = ? AND endpoint != ? AND SUBSTR(endpoint, 1, ?) = ?`,
+        publicKey,
+        subscription.endpoint,
+        origin.length,
+        origin
+      );
       this.ctx.storage.sql.exec(
         `INSERT OR REPLACE INTO push_subscriptions (public_key, endpoint, p256dh, auth)
          VALUES (?, ?, ?, ?)`,
@@ -103,7 +114,7 @@ export class ChatRelay extends DurableObject<RelayEnv> {
       return new Response(JSON.stringify({ ok: true }), {
         headers: { "Content-Type": "application/json" },
       });
-    } catch (e) {
+    } catch {
       return new Response("Bad request", { status: 400 });
     }
   }
@@ -117,7 +128,7 @@ export class ChatRelay extends DurableObject<RelayEnv> {
 
       this.ensureDb();
       this.ctx.storage.sql.exec(
-        `DELETE FROM push_subscriptions WHERE public_key = ? AND endpoint = ?`,
+        "DELETE FROM push_subscriptions WHERE public_key = ? AND endpoint = ?",
         publicKey,
         endpoint
       );
@@ -234,7 +245,7 @@ export class ChatRelay extends DurableObject<RelayEnv> {
   private async sendPushToUser(publicKey: string, fromName: string, threadId: string, fromPublicKey?: string, groupName?: string) {
     this.ensureDb();
     const rows = this.ctx.storage.sql.exec(
-      `SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE public_key = ?`,
+      "SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE public_key = ?",
       publicKey
     ).toArray();
 
@@ -272,7 +283,7 @@ export class ChatRelay extends DurableObject<RelayEnv> {
     // Clean up expired subscriptions
     for (const endpoint of expiredEndpoints) {
       this.ctx.storage.sql.exec(
-        `DELETE FROM push_subscriptions WHERE public_key = ? AND endpoint = ?`,
+        "DELETE FROM push_subscriptions WHERE public_key = ? AND endpoint = ?",
         publicKey,
         endpoint
       );
