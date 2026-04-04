@@ -610,7 +610,6 @@ export const SendMessageButtonAndInput = forwardRef<
         const file = new File([compressed], `recording-${Date.now()}.mp4`, {
           type: "video/mp4",
         });
-        // uploadAudioFile skips transcode polling — returns immediately.
         const { hlsUrl, iframeUrl } = await uploadAudioFile(file);
         const extraData: Record<string, string> = {
           // ChatOn native: direct HLS URL for instant playback

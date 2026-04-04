@@ -36,6 +36,15 @@ const serwist = new Serwist({
       handler: new NetworkOnly(),
     },
     {
+      // Cloudflare Stream manifests and segments must never be cached.
+      // A cached 404 from a still-transcoding asset would permanently
+      // break audio/video playback.
+      matcher: ({ url }) =>
+        url.hostname === "videodelivery.net" ||
+        url.hostname === "iframe.videodelivery.net",
+      handler: new NetworkOnly(),
+    },
+    {
       // Cache profile avatar images and other DeSo CDN images
       matcher: ({ url }) =>
         url.hostname.includes("images.deso.org") ||

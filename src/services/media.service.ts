@@ -75,9 +75,8 @@ export interface AudioUploadResult {
 }
 
 /**
- * Upload audio file and return immediately — no polling for transcode.
+ * Upload audio file and poll until Cloudflare Stream finishes transcoding.
  * Returns both the direct HLS URL (for ChatOn) and the iframe URL (for DeSo apps).
- * hls.js handles retry if the manifest isn't ready yet.
  */
 export async function uploadAudioFile(file: File): Promise<AudioUploadResult> {
   const appUser = useStore.getState().appUser;
@@ -89,6 +88,11 @@ export async function uploadAudioFile(file: File): Promise<AudioUploadResult> {
   });
 
   const id = response.asset.id;
+
+  // Wait for Cloudflare Stream to finish transcoding before returning the URL.
+  // Without this, the HLS manifest returns 404 and recipients can't play audio.
+  await pollForVideoReady(id);
+
   return {
     hlsUrl: `https://videodelivery.net/${id}/manifest/video.m3u8`,
     iframeUrl: `https://iframe.videodelivery.net/${id}`,
