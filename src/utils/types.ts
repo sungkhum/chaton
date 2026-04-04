@@ -4,6 +4,9 @@ import {
   SubmitTransactionResponse,
 } from "deso-protocol";
 
+/** Sentinel value for messages not yet decrypted — UI shows shimmer instead of text */
+export const UNDECRYPTED_PLACEHOLDER = "\x00__UNDECRYPTED__";
+
 export interface Conversation {
   firstMessagePublicKey: string;
   messages: DecryptedMessageEntryResponse[];

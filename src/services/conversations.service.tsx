@@ -37,7 +37,6 @@ import {
   ASSOCIATION_VALUE_DISMISSED,
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
   PRIVACY_MODE_FULL,
-  PRIVACY_MODE_STANDARD,
   USER_TO_SEND_MESSAGE_TO,
 } from "../utils/constants";
 import {
@@ -49,9 +48,234 @@ import {
   getEncryptedExtraDataKeys,
   buildExtraData,
 } from "../utils/extra-data";
-import { Conversation, ConversationMap } from "../utils/types";
+import {
+  Conversation,
+  ConversationMap,
+  UNDECRYPTED_PLACEHOLDER,
+} from "../utils/types";
 import { useStore } from "../store";
 import { bytesToHex } from "@noble/hashes/utils";
+
+// ── Progressive loading helpers ──────────────────────────────────────────────
+
+/** Derive IsSender without decryption (mirrors deso-protocol identity logic) */
+function deriveIsSender(
+  msg: NewMessageEntryResponse,
+  userPublicKeyBase58Check: string
+): boolean {
+  return (
+    msg.SenderInfo.OwnerPublicKeyBase58Check === userPublicKeyBase58Check &&
+    (msg.SenderInfo.AccessGroupKeyName === DEFAULT_KEY_MESSAGING_GROUP_NAME ||
+      !msg.SenderInfo.AccessGroupKeyName)
+  );
+}
+
+/** Fetch raw message threads without decryption */
+export async function fetchMessageThreadsRaw(
+  userPublicKeyBase58Check: string
+): Promise<{
+  messageThreads: NewMessageEntryResponse[];
+  publicKeyToProfileEntryResponseMap: PublicKeyToProfileEntryResponseMap;
+}> {
+  const messages = await getAllMessageThreads({
+    UserPublicKeyBase58Check: userPublicKeyBase58Check,
+  });
+  return {
+    messageThreads: messages.MessageThreads || [],
+    publicKeyToProfileEntryResponseMap:
+      messages.PublicKeyToProfileEntryResponse || {},
+  };
+}
+
+/** Compute the conversation key for a raw message. */
+function conversationKey(
+  msg: NewMessageEntryResponse,
+  userPublicKeyBase58Check: string
+): { key: string; otherInfo: typeof msg.RecipientInfo } {
+  const isSender = deriveIsSender(msg, userPublicKeyBase58Check);
+  const otherInfo =
+    msg.ChatType === ChatType.DM
+      ? isSender
+        ? msg.RecipientInfo
+        : msg.SenderInfo
+      : msg.RecipientInfo;
+  const key =
+    otherInfo.OwnerPublicKeyBase58Check +
+    (otherInfo.AccessGroupKeyName || DEFAULT_KEY_MESSAGING_GROUP_NAME);
+  return { key, otherInfo };
+}
+
+/** Build a ConversationMap from raw (undecrypted) messages — used for instant shell rendering.
+ *  Also returns the latest raw message per conversation key so decryptConversationPreviews
+ *  can skip recomputing it (fix for duplicate iteration). */
+export function buildShellConversations(
+  messageThreads: NewMessageEntryResponse[],
+  userPublicKeyBase58Check: string
+): {
+  conversations: ConversationMap;
+  latestByKey: Map<string, NewMessageEntryResponse>;
+} {
+  const conversations: ConversationMap = {};
+  const latestByKey = new Map<string, NewMessageEntryResponse>();
+
+  for (const msg of messageThreads) {
+    const isSender = deriveIsSender(msg, userPublicKeyBase58Check);
+    const shellMessage = {
+      ...msg,
+      DecryptedMessage: UNDECRYPTED_PLACEHOLDER,
+      IsSender: isSender,
+      error: "",
+    } as DecryptedMessageEntryResponse;
+
+    const { key, otherInfo } = conversationKey(msg, userPublicKeyBase58Check);
+
+    // Track latest message per conversation (for decryptConversationPreviews)
+    const existingLatest = latestByKey.get(key);
+    if (
+      !existingLatest ||
+      msg.MessageInfo.TimestampNanos > existingLatest.MessageInfo.TimestampNanos
+    ) {
+      latestByKey.set(key, msg);
+    }
+
+    const existing = conversations[key];
+    if (existing) {
+      existing.messages.push(shellMessage);
+      existing.messages.sort(
+        (a, b) => b.MessageInfo.TimestampNanos - a.MessageInfo.TimestampNanos
+      );
+    } else {
+      conversations[key] = {
+        firstMessagePublicKey: otherInfo.OwnerPublicKeyBase58Check,
+        messages: [shellMessage],
+        ChatType: msg.ChatType,
+      };
+    }
+  }
+  return { conversations, latestByKey };
+}
+
+/**
+ * Decrypt only the latest message per conversation in batches,
+ * calling onBatch after each batch so the UI can update progressively.
+ *
+ * Accepts a pre-computed `latestByKey` map (from buildShellConversations)
+ * to avoid reiterating all raw messages. Also supports an AbortSignal
+ * for cancellation on logout/re-login.
+ */
+export async function decryptConversationPreviews(
+  latestByKey: Map<string, NewMessageEntryResponse>,
+  userPublicKeyBase58Check: string,
+  allAccessGroups: AccessGroupEntryResponse[],
+  onBatch: (updates: Map<string, DecryptedMessageEntryResponse>) => void,
+  signal?: AbortSignal,
+  batchSize = 10
+): Promise<AccessGroupEntryResponse[]> {
+  const entries = Array.from(latestByKey.entries());
+  let currentGroups = allAccessGroups;
+  let groupsRefreshed = false;
+
+  for (let i = 0; i < entries.length; i += batchSize) {
+    if (signal?.aborted) break;
+
+    const batch = entries.slice(i, i + batchSize);
+    const messagesToDecrypt = batch.map(([, msg]) => msg);
+
+    try {
+      // Decrypt each message individually with a timeout so one stuck
+      // message can't hang the entire batch (or all subsequent batches).
+      const decrypted = await Promise.all(
+        messagesToDecrypt.map(async (msg) => {
+          try {
+            const result = await Promise.race([
+              identity.decryptMessage(msg, currentGroups),
+              new Promise<DecryptedMessageEntryResponse>((_, reject) =>
+                setTimeout(() => reject(new Error("decrypt timeout")), 5000)
+              ),
+            ]);
+            return result;
+          } catch {
+            return {
+              ...msg,
+              DecryptedMessage: "",
+              IsSender: deriveIsSender(msg, userPublicKeyBase58Check),
+              error: "decryption failed",
+            } as DecryptedMessageEntryResponse;
+          }
+        })
+      );
+
+      // If any message failed to decrypt and we haven't refreshed groups yet,
+      // fetch fresh access groups and retry the failed ones (mirrors the retry
+      // logic in decryptAccessGroupMessagesWithRetry).
+      const failedIndices = decrypted
+        .map((d, idx) => (d.error && !d.DecryptedMessage ? idx : -1))
+        .filter((idx) => idx >= 0);
+
+      if (failedIndices.length > 0 && !groupsRefreshed) {
+        groupsRefreshed = true;
+        try {
+          const now = Date.now();
+          if (
+            accessGroupsCache &&
+            now - accessGroupsCache.fetchedAt < ACCESS_GROUPS_CACHE_TTL_MS
+          ) {
+            currentGroups = accessGroupsCache.data;
+          } else {
+            const fresh = await getAllAccessGroups({
+              PublicKeyBase58Check: userPublicKeyBase58Check,
+            });
+            currentGroups = (fresh.AccessGroupsOwned || []).concat(
+              fresh.AccessGroupsMember || []
+            );
+            accessGroupsCache = { data: currentGroups, fetchedAt: now };
+          }
+
+          // Retry only the failed messages with fresh groups
+          await Promise.all(
+            failedIndices.map(async (idx) => {
+              try {
+                const retried = await Promise.race([
+                  identity.decryptMessage(
+                    messagesToDecrypt[idx],
+                    currentGroups
+                  ),
+                  new Promise<DecryptedMessageEntryResponse>((_, reject) =>
+                    setTimeout(() => reject(new Error("decrypt timeout")), 5000)
+                  ),
+                ]);
+                decrypted[idx] = retried;
+              } catch {
+                // Still failed — keep the error placeholder
+              }
+            })
+          );
+        } catch (e) {
+          console.error(
+            "[ChatOn] Access group refresh for preview decryption failed:",
+            e
+          );
+        }
+      }
+
+      const updates = new Map<string, DecryptedMessageEntryResponse>();
+      for (let j = 0; j < batch.length; j++) {
+        updates.set(batch[j][0], decrypted[j]);
+      }
+      onBatch(updates);
+    } catch (e) {
+      console.error("[ChatOn] Preview decryption batch failed:", e);
+      // Continue with next batch — don't let one failure stop everything
+    }
+
+    // Yield to event loop between batches so UI can paint
+    await new Promise((r) => setTimeout(r, 0));
+  }
+
+  return currentGroups;
+}
+
+// ── Original conversation loading ────────────────────────────────────────────
 
 export const getConversationsNewMap = async (
   userPublicKeyBase58Check: string,
@@ -327,7 +551,10 @@ export const decryptAccessGroupMessagesWithRetry = async (
           msg.SenderInfo.OwnerPublicKeyBase58Check
         );
         // Skip if we don't have the default key, or it's the same as what was tried
-        if (!realKey || realKey === msg.SenderInfo.AccessGroupPublicKeyBase58Check)
+        if (
+          !realKey ||
+          realKey === msg.SenderInfo.AccessGroupPublicKeyBase58Check
+        )
           continue;
 
         indicesToRetry.push(i);
@@ -421,7 +648,10 @@ async function decryptExtraDataFields(
           },
         } as NewMessageEntryResponse;
 
-        const decryptedFake = await identity.decryptMessage(fakeMsg, accessGroups);
+        const decryptedFake = await identity.decryptMessage(
+          fakeMsg,
+          accessGroups
+        );
         updatedExtra[key] = decryptedFake.DecryptedMessage;
       } catch {
         // If decryption fails (e.g. legacy plaintext value), leave as-is
@@ -446,7 +676,10 @@ async function decryptExtraDataFields(
         },
       } as NewMessageEntryResponse;
 
-      const decryptedFake = await identity.decryptMessage(fakeMsg, accessGroups);
+      const decryptedFake = await identity.decryptMessage(
+        fakeMsg,
+        accessGroups
+      );
       updatedExtra[key] = decryptedFake.DecryptedMessage;
     } catch {
       // If decryption fails, leave as-is
@@ -580,7 +813,10 @@ export const sendSystemMessage = async (
   members: MentionEntry[]
 ): Promise<void> => {
   const names = members.map((m) => m.un || m.pk.slice(0, 8));
-  const label = names.length <= 3 ? names.join(", ") : `${names.slice(0, 3).join(", ")} and ${names.length - 3} more`;
+  const label =
+    names.length <= 3
+      ? names.join(", ")
+      : `${names.slice(0, 3).join(", ")} and ${names.length - 3} more`;
   const verb = action === "member-left" ? "left" : "joined";
   const fallback = `${label} ${verb} the group`;
 
@@ -708,6 +944,7 @@ async function fetchAllFollowsPaginated(
   const keys = new Set<string>();
   let lastKey = "";
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const res = await getFollowersForUser({
       PublicKeyBase58Check: publicKey,
@@ -750,6 +987,7 @@ export async function fetchAssociationsByType(
   const map = new Map<string, string>();
   let lastId = "";
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const res = await getUserAssociations({
       TransactorPublicKeyBase58Check: publicKey,
@@ -772,9 +1010,7 @@ export async function fetchAssociationsByType(
   return map;
 }
 
-export async function fetchChatAssociations(
-  publicKey: string
-): Promise<{
+export async function fetchChatAssociations(publicKey: string): Promise<{
   approved: Map<string, string>;
   blocked: Map<string, string>;
   archivedChats: Map<string, string>;
@@ -840,12 +1076,15 @@ export async function createApprovalAssociation(
   targetPublicKey: string
 ): Promise<void> {
   await withAuth(() =>
-    createUserAssociation({
-      TransactorPublicKeyBase58Check: myPublicKey,
-      TargetUserPublicKeyBase58Check: targetPublicKey,
-      AssociationType: ASSOCIATION_TYPE_APPROVED,
-      AssociationValue: ASSOCIATION_VALUE_APPROVED,
-    }, { checkPermissions: false })
+    createUserAssociation(
+      {
+        TransactorPublicKeyBase58Check: myPublicKey,
+        TargetUserPublicKeyBase58Check: targetPublicKey,
+        AssociationType: ASSOCIATION_TYPE_APPROVED,
+        AssociationValue: ASSOCIATION_VALUE_APPROVED,
+      },
+      { checkPermissions: false }
+    )
   );
 }
 
@@ -854,12 +1093,15 @@ export async function createBlockAssociation(
   targetPublicKey: string
 ): Promise<void> {
   await withAuth(() =>
-    createUserAssociation({
-      TransactorPublicKeyBase58Check: myPublicKey,
-      TargetUserPublicKeyBase58Check: targetPublicKey,
-      AssociationType: ASSOCIATION_TYPE_BLOCKED,
-      AssociationValue: ASSOCIATION_VALUE_BLOCKED,
-    }, { checkPermissions: false })
+    createUserAssociation(
+      {
+        TransactorPublicKeyBase58Check: myPublicKey,
+        TargetUserPublicKeyBase58Check: targetPublicKey,
+        AssociationType: ASSOCIATION_TYPE_BLOCKED,
+        AssociationValue: ASSOCIATION_VALUE_BLOCKED,
+      },
+      { checkPermissions: false }
+    )
   );
 }
 
@@ -871,6 +1113,7 @@ export async function fetchArchivedGroups(
   const map = new Map<string, string>();
   let lastId = "";
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const res = await getUserAssociations({
       TransactorPublicKeyBase58Check: publicKey,
@@ -902,12 +1145,15 @@ export async function createArchiveAssociation(
   groupKeyName: string
 ): Promise<void> {
   await withAuth(() =>
-    createUserAssociation({
-      TransactorPublicKeyBase58Check: myPublicKey,
-      TargetUserPublicKeyBase58Check: groupOwnerPublicKey,
-      AssociationType: ASSOCIATION_TYPE_GROUP_ARCHIVED,
-      AssociationValue: groupKeyName,
-    }, { checkPermissions: false })
+    createUserAssociation(
+      {
+        TransactorPublicKeyBase58Check: myPublicKey,
+        TargetUserPublicKeyBase58Check: groupOwnerPublicKey,
+        AssociationType: ASSOCIATION_TYPE_GROUP_ARCHIVED,
+        AssociationValue: groupKeyName,
+      },
+      { checkPermissions: false }
+    )
   );
 }
 
@@ -930,12 +1176,15 @@ export async function createArchiveChatAssociation(
   targetPublicKey: string
 ): Promise<void> {
   await withAuth(() =>
-    createUserAssociation({
-      TransactorPublicKeyBase58Check: myPublicKey,
-      TargetUserPublicKeyBase58Check: targetPublicKey,
-      AssociationType: ASSOCIATION_TYPE_CHAT_ARCHIVED,
-      AssociationValue: ASSOCIATION_VALUE_ARCHIVED,
-    }, { checkPermissions: false })
+    createUserAssociation(
+      {
+        TransactorPublicKeyBase58Check: myPublicKey,
+        TargetUserPublicKeyBase58Check: targetPublicKey,
+        AssociationType: ASSOCIATION_TYPE_CHAT_ARCHIVED,
+        AssociationValue: ASSOCIATION_VALUE_ARCHIVED,
+      },
+      { checkPermissions: false }
+    )
   );
 }
 
@@ -958,12 +1207,15 @@ export async function createDismissAssociation(
   targetPublicKey: string
 ): Promise<void> {
   await withAuth(() =>
-    createUserAssociation({
-      TransactorPublicKeyBase58Check: myPublicKey,
-      TargetUserPublicKeyBase58Check: targetPublicKey,
-      AssociationType: ASSOCIATION_TYPE_DISMISSED,
-      AssociationValue: ASSOCIATION_VALUE_DISMISSED,
-    }, { checkPermissions: false })
+    createUserAssociation(
+      {
+        TransactorPublicKeyBase58Check: myPublicKey,
+        TargetUserPublicKeyBase58Check: targetPublicKey,
+        AssociationType: ASSOCIATION_TYPE_DISMISSED,
+        AssociationValue: ASSOCIATION_VALUE_DISMISSED,
+      },
+      { checkPermissions: false }
+    )
   );
 }
 
@@ -1021,13 +1273,16 @@ export async function setPrivacyModeOnChain(
     return "";
   }
 
-  const { submittedTransactionResponse } = await withAuth(() =>
-    createUserAssociation({
-      TransactorPublicKeyBase58Check: myPublicKey,
-      TargetUserPublicKeyBase58Check: myPublicKey, // self-association
-      AssociationType: ASSOCIATION_TYPE_PRIVACY_MODE,
-      AssociationValue: mode,
-    }, { checkPermissions: false })
+  await withAuth(() =>
+    createUserAssociation(
+      {
+        TransactorPublicKeyBase58Check: myPublicKey,
+        TargetUserPublicKeyBase58Check: myPublicKey, // self-association
+        AssociationType: ASSOCIATION_TYPE_PRIVACY_MODE,
+        AssociationValue: mode,
+      },
+      { checkPermissions: false }
+    )
   );
 
   // Fetch the new association ID
@@ -1097,6 +1352,7 @@ export async function fetchJoinRequestCountsForOwner(
   const groupRequesters = new Map<string, Set<string>>(); // groupKeyName → requester keys
   let lastId = "";
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const res = await getUserAssociations({
       TargetUserPublicKeyBase58Check: ownerPublicKey,
@@ -1123,6 +1379,7 @@ export async function fetchJoinRequestCountsForOwner(
   // Bulk-fetch all rejection associations so we can exclude rejected users
   const groupRejected = new Map<string, Set<string>>(); // groupKeyName → rejected keys
   let rejLastId = "";
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const res = await getUserAssociations({
       TransactorPublicKeyBase58Check: ownerPublicKey,
@@ -1150,6 +1407,7 @@ export async function fetchJoinRequestCountsForOwner(
         try {
           const memberSet = new Set<string>([ownerPublicKey]);
           let cursor = "";
+          // eslint-disable-next-line no-constant-condition
           while (true) {
             const membersRes = await getPaginatedAccessGroupMembers({
               AccessGroupOwnerPublicKeyBase58Check: ownerPublicKey,
@@ -1203,6 +1461,7 @@ export async function fetchPendingJoinRequests(
   const results: JoinRequestEntry[] = [];
   let lastId = "";
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const res = await getUserAssociations({
       TargetUserPublicKeyBase58Check: ownerPublicKey,
@@ -1243,6 +1502,7 @@ export async function fetchRejectedJoinRequestKeys(
   const rejected = new Set<string>();
   let lastId = "";
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const res = await getUserAssociations({
       TransactorPublicKeyBase58Check: ownerPublicKey,
@@ -1300,6 +1560,7 @@ export async function cleanupOwnJoinRequests(
   let lastId = "";
   const toDelete: string[] = [];
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const res = await getUserAssociations({
       TransactorPublicKeyBase58Check: myPublicKey,

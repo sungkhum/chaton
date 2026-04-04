@@ -54,7 +54,9 @@ import {
   createArchiveAssociation,
   createBlockAssociation,
   createDismissAssociation,
+  buildShellConversations,
   decryptAccessGroupMessagesWithRetry,
+  decryptConversationPreviews,
   cleanupOwnJoinRequests,
   deleteArchiveAssociation,
   deleteAssociationById,
@@ -64,6 +66,7 @@ import {
   fetchAssociationsByType,
   fetchChatAssociations,
   fetchJoinRequestCountsForOwner,
+  fetchMessageThreadsRaw,
   fetchMutualFollows,
   fetchPrivacyMode,
   getConversations,
@@ -112,6 +115,7 @@ import { Conversation, ConversationMap } from "../utils/types";
 import {
   buildExtraData,
   getGroupImageUrl,
+  parseMessageType,
   MSG_REPLY_TO,
   MSG_REPLY_PREVIEW,
   MSG_REPLY_SENDER,
@@ -136,6 +140,11 @@ import type { TipCurrency } from "../utils/extra-data";
 let lastMicroTipTime = 0;
 const MICRO_TIP_COOLDOWN_MS = 3000;
 import { JoinGroupModal } from "./join-group-modal";
+const LazyJoinConfirmationModal = lazy(() =>
+  import("./join-confirmation-modal").then((m) => ({
+    default: m.JoinConfirmationModal,
+  }))
+);
 const LazyManageMembersDialog = lazy(() =>
   import("./manage-members-dialog").then((m) => ({
     default: m.ManageMembersDialog,
@@ -329,6 +338,11 @@ export const MessagingApp: FC = () => {
   } | null>(null);
   const [hiddenMessageIds, setHiddenMessageIds] = useState<Set<string>>(
     new Set()
+  );
+  // Captured at conversation-open time, before we update it to the latest message.
+  // Passed to MessagingBubblesAndAvatar so it can render the "new messages" divider.
+  const [openedLastReadNanos, setOpenedLastReadNanos] = useState<number | null>(
+    null
   );
   const [tipTarget, setTipTarget] = useState<{
     recipientPublicKey: string;
@@ -958,6 +972,66 @@ export const MessagingApp: FC = () => {
       dismissedUsers,
       appUser,
     ]);
+
+  // Compute per-conversation highlights: unread @mentions and reactions to my messages.
+  // Uses the most recent messages loaded in each conversation (the preview page).
+  // rerender-dependencies: depend on primitive publicKey, not the appUser object ref.
+  const myPublicKey = appUser?.PublicKeyBase58Check;
+  const highlightsByConversation = useMemo(() => {
+    if (!myPublicKey)
+      return new Map<string, { hasMention: boolean; hasReaction: boolean }>();
+    const lastReadTimestamps = getCachedLastReadTimestamps(myPublicKey);
+    const result = new Map<
+      string,
+      { hasMention: boolean; hasReaction: boolean }
+    >();
+    for (const [key, convo] of Object.entries(conversations)) {
+      const lastRead = lastReadTimestamps[key];
+      if (lastRead === undefined) continue;
+      let hasMention = false;
+      let hasReaction = false;
+      // Build set of my message timestamps for reaction target lookup
+      const myTimestamps = new Set<string>();
+      for (const msg of convo.messages) {
+        if (
+          msg.IsSender ||
+          msg.SenderInfo.OwnerPublicKeyBase58Check === myPublicKey
+        ) {
+          myTimestamps.add(msg.MessageInfo.TimestampNanosString);
+        }
+      }
+      for (const msg of convo.messages) {
+        if (msg.MessageInfo.TimestampNanos <= lastRead) break; // sorted newest-first
+        if (
+          msg.IsSender ||
+          msg.SenderInfo.OwnerPublicKeyBase58Check === myPublicKey
+        )
+          continue;
+        const parsed = parseMessageType(msg);
+        if (
+          !hasMention &&
+          parsed.mentions &&
+          parsed.mentions.some((m) => m.pk === myPublicKey)
+        ) {
+          hasMention = true;
+        }
+        if (
+          !hasReaction &&
+          parsed.type === "reaction" &&
+          parsed.replyTo &&
+          parsed.action !== "remove" &&
+          myTimestamps.has(parsed.replyTo)
+        ) {
+          hasReaction = true;
+        }
+        if (hasMention && hasReaction) break;
+      }
+      if (hasMention || hasReaction) {
+        result.set(key, { hasMention, hasReaction });
+      }
+    }
+    return result;
+  }, [conversations, myPublicKey, unreadByConversation]); // unreadByConversation triggers recompute on new messages
 
   // Clean up UI state after a conversation's classification changes
   const cleanupAfterClassificationChange = (conversationKey: string) => {
@@ -1812,8 +1886,11 @@ export const MessagingApp: FC = () => {
       return;
     }
 
+    const firstMsg = conversation.messages[0];
+    if (!firstMsg) return; // No messages yet (e.g. user just joined)
+
     const { AccessGroupKeyName, OwnerPublicKeyBase58Check } =
-      conversation.messages[0].RecipientInfo;
+      firstMsg.RecipientInfo;
 
     // Fetch members and owner profile in parallel — the members API
     // doesn't include the group owner, so we fetch them separately.
@@ -1875,6 +1952,8 @@ export const MessagingApp: FC = () => {
   ) => {
     if (!appUser) {
       toast.error("You must be logged in to use this feature");
+      setLoading(false);
+      setAutoFetchConversations(false);
       return;
     }
 
@@ -1938,6 +2017,10 @@ export const MessagingApp: FC = () => {
       renderedFromCache = true;
 
       if (selectConversation && cachedKeyToUse) {
+        // Capture the last-read timestamp before selecting, for the unread divider
+        const lastReadTs = getCachedLastReadTimestamps(publicKey);
+        setOpenedLastReadNanos(lastReadTs[cachedKeyToUse] ?? null);
+
         setSelectedConversationPublicKey(cachedKeyToUse);
         setPubKeyPlusGroupName(cachedKeyToUse);
       }
@@ -1961,8 +2044,7 @@ export const MessagingApp: FC = () => {
       }
     }
 
-    // --- Background revalidation (or blocking if no cache) ---
-    const conversationPromise = getConversations(publicKey, allAccessGroups);
+    // --- Classification + privacy (always run in parallel) ---
     const classificationPromise = !chatRequestsLoaded
       ? Promise.all([
           fetchMutualFollows(publicKey),
@@ -2006,48 +2088,211 @@ export const MessagingApp: FC = () => {
         console.error("Failed to fetch privacy mode:", e);
       });
 
+    // --- Conversation loading: progressive for first load, blocking for cache revalidation ---
     let conversationResult;
-    try {
-      [conversationResult] = await Promise.all([
-        conversationPromise,
-        classificationPromise,
-        privacyPromise,
-      ]);
-    } catch (e) {
-      console.error("[ChatOn] Failed to fetch conversations:", e);
-      if (!renderedFromCache) {
+
+    // AbortController for progressive decryption — cancelled on logout/re-login
+    const decryptAbort = new AbortController();
+
+    if (!renderedFromCache) {
+      // ── Progressive path: show shells immediately, decrypt in batches ──
+      try {
+        const [rawResult] = await Promise.all([
+          fetchMessageThreadsRaw(publicKey),
+          classificationPromise,
+          privacyPromise,
+        ]);
+
+        const { messageThreads, publicKeyToProfileEntryResponseMap } =
+          rawResult;
+
+        if (messageThreads.length === 0) {
+          // No threads at all — show empty state immediately, then run
+          // getConversations in background (sends auto-first-message for new users)
+          setConversations({});
+          setLoading(false);
+          setAutoFetchConversations(false);
+          conversationResult = await getConversations(
+            publicKey,
+            allAccessGroups
+          );
+        } else {
+          // Build shell conversations and show them immediately.
+          // Also get latestByKey to pass directly to decryptConversationPreviews.
+          const { conversations: shellConversations, latestByKey } =
+            buildShellConversations(messageThreads, publicKey);
+
+          // Separate local tracker from React state to avoid mutating state directly
+          const localTracker: ConversationMap = { ...shellConversations };
+
+          // Extract usernames and profile pics (available without decryption)
+          const publicKeyToUsername: { [k: string]: string } = {};
+          const profilePicUrls: { [k: string]: string } = {};
+          Object.entries(publicKeyToProfileEntryResponseMap).forEach(
+            ([pk, profileEntryResponse]) => {
+              publicKeyToUsername[pk] = profileEntryResponse?.Username || "";
+              const ed = profileEntryResponse?.ExtraData;
+              if (ed) {
+                const picUrl = ed.NFTProfilePictureUrl || ed.LargeProfilePicURL;
+                if (picUrl) profilePicUrls[pk] = picUrl;
+              }
+            }
+          );
+          mergeUsernames(publicKeyToUsername);
+          setProfilePicByPublicKey((state) => ({
+            ...state,
+            ...profilePicUrls,
+          }));
+
+          // Show conversation list with shimmer previews — clears the spinner
+          setConversations(shellConversations);
+          setLoading(false);
+          setAutoFetchConversations(false);
+
+          const shellKeyToUse =
+            selectedKey ||
+            (!userChange && selectedConversationPublicKey) ||
+            Object.keys(shellConversations)[0];
+          if (
+            selectConversation &&
+            shellKeyToUse &&
+            (!selectedConversationPublicKeyRef.current ||
+              selectedConversationPublicKeyRef.current === shellKeyToUse)
+          ) {
+            setSelectedConversationPublicKey(shellKeyToUse);
+          }
+
+          // Decrypt previews progressively in batches of 10.
+          // Updates go to localTracker (for conversationResult) AND React state (for UI).
+          const updatedAccessGroups = await decryptConversationPreviews(
+            latestByKey,
+            publicKey,
+            allAccessGroups,
+            (batchUpdates) => {
+              // Update local tracker (never shared with React state)
+              for (const [key, decryptedMsg] of batchUpdates) {
+                if (
+                  localTracker[key] &&
+                  localTracker[key].messages.length > 0
+                ) {
+                  localTracker[key] = {
+                    ...localTracker[key],
+                    messages: [
+                      decryptedMsg,
+                      ...localTracker[key].messages.slice(1),
+                    ],
+                  };
+                }
+              }
+              // Update React state for UI
+              setConversations((prev) => {
+                const merged = { ...prev };
+                for (const [key, decryptedMsg] of batchUpdates) {
+                  if (merged[key] && merged[key].messages.length > 0) {
+                    merged[key] = {
+                      ...merged[key],
+                      messages: [
+                        decryptedMsg,
+                        ...merged[key].messages.slice(1),
+                      ],
+                    };
+                  }
+                }
+                return merged;
+              });
+            },
+            decryptAbort.signal
+          );
+          setAllAccessGroups(updatedAccessGroups);
+
+          // Fetch group members and DM usernames now that we have data
+          const DMChats = Object.values(localTracker).filter(
+            (e) => e.ChatType === ChatType.DM
+          );
+          const GroupChats = Object.values(localTracker).filter(
+            (e) => e.ChatType === ChatType.GROUPCHAT
+          );
+          try {
+            await Promise.all([
+              updateUsernameToPublicKeyMapFromConversations(DMChats),
+              ...GroupChats.map((e) => fetchGroupMembers(e)),
+            ]);
+          } catch (e) {
+            console.error(
+              "[ChatOn] Failed to fetch group members/usernames:",
+              e
+            );
+          }
+          cacheUsernameMap(publicKey, usernameMapRef.current);
+
+          // Fire-and-forget cleanup
+          cleanupOwnJoinRequests(publicKey, updatedAccessGroups).catch(
+            () => {}
+          );
+          fetchJoinRequestCountsForOwner(publicKey)
+            .then(setJoinRequestCounts)
+            .catch(() => {});
+
+          // Now load the full thread for the selected conversation
+          setLoadingConversation(true);
+          conversationResult = {
+            conversations: localTracker,
+            publicKeyToProfileEntryResponseMap,
+            updatedAllAccessGroups: updatedAccessGroups,
+          };
+        }
+      } catch (e) {
+        decryptAbort.abort();
+        console.error("[ChatOn] Failed to fetch conversations:", e);
         toast.error("Couldn't load conversations — tap to retry");
+        setLoading(false);
+        setAutoFetchConversations(false);
+        return;
       }
-      setLoading(false);
-      setAutoFetchConversations(false);
-      return;
+    } else {
+      // ── Cache revalidation path: full blocking load in background ──
+      const conversationPromise = getConversations(publicKey, allAccessGroups);
+      try {
+        [conversationResult] = await Promise.all([
+          conversationPromise,
+          classificationPromise,
+          privacyPromise,
+        ]);
+      } catch (e) {
+        console.error("[ChatOn] Failed to fetch conversations:", e);
+        setLoading(false);
+        setAutoFetchConversations(false);
+        return;
+      }
     }
 
     const {
       conversations: freshConversations,
-      publicKeyToProfileEntryResponseMap,
+      publicKeyToProfileEntryResponseMap: profileMap,
       updatedAllAccessGroups,
     } = conversationResult;
     setAllAccessGroups(updatedAllAccessGroups);
 
-    // Self-cleanup: delete any of our own stale join request associations
-    // for groups we've since been added to. Uses fresh access groups, fire-and-forget.
-    cleanupOwnJoinRequests(publicKey, updatedAllAccessGroups).catch(() => {});
+    if (renderedFromCache) {
+      // These only need to run on the cache-revalidation path;
+      // the progressive path handles them inline above
+      cleanupOwnJoinRequests(publicKey, updatedAllAccessGroups).catch(() => {});
+      fetchJoinRequestCountsForOwner(publicKey)
+        .then(setJoinRequestCounts)
+        .catch(() => {});
+    }
 
-    // Fetch join request counts for groups this user owns (fire-and-forget)
-    fetchJoinRequestCountsForOwner(publicKey)
-      .then(setJoinRequestCounts)
-      .catch(() => {});
     let conversationsResponse = freshConversations || {};
     const keyToUse =
       selectedKey ||
       (!userChange && selectedConversationPublicKey) ||
       Object.keys(conversationsResponse)[0];
 
-    if (!conversationsResponse[keyToUse]) {
+    if (keyToUse && !conversationsResponse[keyToUse]) {
+      const isGroup = keyToUse.length > PUBLIC_KEY_LENGTH;
       conversationsResponse = {
         [keyToUse]: {
-          ChatType: ChatType.DM,
+          ChatType: isGroup ? ChatType.GROUPCHAT : ChatType.DM,
           firstMessagePublicKey: keyToUse.slice(0, PUBLIC_KEY_LENGTH),
           messages: [],
         },
@@ -2055,39 +2300,39 @@ export const MessagingApp: FC = () => {
       };
     }
 
-    const DMChats = Object.values(conversationsResponse).filter(
-      (e) => e.ChatType === ChatType.DM
-    );
-    const GroupChats = Object.values(conversationsResponse).filter(
-      (e) => e.ChatType === ChatType.GROUPCHAT
-    );
+    if (renderedFromCache) {
+      const DMChats = Object.values(conversationsResponse).filter(
+        (e) => e.ChatType === ChatType.DM
+      );
+      const GroupChats = Object.values(conversationsResponse).filter(
+        (e) => e.ChatType === ChatType.GROUPCHAT
+      );
 
-    const publicKeyToUsername: { [k: string]: string } = {};
-    const profilePicUrls: { [k: string]: string } = {};
-    Object.entries(publicKeyToProfileEntryResponseMap).forEach(
-      ([pk, profileEntryResponse]) => {
+      const publicKeyToUsername: { [k: string]: string } = {};
+      const profilePicUrls: { [k: string]: string } = {};
+      Object.entries(profileMap).forEach(([pk, profileEntryResponse]) => {
         publicKeyToUsername[pk] = profileEntryResponse?.Username || "";
-        // Extract best profile pic URL from ExtraData (NFT/high-res take priority)
         const ed = profileEntryResponse?.ExtraData;
         if (ed) {
           const picUrl = ed.NFTProfilePictureUrl || ed.LargeProfilePicURL;
           if (picUrl) profilePicUrls[pk] = picUrl;
         }
+      });
+      mergeUsernames(publicKeyToUsername);
+      setProfilePicByPublicKey((state) => ({
+        ...state,
+        ...profilePicUrls,
+      }));
+      try {
+        await Promise.all([
+          updateUsernameToPublicKeyMapFromConversations(DMChats),
+          ...GroupChats.map((e) => fetchGroupMembers(e)),
+        ]);
+      } catch (e) {
+        console.error("[ChatOn] Failed to fetch group members/usernames:", e);
       }
-    );
-    mergeUsernames(publicKeyToUsername);
-    setProfilePicByPublicKey((state) => ({
-      ...state,
-      ...profilePicUrls,
-    }));
-    // Fetch remaining DM + group member profiles in parallel
-    await Promise.all([
-      updateUsernameToPublicKeyMapFromConversations(DMChats),
-      ...GroupChats.map((e) => fetchGroupMembers(e)),
-    ]);
-
-    // Cache the username map using the ref (always current, unlike state)
-    cacheUsernameMap(publicKey, usernameMapRef.current);
+      cacheUsernameMap(publicKey, usernameMapRef.current);
+    }
 
     // Only force-select if user hasn't already navigated to a different conversation
     if (
@@ -2133,10 +2378,15 @@ export const MessagingApp: FC = () => {
           }
         }
         // Remove conversations no longer returned by the blockchain
-        // (e.g. user was removed from a group) — but keep the one the user is viewing
-        for (const k of Object.keys(merged)) {
-          if (!updatedConversations[k] && k !== currentKey) {
-            delete merged[k];
+        // (e.g. user was removed from a group) — but keep the one the user is viewing.
+        // Only do this on the cache-revalidation path; on the progressive path
+        // updatedConversations is the shell set which may be missing conversations
+        // that arrived via WebSocket during decryption.
+        if (renderedFromCache) {
+          for (const k of Object.keys(merged)) {
+            if (!updatedConversations[k] && k !== currentKey) {
+              delete merged[k];
+            }
           }
         }
         // Fire-and-forget cache writes
@@ -2217,9 +2467,8 @@ export const MessagingApp: FC = () => {
         setLoadingConversation(false);
       }
       setLoading(false);
+      setAutoFetchConversations(false);
     }
-
-    setAutoFetchConversations(false);
 
     if (autoScroll) {
       scrollContainerToElement(".conversations-list", ".selected-conversation");
@@ -2307,9 +2556,9 @@ export const MessagingApp: FC = () => {
         pubKeyPlusGroupName,
       };
     } else {
-      if (!convo) {
+      if (!convo || convo.length === 0) {
         return {
-          updatedConversations: {},
+          updatedConversations: currentConversations,
           pubKeyPlusGroupName,
         };
       }
@@ -2642,6 +2891,17 @@ export const MessagingApp: FC = () => {
                     }
                     return;
                   }
+                  // Capture the last-read timestamp BEFORE updating it,
+                  // so MessagingBubblesAndAvatar can show the "new messages" divider.
+                  if (appUser) {
+                    const timestamps = getCachedLastReadTimestamps(
+                      appUser.PublicKeyBase58Check
+                    );
+                    setOpenedLastReadNanos(timestamps[key] ?? null);
+                  } else {
+                    setOpenedLastReadNanos(null);
+                  }
+
                   setSelectedConversationPublicKey(key);
                   setPubKeyPlusGroupName(key);
                   setLoadingConversation(true);
@@ -2748,6 +3008,7 @@ export const MessagingApp: FC = () => {
                 onSearchQueryChange={setSearchQuery}
                 onSearchResultClick={handleSearchResultClick}
                 searchClearTrigger={searchClearTrigger}
+                highlightsByConversation={highlightsByConversation}
               />
             </div>
 
@@ -3013,6 +3274,7 @@ export const MessagingApp: FC = () => {
                         conversations={conversations}
                         getUsernameByPublicKey={activeChatUsersMap}
                         profilePicByPublicKey={profilePicByPublicKey}
+                        lastReadTimestampNanos={openedLastReadNanos}
                         onScroll={(e: Array<DecryptedMessageEntryResponse>) => {
                           setConversations((prev) => ({
                             ...prev,
@@ -3921,6 +4183,11 @@ export const MessagingApp: FC = () => {
 
       {/* In-app join group modal — triggered by clicking a join link in a chat */}
       <JoinGroupModalWrapper />
+
+      {/* Confirmation modal — shown after redirect from /join/:code page */}
+      <Suspense fallback={null}>
+        <LazyJoinConfirmationModal />
+      </Suspense>
     </div>
   );
 };

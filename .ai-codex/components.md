@@ -1,4 +1,4 @@
-# Components (generated 2026-04-03)
+# Components (generated 2026-04-04)
 # (c)=client component. UI primitives (shadcn/radix) omitted.
 
 ## src
@@ -27,6 +27,7 @@
     ImagePreviewPanel
     InstallPrompt
     isOnboardingComplete
+    JoinConfirmationModal
     JoinGroupModal
     JoinGroupPage
     LandingPage

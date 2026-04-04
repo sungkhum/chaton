@@ -1,7 +1,10 @@
-# Library Exports (generated 2026-04-03)
+# Library Exports (generated 2026-04-04)
 # fn=function, class=class. Type-only files omitted.
 
 ## src/utils
+atomic-tip.ts
+  fn sendAtomicDesoTip
+  fn sendAtomicUsdcTip
 avatar.ts
   fn hashToColorIndex
   fn getInitials
@@ -37,6 +40,12 @@ push-notifications.ts
   fn getExistingSubscription
   fn isPushSupported
   +2 more
+tip-fees.ts
+  fn hasTipFee
+  fn tipFeeUsd
+  fn tipRecipientUsd
+  fn splitDesoTip
+  +1 more
 usdc-balance.ts
   fn fetchUsdcBalance
   fn invalidateUsdcBalanceCache
