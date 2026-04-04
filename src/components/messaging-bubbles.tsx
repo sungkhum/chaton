@@ -374,7 +374,22 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
 
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressPosRef = useRef<{ x: number; y: number } | null>(null);
+  const suppressSelectionRef = useRef(false);
   const { isMobile } = useMobile();
+
+  // iOS ignores user-select:none during long-press — actively clear any
+  // text selection the OS creates while a long-press gesture is in progress.
+  useEffect(() => {
+    if (!isMobile) return;
+    const onSelectionChange = () => {
+      if (suppressSelectionRef.current) {
+        window.getSelection()?.removeAllRanges();
+      }
+    };
+    document.addEventListener("selectionchange", onSelectionChange);
+    return () =>
+      document.removeEventListener("selectionchange", onSelectionChange);
+  }, [isMobile]);
 
   // Position desktop emoji picker (portaled to body) near the reaction bar
   useLayoutEffect(() => {
@@ -458,6 +473,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
+      // Only stop suppression if no menu is open (timer cancelled by scroll/move)
+      suppressSelectionRef.current = false;
     }
     longPressPosRef.current = null;
   }, []);
@@ -576,6 +593,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
       clearLongPressTimer();
       const touch = e.touches[0];
       longPressPosRef.current = { x: touch.clientX, y: touch.clientY };
+      // Start suppressing iOS text selection immediately on touch
+      suppressSelectionRef.current = true;
       // Capture currentTarget synchronously — React nullifies it after the handler returns
       const target = e.currentTarget as HTMLElement;
       longPressTimerRef.current = setTimeout(() => {
@@ -609,11 +628,19 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   );
 
   const handleTouchEnd = useCallback(() => {
+    // If timer was still running (short tap), delay-release suppression so
+    // late iOS selectionchange events that fire just after finger-lift are caught.
+    if (longPressTimerRef.current) {
+      setTimeout(() => {
+        suppressSelectionRef.current = false;
+      }, 100);
+    }
     clearLongPressTimer();
   }, [clearLongPressTimer]);
 
   const closeMobileAction = useCallback(() => {
     clearLongPressTimer(); // Kill pending timer so bar doesn't reopen
+    suppressSelectionRef.current = false;
     setMobileActionFor(null);
     activeBubbleRef.current = null;
     setHoveredMessage(null);
