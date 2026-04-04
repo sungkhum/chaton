@@ -904,10 +904,16 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
       if (!msg.IsSender) count++;
     }
     // No messages at or below the last-read timestamp → all are unread
-    if (dividerIdx === -1 && count > 0)
-      return { unreadDividerIndex: displayMessages.length, unreadCount: count };
+    if (dividerIdx === -1 && count > 0) {
+      dividerIdx = displayMessages.length;
+    }
     // No unread messages from others
     if (count === 0) return { unreadDividerIndex: -1, unreadCount: 0 };
+    // Skip past sender's own messages at the top of the unread block so the
+    // divider never appears immediately above a message the user sent.
+    while (dividerIdx > 0 && displayMessages[dividerIdx - 1].IsSender) {
+      dividerIdx--;
+    }
     return { unreadDividerIndex: dividerIdx, unreadCount: count };
   }, [displayMessages, lastReadTimestampNanos]);
 
