@@ -1,5 +1,4 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { identity } from "deso-protocol";
 import { usePageMeta } from "../hooks/usePageMeta";
 import { AnimatedEmoji } from "./messages/animated-emoji";
 import {
@@ -21,6 +20,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { PreSignupTutorial } from "./onboarding/pre-signup-tutorial";
 import { SeoStructuredData } from "./seo-structured-data";
+import { PublicNav } from "./public-layout";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -429,52 +429,7 @@ export const LandingPage = () => {
       <div className="landing-orb w-[900px] h-[900px] bg-[#3090D0] -top-[200px] -right-[200px] opacity-[0.10]" />
 
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-[#0F1520]/90 backdrop-blur-2xl border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-4 md:px-12 h-16 md:h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 md:gap-4">
-            <img
-              src="/ChatOn-Logo-Small.png"
-              alt="ChatOn"
-              className="w-8 h-8 md:w-10 md:h-10 rounded-xl"
-            />
-            <span className="text-xl md:text-2xl font-black tracking-tighter">
-              ChatOn
-            </span>
-          </div>
-          <div className="flex items-center gap-5 sm:gap-7 md:gap-10 text-[10px] sm:text-xs font-bold tracking-[0.15em] sm:tracking-[0.2em] uppercase text-gray-400">
-            <a
-              href="/community"
-              className="hover:text-[#34F080] transition-colors flex items-center gap-1.5"
-            >
-              <Users className="w-3 h-3 hidden sm:block" />
-              Community
-            </a>
-            <a href="/blog" className="hover:text-[#34F080] transition-colors">
-              Blog
-            </a>
-            <a
-              href="/compare"
-              className="hover:text-[#34F080] transition-colors hidden sm:block"
-            >
-              Compare
-            </a>
-          </div>
-          <div className="flex items-center gap-2 md:gap-3">
-            <button
-              onClick={() => identity.login()}
-              className="px-3 md:px-5 py-2 md:py-2.5 text-gray-400 hover:text-white text-[11px] md:text-xs font-bold md:font-black tracking-wide transition-colors cursor-pointer"
-            >
-              Log in
-            </button>
-            <button
-              onClick={() => setShowTutorial(true)}
-              className="px-4 md:px-6 py-2 md:py-2.5 landing-btn-vivid text-white text-[11px] md:text-xs font-black rounded-full transition-all cursor-pointer"
-            >
-              Sign up
-            </button>
-          </div>
-        </div>
-      </nav>
+      <PublicNav variant="auth" onSignUp={() => setShowTutorial(true)} />
 
       {/* Hero */}
       <section className="relative pt-22 pb-4 md:pt-32 md:pb-28 px-4 md:px-6">
