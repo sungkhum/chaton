@@ -1,8 +1,10 @@
-import { useState, useRef, useEffect, useMemo } from "react";
-import { Play, Pause } from "lucide-react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { Play, Pause, Loader2 } from "lucide-react";
 import Hls from "hls.js";
 
 const WAVEFORM_BARS = 40;
+const MAX_RETRIES = 8;
+const RETRY_DELAY_MS = 3000;
 
 /** Deterministic pseudo-waveform from a seed string. */
 function generateWaveform(seed: string): number[] {
@@ -53,11 +55,15 @@ export const AudioMessage = ({
   isOwn,
 }: AudioMessageProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [loadedDuration, setLoadedDuration] = useState(duration);
   const audioRef = useRef<HTMLAudioElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const rafRef = useRef(0);
+  const retryCountRef = useRef(0);
+  const retryTimerRef = useRef(0);
+  const wantPlayRef = useRef(false);
 
   const waveform = useMemo(
     () => generateWaveform(waveformSeed || audioUrl),
@@ -70,24 +76,105 @@ export const AudioMessage = ({
 
   const accentColor = isOwn ? "#34F080" : "#8EBBFF";
 
+  /** Retry loading the HLS manifest (handles pre-transcode 404s). */
+  const scheduleRetry = useCallback(() => {
+    if (retryCountRef.current >= MAX_RETRIES) {
+      setIsLoading(false);
+      wantPlayRef.current = false;
+      return;
+    }
+    retryCountRef.current++;
+    retryTimerRef.current = window.setTimeout(() => {
+      const hls = hlsRef.current;
+      if (!hls) return;
+      // Destroy and recreate — hls.js doesn't cleanly retry after fatal errors
+      hls.destroy();
+      const audio = audioRef.current;
+      if (!audio) return;
+      const newHls = new Hls({ autoStartLoad: true });
+      newHls.loadSource(streamUrl);
+      newHls.attachMedia(audio);
+      hlsRef.current = newHls;
+
+      newHls.on(Hls.Events.MANIFEST_PARSED, () => {
+        retryCountRef.current = 0;
+        if (wantPlayRef.current) {
+          audio.play();
+        }
+        setIsLoading(false);
+      });
+
+      newHls.on(Hls.Events.ERROR, (_e, data) => {
+        if (data.fatal) {
+          scheduleRetry();
+        }
+      });
+    }, RETRY_DELAY_MS);
+  }, [streamUrl]);
+
+  // Set up HLS or native source
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+    retryCountRef.current = 0;
+    clearTimeout(retryTimerRef.current);
+
     if (isHls && Hls.isSupported()) {
       const hls = new Hls({ autoStartLoad: false });
       hls.loadSource(streamUrl);
       hls.attachMedia(audio);
       hlsRef.current = hls;
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        retryCountRef.current = 0;
+        setIsLoading(false);
+        if (wantPlayRef.current) {
+          audio.play();
+        }
+      });
+
+      hls.on(Hls.Events.ERROR, (_e, data) => {
+        if (data.fatal) {
+          // Manifest not ready yet (still transcoding) — retry
+          scheduleRetry();
+        }
+      });
+
       return () => {
+        clearTimeout(retryTimerRef.current);
         hls.destroy();
         hlsRef.current = null;
       };
     } else {
+      // Native HLS (Safari) or direct URL
       audio.src = streamUrl;
       audio.preload = "metadata";
-    }
-  }, [streamUrl, isHls]);
 
+      const handleError = () => {
+        if (wantPlayRef.current && retryCountRef.current < MAX_RETRIES) {
+          retryCountRef.current++;
+          retryTimerRef.current = window.setTimeout(() => {
+            audio.src = streamUrl;
+            audio.load();
+            audio.play().catch(() => {
+              scheduleRetry();
+            });
+          }, RETRY_DELAY_MS);
+        } else {
+          setIsLoading(false);
+          wantPlayRef.current = false;
+        }
+      };
+
+      audio.addEventListener("error", handleError);
+      return () => {
+        clearTimeout(retryTimerRef.current);
+        audio.removeEventListener("error", handleError);
+      };
+    }
+  }, [streamUrl, isHls, scheduleRetry]);
+
+  // Track playback progress
   useEffect(() => {
     const tick = () => {
       const audio = audioRef.current;
@@ -105,9 +192,15 @@ export const AudioMessage = ({
     if (!audio) return;
     if (isPlaying) {
       audio.pause();
+      wantPlayRef.current = false;
     } else {
+      wantPlayRef.current = true;
       if (hlsRef.current) hlsRef.current.startLoad();
-      audio.play();
+      audio.play().catch(() => {
+        // Play failed (not ready yet) — show loading, retry will handle it
+        setIsLoading(true);
+        scheduleRetry();
+      });
     }
   };
 
@@ -117,8 +210,12 @@ export const AudioMessage = ({
     audio.currentTime = (index / WAVEFORM_BARS) * displayDuration;
     setCurrentTime(audio.currentTime);
     if (!isPlaying) {
+      wantPlayRef.current = true;
       if (hlsRef.current) hlsRef.current.startLoad();
-      audio.play();
+      audio.play().catch(() => {
+        setIsLoading(true);
+        scheduleRetry();
+      });
     }
   };
 
@@ -126,11 +223,15 @@ export const AudioMessage = ({
     <div className="flex items-center gap-3 px-3 py-2.5 min-w-[280px] select-none">
       <audio
         ref={audioRef}
-        onPlay={() => setIsPlaying(true)}
+        onPlay={() => {
+          setIsPlaying(true);
+          setIsLoading(false);
+        }}
         onPause={() => setIsPlaying(false)}
         onEnded={() => {
           setIsPlaying(false);
           setCurrentTime(0);
+          wantPlayRef.current = false;
         }}
         onLoadedMetadata={() => {
           const d = audioRef.current?.duration;
@@ -138,14 +239,19 @@ export const AudioMessage = ({
         }}
       />
 
-      {/* Play / Pause */}
+      {/* Play / Pause / Loading */}
       <button
         onClick={togglePlay}
         className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors cursor-pointer"
         style={{ backgroundColor: `${accentColor}18` }}
         type="button"
       >
-        {isPlaying ? (
+        {isLoading ? (
+          <Loader2
+            className="w-[18px] h-[18px] animate-spin"
+            style={{ color: accentColor }}
+          />
+        ) : isPlaying ? (
           <Pause
             className="w-[18px] h-[18px]"
             style={{ color: accentColor }}
