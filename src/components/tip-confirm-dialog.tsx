@@ -57,6 +57,7 @@ interface TipConfirmDialogProps {
   recipientPublicKey: string;
   recipientUsername?: string;
   tipReplyTo?: string;
+  initialAmountUsd?: number;
   onClose: () => void;
   onTipSent: (tipData: {
     amountNanos: number;
@@ -76,6 +77,7 @@ export const TipConfirmDialog = ({
   recipientPublicKey,
   recipientUsername,
   tipReplyTo,
+  initialAmountUsd,
   onClose,
   onTipSent,
 }: TipConfirmDialogProps) => {
@@ -87,9 +89,19 @@ export const TipConfirmDialog = ({
     );
   });
 
-  const [selectedAmount, setSelectedAmount] = useState<number>(1);
-  const [customAmount, setCustomAmount] = useState("");
-  const [isCustom, setIsCustom] = useState(false);
+  const [selectedAmount, setSelectedAmount] = useState<number>(
+    initialAmountUsd && PRESET_AMOUNTS_USD.includes(initialAmountUsd as any)
+      ? initialAmountUsd
+      : 1
+  );
+  const [customAmount, setCustomAmount] = useState(
+    initialAmountUsd && !PRESET_AMOUNTS_USD.includes(initialAmountUsd as any)
+      ? String(initialAmountUsd)
+      : ""
+  );
+  const [isCustom, setIsCustom] = useState(
+    !!initialAmountUsd && !PRESET_AMOUNTS_USD.includes(initialAmountUsd as any)
+  );
   const [tipMessage, setTipMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -613,8 +625,6 @@ export const TipConfirmDialog = ({
               <CurrencyToggle
                 value={currency}
                 onChange={handleCurrencyChange}
-                desoBalanceUsd={desoBalanceUsd}
-                usdcBalanceUsd={usdcBalanceUsd}
               />
 
               {/* Preset amounts */}

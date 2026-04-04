@@ -1,19 +1,11 @@
 import type { TipCurrency } from "../utils/extra-data";
-import { formatUsd } from "../utils/exchange-rate";
 
 interface CurrencyToggleProps {
   value: TipCurrency;
   onChange: (currency: TipCurrency) => void;
-  desoBalanceUsd: number | null;
-  usdcBalanceUsd: number | null;
 }
 
-export const CurrencyToggle = ({
-  value,
-  onChange,
-  desoBalanceUsd,
-  usdcBalanceUsd,
-}: CurrencyToggleProps) => {
+export const CurrencyToggle = ({ value, onChange }: CurrencyToggleProps) => {
   return (
     <div
       role="radiogroup"
@@ -31,7 +23,7 @@ export const CurrencyToggle = ({
             : "text-gray-500 hover:text-gray-300"
         }`}
       >
-        DESO {desoBalanceUsd != null ? formatUsd(desoBalanceUsd) : "..."}
+        DESO
       </button>
       <button
         type="button"
@@ -44,7 +36,7 @@ export const CurrencyToggle = ({
             : "text-gray-500 hover:text-gray-300"
         }`}
       >
-        USDC {usdcBalanceUsd != null ? formatUsd(usdcBalanceUsd) : "..."}
+        USDC
       </button>
     </div>
   );

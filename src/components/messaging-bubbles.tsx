@@ -92,7 +92,7 @@ export interface MessagingBubblesProps {
   onEdit?: (message: DecryptedMessageEntryResponse) => void;
   onDeleteForMe?: (timestampNanosString: string) => void;
   onDeleteForEveryone?: (message: DecryptedMessageEntryResponse) => void;
-  onTip?: (message: DecryptedMessageEntryResponse) => void;
+  onTip?: (message: DecryptedMessageEntryResponse, amountUsd?: number) => void;
   onMicroTip?: (message: DecryptedMessageEntryResponse) => void;
   pendingTipTimestamps?: Set<string>;
   hiddenMessageIds?: Set<string>;
@@ -1773,18 +1773,63 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                               {onTip &&
                                 !IsSender &&
                                 !(message as any)._localId && (
-                                  <button
-                                    onClick={() => {
-                                      onTip(message);
-                                      closeMobileAction();
-                                    }}
-                                    className={`w-full flex items-center gap-3 ${
-                                      isMobile ? "px-4 py-3" : "px-3 py-2"
-                                    } text-sm text-[#34F080] hover:bg-white/8 cursor-pointer transition-colors`}
-                                  >
-                                    <CircleDollarSign className="w-4 h-4 text-[#34F080] shrink-0" />
-                                    Tip
-                                  </button>
+                                  <>
+                                    <div className="mx-3 my-1 h-px bg-white/8" />
+                                    <div
+                                      className={`${
+                                        isMobile ? "px-4 py-2" : "px-3 py-1.5"
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-1.5 mb-1.5">
+                                        <CircleDollarSign
+                                          className="w-3.5 h-3.5 shrink-0"
+                                          style={{ color: microTipColor }}
+                                        />
+                                        <span
+                                          className="text-[11px] font-semibold uppercase tracking-wider"
+                                          style={{
+                                            color: `${microTipColor}99`,
+                                          }}
+                                        >
+                                          Tip
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        {[0.25, 1, 5].map((amt) => (
+                                          <button
+                                            key={amt}
+                                            onClick={() => {
+                                              onTip(message, amt);
+                                              closeMobileAction();
+                                            }}
+                                            className="flex-1 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors hover:brightness-125"
+                                            style={{
+                                              backgroundColor: `${microTipColor}15`,
+                                              border: `1px solid ${microTipColor}33`,
+                                              color: microTipColor,
+                                            }}
+                                          >
+                                            ${amt < 1 ? amt.toFixed(2) : amt}
+                                          </button>
+                                        ))}
+                                      </div>
+                                      <button
+                                        onClick={() => {
+                                          onTip(message);
+                                          closeMobileAction();
+                                        }}
+                                        className="w-full mt-1.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors hover:brightness-125"
+                                        style={{
+                                          backgroundColor: `${microTipColor}15`,
+                                          border: `1px solid ${microTipColor}33`,
+                                          color: microTipColor,
+                                        }}
+                                      >
+                                        Custom Amount
+                                      </button>
+                                    </div>
+                                    <div className="mx-3 my-1 h-px bg-white/8" />
+                                  </>
                                 )}
                               {onEdit &&
                                 IsSender &&

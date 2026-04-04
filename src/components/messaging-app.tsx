@@ -352,6 +352,7 @@ export const MessagingApp: FC = () => {
     recipientPublicKey: string;
     recipientUsername?: string;
     tipReplyTo?: string;
+    initialAmountUsd?: number;
   } | null>(null);
   const [pendingTipTimestamps, setPendingTipTimestamps] = useState<Set<string>>(
     new Set()
@@ -3601,7 +3602,7 @@ export const MessagingApp: FC = () => {
                             toast.error("Failed to send reaction");
                           }
                         }}
-                        onTip={(msg) => {
+                        onTip={(msg, amountUsd) => {
                           if (!appUser) return;
                           const senderPk =
                             msg.SenderInfo.OwnerPublicKeyBase58Check;
@@ -3620,6 +3621,7 @@ export const MessagingApp: FC = () => {
                             recipientPublicKey: senderPk,
                             recipientUsername: activeChatUsersMap[senderPk],
                             tipReplyTo: msg.MessageInfo.TimestampNanosString,
+                            initialAmountUsd: amountUsd,
                           });
                           setPendingTipTimestamps((prev) =>
                             new Set(prev).add(
@@ -4215,6 +4217,7 @@ export const MessagingApp: FC = () => {
             recipientPublicKey={tipTarget.recipientPublicKey}
             recipientUsername={tipTarget.recipientUsername}
             tipReplyTo={tipTarget.tipReplyTo}
+            initialAmountUsd={tipTarget.initialAmountUsd}
             onClose={() => {
               if (tipTarget?.tipReplyTo) {
                 setPendingTipTimestamps((prev) => {
