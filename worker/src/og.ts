@@ -26,6 +26,13 @@ interface OgResult {
   description?: string;
   image?: string;
   siteName?: string;
+  // Tweet-specific fields (only set by fetchTweetData)
+  type?: "tweet";
+  author?: string;
+  authorHandle?: string;
+  authorAvatar?: string;
+  metrics?: { replies?: number; retweets?: number; likes?: number };
+  [key: string]: unknown;
 }
 
 function parseOgTags(html: string): OgResult {
@@ -68,7 +75,7 @@ function decodeHtmlEntities(str: string): string {
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
+    .replace(/&quot;/g, "\"")
     .replace(/&#39;/g, "'")
     .replace(/&#x27;/g, "'")
     .replace(/&#x2F;/g, "/");
@@ -133,6 +140,90 @@ async function readHead(res: Response): Promise<string> {
   return html;
 }
 
+/** Detect x.com / twitter.com tweet URLs and extract the path for fxtwitter */
+function getTweetPath(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "");
+    if (host !== "x.com" && host !== "twitter.com") return null;
+    // Match /<user>/status/<id> pattern
+    const match = parsed.pathname.match(/^\/(\w+)\/status\/(\d+)/);
+    return match ? `/${match[1]}/status/${match[2]}` : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Fetch tweet data via fxtwitter API (public, no auth needed) */
+async function fetchTweetData(tweetPath: string): Promise<OgResult | null> {
+  try {
+    const res = await fetch(`https://api.fxtwitter.com${tweetPath}`, {
+      headers: { "User-Agent": "ChatOnBot/1.0" },
+    });
+    if (!res.ok) return null;
+
+    const data = await res.json() as {
+      code?: number;
+      tweet?: {
+        text?: string;
+        author?: {
+          name?: string;
+          screen_name?: string;
+          avatar_url?: string;
+        };
+        media?: {
+          photos?: { url?: string; width?: number; height?: number }[];
+          videos?: { thumbnail_url?: string }[];
+        };
+        article?: {
+          title?: string;
+          preview_text?: string;
+          cover_media?: {
+            media_info?: {
+              original_img_url?: string;
+            };
+          };
+        };
+        replies?: number;
+        retweets?: number;
+        likes?: number;
+      };
+    };
+
+    if (!data.tweet) return null;
+
+    const tweet = data.tweet;
+
+    // For articles (long-form posts), use article title/preview + cover image
+    const text = tweet.text?.trim()
+      ? tweet.text
+      : tweet.article?.preview_text || "";
+    const articleTitle = tweet.article?.title;
+
+    const image =
+      tweet.media?.photos?.[0]?.url ??
+      tweet.media?.videos?.[0]?.thumbnail_url ??
+      tweet.article?.cover_media?.media_info?.original_img_url;
+
+    return {
+      type: "tweet",
+      title: articleTitle || tweet.author?.name,
+      description: text,
+      image,
+      author: tweet.author?.name,
+      authorHandle: tweet.author?.screen_name,
+      authorAvatar: tweet.author?.avatar_url,
+      metrics: {
+        replies: tweet.replies,
+        retweets: tweet.retweets,
+        likes: tweet.likes,
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function handleOgFetch(request: Request): Promise<Response> {
   let body: { url?: string };
   try {
@@ -164,6 +255,14 @@ export async function handleOgFetch(request: Request): Promise<Response> {
   const cache = caches.default;
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
+
+  // X/Twitter: use fxtwitter API (x.com blocks bot user agents)
+  const tweetPath = getTweetPath(targetUrl);
+  if (tweetPath) {
+    const tweetData = await fetchTweetData(tweetPath);
+    if (tweetData) return cacheAndReturn(cache, cacheKey, tweetData);
+    // Fall through to generic fetch if fxtwitter fails
+  }
 
   // Fetch the page
   const controller = new AbortController();

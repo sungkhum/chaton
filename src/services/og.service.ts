@@ -2,6 +2,12 @@ export interface OgData {
   title?: string;
   description?: string;
   image?: string;
+  // Tweet-specific fields (from fxtwitter)
+  type?: "tweet";
+  author?: string;
+  authorHandle?: string;
+  authorAvatar?: string;
+  metrics?: { replies?: number; retweets?: number; likes?: number };
 }
 
 const RELAY_URL = (import.meta.env.VITE_RELAY_URL || "").replace(
