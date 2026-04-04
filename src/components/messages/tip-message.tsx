@@ -134,7 +134,7 @@ export const TipFooter = ({
         className={`text-xs font-bold ${textColor}`}
         style={{ textShadow: `0 0 8px ${glowColor}40` }}
       >
-        {usdAmount ?? "..."}
+        Tipped {usdAmount ?? "..."}
       </span>
       {recipient && (
         <>
