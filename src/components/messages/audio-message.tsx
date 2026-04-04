@@ -123,7 +123,7 @@ export const AudioMessage = ({
   };
 
   return (
-    <div className="flex items-center gap-3 min-w-[240px] w-[300px] max-w-full py-1 select-none">
+    <div className="flex items-center gap-3 px-3 py-2.5 min-w-[280px] select-none">
       <audio
         ref={audioRef}
         onPlay={() => setIsPlaying(true)}
@@ -141,19 +141,19 @@ export const AudioMessage = ({
       {/* Play / Pause */}
       <button
         onClick={togglePlay}
-        className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+        className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors cursor-pointer"
         style={{ backgroundColor: `${accentColor}18` }}
         type="button"
       >
         {isPlaying ? (
           <Pause
-            className="w-4 h-4"
+            className="w-[18px] h-[18px]"
             style={{ color: accentColor }}
             fill="currentColor"
           />
         ) : (
           <Play
-            className="w-4 h-4 ml-0.5"
+            className="w-[18px] h-[18px] ml-0.5"
             style={{ color: accentColor }}
             fill="currentColor"
           />

@@ -1103,9 +1103,13 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
             }
 
             // For media messages, keep glass style (overflow handled by media components)
-            const isMedia = ["image", "gif", "sticker", "video"].includes(
-              parsed.type
-            );
+            const isMedia = [
+              "image",
+              "gif",
+              "sticker",
+              "video",
+              "audio",
+            ].includes(parsed.type);
             if (isMedia) {
               senderStyles = IsSender
                 ? "glass-sent text-white"
