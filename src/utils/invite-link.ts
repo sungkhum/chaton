@@ -1,7 +1,7 @@
 import { getUserAssociations, identity } from "deso-protocol";
 import {
   ASSOCIATION_TYPE_GROUP_INVITE_CODE,
-  CHATON_DONATION_PUBLIC_KEY,
+  CHATON_REGISTRY_PUBLIC_KEY,
   CHATON_SIGNING_PUBLIC_KEY,
 } from "./constants";
 
@@ -28,7 +28,7 @@ export async function resolveInviteCode(
   try {
     const res = await getUserAssociations({
       TransactorPublicKeyBase58Check: CHATON_SIGNING_PUBLIC_KEY,
-      TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
+      TargetUserPublicKeyBase58Check: CHATON_REGISTRY_PUBLIC_KEY,
       AssociationType: ASSOCIATION_TYPE_GROUP_INVITE_CODE,
       AssociationValue: code,
       Limit: 1,
@@ -86,7 +86,7 @@ export async function fetchInviteCode(
   for (let page = 0; page < maxPages; page++) {
     const res = await getUserAssociations({
       TransactorPublicKeyBase58Check: CHATON_SIGNING_PUBLIC_KEY,
-      TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
+      TargetUserPublicKeyBase58Check: CHATON_REGISTRY_PUBLIC_KEY,
       AssociationType: ASSOCIATION_TYPE_GROUP_INVITE_CODE,
       Limit: 100,
       ...(lastId ? { LastSeenAssociationID: lastId } : {}),

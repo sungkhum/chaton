@@ -10,7 +10,7 @@ import { withAuth } from "../utils/with-auth";
 import {
   ASSOCIATION_TYPE_COMMUNITY_LISTED,
   ASSOCIATION_TYPE_GROUP_INVITE_CODE,
-  CHATON_DONATION_PUBLIC_KEY,
+  CHATON_REGISTRY_PUBLIC_KEY,
   CHATON_SIGNING_PUBLIC_KEY,
 } from "../utils/constants";
 import { GROUP_DISPLAY_NAME, GROUP_IMAGE_URL } from "../utils/extra-data";
@@ -34,7 +34,7 @@ export interface EnrichedCommunityListing extends CommunityListing {
 /**
  * Fetch all community-listed groups from the on-chain registry.
  * Paginates through all `chaton:community-listed` associations targeting
- * CHATON_DONATION_PUBLIC_KEY, returning owner profiles via IncludeTransactorProfile.
+ * CHATON_REGISTRY_PUBLIC_KEY, returning owner profiles via IncludeTransactorProfile.
  */
 export async function fetchCommunityListings(): Promise<CommunityListing[]> {
   const results: CommunityListing[] = [];
@@ -43,7 +43,7 @@ export async function fetchCommunityListings(): Promise<CommunityListing[]> {
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const res = await getUserAssociations({
-      TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
+      TargetUserPublicKeyBase58Check: CHATON_REGISTRY_PUBLIC_KEY,
       AssociationType: ASSOCIATION_TYPE_COMMUNITY_LISTED,
       IncludeTransactorProfile: true,
       Limit: 100,
@@ -86,7 +86,7 @@ export async function listGroupInCommunity(
     createUserAssociation(
       {
         TransactorPublicKeyBase58Check: ownerPublicKey,
-        TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
+        TargetUserPublicKeyBase58Check: CHATON_REGISTRY_PUBLIC_KEY,
         AssociationType: ASSOCIATION_TYPE_COMMUNITY_LISTED,
         AssociationValue: groupKeyName,
         ExtraData: {
@@ -101,7 +101,7 @@ export async function listGroupInCommunity(
   // Fetch the new association ID
   const res = await getUserAssociations({
     TransactorPublicKeyBase58Check: ownerPublicKey,
-    TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
+    TargetUserPublicKeyBase58Check: CHATON_REGISTRY_PUBLIC_KEY,
     AssociationType: ASSOCIATION_TYPE_COMMUNITY_LISTED,
     AssociationValue: groupKeyName,
     Limit: 1,
@@ -139,7 +139,7 @@ export async function fetchCommunityListing(
   try {
     const res = await getUserAssociations({
       TransactorPublicKeyBase58Check: ownerPublicKey,
-      TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
+      TargetUserPublicKeyBase58Check: CHATON_REGISTRY_PUBLIC_KEY,
       AssociationType: ASSOCIATION_TYPE_COMMUNITY_LISTED,
       AssociationValue: groupKeyName,
       Limit: 1,
@@ -244,7 +244,7 @@ export async function enrichCommunityListings(
     while (true) {
       const res = await getUserAssociations({
         TransactorPublicKeyBase58Check: CHATON_SIGNING_PUBLIC_KEY,
-        TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
+        TargetUserPublicKeyBase58Check: CHATON_REGISTRY_PUBLIC_KEY,
         AssociationType: ASSOCIATION_TYPE_GROUP_INVITE_CODE,
         Limit: 100,
         ...(lastId ? { LastSeenAssociationID: lastId } : {}),

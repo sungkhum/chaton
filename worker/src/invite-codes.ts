@@ -18,8 +18,8 @@ import {
 } from "./deso-tx";
 
 const ASSOCIATION_TYPE_GROUP_INVITE_CODE = "chaton:group-invite-code";
-const CHATON_DONATION_PUBLIC_KEY =
-  "BC1YLg2qBgxVDcK8pAgSEAJbizmHDRDExTaYS9xzEH5ZMhVxKsxTVZr";
+const CHATON_REGISTRY_PUBLIC_KEY =
+  "BC1YLibU7KwQRTnWJ3nDyVzitNFdyDa28LjZDEnH5Y6xP9oHa59J5xK";
 const INVITE_CODE_LENGTH = 8;
 const CHARS =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -40,7 +40,7 @@ async function codeExists(
 ): Promise<boolean> {
   const res = await queryAssociations(nodeUrl, {
     TransactorPublicKeyBase58Check: signingPublicKey,
-    TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
+    TargetUserPublicKeyBase58Check: CHATON_REGISTRY_PUBLIC_KEY,
     AssociationType: ASSOCIATION_TYPE_GROUP_INVITE_CODE,
     AssociationValue: code,
     Limit: 1,
@@ -59,7 +59,7 @@ async function findExistingCode(
   for (let page = 0; page < 10; page++) {
     const res = await queryAssociations(nodeUrl, {
       TransactorPublicKeyBase58Check: signingPublicKey,
-      TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
+      TargetUserPublicKeyBase58Check: CHATON_REGISTRY_PUBLIC_KEY,
       AssociationType: ASSOCIATION_TYPE_GROUP_INVITE_CODE,
       Limit: 100,
       ...(lastId ? { LastSeenAssociationID: lastId } : {}),
@@ -90,7 +90,7 @@ async function findAndVerifyAssociation(
   for (let page = 0; page < 10; page++) {
     const res = await queryAssociations(nodeUrl, {
       TransactorPublicKeyBase58Check: signingPublicKey,
-      TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
+      TargetUserPublicKeyBase58Check: CHATON_REGISTRY_PUBLIC_KEY,
       AssociationType: ASSOCIATION_TYPE_GROUP_INVITE_CODE,
       Limit: 100,
       ...(lastId ? { LastSeenAssociationID: lastId } : {}),
@@ -171,7 +171,7 @@ export async function handleCreateInviteCode(
   try {
     const constructed = await constructCreateAssociation(env.DESO_NODE_URL, {
       TransactorPublicKeyBase58Check: env.CHATON_SIGNING_PUBLIC_KEY,
-      TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
+      TargetUserPublicKeyBase58Check: CHATON_REGISTRY_PUBLIC_KEY,
       AssociationType: ASSOCIATION_TYPE_GROUP_INVITE_CODE,
       AssociationValue: code,
       ExtraData: {
@@ -203,7 +203,7 @@ export async function handleCreateInviteCode(
   try {
     const res = await queryAssociations(env.DESO_NODE_URL, {
       TransactorPublicKeyBase58Check: env.CHATON_SIGNING_PUBLIC_KEY,
-      TargetUserPublicKeyBase58Check: CHATON_DONATION_PUBLIC_KEY,
+      TargetUserPublicKeyBase58Check: CHATON_REGISTRY_PUBLIC_KEY,
       AssociationType: ASSOCIATION_TYPE_GROUP_INVITE_CODE,
       AssociationValue: code,
       Limit: 1,

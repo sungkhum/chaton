@@ -40,7 +40,7 @@ export const ASSOCIATION_TYPE_GROUP_INVITE_CODE = "chaton:group-invite-code";
 export const INVITE_CODE_LENGTH = 8;
 
 // Community listing — opts a group into the public community directory.
-// Transactor = group owner, Target = CHATON_DONATION_PUBLIC_KEY,
+// Transactor = group owner, Target = CHATON_REGISTRY_PUBLIC_KEY,
 // Value = access group key name, ExtraData["group:keyName"] = key name,
 // ExtraData["community:description"] = optional short description.
 export const ASSOCIATION_TYPE_COMMUNITY_LISTED = "chaton:community-listed";
@@ -134,6 +134,9 @@ export const BASE_TITLE = "DeSo Chat Protocol";
 export const TITLE_DIVIDER = " · ";
 export const CHATON_DONATION_PUBLIC_KEY: Readonly<string> =
   "BC1YLg2qBgxVDcK8pAgSEAJbizmHDRDExTaYS9xzEH5ZMhVxKsxTVZr";
+/** Well-known registry key for on-chain lookups (invite codes, community listings). */
+export const CHATON_REGISTRY_PUBLIC_KEY: Readonly<string> =
+  "BC1YLibU7KwQRTnWJ3nDyVzitNFdyDa28LjZDEnH5Y6xP9oHa59J5xK";
 /** Platform fee rate applied to tips >= TIP_FEE_THRESHOLD_USD. 0.1 = 10%. */
 export const TIP_FEE_RATE = 0.1;
 /** Minimum tip amount (USD) that triggers the platform fee. */
