@@ -34,7 +34,11 @@ import {
   getDisplayUrl,
   trackShare,
 } from "../services/klipy.service";
-import { uploadImage, uploadVideoFile } from "../services/media.service";
+import {
+  uploadImage,
+  uploadVideoFile,
+  uploadAudioFile,
+} from "../services/media.service";
 import { AudioRecorderPanel } from "./compose/audio-recorder-panel";
 import { ReplyBanner } from "./compose/reply-banner";
 import {
@@ -597,10 +601,15 @@ export const SendMessageButtonAndInput = forwardRef<
         const file = new File([compressed], `recording-${Date.now()}.mp4`, {
           type: "video/mp4",
         });
-        const result = await uploadVideoFile(file);
+        // uploadAudioFile skips transcode polling — returns immediately.
+        const { hlsUrl, iframeUrl } = await uploadAudioFile(file);
         const extraData: Record<string, string> = {
+          // ChatOn native: direct HLS URL for instant playback
           "msg:type": "audio",
-          encryptedAudioURLs: JSON.stringify([result.url]),
+          "msg:audioUrl": hlsUrl,
+          "msg:duration": String(duration),
+          // DeSo compat: iframe URL format that Focus/Diamond understand
+          encryptedAudioURLs: JSON.stringify([iframeUrl]),
           "audio.0.duration": String(duration),
           "audio.0.clientId": crypto
             .randomUUID()

@@ -14,6 +14,7 @@ export const MSG_GIF_TITLE = "msg:gifTitle";
 export const MSG_MEDIA_WIDTH = "msg:mediaWidth";
 export const MSG_MEDIA_HEIGHT = "msg:mediaHeight";
 export const MSG_VIDEO_URL = "msg:videoUrl";
+export const MSG_AUDIO_URL = "msg:audioUrl";
 export const MSG_DURATION = "msg:duration";
 export const MSG_FILE_NAME = "msg:fileName";
 export const MSG_FILE_SIZE = "msg:fileSize";
@@ -45,7 +46,11 @@ export const MSG_TIP_CURRENCY = "msg:tipCurrency";
 export const MSG_TIP_AMOUNT_USDC = "msg:tipAmountUsdc";
 
 /** ExtraData keys always encrypted (reaction privacy — default). */
-export const STANDARD_ENCRYPTED_KEYS = [MSG_EMOJI, MSG_ACTION] as const;
+export const STANDARD_ENCRYPTED_KEYS = [
+  MSG_EMOJI,
+  MSG_ACTION,
+  MSG_AUDIO_URL,
+] as const;
 
 /** ExtraData keys encrypted only when the user opts into full privacy mode.
  *  Includes all media URLs, file metadata, reply previews, and mentions. */
@@ -55,6 +60,7 @@ export const FULL_ENCRYPTED_KEYS = [
   MSG_GIF_URL,
   MSG_GIF_TITLE,
   MSG_VIDEO_URL,
+  MSG_AUDIO_URL,
   MSG_DURATION,
   MSG_MEDIA_WIDTH,
   MSG_MEDIA_HEIGHT,
@@ -262,7 +268,7 @@ export function parseMessageType(
     gifUrl: extra[MSG_GIF_URL],
     gifTitle: extra[MSG_GIF_TITLE],
     videoUrl: extra[MSG_VIDEO_URL] || desoAppMedia.videoUrl,
-    audioUrl: desoAppMedia.audioUrl,
+    audioUrl: extra[MSG_AUDIO_URL] || desoAppMedia.audioUrl,
     localThumbnail: extra["_localThumbnail"],
     duration: extra[MSG_DURATION]
       ? parseFloat(extra[MSG_DURATION])
@@ -354,6 +360,7 @@ export function buildExtraData(
   if (parsed.gifUrl) extra[MSG_GIF_URL] = parsed.gifUrl;
   if (parsed.gifTitle) extra[MSG_GIF_TITLE] = parsed.gifTitle;
   if (parsed.videoUrl) extra[MSG_VIDEO_URL] = parsed.videoUrl;
+  if (parsed.audioUrl) extra[MSG_AUDIO_URL] = parsed.audioUrl;
   if (parsed.duration !== undefined)
     extra[MSG_DURATION] = String(parsed.duration);
   if (parsed.mediaWidth !== undefined)

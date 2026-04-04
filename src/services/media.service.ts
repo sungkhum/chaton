@@ -19,10 +19,7 @@ export async function uploadImage(file: File): Promise<ImageUploadResult> {
   const jwt = await identity.jwt();
   const formData = new FormData();
   formData.append("file", file);
-  formData.append(
-    "UserPublicKeyBase58Check",
-    appUser.PublicKeyBase58Check
-  );
+  formData.append("UserPublicKeyBase58Check", appUser.PublicKeyBase58Check);
   formData.append("JWT", jwt);
 
   const response = await fetch(`${getNodeUrl()}/api/v0/upload-image`, {
@@ -56,7 +53,7 @@ export async function uploadVideoFile(file: File): Promise<VideoUploadResult> {
 
   // Get the actual playback URL from video status (response.url is just the upload endpoint).
   // The API returns playbackUrl (lowercase) despite the TS types saying playbackURL (uppercase).
-  const status = await getVideoStatus({ videoId: response.asset.id }) as any;
+  const status = (await getVideoStatus({ videoId: response.asset.id })) as any;
   const playbackUrl: string = status.playbackUrl || status.playbackURL;
   if (!playbackUrl) {
     throw new Error("Video processed but no playback URL returned");
@@ -64,8 +61,37 @@ export async function uploadVideoFile(file: File): Promise<VideoUploadResult> {
 
   return {
     assetId: response.asset.id,
-    playbackId: status.playbackId || status.playbackID || response.asset.playbackId,
+    playbackId:
+      status.playbackId || status.playbackID || response.asset.playbackId,
     url: playbackUrl,
+  };
+}
+
+export interface AudioUploadResult {
+  /** Direct HLS manifest URL for ChatOn playback (msg:audioUrl) */
+  hlsUrl: string;
+  /** Standard DeSo iframe URL for cross-app compat (encryptedAudioURLs) */
+  iframeUrl: string;
+}
+
+/**
+ * Upload audio file and return immediately — no polling for transcode.
+ * Returns both the direct HLS URL (for ChatOn) and the iframe URL (for DeSo apps).
+ * hls.js handles retry if the manifest isn't ready yet.
+ */
+export async function uploadAudioFile(file: File): Promise<AudioUploadResult> {
+  const appUser = useStore.getState().appUser;
+  if (!appUser) throw new Error("Must be logged in to upload media");
+
+  const response = await desoUploadVideo({
+    UserPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+    file,
+  });
+
+  const id = response.asset.id;
+  return {
+    hlsUrl: `https://videodelivery.net/${id}/manifest/video.m3u8`,
+    iframeUrl: `https://iframe.videodelivery.net/${id}`,
   };
 }
 

@@ -610,6 +610,7 @@ export const decryptAccessGroupMessages = async (
 const DESO_APP_ENCRYPTED_KEYS = [
   "encryptedVideoURLs",
   "encryptedImageURLs",
+  "encryptedAudioURLs",
 ] as const;
 
 /**

@@ -12,6 +12,6 @@ Tipping now supports ChatOn — Tips of $0.10+ include a 10% platform fee to fun
 
 Better group joining — After requesting to join a group via invite link, you're redirected into the app with a confirmation modal instead of being stuck on a separate page.
 
-Voice messages — Tap the mic button to record and send audio clips, Telegram-style. Recordings are compressed to tiny 64kbps AAC files for fast uploads. Playback shows a waveform with seek-by-tap and duration. Compatible with Focus and other DeSo messaging apps.
+Voice messages — Tap the mic button to record and send audio clips, Telegram-style. Recordings are compressed to tiny 64kbps AAC files for fast uploads with no transcode wait. Playback shows a waveform with seek-by-tap and duration. Audio URLs are always encrypted. Compatible with Focus and other DeSo messaging apps.
 
 Push notification fix — Eliminated duplicate notifications caused by browsers rotating push subscription endpoints.
