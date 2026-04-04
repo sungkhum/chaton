@@ -1187,17 +1187,16 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                 : "glass-received text-gray-200";
             }
 
-            // Tip messages get a tinted bubble with accent left border (DESO = blue, USDC = green).
-            // Both receipt-style and custom-message tips use the tint — the content layout differs.
+            // Tip messages use glassmorphism bubbles with colored glow (DESO = blue, USDC = green)
             if (parsed.type === "tip") {
               const isUsdc = parsed.tipCurrency === "USDC";
               senderStyles = isUsdc
                 ? IsSender
-                  ? "bg-[#082414] border border-[#34F080]/25 text-white border-l-2 border-l-[#34F080]"
-                  : "bg-[#081a12] border border-[#34F080]/15 text-gray-200 border-l-2 border-l-[#34F080]"
+                  ? "glass-tip-usdc-sent text-white"
+                  : "glass-tip-usdc-received text-gray-200"
                 : IsSender
-                ? "bg-[#081424] border border-[#2775ca]/25 text-white border-l-2 border-l-[#2775ca]"
-                : "bg-[#081220] border border-[#2775ca]/15 text-gray-200 border-l-2 border-l-[#2775ca]";
+                ? "glass-tip-deso-sent text-white"
+                : "glass-tip-deso-received text-gray-200";
             }
 
             // Emoji-only messages float without a bubble
