@@ -16,7 +16,7 @@ const DESO_NODE = "https://node.deso.org";
 const CHATON_SIGNING_KEY =
   "BC1YLg2qBgxVDcK8pAgSEAJbizmHDRDExTaYS9xzEH5ZMhVxKsxTVZr";
 const CHATON_DONATION_KEY =
-  "BC1YLibU7KwQRTnWJ3nDyVzitNFdyDa28LjZDEnH5Y6xP9oHa59J5xK";
+  "BC1YLg2qBgxVDcK8pAgSEAJbizmHDRDExTaYS9xzEH5ZMhVxKsxTVZr";
 const INVITE_ASSOCIATION_TYPE = "chaton:group-invite-code";
 const DEFAULT_OG_IMAGE = "https://getchaton.com/chaton-invited.webp";
 const RESOLVE_TIMEOUT_MS = 3000;

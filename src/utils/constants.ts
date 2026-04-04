@@ -133,7 +133,7 @@ export const FOREGROUND_RESUME_DEBOUNCE_MS = 2000;
 export const BASE_TITLE = "DeSo Chat Protocol";
 export const TITLE_DIVIDER = " · ";
 export const CHATON_DONATION_PUBLIC_KEY: Readonly<string> =
-  "BC1YLibU7KwQRTnWJ3nDyVzitNFdyDa28LjZDEnH5Y6xP9oHa59J5xK";
+  "BC1YLg2qBgxVDcK8pAgSEAJbizmHDRDExTaYS9xzEH5ZMhVxKsxTVZr";
 /** Platform fee rate applied to tips >= TIP_FEE_THRESHOLD_USD. 0.1 = 10%. */
 export const TIP_FEE_RATE = 0.1;
 /** Minimum tip amount (USD) that triggers the platform fee. */
