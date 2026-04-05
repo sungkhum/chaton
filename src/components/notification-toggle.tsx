@@ -8,8 +8,6 @@ import {
   getNotificationPermission,
   requestPushPermission,
   subscribeToPush,
-  getExistingSubscription,
-  unsubscribeFromPush,
 } from "../utils/push-notifications";
 import { cachePushPublicKey } from "../services/cache.service";
 
@@ -22,13 +20,18 @@ function getPrefKey(publicKey: string) {
 }
 
 /** Register a push subscription with the relay server. Best-effort, no throw. */
-async function registerWithServer(publicKey: string, subscription: PushSubscription) {
+async function registerWithServer(
+  publicKey: string,
+  subscription: PushSubscription
+) {
   // Persist public key to IDB so the service worker can re-register
   // the subscription during pushsubscriptionchange (when no client is open).
   cachePushPublicKey(publicKey);
 
   if (!RELAY_URL) {
-    console.warn("[push] No RELAY_URL configured, skipping server registration");
+    console.warn(
+      "[push] No RELAY_URL configured, skipping server registration"
+    );
     return;
   }
   try {
@@ -37,7 +40,11 @@ async function registerWithServer(publicKey: string, subscription: PushSubscript
     const res = await fetch(`${RELAY_URL}/push/subscribe`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ publicKey, jwt, subscription: subscription.toJSON() }),
+      body: JSON.stringify({
+        publicKey,
+        jwt,
+        subscription: subscription.toJSON(),
+      }),
     });
     console.log("[push] Server registration response:", res.status);
   } catch (err) {
@@ -45,15 +52,16 @@ async function registerWithServer(publicKey: string, subscription: PushSubscript
   }
 }
 
-/** Unregister a push subscription from the relay server. Best-effort, no throw. */
-async function unregisterFromServer(publicKey: string, endpoint: string) {
+/** Disable push on the server (sets push_enabled=0). Preserves browser subscription
+ *  so re-enabling doesn't require a fresh user gesture (critical for iOS). */
+async function disableOnServer(publicKey: string) {
   if (!RELAY_URL) return;
   try {
     const jwt = await identity.jwt();
-    await fetch(`${RELAY_URL}/push/unsubscribe`, {
+    await fetch(`${RELAY_URL}/push/disable`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ publicKey, endpoint, jwt }),
+      body: JSON.stringify({ publicKey, jwt }),
     });
   } catch {
     // Best-effort
@@ -66,12 +74,11 @@ async function unregisterFromServer(publicKey: string, endpoint: string) {
  */
 async function ensureSubscription(publicKey: string) {
   try {
-    console.log("[push] ensureSubscription: checking existing...");
-    let sub = await getExistingSubscription();
-    if (!sub) {
-      console.log("[push] ensureSubscription: no existing, creating...");
-      sub = await subscribeToPush();
-    }
+    // Always call subscribeToPush() which calls pushManager.subscribe() directly.
+    // This is idempotent — returns the existing subscription if valid, or creates
+    // a new one if the old one expired (critical for iOS where subscriptions
+    // silently expire after ~1-2 weeks of inactivity).
+    const sub = await subscribeToPush();
     if (sub) {
       await registerWithServer(publicKey, sub);
     } else {
@@ -90,7 +97,9 @@ export function NotificationToggle() {
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   // Derive toggle state synchronously from permission + localStorage preference.
@@ -137,7 +146,8 @@ export function NotificationToggle() {
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
   const enable = useCallback(async () => {
@@ -149,7 +159,9 @@ export function NotificationToggle() {
 
       if (permission === "denied") {
         setPushState("denied");
-        toast.error("Notifications are blocked. Enable them in your browser or device settings.");
+        toast.error(
+          "Notifications are blocked. Enable them in your browser or device settings."
+        );
         return;
       }
 
@@ -162,7 +174,9 @@ export function NotificationToggle() {
           const updated = getNotificationPermission();
           if (updated === "denied") {
             setPushState("denied");
-            toast.error("Notifications blocked. You can re-enable them in your browser settings.");
+            toast.error(
+              "Notifications blocked. You can re-enable them in your browser settings."
+            );
           }
           return;
         }
@@ -202,14 +216,10 @@ export function NotificationToggle() {
     localStorage.setItem(getPrefKey(appUser.PublicKeyBase58Check), "false");
 
     try {
-      const subscription = await getExistingSubscription();
-      const endpoint = subscription?.endpoint;
-
-      await unsubscribeFromPush();
-
-      if (endpoint) {
-        await unregisterFromServer(appUser.PublicKeyBase58Check, endpoint);
-      }
+      // Server-side disable only — don't call browser unsubscribe().
+      // Preserving the browser subscription avoids iOS requiring a fresh
+      // user gesture to re-subscribe when the user re-enables notifications.
+      await disableOnServer(appUser.PublicKeyBase58Check);
 
       if (mountedRef.current) {
         toast.success("Notifications disabled");
@@ -242,7 +252,11 @@ export function NotificationToggle() {
           ? "text-gray-500 cursor-not-allowed"
           : "text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer"
       }`}
-      title={isDenied ? "Notifications are blocked in your browser settings" : undefined}
+      title={
+        isDenied
+          ? "Notifications are blocked in your browser settings"
+          : undefined
+      }
     >
       <div className="flex items-center">
         {pushState === "enabled" ? (

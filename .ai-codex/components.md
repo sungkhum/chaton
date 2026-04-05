@@ -1,4 +1,4 @@
-# Components (generated 2026-04-04)
+# Components (generated 2026-04-05)
 # (c)=client component. UI primitives (shadcn/radix) omitted.
 
 ## src

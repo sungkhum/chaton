@@ -165,6 +165,19 @@ async function encrypt(
 
 // ── Public API ──
 
+/**
+ * Derive a Topic header value (max 32 chars, base64url) from a conversation key.
+ * Push services replace queued messages with the same Topic, so multiple messages
+ * to the same conversation collapse into one notification while offline.
+ */
+async function deriveTopic(conversationKey: string): Promise<string> {
+  const hash = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(conversationKey))
+  );
+  // Use first 24 bytes → 32 base64url chars (max allowed by RFC 8030)
+  return b64url(hash.slice(0, 24));
+}
+
 export async function sendPushNotification(
   subscription: PushSubscriptionData,
   payload: { title: string; body: string; tag?: string; conversationKey?: string; from?: string },
@@ -181,16 +194,24 @@ export async function sendPushNotification(
       unb64url(subscription.keys.auth)
     );
 
+    const headers: Record<string, string> = {
+      "Content-Type": "application/octet-stream",
+      "Content-Encoding": "aes128gcm",
+      "Content-Length": String(body.length),
+      Authorization: authorization,
+      TTL: "604800", // 7 days — ensures offline devices receive notifications
+      Urgency: "high",
+    };
+
+    // Topic header: push services replace queued messages with the same Topic,
+    // so multiple messages to the same conversation produce one notification.
+    if (payload.conversationKey) {
+      headers["Topic"] = await deriveTopic(payload.conversationKey);
+    }
+
     const res = await fetch(subscription.endpoint, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/octet-stream",
-        "Content-Encoding": "aes128gcm",
-        "Content-Length": String(body.length),
-        Authorization: authorization,
-        TTL: "86400",
-        Urgency: "high",
-      },
+      headers,
       body,
     });
 

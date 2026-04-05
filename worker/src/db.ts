@@ -94,20 +94,46 @@ export async function removeSubscription(
     .run();
 }
 
-/** Get all users that have push enabled and at least one active subscription. */
+/** Get opted-in users with active subscriptions, starting after lastId for rotation.
+ *  Returns up to `limit` users ordered by id. Pass lastId=0 to start from the beginning. */
 export async function getOptedInUsers(
-  db: D1Database
+  db: D1Database,
+  limit: number = 100,
+  lastId: number = 0
 ): Promise<DbUser[]> {
   const { results } = await db
     .prepare(
       `SELECT DISTINCT u.id, u.deso_public_key, u.push_enabled
        FROM users u
        JOIN push_subscriptions ps ON ps.user_id = u.id
-       WHERE u.push_enabled = 1 AND ps.is_active = 1`
+       WHERE u.push_enabled = 1 AND ps.is_active = 1 AND u.id > ?
+       ORDER BY u.id ASC
+       LIMIT ?`
     )
+    .bind(lastId, limit)
     .all<DbUser>();
 
   return results;
+}
+
+/** Get/set the cron offset (last processed user id) for rotation. */
+export async function getCronOffset(db: D1Database): Promise<number> {
+  const row = await db
+    .prepare(
+      "SELECT value FROM kv_meta WHERE key = 'cron_last_user_id'"
+    )
+    .first<{ value: string }>();
+  return row ? parseInt(row.value, 10) : 0;
+}
+
+export async function setCronOffset(db: D1Database, lastUserId: number): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO kv_meta (key, value) VALUES ('cron_last_user_id', ?)
+       ON CONFLICT (key) DO UPDATE SET value = excluded.value`
+    )
+    .bind(String(lastUserId))
+    .run();
 }
 
 /** Get all active push subscriptions for a user. */
@@ -230,6 +256,29 @@ export async function getLastSeenBatch(
     map[row.deso_public_key] = row.last_seen_at;
   }
   return map;
+}
+
+/** Disable push for a user (server-side only — preserves browser subscription). */
+export async function disablePush(
+  db: D1Database,
+  desoPublicKey: string
+): Promise<void> {
+  await db
+    .prepare("UPDATE users SET push_enabled = 0 WHERE deso_public_key = ?")
+    .bind(desoPublicKey)
+    .run();
+}
+
+/** Delete subscriptions that have been inactive for over 30 days. */
+export async function cleanupInactiveSubscriptions(
+  db: D1Database
+): Promise<void> {
+  await db
+    .prepare(
+      `DELETE FROM push_subscriptions
+       WHERE is_active = 0 AND created_at < datetime('now', '-30 days')`
+    )
+    .run();
 }
 
 /** Reset failure count on successful delivery. */

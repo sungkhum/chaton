@@ -6,9 +6,12 @@
 import type { Env } from "./index";
 import {
   getOptedInUsers,
+  getCronOffset,
+  setCronOffset,
   getThreadStates,
   upsertThreadState,
   cleanupNotificationDedup,
+  cleanupInactiveSubscriptions,
 } from "./db";
 
 // ── DeSo API types (only the fields we need) ──
@@ -129,32 +132,50 @@ async function fetchThreads(
 const MAX_USERS_PER_RUN = 100;
 
 export async function handleScheduled(env: Env): Promise<void> {
-  // Purge stale dedup records (older than 5 minutes)
+  // Purge stale dedup records (older than 5 minutes) and old inactive subscriptions
   await cleanupNotificationDedup(env.DB).catch(() => {});
-
-  const users = await getOptedInUsers(env.DB);
-  if (users.length === 0) return;
+  await cleanupInactiveSubscriptions(env.DB).catch(() => {});
 
   const nodeUrl = env.DESO_NODE_URL || "https://node.deso.org";
-  const batch = users.slice(0, MAX_USERS_PER_RUN);
 
-  if (users.length > MAX_USERS_PER_RUN) {
-    console.warn(
-      `${users.length} opted-in users exceeds batch limit of ${MAX_USERS_PER_RUN}; processing first batch only`
-    );
+  // Rotating offset: each cron run picks up where the last one left off.
+  // If no users remain after the offset, wrap around to the beginning.
+  let lastId = await getCronOffset(env.DB).catch(() => 0);
+  let batch = await getOptedInUsers(env.DB, MAX_USERS_PER_RUN, lastId);
+
+  if (batch.length === 0 && lastId > 0) {
+    // Wrapped around — start from the beginning
+    lastId = 0;
+    batch = await getOptedInUsers(env.DB, MAX_USERS_PER_RUN, 0);
   }
+
+  if (batch.length === 0) return;
 
   // Process users sequentially to avoid overwhelming the DeSo node.
   for (const user of batch) {
     try {
       await pollUserThreads(env, nodeUrl, user.id, user.deso_public_key);
     } catch (err) {
-      console.error(
-        `Poll failed for ${user.deso_public_key}:`,
+      // Single retry after 2s — DeSo node may be temporarily overloaded
+      console.warn(
+        `Poll failed for ${user.deso_public_key}, retrying:`,
         err instanceof Error ? err.message : err
       );
+      try {
+        await new Promise((r) => setTimeout(r, 2000));
+        await pollUserThreads(env, nodeUrl, user.id, user.deso_public_key);
+      } catch (retryErr) {
+        console.error(
+          `Poll retry failed for ${user.deso_public_key}:`,
+          retryErr instanceof Error ? retryErr.message : retryErr
+        );
+      }
     }
   }
+
+  // Save offset for next cron run
+  const lastProcessedId = batch[batch.length - 1].id;
+  await setCronOffset(env.DB, lastProcessedId).catch(() => {});
 }
 
 async function pollUserThreads(
@@ -217,9 +238,10 @@ async function pollUserThreads(
       threadKey,
       threadType,
       conversationKey: deriveConversationKey(thread, publicKey),
-      groupName: thread.ChatType === "GroupChat"
-        ? thread.RecipientInfo.AccessGroupKeyName
-        : undefined,
+      // The cron path doesn't have access to group ExtraData (display names),
+      // so use generic "Group chat" title. The DO real-time path sends the
+      // resolved display name for the ~95% of notifications it handles.
+      groupName: thread.ChatType === "GroupChat" ? "Group chat" : undefined,
     });
   }
 

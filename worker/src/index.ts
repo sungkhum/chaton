@@ -6,6 +6,7 @@ import {
   upsertUser,
   upsertSubscription,
   removeSubscription,
+  disablePush,
   getSubscriptionsForUser,
   deactivateSubscription,
   incrementFailureCount,
@@ -119,6 +120,12 @@ export default {
     if (url.pathname === "/push/unsubscribe" && request.method === "POST") {
       if (!isOriginAllowed(origin, allowed)) return forbidden();
       const res = await handlePushUnsubscribe(request, env);
+      return withCors(res, origin!);
+    }
+
+    if (url.pathname === "/push/disable" && request.method === "POST") {
+      if (!isOriginAllowed(origin, allowed)) return forbidden();
+      const res = await handlePushDisable(request, env);
       return withCors(res, origin!);
     }
 
@@ -278,6 +285,30 @@ async function handlePushUnsubscribe(
     } catch {
       console.error("DO push unsubscribe forward failed (best-effort)");
     }
+
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch {
+    return new Response("Bad request", { status: 400 });
+  }
+}
+
+async function handlePushDisable(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  try {
+    const { publicKey, jwt } = await request.json<{
+      publicKey: string;
+      jwt?: string;
+    }>();
+
+    if (!jwt || !(await validateDesoJwt(env.DESO_NODE_URL, publicKey, jwt))) {
+      return new Response("Invalid or missing JWT", { status: 401 });
+    }
+
+    await disablePush(env.DB, publicKey);
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { "Content-Type": "application/json" },

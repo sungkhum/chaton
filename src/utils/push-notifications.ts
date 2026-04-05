@@ -32,24 +32,28 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
     const registration = await Promise.race([
       navigator.serviceWorker.ready,
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Service worker ready timeout")), 10_000)
+        setTimeout(
+          () => reject(new Error("Service worker ready timeout")),
+          10_000
+        )
       ),
     ]);
-    console.log("[push] Service worker ready, checking existing subscription...");
 
-    // Check for an existing subscription first — avoids creating a duplicate
-    const existing = await registration.pushManager.getSubscription();
-    if (existing) {
-      console.log("[push] Found existing subscription");
-      return existing;
-    }
-
-    console.log("[push] No existing subscription, creating new one...");
+    // Always call pushManager.subscribe() instead of checking getSubscription()
+    // first. This is idempotent per the Web Push spec — returns the existing
+    // subscription if still valid, or creates a new one if the old one expired.
+    // Critical for iOS Safari where subscriptions silently expire after ~1-2 weeks.
+    console.log("[push] Subscribing (idempotent)...");
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as unknown as BufferSource,
+      applicationServerKey: urlBase64ToUint8Array(
+        VAPID_PUBLIC_KEY
+      ) as unknown as BufferSource,
     });
-    console.log("[push] Subscription created:", subscription.endpoint.slice(0, 60));
+    console.log(
+      "[push] Subscription active:",
+      subscription.endpoint.slice(0, 60)
+    );
     return subscription;
   } catch (error) {
     console.error("[push] Failed to subscribe:", error);
@@ -62,7 +66,10 @@ export async function getExistingSubscription(): Promise<PushSubscription | null
     const registration = await Promise.race([
       navigator.serviceWorker.ready,
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Service worker ready timeout")), 10_000)
+        setTimeout(
+          () => reject(new Error("Service worker ready timeout")),
+          10_000
+        )
       ),
     ]);
     return registration.pushManager.getSubscription();

@@ -118,6 +118,7 @@ import {
 import { Conversation, ConversationMap } from "../utils/types";
 import {
   buildExtraData,
+  getGroupDisplayName,
   getGroupImageUrl,
   parseMessageType,
   MSG_REPLY_TO,
@@ -2762,7 +2763,15 @@ export const MessagingApp: FC = () => {
     const conv = conversations[convKey];
     const members = membersByGroupKey[convKey];
     if (conv?.ChatType === ChatType.GROUPCHAT && members) {
-      const groupName = conv.messages[0]?.RecipientInfo?.AccessGroupKeyName;
+      const recipientInfo = conv.messages[0]?.RecipientInfo;
+      const groupKeyName = recipientInfo?.AccessGroupKeyName;
+      // Resolve human-readable display name for notification title
+      const groupName =
+        getGroupDisplayName(
+          allAccessGroups,
+          recipientInfo?.OwnerPublicKeyBase58Check,
+          groupKeyName
+        ) || groupKeyName?.replace(/\0/g, "");
       sendNotify(convKey, Object.keys(members), resolvedUsername, groupName);
     } else {
       sendNotify(convKey, [dmRecipient], resolvedUsername);
