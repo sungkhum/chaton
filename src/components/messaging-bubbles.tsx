@@ -69,7 +69,7 @@ import {
   AnimatedEmoji,
   parseEmojiOnlyMessage,
 } from "./messages/animated-emoji";
-import { shortenLongWord } from "./search-users";
+import { shortenLongWord } from "../utils/search-helpers";
 
 // rerender-memo-with-default-value: hoisted constants avoid new refs each render
 const NO_CALLOUT_STYLE = {
@@ -87,7 +87,11 @@ export interface MessagingBubblesProps {
   lastReadTimestampNanos?: number | null;
   onScroll: (e: Array<DecryptedMessageEntryResponse>) => void;
   onReply?: (message: DecryptedMessageEntryResponse) => void;
-  onReact?: (timestampNanosString: string, emoji: string) => void;
+  onReact?: (
+    timestampNanosString: string,
+    emoji: string,
+    forceAction?: "add" | "remove"
+  ) => void;
   onRetry?: (localId: string) => void;
   onDeleteFailed?: (localId: string) => void;
   onEdit?: (message: DecryptedMessageEntryResponse) => void;
@@ -687,19 +691,45 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   // This eliminates the stale-render frame caused by syncing via useEffect.
   const visibleMessages = conversation.messages;
 
-  // Aggregate reactions from reaction-type messages
+  // Aggregate reactions from reaction-type messages.
+  // Deduplicated: one reaction per user per emoji per message (last-write-wins).
+  // Properly handles action:"remove" — if a user's latest action is "remove",
+  // they are excluded from that emoji's reactor list.
   const reactionsByTimestamp = useMemo(() => {
-    const map: Record<string, Record<string, string[]>> = {};
+    // First pass: collect the latest action per (targetTimestamp, emoji, sender)
+    const latest: Record<
+      string,
+      Record<string, Record<string, { action: "add" | "remove"; ts: number }>>
+    > = {};
     for (const msg of visibleMessages) {
       const parsed = parseMessageType(msg);
       if (parsed.type === "reaction" && parsed.replyTo && parsed.emoji) {
-        if (parsed.action === "remove") continue;
-        if (!map[parsed.replyTo]) map[parsed.replyTo] = {};
-        if (!map[parsed.replyTo][parsed.emoji])
-          map[parsed.replyTo][parsed.emoji] = [];
-        map[parsed.replyTo][parsed.emoji].push(
-          msg.SenderInfo.OwnerPublicKeyBase58Check
-        );
+        const target = parsed.replyTo;
+        const emoji = parsed.emoji;
+        const sender = msg.SenderInfo.OwnerPublicKeyBase58Check;
+        const ts = msg.MessageInfo.TimestampNanos;
+        const action = parsed.action || "add";
+
+        if (!latest[target]) latest[target] = {};
+        if (!latest[target][emoji]) latest[target][emoji] = {};
+
+        const existing = latest[target][emoji][sender];
+        if (!existing || ts > existing.ts) {
+          latest[target][emoji][sender] = { action, ts };
+        }
+      }
+    }
+
+    // Second pass: build the final map with only active "add" reactions
+    const map: Record<string, Record<string, string[]>> = {};
+    for (const [target, emojiMap] of Object.entries(latest)) {
+      for (const [emoji, senderMap] of Object.entries(emojiMap)) {
+        for (const [sender, { action }] of Object.entries(senderMap)) {
+          if (action === "remove") continue;
+          if (!map[target]) map[target] = {};
+          if (!map[target][emoji]) map[target][emoji] = [];
+          map[target][emoji].push(sender);
+        }
       }
     }
     return map;
@@ -936,7 +966,10 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
         dividerIdx = i;
         break;
       }
-      if (!msg.IsSender) count++;
+      if (!msg.IsSender) {
+        const msgType = msg.MessageInfo?.ExtraData?.["msg:type"];
+        if (msgType !== "system" && msgType !== "reaction") count++;
+      }
     }
     // No messages at or below the last-read timestamp → all are unread
     if (dividerIdx === -1 && count > 0) {
@@ -1937,10 +1970,18 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                           <ReactionPills
                             reactions={reactions}
                             currentUserKey={appUser?.PublicKeyBase58Check}
+                            isSender={IsSender}
                             onReactionClick={(emoji) =>
                               onReact?.(
                                 message.MessageInfo.TimestampNanosString,
                                 emoji
+                              )
+                            }
+                            onRemoveReaction={(emoji) =>
+                              onReact?.(
+                                message.MessageInfo.TimestampNanosString,
+                                emoji,
+                                "remove"
                               )
                             }
                             getUsernameByPublicKey={getUsernameByPublicKey}
