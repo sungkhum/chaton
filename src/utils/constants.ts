@@ -122,15 +122,18 @@ export const DESO_NETWORK: Readonly<DeSoNetwork> = IS_MAINNET
 export const PUBLIC_KEY_LENGTH: Readonly<number> = IS_MAINNET ? 55 : 54;
 export const PUBLIC_KEY_PREFIX: Readonly<string> = IS_MAINNET ? "BC" : "tBC";
 export const MESSAGES_ONE_REQUEST_LIMIT = 25;
+export const FETCH_THREADS_TIMEOUT_MS = 30_000;
 export const MAX_MEMBERS_IN_GROUP_SUMMARY_SHOWN = 4;
 export const MAX_MEMBERS_TO_REQUEST_IN_GROUP = 50;
 export const MOBILE_WIDTH_BREAKPOINT = 768;
 export const REFRESH_MESSAGES_INTERVAL_MS = 15000;
 export const REFRESH_MESSAGES_MOBILE_INTERVAL_MS = 20000;
 export const REFRESH_MESSAGES_MAX_INTERVAL_MS = 60000;
+/** When WebSocket is connected, poll at this slow rate as a safety net. */
+export const REFRESH_MESSAGES_WS_CONNECTED_MS = 5 * 60 * 1000;
 export const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 export const FOREGROUND_RESUME_DEBOUNCE_MS = 2000;
-export const BASE_TITLE = "DeSo Chat Protocol";
+export const BASE_TITLE = "ChatOn";
 export const TITLE_DIVIDER = " · ";
 export const CHATON_DONATION_PUBLIC_KEY: Readonly<string> =
   "BC1YLg2qBgxVDcK8pAgSEAJbizmHDRDExTaYS9xzEH5ZMhVxKsxTVZr";

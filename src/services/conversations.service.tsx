@@ -6,7 +6,8 @@ import {
   DecryptedMessageEntryResponse,
   deleteUserAssociation,
   getAllAccessGroups,
-  getAllMessageThreads,
+  getDMThreads,
+  getGroupChatThreads,
   getBulkAccessGroups,
   getFollowersForUser,
   getPaginatedAccessGroupMembers,
@@ -36,6 +37,7 @@ import {
   ASSOCIATION_VALUE_BLOCKED,
   ASSOCIATION_VALUE_DISMISSED,
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
+  FETCH_THREADS_TIMEOUT_MS,
   PRIVACY_MODE_FULL,
   USER_TO_SEND_MESSAGE_TO,
 } from "../utils/constants";
@@ -70,21 +72,78 @@ function deriveIsSender(
   );
 }
 
-/** Fetch raw message threads without decryption */
+/** Fetch raw message threads without decryption.
+ *  Uses getDMThreads + getGroupChatThreads in parallel instead of the single
+ *  getAllMessageThreads call. The DeSo backend does N+1 DB queries (one per
+ *  thread) — splitting lets the DM and group queries run concurrently, and
+ *  whichever finishes first can be rendered immediately via the onPartial
+ *  callback.
+ */
 export async function fetchMessageThreadsRaw(
-  userPublicKeyBase58Check: string
+  userPublicKeyBase58Check: string,
+  onPartial?: (partial: {
+    messageThreads: NewMessageEntryResponse[];
+    publicKeyToProfileEntryResponseMap: PublicKeyToProfileEntryResponseMap;
+  }) => void,
+  /** Apply a timeout — only use for user-facing initial loads, not background polling. */
+  useTimeout = false
 ): Promise<{
   messageThreads: NewMessageEntryResponse[];
   publicKeyToProfileEntryResponseMap: PublicKeyToProfileEntryResponseMap;
 }> {
-  const messages = await getAllMessageThreads({
-    UserPublicKeyBase58Check: userPublicKeyBase58Check,
-  });
-  return {
-    messageThreads: messages.MessageThreads || [],
-    publicKeyToProfileEntryResponseMap:
-      messages.PublicKeyToProfileEntryResponse || {},
+  const params = { UserPublicKeyBase58Check: userPublicKeyBase58Check };
+
+  // Fire both requests in parallel
+  const dmPromise = getDMThreads(params);
+  const groupPromise = getGroupChatThreads(params);
+
+  // If caller wants progressive updates, emit whichever resolves first
+  if (onPartial) {
+    let partialSent = false;
+    const emitPartial = (result: Awaited<ReturnType<typeof getDMThreads>>) => {
+      if (partialSent) return;
+      partialSent = true;
+      onPartial({
+        messageThreads: result.MessageThreads || [],
+        publicKeyToProfileEntryResponseMap:
+          result.PublicKeyToProfileEntryResponse || {},
+      });
+    };
+    dmPromise.then(emitPartial).catch(() => {});
+    groupPromise.then(emitPartial).catch(() => {});
+  }
+
+  // Wait for both (with optional timeout for initial loads)
+  const bothPromise = Promise.all([dmPromise, groupPromise]);
+  let timerId: ReturnType<typeof setTimeout> | undefined;
+  let dmResult, groupResult;
+  try {
+    if (useTimeout) {
+      const timeout = new Promise<never>((_, reject) => {
+        timerId = setTimeout(
+          () => reject(new Error("Loading timed out — please retry")),
+          FETCH_THREADS_TIMEOUT_MS
+        );
+      });
+      [dmResult, groupResult] = await Promise.race([bothPromise, timeout]);
+    } else {
+      [dmResult, groupResult] = await bothPromise;
+    }
+  } finally {
+    if (timerId !== undefined) clearTimeout(timerId);
+  }
+
+  // Merge results
+  const messageThreads = [
+    ...(dmResult.MessageThreads || []),
+    ...(groupResult.MessageThreads || []),
+  ];
+  const publicKeyToProfileEntryResponseMap = {
+    ...(dmResult.PublicKeyToProfileEntryResponse || {}),
+    ...(groupResult.PublicKeyToProfileEntryResponse || {}),
   };
+
+  return { messageThreads, publicKeyToProfileEntryResponseMap };
 }
 
 /** Compute the conversation key for a raw message. */
@@ -370,19 +429,17 @@ export const getConversationNew = async (
   publicKeyToProfileEntryResponseMap: PublicKeyToProfileEntryResponseMap;
   updatedAllAccessGroups: AccessGroupEntryResponse[];
 }> => {
-  const messages = await getAllMessageThreads({
-    UserPublicKeyBase58Check: userPublicKeyBase58Check,
-  });
+  const rawResult = await fetchMessageThreadsRaw(userPublicKeyBase58Check);
   const { decrypted, updatedAllAccessGroups } =
     await decryptAccessGroupMessagesWithRetry(
       userPublicKeyBase58Check,
-      messages.MessageThreads,
+      rawResult.messageThreads,
       allAccessGroups
     );
   return {
     decrypted,
     publicKeyToProfileEntryResponseMap:
-      messages.PublicKeyToProfileEntryResponse,
+      rawResult.publicKeyToProfileEntryResponseMap,
     updatedAllAccessGroups,
   };
 };
@@ -449,13 +506,11 @@ export const getConversationsDifferential = async (
   publicKeyToProfileEntryResponseMap: PublicKeyToProfileEntryResponseMap;
   updatedAllAccessGroups: AccessGroupEntryResponse[];
 }> => {
-  // Step 1: Fetch all threads (unavoidable — DeSo API has no pagination)
-  const rawResult = await getAllMessageThreads({
-    UserPublicKeyBase58Check: userPublicKeyBase58Check,
-  });
-  const messageThreads = rawResult.MessageThreads || [];
+  // Step 1: Fetch DM + group threads in parallel (faster than single combined call)
+  const rawResult = await fetchMessageThreadsRaw(userPublicKeyBase58Check);
+  const messageThreads = rawResult.messageThreads;
   const publicKeyToProfileEntryResponseMap =
-    rawResult.PublicKeyToProfileEntryResponse || {};
+    rawResult.publicKeyToProfileEntryResponseMap;
 
   if (messageThreads.length === 0) {
     return {

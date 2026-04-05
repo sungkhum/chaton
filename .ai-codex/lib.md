@@ -34,6 +34,9 @@ invite-link.ts
 link-services.ts
   fn detectLinkService
   fn extractFileNameFromUrl
+onboarding.ts
+  fn isOnboardingComplete
+  fn markOnboardingComplete
 push-notifications.ts
   fn requestPushPermission
   fn subscribeToPush
@@ -56,4 +59,5 @@ with-auth.ts
   fn withAuth
   fn needsPermissionUpgrade
   fn requestFullPermissions
+community-cache.ts  fn clearCommunityCache
 profanity-filter.ts  fn containsProfanity

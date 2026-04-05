@@ -9,11 +9,12 @@
     BlogIndex
     BlogPostLayout
     chunk-error-boundary
-    clearCommunityCache
     community-page
+    CommunityTab
     ComparePage
     ComposePanel
     CurrencyToggle
+    EditProfileDialog
     EmojiPickerButton
     emojiToCodepoint
     extractFirstUrl
@@ -28,7 +29,6 @@
     ImageMessage
     ImagePreviewPanel
     InstallPrompt
-    isOnboardingComplete
     JoinConfirmationModal
     JoinGroupModal
     JoinGroupPage
@@ -50,9 +50,11 @@
     near-zero-infrastructure
     NotFoundPage
     NotificationToggle
+    OnboardingWizard
     PreSignupTutorial
     PrivacyToggle
     PublicNav
+    ReactionDetailView
     ReactionEmojiPicker
     ReactionPills
     ReplyBanner
@@ -60,10 +62,10 @@
     route-error-boundary
     SaveToClipboard
     SearchMessageResults
+    SearchUsers
     SendFundsDialog
     SendMessageButtonAndInput
     SeoStructuredData
-    shortenLongWord
     SpeedDialFab
     StartGroupChat
     StickerMessage
