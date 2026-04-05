@@ -1,8 +1,11 @@
 import { ChatType } from "deso-protocol";
 import { Loader2 } from "lucide-react";
 import { FC, ReactNode } from "react";
-import { MessageSearchResult, SearchProgress } from "../services/message-search.service";
-import { SearchMenuItem } from "./search-users";
+import {
+  MessageSearchResult,
+  SearchProgress,
+} from "../services/message-search.service";
+import { SearchMenuItem } from "../utils/search-helpers";
 import { MSG_FILE_NAME, MSG_GIF_TITLE } from "../utils/extra-data";
 import { formatRelativeTimestamp } from "../utils/helpers";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
@@ -38,7 +41,9 @@ function truncateAround(text: string, start: number, maxLen: number): string {
   if (text.length <= maxLen) return text;
   const end = Math.min(text.length, start + maxLen);
   const s = Math.max(0, end - maxLen);
-  return (s > 0 ? "..." : "") + text.slice(s, end) + (end < text.length ? "..." : "");
+  return (
+    (s > 0 ? "..." : "") + text.slice(s, end) + (end < text.length ? "..." : "")
+  );
 }
 
 /** Build the same searchable text the service uses, so highlights match. */
@@ -119,10 +124,7 @@ export const SearchMessageResults: FC<{
 
                 {/* Line 2: Message snippet with highlighted match */}
                 <p className="text-sm text-gray-400 overflow-hidden whitespace-nowrap text-ellipsis">
-                  {highlightMatch(
-                    getDisplayText(result.message),
-                    query
-                  )}
+                  {highlightMatch(getDisplayText(result.message), query)}
                 </p>
               </div>
             </div>

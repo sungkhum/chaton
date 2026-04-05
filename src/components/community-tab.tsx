@@ -44,15 +44,6 @@ function setCachedListings(listings: EnrichedCommunityListing[]) {
   }
 }
 
-/** Clear the community cache. Call after the user lists/unlists their own group. */
-export function clearCommunityCache() {
-  try {
-    sessionStorage.removeItem(CACHE_KEY);
-  } catch {
-    // ignore
-  }
-}
-
 /**
  * Reusable community listings component. Used by both the sidebar tab
  * and the public /community page.
@@ -73,7 +64,9 @@ export const CommunityTab: FC<{
   const memberGroupKeys = useMemo(() => {
     const keys = new Set<string>();
     for (const g of allAccessGroups) {
-      keys.add(g.AccessGroupOwnerPublicKeyBase58Check + "|" + g.AccessGroupKeyName);
+      keys.add(
+        g.AccessGroupOwnerPublicKeyBase58Check + "|" + g.AccessGroupKeyName
+      );
     }
     return keys;
   }, [allAccessGroups]);
@@ -104,7 +97,9 @@ export const CommunityTab: FC<{
 
       // Filter profanity on display — check both group name and description
       const clean = raw.filter(
-        (l) => !containsProfanity(l.groupKeyName) && !containsProfanity(l.description)
+        (l) =>
+          !containsProfanity(l.groupKeyName) &&
+          !containsProfanity(l.description)
       );
 
       if (clean.length === 0) {
@@ -161,7 +156,10 @@ export const CommunityTab: FC<{
     });
   }, [listings, searchQuery]);
 
-  const handleCardClick = (listing: EnrichedCommunityListing, isMember: boolean) => {
+  const handleCardClick = (
+    listing: EnrichedCommunityListing,
+    isMember: boolean
+  ) => {
     if (isMember && onSelectConversation) {
       onSelectConversation(listing.ownerKey + listing.groupKeyName);
     } else if (listing.inviteCode) {
@@ -169,7 +167,11 @@ export const CommunityTab: FC<{
     }
   };
 
-  const handleCardKeyDown = (e: React.KeyboardEvent, listing: EnrichedCommunityListing, isMember: boolean) => {
+  const handleCardKeyDown = (
+    e: React.KeyboardEvent,
+    listing: EnrichedCommunityListing,
+    isMember: boolean
+  ) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       handleCardClick(listing, isMember);
@@ -215,7 +217,10 @@ export const CommunityTab: FC<{
         {loading && (
           <div className="px-4 space-y-1">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-center gap-3 py-3 animate-pulse">
+              <div
+                key={i}
+                className="flex items-center gap-3 py-3 animate-pulse"
+              >
                 <div className="w-12 h-12 rounded-full bg-white/5 shrink-0" />
                 <div className="flex-1 min-w-0 space-y-2">
                   <div className="h-4 bg-white/5 rounded w-2/3" />
@@ -262,7 +267,9 @@ export const CommunityTab: FC<{
           !error &&
           filteredListings.map((listing) => {
             const ownerUsername = listing.ownerProfile?.Username;
-            const isMember = memberGroupKeys.has(listing.ownerKey + "|" + listing.groupKeyName);
+            const isMember = memberGroupKeys.has(
+              listing.ownerKey + "|" + listing.groupKeyName
+            );
             return (
               <div key={listing.associationId}>
                 <div
@@ -291,12 +298,16 @@ export const CommunityTab: FC<{
                       <p className="text-xs text-gray-500 mt-0.5">
                         {ownerUsername ? `@${ownerUsername}` : ""}
                         {ownerUsername && " · "}
-                        {listing.memberCountCapped ? "50+" : listing.memberCount}{" "}
+                        {listing.memberCountCapped
+                          ? "50+"
+                          : listing.memberCount}{" "}
                         {listing.memberCount === 1 ? "member" : "members"}
                       </p>
                     </div>
                     {!isMember && (
-                      <span className="text-[#34F080] text-xs font-bold shrink-0 self-center">Join</span>
+                      <span className="text-[#34F080] text-xs font-bold shrink-0 self-center">
+                        Join
+                      </span>
                     )}
                   </div>
                 </div>

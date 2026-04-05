@@ -8,7 +8,7 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { DEFAULT_KEY_MESSAGING_GROUP_NAME } from "utils/constants";
-import { nameOrFormattedKey, SearchMenuItem } from "../components/search-users";
+import { nameOrFormattedKey, SearchMenuItem } from "../utils/search-helpers";
 import { Conversation } from "../utils/types";
 
 const PAGE_SIZE = 50;

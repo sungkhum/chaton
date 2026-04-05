@@ -2,7 +2,7 @@ import { AppUser } from "../store";
 import { identity } from "deso-protocol";
 import { Fragment } from "react";
 import { desoNanosToDeso } from "../utils/helpers";
-import { shortenLongWord } from "./search-users";
+import { shortenLongWord } from "../utils/search-helpers";
 import { AlertNotification } from "./shared/alert-notification";
 import { SaveToClipboard } from "./shared/save-to-clipboard";
 

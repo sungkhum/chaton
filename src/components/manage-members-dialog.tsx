@@ -65,10 +65,11 @@ import {
   unlistGroupFromCommunity,
   updateCommunityListing,
 } from "../services/community.service";
-import { clearCommunityCache } from "./community-tab";
+import { clearCommunityCache } from "../utils/community-cache";
 import { GroupImagePicker } from "./group-image-picker";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
-import { nameOrFormattedKey, SearchUsers } from "./search-users";
+import { nameOrFormattedKey } from "../utils/search-helpers";
+import { SearchUsers } from "./search-users";
 
 export interface ManageMembersDialogProps {
   onSuccess: () => void;

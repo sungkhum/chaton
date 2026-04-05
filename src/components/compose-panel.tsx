@@ -10,7 +10,7 @@ import {
   isMaybeETHAddress,
 } from "../utils/helpers";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
-import { nameOrFormattedKey, SearchMenuItem } from "./search-users";
+import { nameOrFormattedKey, SearchMenuItem } from "../utils/search-helpers";
 
 interface ComposePanelProps {
   open: boolean;

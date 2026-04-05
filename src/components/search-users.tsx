@@ -1,9 +1,4 @@
-import {
-  getProfiles,
-  getSingleProfile,
-  identity,
-  ProfileEntryResponse,
-} from "deso-protocol";
+import { getProfiles, getSingleProfile, identity } from "deso-protocol";
 import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -13,41 +8,9 @@ import {
   isMaybeENSName,
   isMaybeETHAddress,
 } from "../utils/helpers";
+import { nameOrFormattedKey, SearchMenuItem } from "../utils/search-helpers";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { MyErrorLabel } from "./form/my-error-label";
-
-export const shortenLongWord = (
-  key: string | null,
-  endFirstPartAfter = 6,
-  startSecondPartAfter = 6,
-  separator = "..."
-) => {
-  if (
-    !key ||
-    key.length <= endFirstPartAfter + startSecondPartAfter + separator.length
-  ) {
-    return key || "";
-  }
-
-  return [
-    key.slice(0, endFirstPartAfter),
-    separator,
-    key.slice(-startSecondPartAfter),
-  ].join("");
-};
-
-export const nameOrFormattedKey = (
-  profile: ProfileEntryResponse | null,
-  key: string
-) => {
-  return profile?.Username || shortenLongWord(key, 6, 6);
-};
-
-export interface SearchMenuItem {
-  id: string;
-  profile: ProfileEntryResponse | null;
-  text: string;
-}
 
 interface SearchUsersProps {
   placeholder?: string;

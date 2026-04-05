@@ -1,13 +1,19 @@
 import { FC } from "react";
 import { DEFAULT_KEY_MESSAGING_GROUP_NAME } from "../utils/constants";
-import { SearchMenuItem, SearchUsers } from "./search-users";
+import { SearchMenuItem } from "../utils/search-helpers";
+import { SearchUsers } from "./search-users";
 
 export const MessagingStartNewConversation: FC<{
   rehydrateConversation: (publicKey: string, autoScroll?: boolean) => void;
   onSearchQueryChange?: (query: string) => void;
   clearTrigger?: number;
   onUserResults?: (items: SearchMenuItem[]) => void;
-}> = ({ rehydrateConversation, onSearchQueryChange, clearTrigger, onUserResults }) => {
+}> = ({
+  rehydrateConversation,
+  onSearchQueryChange,
+  clearTrigger,
+  onUserResults,
+}) => {
   return (
     <div>
       <div className="m-4">

@@ -1,4 +1,4 @@
-import { shortenLongWord } from "components/search-users";
+import { shortenLongWord } from "./search-helpers";
 import { AppUser } from "../store";
 import { AccessGroupEntryResponse, ChatType, User } from "deso-protocol";
 import {
@@ -49,7 +49,10 @@ export const getChatNameFromConversation = (
   allAccessGroups?: AccessGroupEntryResponse[]
 ) => {
   if (conversation.ChatType === ChatType.DM) {
-    return getUsernameByPublicKeyBase58Check[conversation.firstMessagePublicKey] ?? null;
+    return (
+      getUsernameByPublicKeyBase58Check[conversation.firstMessagePublicKey] ??
+      null
+    );
   }
   const recipientInfo = conversation.messages[0].RecipientInfo;
   if (allAccessGroups) {
