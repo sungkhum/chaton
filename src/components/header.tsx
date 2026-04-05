@@ -6,6 +6,7 @@ import {
   Copy,
   Check,
   LogOut,
+  Pencil,
   SmilePlus,
   Wallet,
   GitFork,
@@ -18,13 +19,20 @@ import { toast } from "sonner";
 import { formatDisplayName, getProfileURL } from "../utils/helpers";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { SaveToClipboard } from "./shared/save-to-clipboard";
+import { EditProfileDialog } from "./edit-profile-dialog";
 import { SupportChatOnDialog } from "./support-chaton-dialog";
 import { TipCurrencyToggle } from "./tip-currency-toggle";
 import { UserAccountList } from "./user-account-list";
 
 export const Header = () => {
-  const { appUser, setLockRefresh } = useStore(useShallow((s) => ({ appUser: s.appUser, setLockRefresh: s.setLockRefresh })));
+  const { appUser, setLockRefresh } = useStore(
+    useShallow((s) => ({
+      appUser: s.appUser,
+      setLockRefresh: s.setLockRefresh,
+    }))
+  );
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
   const [showSupport, setShowSupport] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -105,6 +113,19 @@ export const Header = () => {
 
                 <UserAccountList onSwitch={() => setMenuOpen(false)} />
 
+                {appUser && (
+                  <button
+                    className="flex items-center w-full pt-[9px] pb-2 px-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-md cursor-pointer transition-colors"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setShowEditProfile(true);
+                    }}
+                  >
+                    <Pencil className="mr-3 w-5 h-5" />
+                    <span className="text-base">Edit Profile</span>
+                  </button>
+                )}
+
                 {appUser?.ProfileEntryResponse && (
                   <a
                     href={getProfileURL(appUser.ProfileEntryResponse.Username)}
@@ -113,7 +134,7 @@ export const Header = () => {
                     className="flex items-center pt-[9px] pb-2 px-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-md cursor-pointer transition-colors"
                   >
                     <SmilePlus className="mr-3 w-5 h-5" />
-                    <span className="text-base">My profile</span>
+                    <span className="text-base">View Profile</span>
                   </a>
                 )}
 
@@ -165,9 +186,15 @@ export const Header = () => {
                       url: "https://getchaton.com",
                     };
                     if (navigator.share) {
-                      try { await navigator.share(shareData); } catch { /* cancelled */ }
+                      try {
+                        await navigator.share(shareData);
+                      } catch {
+                        /* cancelled */
+                      }
                     } else {
-                      navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
+                      navigator.clipboard.writeText(
+                        `${shareData.text}\n${shareData.url}`
+                      );
                       toast.success("Invite link copied!");
                     }
                   }}
@@ -210,6 +237,12 @@ export const Header = () => {
           </div>
         </div>
       </div>
+      {showEditProfile && appUser && (
+        <EditProfileDialog
+          appUser={appUser}
+          onClose={() => setShowEditProfile(false)}
+        />
+      )}
       {showSupport && appUser && (
         <SupportChatOnDialog
           appUser={appUser}

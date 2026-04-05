@@ -22,6 +22,7 @@ import { useStore } from "../../store";
 import { uploadImage } from "../../services/media.service";
 import { withAuth } from "../../utils/with-auth";
 import { AUTO_FOLLOW_USERNAMES } from "../../utils/constants";
+import { markOnboardingComplete } from "../../utils/onboarding";
 
 interface OnboardingWizardProps {
   onComplete: () => void;
@@ -32,34 +33,15 @@ const SHARE_TEXT =
   "Chat with me on ChatOn — decentralized, end-to-end encrypted messaging on the blockchain. No censorship, no middlemen.";
 const SHARE_URL = "https://getchaton.com";
 
-/**
- * Check if onboarding has been completed for this user.
- */
-export function isOnboardingComplete(publicKey: string): boolean {
-  try {
-    return localStorage.getItem(`chaton:onboarded:${publicKey}`) === "1";
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Mark onboarding as complete for this user.
- */
-export function markOnboardingComplete(publicKey: string) {
-  try {
-    localStorage.setItem(`chaton:onboarded:${publicKey}`, "1");
-  } catch {
-    // localStorage may be unavailable
-  }
-}
-
 export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
-  const { appUser, setAppUser } = useStore(useShallow((s) => ({ appUser: s.appUser, setAppUser: s.setAppUser })));
+  const { appUser, setAppUser } = useStore(
+    useShallow((s) => ({ appUser: s.appUser, setAppUser: s.setAppUser }))
+  );
   const [step, setStep] = useState(1);
 
   // Profile setup state
   const [username, setUsername] = useState("");
+  const [bio, setBio] = useState("");
   const [usernameStatus, setUsernameStatus] = useState<
     "idle" | "checking" | "available" | "taken" | "invalid"
   >("idle");
@@ -230,6 +212,7 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
           UpdaterPublicKeyBase58Check: appUser.PublicKeyBase58Check,
           ProfilePublicKeyBase58Check: "",
           NewUsername: trimmedUsername,
+          NewDescription: bio,
           NewProfilePic: profileImageUrl || "",
           NewCreatorBasisPoints: 10000,
           NewStakeMultipleBasisPoints: 12500,
@@ -242,6 +225,7 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
         ProfileEntryResponse: {
           ...appUser.ProfileEntryResponse,
           Username: trimmedUsername,
+          Description: bio,
           PublicKeyBase58Check: appUser.PublicKeyBase58Check,
         } as any,
       });
@@ -459,6 +443,32 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
                 </div>
               </div>
 
+              {/* Bio (optional) */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label
+                    htmlFor="onboard-bio"
+                    className="block text-xs font-semibold text-gray-400 tracking-wide uppercase"
+                  >
+                    Bio{" "}
+                    <span className="text-gray-600 normal-case font-normal">
+                      (optional)
+                    </span>
+                  </label>
+                  <span className="text-[11px] text-gray-600 tabular-nums">
+                    {bio.length}/160
+                  </span>
+                </div>
+                <textarea
+                  id="onboard-bio"
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value.slice(0, 160))}
+                  placeholder="A short bio so people know who you are"
+                  rows={2}
+                  className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-[#34F080]/40 focus:bg-white/[0.06] rounded-xl px-3.5 py-3 text-white text-[15px] outline-none transition-all resize-none leading-relaxed placeholder:text-gray-600"
+                />
+              </div>
+
               {/* Actions */}
               <div className="space-y-2.5 pt-1">
                 <button
@@ -512,7 +522,11 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
                         setupStatus === "done"
                           ? "linear-gradient(135deg, rgba(52,240,128,0.12) 0%, rgba(32,224,170,0.08) 100%)"
                           : "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)",
-                      border: `1px solid ${setupStatus === "done" ? "rgba(52,240,128,0.2)" : "rgba(255,255,255,0.06)"}`,
+                      border: `1px solid ${
+                        setupStatus === "done"
+                          ? "rgba(52,240,128,0.2)"
+                          : "rgba(255,255,255,0.06)"
+                      }`,
                       transition: "all 0.5s ease",
                     }}
                   >
@@ -549,8 +563,8 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
                     setupStatus === "following"
                       ? "in-progress"
                       : setupStatus === "encrypting"
-                        ? "pending"
-                        : "complete"
+                      ? "pending"
+                      : "complete"
                   }
                 />
               </div>
@@ -651,7 +665,11 @@ function SetupRow({
           status === "complete"
             ? "rgba(52,240,128,0.04)"
             : "rgba(255,255,255,0.02)",
-        border: `1px solid ${status === "complete" ? "rgba(52,240,128,0.1)" : "rgba(255,255,255,0.04)"}`,
+        border: `1px solid ${
+          status === "complete"
+            ? "rgba(52,240,128,0.1)"
+            : "rgba(255,255,255,0.04)"
+        }`,
       }}
     >
       <div
@@ -659,8 +677,8 @@ function SetupRow({
           status === "complete"
             ? "text-[#34F080]"
             : status === "in-progress"
-              ? "text-white/70"
-              : "text-gray-700"
+            ? "text-white/70"
+            : "text-gray-700"
         }`}
       >
         {icon}
@@ -670,8 +688,8 @@ function SetupRow({
           status === "complete"
             ? "text-[#34F080]/90"
             : status === "in-progress"
-              ? "text-white/80"
-              : "text-gray-700"
+            ? "text-white/80"
+            : "text-gray-700"
         }`}
       >
         {label}
@@ -680,9 +698,7 @@ function SetupRow({
         {status === "in-progress" && (
           <Loader2 className="w-4 h-4 text-[#34F080]/70 animate-spin" />
         )}
-        {status === "complete" && (
-          <Check className="w-4 h-4 text-[#34F080]" />
-        )}
+        {status === "complete" && <Check className="w-4 h-4 text-[#34F080]" />}
         {status === "pending" && (
           <div className="w-3.5 h-3.5 rounded-full border border-gray-700/60" />
         )}
