@@ -23,13 +23,16 @@ import {
 } from "lucide-react";
 import {
   FC,
+  memo,
   useEffect,
+  useMemo,
   useRef,
   useState,
   startTransition,
   addTransitionType,
   ViewTransition,
 } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { toast } from "sonner";
 import { useStore } from "../store";
 import { useShallow } from "zustand/react/shallow";
@@ -50,7 +53,11 @@ import {
 import type { DecryptedMessageEntryResponse } from "deso-protocol";
 
 /** Render conversation preview text with shimmer for undecrypted and fallback for failed */
-function PreviewText({ msg }: { msg: DecryptedMessageEntryResponse }) {
+const PreviewText = memo(function PreviewText({
+  msg,
+}: {
+  msg: DecryptedMessageEntryResponse;
+}) {
   if (msg.DecryptedMessage === UNDECRYPTED_PLACEHOLDER) {
     return (
       <span className="inline-block h-3.5 w-32 rounded bg-white/[0.06] animate-pulse" />
@@ -105,7 +112,7 @@ function PreviewText({ msg }: { msg: DecryptedMessageEntryResponse }) {
     default:
       return <>{text || ""}</>;
   }
-}
+});
 
 import { ComposePanel } from "./compose-panel";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
@@ -130,6 +137,173 @@ const sortConversations = (
       convoA.messages[0].MessageInfo.TimestampNanos
     );
   });
+
+/** Memoized conversation row — only re-renders when its own data changes. */
+const ConversationRow = memo(function ConversationRow({
+  convKey,
+  conversation,
+  isSelected,
+  unreadCount,
+  isMuted,
+  highlights,
+  onClick,
+  getUsernameByPublicKeyBase58Check,
+  allAccessGroups,
+  appUser,
+  joinRequestCounts,
+  onlineUsers,
+}: {
+  convKey: string;
+  conversation: Conversation;
+  isSelected: boolean;
+  unreadCount: number;
+  isMuted: boolean;
+  highlights?: { hasMention: boolean; hasReaction: boolean };
+  onClick: (key: string) => void;
+  getUsernameByPublicKeyBase58Check: { [key: string]: string };
+  allAccessGroups: any[];
+  appUser: any;
+  joinRequestCounts: Map<string, number>;
+  onlineUsers: Set<string>;
+}) {
+  const isDM = conversation.ChatType === ChatType.DM;
+  const isGroupChat = conversation.ChatType === ChatType.GROUPCHAT;
+  const publicKey = isDM
+    ? conversation.firstMessagePublicKey
+    : conversation.messages[0]?.RecipientInfo.OwnerPublicKeyBase58Check || "";
+  const chatName = getChatNameFromConversation(
+    conversation,
+    getUsernameByPublicKeyBase58Check,
+    allAccessGroups
+  );
+  const selectedConversationStyle = isSelected
+    ? "selected-conversation glass-conversation-active"
+    : "";
+  const hasUnread = unreadCount > 0;
+  const timestamp = conversation.messages[0]
+    ? formatRelativeTimestamp(
+        conversation.messages[0].MessageInfo.TimestampNanos
+      )
+    : "";
+  const displayName =
+    shortenLongWord(chatName, 7, 7) || shortenLongWord(publicKey);
+  const groupImgUrl = isGroupChat
+    ? getGroupImageUrl(
+        allAccessGroups,
+        conversation.messages[0]?.RecipientInfo.OwnerPublicKeyBase58Check || "",
+        conversation.messages[0]?.RecipientInfo.AccessGroupKeyName || ""
+      )
+    : undefined;
+  const isGroupOwner =
+    isGroupChat &&
+    appUser?.PublicKeyBase58Check ===
+      conversation.messages[0]?.RecipientInfo.OwnerPublicKeyBase58Check;
+  const joinReqCount = isGroupOwner ? joinRequestCounts.get(convKey) || 0 : 0;
+
+  return (
+    <div>
+      <div
+        onClick={() => onClick(convKey)}
+        className={`px-4 py-3 ${selectedConversationStyle} hover:bg-white/[0.04] cursor-pointer flex items-center gap-3 transition-colors ${
+          hasUnread && !isSelected ? "bg-white/[0.03]" : ""
+        }`}
+      >
+        <MessagingDisplayAvatar
+          username={isDM ? chatName : undefined}
+          publicKey={isDM ? conversation.firstMessagePublicKey : chatName || ""}
+          groupChat={isGroupChat}
+          groupImageUrl={groupImgUrl}
+          diameter={48}
+          showOnlineDot={
+            isDM &&
+            !!conversation.firstMessagePublicKey &&
+            onlineUsers.has(conversation.firstMessagePublicKey)
+          }
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-0.5">
+            <div className="flex items-center gap-1 min-w-0">
+              {isGroupChat && (
+                <Users
+                  className={`w-3.5 h-3.5 shrink-0 ${
+                    hasUnread ? "text-gray-300" : "text-gray-400"
+                  }`}
+                />
+              )}
+              <span
+                className={`truncate text-sm ${
+                  hasUnread
+                    ? "text-white font-bold"
+                    : "text-gray-400 font-medium"
+                }`}
+              >
+                {displayName}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0 ml-2">
+              {isMuted && <BellOff className="w-3.5 h-3.5 text-gray-500" />}
+              <span
+                className={`text-xs ${
+                  hasUnread ? "text-[#34F080] font-bold" : "text-gray-500"
+                }`}
+              >
+                {timestamp}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <p
+              className={`truncate text-sm ${
+                hasUnread ? "text-white/80 font-medium" : "text-gray-500"
+              }`}
+            >
+              {conversation.messages[0] ? (
+                <PreviewText msg={conversation.messages[0]} />
+              ) : (
+                ""
+              )}
+            </p>
+            <div className="flex items-center gap-1.5 shrink-0 ml-2">
+              {joinReqCount > 0 && (
+                <span
+                  className="bg-blue-500 text-white text-[10px] font-bold rounded-full h-[20px] flex items-center gap-0.5 px-1.5"
+                  aria-label={`${joinReqCount} pending join ${
+                    joinReqCount === 1 ? "request" : "requests"
+                  }`}
+                >
+                  <UserPlus className="w-3 h-3" />
+                  {joinReqCount > 99 ? "99+" : joinReqCount}
+                </span>
+              )}
+              {highlights?.hasReaction && (
+                <span className="leading-none" aria-label="New reactions">
+                  <Heart
+                    className="w-4 h-4 text-[#34F080] drop-shadow-[0_0_6px_rgba(52,240,128,0.5)]"
+                    strokeWidth={2}
+                  />
+                </span>
+              )}
+              {highlights?.hasMention && (
+                <span
+                  className="bg-[#34F080] text-black text-[10px] font-bold rounded-full w-[20px] h-[20px] flex items-center justify-center"
+                  aria-label="Unread mention"
+                >
+                  @
+                </span>
+              )}
+              {hasUnread && (
+                <span className="bg-[#34F080] text-black text-[11px] font-bold rounded-full min-w-[22px] h-[22px] flex items-center justify-center px-1.5">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="ml-[76px] border-b border-white/5" />
+    </div>
+  );
+});
 
 export const MessagingConversationAccount: FC<{
   conversations: ConversationMap;
@@ -208,12 +382,30 @@ export const MessagingConversationAccount: FC<{
     "list" | "blocked" | "dismissed"
   >("list");
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   const requestCount = Object.keys(requestConversations).length;
   const archivedCount = Object.keys(archivedConversations).length;
   const chatCount = Object.keys(conversations).length;
   const blockedCount = blockedUsers.size;
   const dismissedCount = dismissedUsers.size;
 
+  // Memoize sorted conversation lists to avoid O(n log n) sort on every render
+  const sortedChats = useMemo(
+    () =>
+      sortConversations(
+        Object.entries(conversations),
+        selectedConversationPublicKey
+      ),
+    [conversations, selectedConversationPublicKey]
+  );
+  // Virtualize the main chat list — only renders visible rows (~20-30 DOM nodes)
+  const ROW_HEIGHT = 73; // 48px avatar + 12px top pad + 12px bottom pad + 1px border
+  const chatVirtualizer = useVirtualizer({
+    count: sortedChats.length,
+    getScrollElement: () => chatScrollRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 10,
+  });
   const tabOrder = { chats: 0, requests: 1, community: 2 } as const;
 
   const switchTab = (next: typeof activeTab) => {
@@ -341,7 +533,10 @@ export const MessagingConversationAccount: FC<{
                   }}
                   default="none"
                 >
-                  <div className="conversations-list overflow-y-auto max-h-full custom-scrollbar pb-24">
+                  <div
+                    ref={chatScrollRef}
+                    className="conversations-list overflow-y-auto max-h-full custom-scrollbar pb-24"
+                  >
                     {/* Telegram-style collapsible archived section */}
                     {archivedCount > 0 && (
                       <div>
@@ -484,185 +679,54 @@ export const MessagingConversationAccount: FC<{
                         </button>
                       </div>
                     ) : (
-                      sortConversations(
-                        Object.entries(conversations),
-                        selectedConversationPublicKey
-                      ).map(([key, value]) => {
-                        const isDM = value.ChatType === ChatType.DM;
-                        const isGroupChat =
-                          value.ChatType === ChatType.GROUPCHAT;
-                        const publicKey = isDM
-                          ? value.firstMessagePublicKey
-                          : value.messages[0].RecipientInfo
-                              .OwnerPublicKeyBase58Check;
-                        const chatName = getChatNameFromConversation(
-                          value,
-                          getUsernameByPublicKeyBase58Check,
-                          allAccessGroups
-                        );
-                        const isSelected =
-                          key === selectedConversationPublicKey;
-                        const selectedConversationStyle = isSelected
-                          ? "selected-conversation glass-conversation-active"
-                          : "";
-                        const unreadCount = unreadByConversation.get(key) || 0;
-                        const hasUnread = unreadCount > 0;
-                        const isMuted = mutedConversations.has(key);
-                        const highlights = highlightsByConversation?.get(key);
-                        const timestamp = value.messages[0]
-                          ? formatRelativeTimestamp(
-                              value.messages[0].MessageInfo.TimestampNanos
-                            )
-                          : "";
-                        const displayName =
-                          shortenLongWord(chatName, 7, 7) ||
-                          shortenLongWord(publicKey);
-                        const groupImgUrl = isGroupChat
-                          ? getGroupImageUrl(
-                              allAccessGroups,
-                              value.messages[0].RecipientInfo
-                                .OwnerPublicKeyBase58Check,
-                              value.messages[0].RecipientInfo.AccessGroupKeyName
-                            )
-                          : undefined;
-                        const isGroupOwner =
-                          isGroupChat &&
-                          appUser?.PublicKeyBase58Check ===
-                            value.messages[0].RecipientInfo
-                              .OwnerPublicKeyBase58Check;
-                        const joinReqCount = isGroupOwner
-                          ? joinRequestCounts.get(key) || 0
-                          : 0;
-
-                        return (
-                          <div key={`message-thread-${key}`}>
-                            <div
-                              onClick={() => onClick(key)}
-                              className={`px-4 py-3 ${selectedConversationStyle} hover:bg-white/[0.04] cursor-pointer flex items-center gap-3 transition-colors ${
-                                hasUnread && !isSelected
-                                  ? "bg-white/[0.03]"
-                                  : ""
-                              }`}
-                            >
-                              <MessagingDisplayAvatar
-                                username={isDM ? chatName : undefined}
-                                publicKey={
-                                  isDM
-                                    ? value.firstMessagePublicKey
-                                    : chatName || ""
-                                }
-                                groupChat={isGroupChat}
-                                groupImageUrl={groupImgUrl}
-                                diameter={48}
-                                showOnlineDot={
-                                  isDM &&
-                                  !!value.firstMessagePublicKey &&
-                                  onlineUsers.has(value.firstMessagePublicKey)
-                                }
-                              />
-
-                              <div className="flex-1 min-w-0">
-                                {/* Line 1: Name + Timestamp */}
-                                <div className="flex items-center justify-between mb-0.5">
-                                  <div className="flex items-center gap-1 min-w-0">
-                                    {isGroupChat && (
-                                      <Users
-                                        className={`w-3.5 h-3.5 shrink-0 ${
-                                          hasUnread
-                                            ? "text-gray-300"
-                                            : "text-gray-400"
-                                        }`}
-                                      />
-                                    )}
-                                    <span
-                                      className={`truncate text-sm ${
-                                        hasUnread
-                                          ? "text-white font-bold"
-                                          : "text-gray-400 font-medium"
-                                      }`}
-                                    >
-                                      {displayName}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-1 shrink-0 ml-2">
-                                    {isMuted && (
-                                      <BellOff className="w-3.5 h-3.5 text-gray-500" />
-                                    )}
-                                    <span
-                                      className={`text-xs ${
-                                        hasUnread
-                                          ? "text-[#34F080] font-bold"
-                                          : "text-gray-500"
-                                      }`}
-                                    >
-                                      {timestamp}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                {/* Line 2: Preview + Badges */}
-                                <div className="flex items-center justify-between">
-                                  <p
-                                    className={`truncate text-sm ${
-                                      hasUnread
-                                        ? "text-white/80 font-medium"
-                                        : "text-gray-500"
-                                    }`}
-                                  >
-                                    {value.messages[0] ? (
-                                      <PreviewText msg={value.messages[0]} />
-                                    ) : (
-                                      ""
-                                    )}
-                                  </p>
-                                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                                    {joinReqCount > 0 && (
-                                      <span
-                                        className="bg-blue-500 text-white text-[10px] font-bold rounded-full h-[20px] flex items-center gap-0.5 px-1.5"
-                                        aria-label={`${joinReqCount} pending join ${
-                                          joinReqCount === 1
-                                            ? "request"
-                                            : "requests"
-                                        }`}
-                                      >
-                                        <UserPlus className="w-3 h-3" />
-                                        {joinReqCount > 99
-                                          ? "99+"
-                                          : joinReqCount}
-                                      </span>
-                                    )}
-                                    {highlights?.hasReaction && (
-                                      <span
-                                        className="leading-none"
-                                        aria-label="New reactions"
-                                      >
-                                        <Heart
-                                          className="w-4 h-4 text-[#34F080] drop-shadow-[0_0_6px_rgba(52,240,128,0.5)]"
-                                          strokeWidth={2}
-                                        />
-                                      </span>
-                                    )}
-                                    {highlights?.hasMention && (
-                                      <span
-                                        className="bg-[#34F080] text-black text-[10px] font-bold rounded-full w-[20px] h-[20px] flex items-center justify-center"
-                                        aria-label="Unread mention"
-                                      >
-                                        @
-                                      </span>
-                                    )}
-                                    {hasUnread && (
-                                      <span className="bg-[#34F080] text-black text-[11px] font-bold rounded-full min-w-[22px] h-[22px] flex items-center justify-center px-1.5">
-                                        {unreadCount > 99 ? "99+" : unreadCount}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
+                      <div
+                        style={{
+                          height: chatVirtualizer.getTotalSize(),
+                          width: "100%",
+                          position: "relative",
+                        }}
+                      >
+                        {chatVirtualizer
+                          .getVirtualItems()
+                          .map((virtualItem) => {
+                            const [key, value] = sortedChats[virtualItem.index];
+                            return (
+                              <div
+                                key={key}
+                                style={{
+                                  position: "absolute",
+                                  top: 0,
+                                  left: 0,
+                                  width: "100%",
+                                  transform: `translateY(${virtualItem.start}px)`,
+                                }}
+                              >
+                                <ConversationRow
+                                  convKey={key}
+                                  conversation={value}
+                                  isSelected={
+                                    key === selectedConversationPublicKey
+                                  }
+                                  unreadCount={
+                                    unreadByConversation.get(key) || 0
+                                  }
+                                  isMuted={mutedConversations.has(key)}
+                                  highlights={highlightsByConversation?.get(
+                                    key
+                                  )}
+                                  onClick={onClick}
+                                  getUsernameByPublicKeyBase58Check={
+                                    getUsernameByPublicKeyBase58Check
+                                  }
+                                  allAccessGroups={allAccessGroups}
+                                  appUser={appUser}
+                                  joinRequestCounts={joinRequestCounts}
+                                  onlineUsers={onlineUsers}
+                                />
                               </div>
-                            </div>
-                            <div className="ml-[76px] border-b border-white/5" />
-                          </div>
-                        );
-                      })
+                            );
+                          })}
+                      </div>
                     )}
                   </div>
                 </ViewTransition>

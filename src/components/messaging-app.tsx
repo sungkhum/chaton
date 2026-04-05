@@ -71,6 +71,7 @@ import {
   fetchMutualFollows,
   fetchPrivacyMode,
   getConversations,
+  getConversationsDifferential,
   sendSystemMessage,
 } from "../services/conversations.service";
 import {
@@ -663,6 +664,7 @@ export const MessagingApp: FC = () => {
   const wsFetchingRef = useRef(false);
   // Guard against overlapping polling ticks (setInterval fires even if previous callback is still async)
   const pollingRef = useRef(false);
+  const welcomeMessageSentRef = useRef(false);
 
   // Real-time WebSocket relay
   const handleWsNewMessage = useCallback(
@@ -673,7 +675,10 @@ export const MessagingApp: FC = () => {
       // Reset polling backoff — real-time activity means the conversation is active
       setPollingDelay(baseDelay);
 
-      getConversations(appUser.PublicKeyBase58Check, allAccessGroups)
+      getConversationsDifferential(
+        appUser.PublicKeyBase58Check,
+        allAccessGroups
+      )
         .then(
           async ({
             conversations: updated,
@@ -1852,7 +1857,10 @@ export const MessagingApp: FC = () => {
         conversations,
         updatedAllAccessGroups,
         publicKeyToProfileEntryResponseMap: pollProfiles,
-      } = await getConversations(appUser.PublicKeyBase58Check, allAccessGroups);
+      } = await getConversationsDifferential(
+        appUser.PublicKeyBase58Check,
+        allAccessGroups
+      );
       setAllAccessGroups(updatedAllAccessGroups);
 
       // Update username + profile pic maps from fresh profile data
@@ -2092,6 +2100,31 @@ export const MessagingApp: FC = () => {
           setLoadingConversation(false);
         }
       }
+
+      // Restore unread badges from cached data immediately so badges don't
+      // flash away and reappear when the user reopens the app. The last-read
+      // timestamps are in localStorage, and cached conversations have the
+      // latest message timestamps — everything needed to compute badges.
+      const cachedLastRead = getCachedLastReadTimestamps(publicKey);
+      const {
+        mutedConversations: cachedMuted,
+        archivedGroups: cachedArchived,
+      } = useStore.getState();
+      const cachedUnreadMap = new Map<string, number>();
+      for (const [k, convo] of Object.entries(cachedConvos)) {
+        if (k === cachedKeyToUse) continue;
+        if (cachedMuted.has(k) || cachedArchived.has(k)) continue;
+        const latestMsg = convo.messages[0];
+        if (!latestMsg || latestMsg.IsSender) continue;
+        const msgTs = latestMsg.MessageInfo.TimestampNanos;
+        const lastRead = cachedLastRead[k];
+        if (lastRead !== undefined && msgTs > lastRead) {
+          cachedUnreadMap.set(k, 1);
+        }
+      }
+      if (cachedUnreadMap.size > 0) {
+        initializeUnread(cachedUnreadMap);
+      }
     }
 
     // --- Classification + privacy (always run in parallel) ---
@@ -2146,6 +2179,7 @@ export const MessagingApp: FC = () => {
 
     if (!renderedFromCache) {
       // ── Progressive path: show shells immediately, decrypt in batches ──
+      let flushTimer: ReturnType<typeof setTimeout> | null = null;
       try {
         const [rawResult] = await Promise.all([
           fetchMessageThreadsRaw(publicKey),
@@ -2153,19 +2187,69 @@ export const MessagingApp: FC = () => {
           privacyPromise,
         ]);
 
-        const { messageThreads, publicKeyToProfileEntryResponseMap } =
-          rawResult;
+        let { messageThreads } = rawResult;
+        const { publicKeyToProfileEntryResponseMap } = rawResult;
+
+        // Cap at 1000 threads for extreme cases — sort by recency so
+        // the most recent conversations are kept. Prevents React from
+        // managing thousands of conversation objects in state.
+        const MAX_INITIAL_THREADS = 1000;
+        if (messageThreads.length > MAX_INITIAL_THREADS) {
+          messageThreads = [...messageThreads]
+            .sort(
+              (a, b) =>
+                b.MessageInfo.TimestampNanos - a.MessageInfo.TimestampNanos
+            )
+            .slice(0, MAX_INITIAL_THREADS);
+        }
 
         if (messageThreads.length === 0) {
-          // No threads at all — show empty state immediately, then run
-          // getConversations in background (sends auto-first-message for new users)
+          // No threads — show empty state immediately instead of blocking
+          // on auto-first-message + blockchain confirmation (was 30-60s).
+          // The conversation appears in the background once confirmed.
           setConversations({});
           setLoading(false);
           setAutoFetchConversations(false);
-          conversationResult = await getConversations(
-            publicKey,
-            allAccessGroups
-          );
+
+          // Fire-and-forget: send welcome message, merge when confirmed.
+          // Guard against double-sends (e.g., StrictMode, rapid remount).
+          if (welcomeMessageSentRef.current) return;
+          welcomeMessageSentRef.current = true;
+          getConversations(publicKey, allAccessGroups)
+            .then((result) => {
+              if (
+                !result.conversations ||
+                Object.keys(result.conversations).length === 0
+              )
+                return;
+              // Bail if user logged out or switched accounts
+              const currentUser = useStore.getState().appUser;
+              if (currentUser?.PublicKeyBase58Check !== publicKey) return;
+
+              setConversations((prev) => {
+                // If user already started a conversation, merge — don't overwrite
+                if (Object.keys(prev).length > 0) {
+                  return { ...result.conversations, ...prev };
+                }
+                return result.conversations;
+              });
+              setAllAccessGroups(result.updatedAllAccessGroups);
+
+              const profileMap = result.publicKeyToProfileEntryResponseMap;
+              const usernames: Record<string, string> = {};
+              for (const [pk, profile] of Object.entries(profileMap)) {
+                if (profile?.Username) usernames[pk] = profile.Username;
+              }
+              if (Object.keys(usernames).length) mergeUsernames(usernames);
+            })
+            .catch((e) => {
+              console.error(
+                "[ChatOn] Background auto-first-message failed:",
+                e
+              );
+            });
+
+          return;
         } else {
           // Build shell conversations and show them immediately.
           // Also get latestByKey to pass directly to decryptConversationPreviews.
@@ -2212,8 +2296,30 @@ export const MessagingApp: FC = () => {
             setSelectedConversationPublicKey(shellKeyToUse);
           }
 
-          // Decrypt previews progressively in batches of 10.
+          // Decrypt previews progressively in batches.
           // Updates go to localTracker (for conversationResult) AND React state (for UI).
+          // Debounce React state updates: accumulate batch results and flush every 150ms
+          // to avoid 50+ re-renders during initial load.
+          let pendingUpdates = new Map<string, DecryptedMessageEntryResponse>();
+
+          const flushPendingUpdates = () => {
+            if (pendingUpdates.size === 0) return;
+            const toFlush = pendingUpdates;
+            pendingUpdates = new Map();
+            setConversations((prev) => {
+              const merged = { ...prev };
+              for (const [key, decryptedMsg] of toFlush) {
+                if (merged[key] && merged[key].messages.length > 0) {
+                  merged[key] = {
+                    ...merged[key],
+                    messages: [decryptedMsg, ...merged[key].messages.slice(1)],
+                  };
+                }
+              }
+              return merged;
+            });
+          };
+
           const updatedAccessGroups = await decryptConversationPreviews(
             latestByKey,
             publicKey,
@@ -2234,25 +2340,18 @@ export const MessagingApp: FC = () => {
                   };
                 }
               }
-              // Update React state for UI
-              setConversations((prev) => {
-                const merged = { ...prev };
-                for (const [key, decryptedMsg] of batchUpdates) {
-                  if (merged[key] && merged[key].messages.length > 0) {
-                    merged[key] = {
-                      ...merged[key],
-                      messages: [
-                        decryptedMsg,
-                        ...merged[key].messages.slice(1),
-                      ],
-                    };
-                  }
-                }
-                return merged;
-              });
+              // Accumulate for debounced React state update
+              for (const [key, msg] of batchUpdates) {
+                pendingUpdates.set(key, msg);
+              }
+              if (flushTimer) clearTimeout(flushTimer);
+              flushTimer = setTimeout(flushPendingUpdates, 150);
             },
             decryptAbort.signal
           );
+          // Flush any remaining accumulated updates
+          if (flushTimer) clearTimeout(flushTimer);
+          flushPendingUpdates();
           setAllAccessGroups(updatedAccessGroups);
 
           // Fetch group members and DM usernames now that we have data
@@ -2293,6 +2392,8 @@ export const MessagingApp: FC = () => {
         }
       } catch (e) {
         decryptAbort.abort();
+        // Clear debounced flush timer to prevent stale state writes
+        if (flushTimer) clearTimeout(flushTimer);
         console.error("[ChatOn] Failed to fetch conversations:", e);
         toast.error("Couldn't load conversations — tap to retry");
         setLoading(false);
@@ -2791,18 +2892,12 @@ export const MessagingApp: FC = () => {
 
       {/* Loading / setup states (non-onboarding) */}
       {!showOnboarding &&
-        (!conversationsReady ||
-          !hasSetupMessaging(appUser) ||
-          isLoadingUser ||
-          loading) && (
+        (!hasSetupMessaging(appUser) || isLoadingUser || loading) && (
           <div className="m-auto relative top-8 overflow-hidden pt-[30px] pb-[50px]">
             <div className="bg-gradient"></div>
             <div className="w-full lg:max-w-[1200px] m-auto bg-transparent p-0 shadow-none">
               <div>
-                {(autoFetchConversations ||
-                  isLoadingUser ||
-                  loading ||
-                  (!conversationsReady && hasSetupMessaging(appUser))) && (
+                {(autoFetchConversations || isLoadingUser || loading) && (
                   <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-10">
                     <Loader2 className="w-11 h-11 animate-spin text-[#34F080]" />
                   </div>
@@ -2921,7 +3016,6 @@ export const MessagingApp: FC = () => {
         )}
       {!showOnboarding &&
         hasSetupMessaging(appUser) &&
-        conversationsReady &&
         appUser &&
         !isLoadingUser &&
         !loading && (

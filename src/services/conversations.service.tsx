@@ -171,15 +171,45 @@ export async function decryptConversationPreviews(
   signal?: AbortSignal,
   batchSize = 10
 ): Promise<AccessGroupEntryResponse[]> {
-  const entries = Array.from(latestByKey.entries());
+  // Sort by recency so the most recent conversations decrypt first (fills viewport)
+  const entries = Array.from(latestByKey.entries()).sort(
+    ([, a], [, b]) =>
+      b.MessageInfo.TimestampNanos - a.MessageInfo.TimestampNanos
+  );
   let currentGroups = allAccessGroups;
+
+  // Two-tier decryption: first 30 entries (visible viewport) use larger batches
+  // and no delay; remaining entries yield to the event loop between batches
+  const TIER1_COUNT = 30;
+  const TIER1_BATCH_SIZE = 15;
   let groupsRefreshed = false;
 
-  for (let i = 0; i < entries.length; i += batchSize) {
+  for (let i = 0; i < entries.length; ) {
     if (signal?.aborted) break;
 
-    const batch = entries.slice(i, i + batchSize);
-    const messagesToDecrypt = batch.map(([, msg]) => msg);
+    // Tier 1: larger batches for the first 30 conversations (viewport)
+    // Tier 2: standard batches with event loop yields for the rest
+    const currentBatchSize = i < TIER1_COUNT ? TIER1_BATCH_SIZE : batchSize;
+    const batch = entries.slice(i, i + currentBatchSize);
+    i += currentBatchSize;
+
+    // Check decryption cache — skip already-decrypted previews
+    const cachedUpdates = new Map<string, DecryptedMessageEntryResponse>();
+    const uncachedBatch: [string, NewMessageEntryResponse][] = [];
+    for (const [key, msg] of batch) {
+      const cached = decryptionResultCache.get(msg.MessageInfo.TimestampNanos);
+      if (cached) {
+        cachedUpdates.set(key, cached);
+      } else {
+        uncachedBatch.push([key, msg]);
+      }
+    }
+    // Emit cached results immediately
+    if (cachedUpdates.size > 0) onBatch(cachedUpdates);
+    // Skip decryption entirely if all were cached
+    if (uncachedBatch.length === 0) continue;
+
+    const messagesToDecrypt = uncachedBatch.map(([, msg]) => msg);
 
     try {
       // Decrypt each message individually with a timeout so one stuck
@@ -259,8 +289,13 @@ export async function decryptConversationPreviews(
       }
 
       const updates = new Map<string, DecryptedMessageEntryResponse>();
-      for (let j = 0; j < batch.length; j++) {
-        updates.set(batch[j][0], decrypted[j]);
+      for (let j = 0; j < uncachedBatch.length; j++) {
+        const result = decrypted[j];
+        updates.set(uncachedBatch[j][0], result);
+        // Cache successful decryptions for future polls
+        if (result.DecryptedMessage && !result.error) {
+          cacheDecryptionResult(result.MessageInfo.TimestampNanos, result);
+        }
       }
       onBatch(updates);
     } catch (e) {
@@ -268,8 +303,11 @@ export async function decryptConversationPreviews(
       // Continue with next batch — don't let one failure stop everything
     }
 
-    // Yield to event loop between batches so UI can paint
-    await new Promise((r) => setTimeout(r, 0));
+    // Tier 2: yield to event loop between batches so UI stays responsive.
+    // Tier 1 skips yielding to decrypt the viewport as fast as possible.
+    if (i >= TIER1_COUNT) {
+      await new Promise((r) => setTimeout(r, 0));
+    }
   }
 
   return currentGroups;
@@ -397,6 +435,177 @@ export const getConversations = async (
   }
 };
 
+/**
+ * Differential polling: re-fetches all threads (API has no pagination) but only
+ * decrypts conversations whose latest message timestamp changed since last poll.
+ * Unchanged conversations return cached decrypted results — dropping crypto work
+ * from O(total_conversations) to O(changed_conversations) per cycle.
+ */
+export const getConversationsDifferential = async (
+  userPublicKeyBase58Check: string,
+  allAccessGroups: AccessGroupEntryResponse[]
+): Promise<{
+  conversations: ConversationMap;
+  publicKeyToProfileEntryResponseMap: PublicKeyToProfileEntryResponseMap;
+  updatedAllAccessGroups: AccessGroupEntryResponse[];
+}> => {
+  // Step 1: Fetch all threads (unavoidable — DeSo API has no pagination)
+  const rawResult = await getAllMessageThreads({
+    UserPublicKeyBase58Check: userPublicKeyBase58Check,
+  });
+  const messageThreads = rawResult.MessageThreads || [];
+  const publicKeyToProfileEntryResponseMap =
+    rawResult.PublicKeyToProfileEntryResponse || {};
+
+  if (messageThreads.length === 0) {
+    return {
+      conversations: {},
+      publicKeyToProfileEntryResponseMap,
+      updatedAllAccessGroups: allAccessGroups,
+    };
+  }
+
+  // Step 2: Group by conversation key and find latest timestamp per conversation
+  const threadsByConvo = new Map<
+    string,
+    {
+      messages: NewMessageEntryResponse[];
+      latestTs: number;
+      otherInfo: NewMessageEntryResponse["RecipientInfo"];
+      chatType: ChatType;
+    }
+  >();
+
+  for (const msg of messageThreads) {
+    const { key, otherInfo } = conversationKey(msg, userPublicKeyBase58Check);
+    const ts = msg.MessageInfo.TimestampNanos;
+    const existing = threadsByConvo.get(key);
+    if (existing) {
+      existing.messages.push(msg);
+      if (ts > existing.latestTs) existing.latestTs = ts;
+    } else {
+      threadsByConvo.set(key, {
+        messages: [msg],
+        latestTs: ts,
+        otherInfo,
+        chatType: msg.ChatType,
+      });
+    }
+  }
+
+  // Step 3: Identify changed conversations
+  const changedMessages: NewMessageEntryResponse[] = [];
+  const unchangedKeys = new Set<string>();
+
+  for (const [key, data] of threadsByConvo) {
+    const prevTs = conversationLatestTimestamp.get(key);
+    if (prevTs !== undefined && prevTs === data.latestTs) {
+      unchangedKeys.add(key);
+    } else {
+      changedMessages.push(...data.messages);
+      conversationLatestTimestamp.set(key, data.latestTs);
+    }
+  }
+
+  // Remove stale entries for conversations that no longer exist
+  for (const key of conversationLatestTimestamp.keys()) {
+    if (!threadsByConvo.has(key)) conversationLatestTimestamp.delete(key);
+  }
+
+  // Step 4: Decrypt only changed conversations
+  let updatedAllAccessGroups = allAccessGroups;
+  const freshDecrypted = new Map<string, DecryptedMessageEntryResponse[]>();
+
+  if (changedMessages.length > 0) {
+    const { decrypted, updatedAllAccessGroups: freshGroups } =
+      await decryptAccessGroupMessagesWithRetry(
+        userPublicKeyBase58Check,
+        changedMessages,
+        allAccessGroups
+      );
+    updatedAllAccessGroups = freshGroups;
+
+    // Group decrypted messages by conversation key.
+    // Use the same conversationKey() helper as Step 2 to avoid IsSender divergence
+    // between deriveIsSender() and the DeSo SDK's identity.decryptMessage().
+    for (let idx = 0; idx < decrypted.length; idx++) {
+      const dmr = decrypted[idx];
+      const { key } = conversationKey(
+        changedMessages[idx],
+        userPublicKeyBase58Check
+      );
+      const arr = freshDecrypted.get(key) || [];
+      arr.push(dmr);
+      freshDecrypted.set(key, arr);
+    }
+  }
+
+  // Step 5: Build ConversationMap — fresh data for changed, cached for unchanged
+  const conversations: ConversationMap = {};
+
+  for (const [key, data] of threadsByConvo) {
+    if (freshDecrypted.has(key)) {
+      // Changed conversation — use freshly decrypted messages
+      const msgs = freshDecrypted.get(key)!;
+      msgs.sort(
+        (a, b) => b.MessageInfo.TimestampNanos - a.MessageInfo.TimestampNanos
+      );
+      conversations[key] = {
+        firstMessagePublicKey: data.otherInfo.OwnerPublicKeyBase58Check,
+        messages: msgs,
+        ChatType: data.chatType,
+      };
+    } else {
+      // Unchanged conversation — pull from decryption result cache.
+      // Parallelize any rare cache misses with Promise.all.
+      const cachedMsgs = await Promise.all(
+        data.messages.map(async (rawMsg) => {
+          const cached = decryptionResultCache.get(
+            rawMsg.MessageInfo.TimestampNanos
+          );
+          if (cached) return cached;
+          // Cache miss (shouldn't happen often) — decrypt it
+          try {
+            const dec = await identity.decryptMessage(
+              rawMsg,
+              updatedAllAccessGroups
+            );
+            const result = await decryptExtraDataFields(
+              dec,
+              updatedAllAccessGroups
+            );
+            if (result.DecryptedMessage && !result.error) {
+              cacheDecryptionResult(result.MessageInfo.TimestampNanos, result);
+            }
+            return result;
+          } catch {
+            return {
+              ...rawMsg,
+              DecryptedMessage: "",
+              IsSender: deriveIsSender(rawMsg, userPublicKeyBase58Check),
+              error: "decryption failed",
+            } as DecryptedMessageEntryResponse;
+          }
+        })
+      );
+      cachedMsgs.sort(
+        (a, b) => b.MessageInfo.TimestampNanos - a.MessageInfo.TimestampNanos
+      );
+      conversations[key] = {
+        firstMessagePublicKey: data.otherInfo.OwnerPublicKeyBase58Check,
+        messages: cachedMsgs,
+        ChatType: data.chatType,
+      };
+    }
+  }
+
+  return {
+    conversations,
+    publicKeyToProfileEntryResponseMap,
+    updatedAllAccessGroups,
+  };
+};
+
 // --- Retry caches to avoid redundant API calls across polling cycles ---
 
 // Cache for getAllAccessGroups: { data, timestamp }
@@ -417,11 +626,32 @@ const SENDER_KEY_CACHE_TTL_MS = 60_000; // 60 seconds
 // Key = TimestampNanos (unique per message). Cleared on login/logout.
 const permanentlyFailedMessages = new Set<number>();
 
+// --- Decryption result cache (avoids re-decrypting unchanged messages) ---
+// Key = TimestampNanos (globally unique per message on DeSo).
+// Capped at 5000 entries — evicts oldest on overflow to bound memory.
+const DECRYPTION_CACHE_MAX_SIZE = 5000;
+const decryptionResultCache = new Map<number, DecryptedMessageEntryResponse>();
+
+/** Cache a decryption result, evicting oldest entries if over the size limit. */
+function cacheDecryptionResult(ts: number, msg: DecryptedMessageEntryResponse) {
+  decryptionResultCache.set(ts, msg);
+  if (decryptionResultCache.size > DECRYPTION_CACHE_MAX_SIZE) {
+    // Map iterates in insertion order — delete the oldest entry
+    const oldest = decryptionResultCache.keys().next().value;
+    if (oldest !== undefined) decryptionResultCache.delete(oldest);
+  }
+}
+
+// Per-conversation latest timestamp — used by differential polling to detect changes.
+const conversationLatestTimestamp = new Map<string, number>();
+
 /** Clear all decryption caches (call on login/logout). */
 export const clearDecryptionCaches = () => {
   accessGroupsCache = null;
   senderDefaultKeyCache.clear();
   permanentlyFailedMessages.clear();
+  decryptionResultCache.clear();
+  conversationLatestTimestamp.clear();
 };
 
 export const decryptAccessGroupMessagesWithRetry = async (
@@ -596,14 +826,37 @@ export const decryptAccessGroupMessages = async (
   messages: NewMessageEntryResponse[],
   accessGroups: AccessGroupEntryResponse[]
 ): Promise<DecryptedMessageEntryResponse[]> => {
+  // Track which indices were cache hits to skip decryptExtraDataFields for them
+  const cacheHitIndices = new Set<number>();
+
   const decrypted = await Promise.all(
-    (messages || []).map((m) => identity.decryptMessage(m, accessGroups))
+    (messages || []).map(async (m, idx) => {
+      // Check decryption cache first — avoids redundant crypto on every poll
+      const ts = m.MessageInfo.TimestampNanos;
+      const cached = decryptionResultCache.get(ts);
+      if (cached) {
+        cacheHitIndices.add(idx);
+        return cached;
+      }
+      return identity.decryptMessage(m, accessGroups);
+    })
   );
 
-  // Decrypt any encrypted ExtraData values (e.g. msg:emoji, msg:action)
-  return Promise.all(
-    decrypted.map((msg) => decryptExtraDataFields(msg, accessGroups))
+  // Decrypt encrypted ExtraData only for freshly decrypted messages (not cache hits)
+  const results = await Promise.all(
+    decrypted.map((msg, idx) =>
+      cacheHitIndices.has(idx) ? msg : decryptExtraDataFields(msg, accessGroups)
+    )
   );
+
+  // Cache successful decryptions
+  for (const msg of results) {
+    if (msg.DecryptedMessage && !msg.error) {
+      cacheDecryptionResult(msg.MessageInfo.TimestampNanos, msg);
+    }
+  }
+
+  return results;
 };
 
 /** Keys from the DeSo main app (Diamond/Focus) that contain encrypted media URLs. */
