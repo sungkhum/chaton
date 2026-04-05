@@ -63,16 +63,17 @@ export async function upsertSubscription(
          WHERE user_id = ? AND endpoint != ? AND SUBSTR(endpoint, 1, ?) = ? AND is_active = 1`
       )
       .bind(userId, endpoint, origin.length, origin),
-    // Upsert the current subscription
+    // Upsert the current subscription and refresh last_confirmed timestamp
     db
       .prepare(
-        `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, is_active)
-         VALUES (?, ?, ?, ?, 1)
+        `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, is_active, last_confirmed)
+         VALUES (?, ?, ?, ?, 1, datetime('now'))
          ON CONFLICT (endpoint) DO UPDATE SET
            user_id = excluded.user_id,
            p256dh = excluded.p256dh,
            auth = excluded.auth,
-           is_active = 1`
+           is_active = 1,
+           last_confirmed = datetime('now')`
       )
       .bind(userId, endpoint, p256dh, auth),
   ]);
@@ -123,7 +124,7 @@ export async function getCronOffset(db: D1Database): Promise<number> {
       "SELECT value FROM kv_meta WHERE key = 'cron_last_user_id'"
     )
     .first<{ value: string }>();
-  return row ? parseInt(row.value, 10) : 0;
+  return row ? (parseInt(row.value, 10) || 0) : 0;
 }
 
 export async function setCronOffset(db: D1Database, lastUserId: number): Promise<void> {
@@ -136,7 +137,8 @@ export async function setCronOffset(db: D1Database, lastUserId: number): Promise
     .run();
 }
 
-/** Get all active push subscriptions for a user. */
+/** Get active push subscriptions for a user, excluding stale ones (not confirmed in 14+ days).
+ *  iOS Safari subscriptions silently expire after ~1-2 weeks, so sending to them wastes push budget. */
 export async function getSubscriptionsForUser(
   db: D1Database,
   userId: number
@@ -145,7 +147,8 @@ export async function getSubscriptionsForUser(
     .prepare(
       `SELECT endpoint, p256dh, auth
        FROM push_subscriptions
-       WHERE user_id = ? AND is_active = 1`
+       WHERE user_id = ? AND is_active = 1
+         AND (last_confirmed IS NULL OR last_confirmed > datetime('now', '-14 days'))`
     )
     .bind(userId)
     .all<DbSubscription>();

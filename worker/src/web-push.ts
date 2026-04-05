@@ -188,6 +188,14 @@ export async function sendPushNotification(
     const privateKey = await importVapidPrivateKey(vapidPrivateKeyBase64url);
     const { authorization } = await createVapidAuth(subscription.endpoint, privateKey, vapidSubject);
 
+    // NOTE: Declarative Web Push (Safari 18.4+) was evaluated but deferred.
+    // With `mutable: true`, Safari shows the notification BEFORE the SW runs,
+    // bypassing mute checks and in-app suppression. With `mutable: false`, the
+    // SW doesn't run at all (no badge tracking, no IDB updates). Our existing
+    // SW handler with a defensive outer try/catch is more reliable for now.
+    // Revisit when server-side mute state is available to conditionally omit
+    // declarative fields for muted conversations.
+
     const body = await encrypt(
       JSON.stringify(payload),
       unb64url(subscription.keys.p256dh),

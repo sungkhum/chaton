@@ -310,6 +310,22 @@ async function handlePushDisable(
 
     await disablePush(env.DB, publicKey);
 
+    // Also remove subscriptions from the DO's in-memory table so the real-time
+    // path stops sending push immediately (not just the cron/queue path).
+    try {
+      const id = env.CHAT_RELAY.idFromName("global-relay");
+      const stub = env.CHAT_RELAY.get(id);
+      await stub.fetch(
+        new Request(new URL("/push/unsubscribe", request.url).toString(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ publicKey, endpoint: "*" }),
+        })
+      );
+    } catch {
+      console.error("DO push disable forward failed (best-effort)");
+    }
+
     return new Response(JSON.stringify({ ok: true }), {
       headers: { "Content-Type": "application/json" },
     });

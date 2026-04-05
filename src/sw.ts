@@ -84,6 +84,7 @@ const serwist = new Serwist({
 let activeConversationKey: string | null = null;
 let activeConversationSetAt = 0;
 const ACTIVE_CONVERSATION_TTL_MS = 10_000; // 10 seconds
+const IOS_UA_RE = /iPad|iPhone|iPod/;
 
 function getActiveConversationKey(): string | null {
   if (!activeConversationKey) return null;
@@ -121,135 +122,156 @@ self.addEventListener("push", (event) => {
 
   event.waitUntil(
     (async () => {
-      // For DMs the sender passes their own conversation key (which ends
-      // with "default-key"), but the recipient indexes the same conversation
-      // under the sender's public key.  Derive the local key so muted/unread
-      // checks and notification-click navigation work correctly.
-      // Group chat keys use a custom group name (not "default-key") and are
-      // the same for all participants, so they need no translation.
-      const rawConvKey = data.conversationKey as string | undefined;
-      const fromPubKey = data.from as string | undefined;
-      const isDM = rawConvKey?.endsWith("default-key");
-      const localConvKey =
-        fromPubKey && isDM ? fromPubKey + "default-key" : rawConvKey;
-
-      // Check if this conversation is muted
-      let isMuted = false;
-      if (localConvKey) {
-        try {
-          const mutedList = await get<string[]>(
-            "mutedConversations:active",
-            idbStore
-          );
-          if (mutedList?.includes(localConvKey)) {
-            isMuted = true;
-          }
-        } catch {
-          // IndexedDB unavailable — default to not muted
-        }
-      }
-
-      // Suppress if user is actively viewing this conversation.
-      // All three conditions must be true to suppress (fail-open):
-      //  1. A controlled client window is visible and focused
-      //  2. We know which conversation is active (activeConversationKey != null)
-      //  3. The active conversation matches the incoming push
-      //
-      // CRITICAL iOS CONSTRAINT: iOS Safari revokes the push subscription after
-      // ~3 push events that don't call showNotification(). We CANNOT skip
-      // showNotification() on iOS — ever. Additionally, iOS WebKit has bugs where
-      // visibilityState stays "visible" and focused stays true after backgrounding,
-      // making client state unreliable for suppression decisions.
-      //
-      // Strategy: skip suppression entirely on iOS. The WebSocket already provides
-      // real-time in-app updates, so an extra notification while in-app is harmless
-      // compared to losing the subscription entirely. On Chrome/Firefox, suppress
-      // safely (they allow silent pushes when a visible client exists).
-      const isIOS = /iPad|iPhone|iPod/.test(self.navigator.userAgent);
-      if (!isIOS && !isMuted && localConvKey) {
-        try {
-          const windowClients = await self.clients.matchAll({
-            type: "window",
-            includeUncontrolled: false,
-          });
-          const focusedClient = windowClients.find(
-            (c) =>
-              c.visibilityState === "visible" &&
-              (c as { focused?: boolean }).focused
-          );
-          const currentActiveKey = getActiveConversationKey();
-          if (
-            focusedClient &&
-            currentActiveKey &&
-            currentActiveKey === localConvKey
-          ) {
-            // Forward to the focused client for in-app handling (e.g. scroll-to-bottom)
-            focusedClient.postMessage({ type: "push-received", payload: data });
-            return;
-          }
-        } catch {
-          // Clients API unavailable — fall through to normal notification
-        }
-      }
-
-      if (isMuted) {
-        // iOS requires showNotification() on every push — show a silent,
-        // self-replacing notification that disappears quickly.
-        await self.registration.showNotification("ChatOn", {
-          tag: "chaton-muted",
-          silent: true,
-          data: { url: "/" },
-        });
-        // Clean up the muted notification so it doesn't linger in the tray
-        try {
-          const muted = await self.registration.getNotifications({
-            tag: "chaton-muted",
-          });
-          for (const n of muted) n.close();
-        } catch {
-          // getNotifications not supported (some browsers) — notification stays
-        }
-        return;
-      }
-
-      const title = (data.title as string) || "ChatOn";
-      // Use localConvKey for the tag so both delivery paths (real-time DO
-      // and cron/queue) produce the same tag after DM key translation.
-      // Without this, DM notifications arrive with different tags (sender's
-      // vs recipient's conversation key) and the browser shows both.
-      const normalizedTag = localConvKey
-        ? `thread-${localConvKey}`
-        : (data.tag as string) || "chaton-notification";
-      const options: NotificationOptions = {
-        body: (data.body as string) || "You have a new message",
-        icon: "/favicon.png",
-        badge: "/favicon.png",
-        tag: normalizedTag,
-        renotify: true,
-        data: {
-          url: data.url || "/",
-          conversationKey: localConvKey,
-        },
-      };
-
-      await self.registration.showNotification(title, options);
-
-      // Track unread conversation in IndexedDB and update badge count
       try {
-        const convKey = localConvKey;
-        const unread: string[] =
-          (await get<string[]>("unreadConversations:active", idbStore)) || [];
-        if (convKey && !unread.includes(convKey)) {
-          unread.push(convKey);
-          await set("unreadConversations:active", unread, idbStore);
-        }
-        await (
-          self.navigator as Navigator & {
-            setAppBadge: (n: number) => Promise<void>;
+        // For DMs the sender passes their own conversation key (which ends
+        // with "default-key"), but the recipient indexes the same conversation
+        // under the sender's public key.  Derive the local key so muted/unread
+        // checks and notification-click navigation work correctly.
+        // Group chat keys use a custom group name (not "default-key") and are
+        // the same for all participants, so they need no translation.
+        const rawConvKey = data.conversationKey as string | undefined;
+        const fromPubKey = data.from as string | undefined;
+        const isDM = rawConvKey?.endsWith("default-key");
+        const localConvKey =
+          fromPubKey && isDM ? fromPubKey + "default-key" : rawConvKey;
+
+        // Check if this conversation is muted
+        let isMuted = false;
+        if (localConvKey) {
+          try {
+            const mutedList = await get<string[]>(
+              "mutedConversations:active",
+              idbStore
+            );
+            if (mutedList?.includes(localConvKey)) {
+              isMuted = true;
+            }
+          } catch {
+            // IndexedDB unavailable — default to not muted
           }
-        ).setAppBadge(unread.length);
+        }
+
+        // Suppress if user is actively viewing this conversation.
+        // All three conditions must be true to suppress (fail-open):
+        //  1. A controlled client window is visible and focused
+        //  2. We know which conversation is active (activeConversationKey != null)
+        //  3. The active conversation matches the incoming push
+        //
+        // CRITICAL iOS CONSTRAINT: iOS Safari revokes the push subscription after
+        // ~3 push events that don't call showNotification(). We CANNOT skip
+        // showNotification() on iOS — ever. Additionally, iOS WebKit has bugs where
+        // visibilityState stays "visible" and focused stays true after backgrounding,
+        // making client state unreliable for suppression decisions.
+        //
+        // Strategy: skip suppression entirely on iOS. The WebSocket already provides
+        // real-time in-app updates, so an extra notification while in-app is harmless
+        // compared to losing the subscription entirely. On Chrome/Firefox, suppress
+        // safely (they allow silent pushes when a visible client exists).
+        const isIOS = IOS_UA_RE.test(self.navigator.userAgent);
+        if (!isIOS && !isMuted && localConvKey) {
+          try {
+            const windowClients = await self.clients.matchAll({
+              type: "window",
+              includeUncontrolled: false,
+            });
+            const focusedClient = windowClients.find(
+              (c) =>
+                c.visibilityState === "visible" &&
+                (c as { focused?: boolean }).focused
+            );
+            const currentActiveKey = getActiveConversationKey();
+            if (
+              focusedClient &&
+              currentActiveKey &&
+              currentActiveKey === localConvKey
+            ) {
+              // Forward to the focused client for in-app handling (e.g. scroll-to-bottom)
+              focusedClient.postMessage({
+                type: "push-received",
+                payload: data,
+              });
+              return;
+            }
+          } catch {
+            // Clients API unavailable — fall through to normal notification
+          }
+        }
+
+        if (isMuted) {
+          // iOS requires showNotification() on every push — show a silent,
+          // self-replacing notification that disappears quickly.
+          await self.registration.showNotification("ChatOn", {
+            tag: "chaton-muted",
+            silent: true,
+            data: { url: "/" },
+          });
+          // Clean up the muted notification so it doesn't linger in the tray
+          try {
+            const muted = await self.registration.getNotifications({
+              tag: "chaton-muted",
+            });
+            for (const n of muted) n.close();
+          } catch {
+            // getNotifications not supported (some browsers) — notification stays
+          }
+          return;
+        }
+
+        const title = (data.title as string) || "ChatOn";
+        // Use localConvKey for the tag so both delivery paths (real-time DO
+        // and cron/queue) produce the same tag after DM key translation.
+        // Without this, DM notifications arrive with different tags (sender's
+        // vs recipient's conversation key) and the browser shows both.
+        const normalizedTag = localConvKey
+          ? `thread-${localConvKey}`
+          : (data.tag as string) || "chaton-notification";
+        const options: NotificationOptions = {
+          body: (data.body as string) || "You have a new message",
+          icon: "/favicon.png",
+          badge: "/favicon.png",
+          tag: normalizedTag,
+          renotify: true,
+          data: {
+            url: data.url || "/",
+            conversationKey: localConvKey,
+          },
+        };
+
+        await self.registration.showNotification(title, options);
+
+        // Track unread conversation in IndexedDB and update badge count
+        try {
+          const convKey = localConvKey;
+          const unread: string[] =
+            (await get<string[]>("unreadConversations:active", idbStore)) || [];
+          if (convKey && !unread.includes(convKey)) {
+            unread.push(convKey);
+            await set("unreadConversations:active", unread, idbStore);
+          }
+          await (
+            self.navigator as Navigator & {
+              setAppBadge: (n: number) => Promise<void>;
+            }
+          ).setAppBadge(unread.length);
+        } catch {
+          // Badge API or IndexedDB not supported
+        }
       } catch {
-        // Badge API or IndexedDB not supported
+        // DEFENSIVE FALLBACK: If anything above throws unexpectedly, always
+        // show a generic notification. On iOS, failing to call showNotification()
+        // counts as a silent push violation — 3 strikes and the subscription is
+        // permanently revoked. This catch ensures we never hit that.
+        try {
+          await self.registration.showNotification("ChatOn", {
+            body: "You have a new message",
+            icon: "/favicon.png",
+            badge: "/favicon.png",
+            tag: "chaton-fallback",
+            data: { url: "/" },
+          });
+        } catch {
+          // Truly nothing we can do — SW registration itself is broken
+        }
       }
     })()
   );

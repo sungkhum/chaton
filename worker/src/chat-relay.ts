@@ -127,11 +127,19 @@ export class ChatRelay extends DurableObject<RelayEnv> {
       }>();
 
       this.ensureDb();
-      this.ctx.storage.sql.exec(
-        "DELETE FROM push_subscriptions WHERE public_key = ? AND endpoint = ?",
-        publicKey,
-        endpoint
-      );
+      if (endpoint === "*") {
+        // Delete all subscriptions for this user (used by push disable)
+        this.ctx.storage.sql.exec(
+          "DELETE FROM push_subscriptions WHERE public_key = ?",
+          publicKey
+        );
+      } else {
+        this.ctx.storage.sql.exec(
+          "DELETE FROM push_subscriptions WHERE public_key = ? AND endpoint = ?",
+          publicKey,
+          endpoint
+        );
+      }
 
       return new Response(JSON.stringify({ ok: true }), {
         headers: { "Content-Type": "application/json" },
@@ -214,6 +222,13 @@ export class ChatRelay extends DurableObject<RelayEnv> {
     const { recipients, threadId, from, fromUsername, groupName } = message;
     if (!recipients || !threadId) return;
 
+    // For DMs, the client sends threadId as the sender's conversation key
+    // (recipientPK + "default-key"), but the cron derives it from the recipient's
+    // perspective (senderPK + "default-key"). We need the recipient-perspective key
+    // for dedup, tags, and notification-click navigation to match the cron path.
+    // Guard: only treat as DM if `from` is available (needed to derive recipient key).
+    const isDM = threadId.endsWith("default-key") && !!from;
+
     const pushPromises: Promise<void>[] = [];
 
     for (const recipientKey of recipients) {
@@ -230,10 +245,16 @@ export class ChatRelay extends DurableObject<RelayEnv> {
         }
       }
 
+      // Derive the conversation key from the recipient's perspective so it matches
+      // the cron/queue path for dedup, notification tags, and click navigation.
+      // DM: senderPK + "default-key"  (recipient sees sender's key)
+      // Group: same threadId for all participants
+      const recipientConvKey = isDM && from ? from + "default-key" : threadId;
+
       // Always send push — the service worker suppresses if the app is visible
       if (this.env.VAPID_PRIVATE_KEY) {
         pushPromises.push(
-          this.sendPushToUser(recipientKey, fromUsername || from || "Someone", threadId, from, groupName)
+          this.sendPushToUser(recipientKey, fromUsername || from || "Someone", recipientConvKey, from, groupName)
         );
       }
     }
@@ -242,7 +263,7 @@ export class ChatRelay extends DurableObject<RelayEnv> {
     await Promise.all(pushPromises);
   }
 
-  private async sendPushToUser(publicKey: string, fromName: string, threadId: string, fromPublicKey?: string, groupName?: string) {
+  private async sendPushToUser(publicKey: string, fromName: string, conversationKey: string, fromPublicKey?: string, groupName?: string) {
     this.ensureDb();
     const rows = this.ctx.storage.sql.exec(
       "SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE public_key = ?",
@@ -250,6 +271,7 @@ export class ChatRelay extends DurableObject<RelayEnv> {
     ).toArray();
 
     const expiredEndpoints: string[] = [];
+    let anySent = false;
 
     for (const row of rows) {
       const sub: PushSubscriptionData = {
@@ -267,15 +289,17 @@ export class ChatRelay extends DurableObject<RelayEnv> {
         {
           title,
           body,
-          tag: `thread-${threadId}`,
-          conversationKey: threadId,
+          tag: `thread-${conversationKey}`,
+          conversationKey,
           from: fromPublicKey,
         },
         this.env.VAPID_PRIVATE_KEY,
         this.env.VAPID_SUBJECT || "mailto:hello@chaton.app"
       );
 
-      if (result === "expired") {
+      if (result === "sent") {
+        anySent = true;
+      } else if (result === "expired") {
         expiredEndpoints.push(sub.endpoint);
       }
     }
@@ -289,10 +313,11 @@ export class ChatRelay extends DurableObject<RelayEnv> {
       );
     }
 
-    // Record in D1 so the cron/queue path skips this notification (best-effort)
-    if (rows.length > 0) {
+    // Only record dedup if at least one push was actually delivered.
+    // If all pushes failed, the cron/queue path should still try.
+    if (anySent) {
       this.ctx.waitUntil(
-        recordPushSent(this.env.DB, publicKey, threadId).catch(() => {})
+        recordPushSent(this.env.DB, publicKey, conversationKey).catch(() => {})
       );
     }
   }
