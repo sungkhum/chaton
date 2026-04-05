@@ -1,7 +1,10 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { identity } from "deso-protocol";
 import { useStore } from "../store";
-import { isPushSupported, getExistingSubscription } from "../utils/push-notifications";
+import {
+  isPushSupported,
+  getExistingSubscription,
+} from "../utils/push-notifications";
 import { cachePushPublicKey } from "../services/cache.service";
 
 const RELAY_URL = import.meta.env.VITE_RELAY_URL || "";
@@ -19,6 +22,7 @@ interface WsCallbacks {
 
 export function useWebSocket(callbacks: WsCallbacks) {
   const wsRef = useRef<WebSocket | null>(null);
+  const [connected, setConnected] = useState(false);
   const reconnectAttempt = useRef(0);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   // Set to false during cleanup so the old onclose handler doesn't schedule
@@ -42,6 +46,7 @@ export function useWebSocket(callbacks: WsCallbacks) {
 
       ws.onopen = async () => {
         reconnectAttempt.current = 0;
+        setConnected(true);
         // Register this connection with our public key + JWT proof
         try {
           const jwt = await identity.jwt();
@@ -85,7 +90,10 @@ export function useWebSocket(callbacks: WsCallbacks) {
               if (data.cursors) {
                 callbacksRef.current.onReadSyncBulk?.(data.cursors);
               } else if (data.conversationKey && data.timestamp) {
-                callbacksRef.current.onReadSync?.(data.conversationKey, data.timestamp);
+                callbacksRef.current.onReadSync?.(
+                  data.conversationKey,
+                  data.timestamp
+                );
               }
               break;
           }
@@ -96,6 +104,7 @@ export function useWebSocket(callbacks: WsCallbacks) {
 
       ws.onclose = () => {
         wsRef.current = null;
+        setConnected(false);
         if (activeRef.current) scheduleReconnect();
       };
 
@@ -117,7 +126,12 @@ export function useWebSocket(callbacks: WsCallbacks) {
   }, [connect]);
 
   const sendNotify = useCallback(
-    (threadId: string, recipients: string[], fromUsername?: string, groupName?: string) => {
+    (
+      threadId: string,
+      recipients: string[],
+      fromUsername?: string,
+      groupName?: string
+    ) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(
           JSON.stringify({
@@ -134,19 +148,16 @@ export function useWebSocket(callbacks: WsCallbacks) {
     [appUser]
   );
 
-  const sendTyping = useCallback(
-    (conversationKey: string) => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(
-          JSON.stringify({
-            type: "typing",
-            conversationKey,
-          })
-        );
-      }
-    },
-    []
-  );
+  const sendTyping = useCallback((conversationKey: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({
+          type: "typing",
+          conversationKey,
+        })
+      );
+    }
+  }, []);
 
   const sendRead = useCallback(
     (conversationKey: string, timestamp?: string) => {
@@ -163,16 +174,14 @@ export function useWebSocket(callbacks: WsCallbacks) {
     []
   );
 
-  const sendReadSyncInit = useCallback(
-    (cursors: Record<string, string>) => {
-      if (wsRef.current?.readyState === WebSocket.OPEN && Object.keys(cursors).length > 0) {
-        wsRef.current.send(
-          JSON.stringify({ type: "read-sync-init", cursors })
-        );
-      }
-    },
-    []
-  );
+  const sendReadSyncInit = useCallback((cursors: Record<string, string>) => {
+    if (
+      wsRef.current?.readyState === WebSocket.OPEN &&
+      Object.keys(cursors).length > 0
+    ) {
+      wsRef.current.send(JSON.stringify({ type: "read-sync-init", cursors }));
+    }
+  }, []);
 
   // Listen for service worker subscription change messages
   useEffect(() => {
@@ -201,7 +210,8 @@ export function useWebSocket(callbacks: WsCallbacks) {
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [appUser, connect]);
 
   useEffect(() => {
@@ -215,7 +225,13 @@ export function useWebSocket(callbacks: WsCallbacks) {
     };
   }, [connect]);
 
-  return { sendNotify, sendTyping, sendRead, sendReadSyncInit, isConnected: !!wsRef.current };
+  return {
+    sendNotify,
+    sendTyping,
+    sendRead,
+    sendReadSyncInit,
+    isConnected: connected,
+  };
 }
 
 /**

@@ -117,7 +117,7 @@ const PreviewText = memo(function PreviewText({
 import { ComposePanel } from "./compose-panel";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { SearchMessageResults } from "./search-message-results";
-import { shortenLongWord } from "./search-users";
+import { shortenLongWord } from "../utils/search-helpers";
 import { StartGroupChat } from "./start-group-chat";
 import { CommunityTab } from "./community-tab";
 
@@ -336,6 +336,9 @@ export const MessagingConversationAccount: FC<{
     string,
     { hasMention: boolean; hasReaction: boolean }
   >;
+  conversationsLoading?: boolean;
+  conversationsError?: string | null;
+  onRetryLoad?: () => void;
 }> = ({
   conversations,
   requestConversations,
@@ -363,6 +366,9 @@ export const MessagingConversationAccount: FC<{
   onSearchQueryChange,
   onSearchResultClick,
   highlightsByConversation,
+  conversationsLoading = false,
+  conversationsError = null,
+  onRetryLoad,
 }) => {
   const { allAccessGroups, appUser, joinRequestCounts, onlineUsers } = useStore(
     useShallow((s) => ({
@@ -660,7 +666,38 @@ export const MessagingConversationAccount: FC<{
                     )}
 
                     {/* Regular chat list */}
-                    {chatCount === 0 && archivedCount === 0 ? (
+                    {conversationsLoading && chatCount === 0 ? (
+                      <div className="px-4 pt-4">
+                        <p className="text-gray-500 text-sm mb-3 text-center">
+                          Loading conversations...
+                        </p>
+                        {Array.from({ length: 8 }).map((_, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center gap-3 py-3"
+                            style={{ height: 73 }}
+                          >
+                            <span className="w-11 h-11 rounded-full bg-white/[0.06] animate-pulse shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <span className="block h-3.5 w-24 rounded bg-white/[0.06] animate-pulse mb-2" />
+                              <span className="block h-3 w-40 rounded bg-white/[0.06] animate-pulse" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : conversationsError ? (
+                      <div className="flex flex-col items-center justify-center px-6 pt-16 text-center">
+                        <p className="text-gray-400 text-sm mb-4">
+                          {conversationsError}
+                        </p>
+                        <button
+                          onClick={onRetryLoad}
+                          className="glass-btn-primary text-[#34F080] font-bold rounded-full py-2.5 px-6 text-sm cursor-pointer transition-colors"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    ) : chatCount === 0 && archivedCount === 0 ? (
                       <div className="flex flex-col items-center justify-center px-6 pt-16 text-center">
                         <div className="w-16 h-16 rounded-full bg-[#34F080]/10 flex items-center justify-center mb-4">
                           <MessageSquarePlus className="w-8 h-8 text-[#34F080]" />

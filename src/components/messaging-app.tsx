@@ -108,6 +108,7 @@ import {
   REFRESH_MESSAGES_INTERVAL_MS,
   REFRESH_MESSAGES_MAX_INTERVAL_MS,
   REFRESH_MESSAGES_MOBILE_INTERVAL_MS,
+  REFRESH_MESSAGES_WS_CONNECTED_MS,
   TITLE_DIVIDER,
 } from "../utils/constants";
 import {
@@ -161,12 +162,12 @@ import { MessagingConversationAccount } from "./messaging-conversation-accounts"
 import { MessagingConversationButton } from "./messaging-conversation-button";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { MessagingSetupButton } from "./messaging-setup-button";
+import { OnboardingWizard } from "./onboarding/onboarding-wizard";
 import {
-  OnboardingWizard,
   isOnboardingComplete,
   markOnboardingComplete,
-} from "./onboarding/onboarding-wizard";
-import { shortenLongWord } from "./search-users";
+} from "../utils/onboarding";
+import { shortenLongWord } from "../utils/search-helpers";
 import {
   SendMessageButtonAndInput,
   SendMessageInputHandle,
@@ -321,10 +322,13 @@ export const MessagingApp: FC = () => {
   const [profilePicByPublicKey, setProfilePicByPublicKey] = useState<{
     [key: string]: string;
   }>({});
-  const [autoFetchConversations, setAutoFetchConversations] = useState(false);
+  // autoFetchConversations was removed — conversationsLoading now tracks this
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [, setPubKeyPlusGroupName] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
+  const [conversationsLoading, setConversationsLoading] = useState(false);
+  const [conversationsError, setConversationsError] = useState<string | null>(
+    null
+  );
   const [loadingConversation, setLoadingConversation] = useState(false);
   const [selectedConversationPublicKey, setSelectedConversationPublicKey] =
     useState("");
@@ -672,8 +676,8 @@ export const MessagingApp: FC = () => {
       if (!appUser || wsFetchingRef.current) return;
       wsFetchingRef.current = true;
 
-      // Reset polling backoff — real-time activity means the conversation is active
-      setPollingDelay(baseDelay);
+      // WS is delivering messages — keep the slow safety-net rate.
+      // No need to reset to base delay since real-time is handled by WS.
 
       getConversationsDifferential(
         appUser.PublicKeyBase58Check,
@@ -881,7 +885,14 @@ export const MessagingApp: FC = () => {
             }
           }
         )
-        .catch(() => {})
+        .catch(() => {
+          // WS-triggered differential fetch failed — temporarily reset polling
+          // to base rate so we retry soon instead of waiting 5 minutes.
+          // Only reset if user is active — don't override idle pause.
+          if (!isIdleRef.current) {
+            setPollingDelay(baseDelay);
+          }
+        })
         .finally(() => {
           wsFetchingRef.current = false;
         });
@@ -901,7 +912,13 @@ export const MessagingApp: FC = () => {
   const setOnlineUsers = useStore((s) => s.setOnlineUsers);
   const { getPresence, getOnlineCount, fetchPresenceForKeys } = usePresence();
 
-  const { sendNotify, sendTyping, sendRead, sendReadSyncInit } = useWebSocket({
+  const {
+    sendNotify,
+    sendTyping,
+    sendRead,
+    sendReadSyncInit,
+    isConnected: wsConnected,
+  } = useWebSocket({
     onNewMessage: handleWsNewMessage,
     onTyping: onTypingReceived,
     onPresence: (users) => {
@@ -961,6 +978,13 @@ export const MessagingApp: FC = () => {
   });
 
   const { onKeystroke } = useTypingIndicator(sendTyping);
+
+  // When WebSocket is connected, slow polling to a safety-net interval (5 min).
+  // When it disconnects, resume normal polling so we don't miss messages.
+  useEffect(() => {
+    if (isIdle) return; // idle effect handles pause
+    setPollingDelay(wsConnected ? REFRESH_MESSAGES_WS_CONNECTED_MS : baseDelay);
+  }, [wsConnected, baseDelay, isIdle]);
 
   // Derive classified conversation maps from the single conversations state + store Sets
   const { chatConversations, requestConversations, archivedConversations } =
@@ -1581,7 +1605,7 @@ export const MessagingApp: FC = () => {
   // Retry any pending messages from IndexedDB on startup (or user switch)
   const pendingRetryRanForUser = useRef<string | null>(null);
   useEffect(() => {
-    if (!appUser || loading) return;
+    if (!appUser || conversationsLoading) return;
     if (pendingRetryRanForUser.current === appUser.PublicKeyBase58Check) return;
     pendingRetryRanForUser.current = appUser.PublicKeyBase58Check;
 
@@ -1620,7 +1644,7 @@ export const MessagingApp: FC = () => {
         retryPendingMessage(pending);
       }
     });
-  }, [appUser, loading, retryPendingMessage]);
+  }, [appUser, conversationsLoading, retryPendingMessage]);
 
   // Load hidden message IDs from IndexedDB on startup
   useEffect(() => {
@@ -1670,7 +1694,6 @@ export const MessagingApp: FC = () => {
           markOnboardingComplete(appUser.PublicKeyBase58Check);
         } else {
           setShowOnboarding(true);
-          setLoading(false);
           return;
         }
       }
@@ -1695,8 +1718,9 @@ export const MessagingApp: FC = () => {
         });
       }
 
-      setLoading(true);
-      setAutoFetchConversations(true);
+      setConversationsLoading(true);
+      setConversationsError(null);
+
       // If opened from a notification, always select the conversation even on mobile
       rehydrateConversation(
         pending || "",
@@ -1704,23 +1728,48 @@ export const MessagingApp: FC = () => {
         !isMobile || !!pending,
         isLoadingUser
       );
-    } else {
-      setLoading(false);
     }
   }, [appUser, isMobile]);
 
   // Handle push notification clicks from service worker
   useEffect(() => {
-    const handler = (event: MessageEvent) => {
+    const handler = async (event: MessageEvent) => {
       if (
         event.data?.type === "notification-click" &&
         event.data.conversationKey
       ) {
-        setSelectedConversationPublicKey(event.data.conversationKey);
-        clearUnread(event.data.conversationKey);
+        const key = event.data.conversationKey;
+        setSelectedConversationPublicKey(key);
+        clearUnread(key);
         // Clear the IDB fallback so the visibility-change handler doesn't
         // double-navigate when the fast path (postMessage) already worked.
         consumePendingNotificationConversation();
+
+        // Directly fetch the thread via the paginated endpoint (fast, ~25 msgs)
+        // instead of waiting for the slow full-thread-list differential fetch.
+        const currentAppUser = useStore.getState().appUser;
+        if (currentAppUser && conversationsRef.current[key]) {
+          try {
+            const { updatedConversations, pubKeyPlusGroupName } =
+              await getConversation(key, conversationsRef.current);
+            if (selectedConversationPublicKeyRef.current === key) {
+              setConversations((prev) => ({
+                ...prev,
+                [key]: updatedConversations[key],
+              }));
+              setPubKeyPlusGroupName(pubKeyPlusGroupName);
+              if (updatedConversations[key]) {
+                cacheConversationMessages(
+                  currentAppUser.PublicKeyBase58Check,
+                  key,
+                  updatedConversations[key].messages
+                );
+              }
+            }
+          } catch (e) {
+            console.error("[ChatOn] Notification thread fetch failed:", e);
+          }
+        }
       }
     };
     navigator.serviceWorker?.addEventListener("message", handler);
@@ -1732,8 +1781,12 @@ export const MessagingApp: FC = () => {
   // doesn't re-register when handleWsNewMessage changes.
   const visibilityHandlerRef = useRef(handleWsNewMessage);
   visibilityHandlerRef.current = handleWsNewMessage;
-  const loadingRef = useRef(loading);
-  loadingRef.current = loading;
+  const loadingRef = useRef(conversationsLoading);
+  loadingRef.current = conversationsLoading;
+  const isIdleRef = useRef(isIdle);
+  isIdleRef.current = isIdle;
+  const wsConnectedRef = useRef(wsConnected);
+  wsConnectedRef.current = wsConnected;
 
   // Refresh conversations + classification data when PWA resumes from background
   useEffect(() => {
@@ -1744,10 +1797,35 @@ export const MessagingApp: FC = () => {
         // Check if a notification click wrote a pending conversation to IndexedDB.
         // postMessage from the SW is unreliable when the app is resuming from a
         // suspended/frozen state, so IndexedDB acts as the durable fallback.
-        consumePendingNotificationConversation().then((pendingKey) => {
+        consumePendingNotificationConversation().then(async (pendingKey) => {
           if (pendingKey) {
             setSelectedConversationPublicKey(pendingKey);
             clearUnread(pendingKey);
+            // Directly fetch the thread (fast paginated endpoint) so the new
+            // message appears immediately instead of waiting for the slow
+            // full-thread-list differential fetch below.
+            if (conversationsRef.current[pendingKey]) {
+              try {
+                const { updatedConversations, pubKeyPlusGroupName } =
+                  await getConversation(pendingKey, conversationsRef.current);
+                if (selectedConversationPublicKeyRef.current === pendingKey) {
+                  setConversations((prev) => ({
+                    ...prev,
+                    [pendingKey]: updatedConversations[pendingKey],
+                  }));
+                  setPubKeyPlusGroupName(pubKeyPlusGroupName);
+                  if (updatedConversations[pendingKey]) {
+                    cacheConversationMessages(
+                      publicKey,
+                      pendingKey,
+                      updatedConversations[pendingKey].messages
+                    );
+                  }
+                }
+              } catch {
+                // Fall through to the differential fetch below
+              }
+            }
           }
         });
 
@@ -1756,8 +1834,11 @@ export const MessagingApp: FC = () => {
         if (now - lastResumeRef.current < FOREGROUND_RESUME_DEBOUNCE_MS) return;
         lastResumeRef.current = now;
 
-        // Reset polling backoff on foreground resume
-        setPollingDelay(baseDelay);
+        // Reset polling backoff on foreground resume — but keep the slow
+        // rate if WS is connected (it handles real-time delivery).
+        if (!wsConnectedRef.current) {
+          setPollingDelay(baseDelay);
+        }
 
         // Refresh conversations (existing behavior)
         visibilityHandlerRef.current("", "");
@@ -1810,9 +1891,6 @@ export const MessagingApp: FC = () => {
     const hasConversations = Object.keys(conversations).length > 0;
     if (!hasConversations) {
       setSelectedConversationPublicKey("");
-    }
-    if (isLoadingUser && appUser && !hasConversations) {
-      setLoading(true);
     }
   }, [isLoadingUser, appUser]);
 
@@ -1905,12 +1983,15 @@ export const MessagingApp: FC = () => {
       }
     } finally {
       pollingRef.current = false;
-      // Additive backoff: WS handles real-time, so slow down polling gradually
-      setPollingDelay((prev) =>
-        prev
-          ? Math.min(prev + baseDelay, REFRESH_MESSAGES_MAX_INTERVAL_MS)
-          : prev
-      );
+      // Only back off when WS is disconnected — when connected, the
+      // wsConnected effect already holds us at the slow safety-net rate.
+      if (!wsConnectedRef.current) {
+        setPollingDelay((prev) =>
+          prev
+            ? Math.min(prev + baseDelay, REFRESH_MESSAGES_MAX_INTERVAL_MS)
+            : prev
+        );
+      }
     }
   }, pollingDelay);
 
@@ -2010,8 +2091,7 @@ export const MessagingApp: FC = () => {
   ) => {
     if (!appUser) {
       toast.error("You must be logged in to use this feature");
-      setLoading(false);
-      setAutoFetchConversations(false);
+      setConversationsLoading(false);
       return;
     }
 
@@ -2070,8 +2150,8 @@ export const MessagingApp: FC = () => {
         Object.keys(cachedConvos)[0];
 
       setConversations(cachedConvos);
-      setLoading(false);
-      setAutoFetchConversations(false);
+      setConversationsLoading(false);
+
       renderedFromCache = true;
 
       if (selectConversation && cachedKeyToUse) {
@@ -2099,6 +2179,28 @@ export const MessagingApp: FC = () => {
           }));
           setLoadingConversation(false);
         }
+      }
+
+      // Eagerly refresh the selected conversation via the fast paginated
+      // endpoint so new messages appear immediately, instead of waiting for
+      // the slow full-thread-list revalidation below.
+      if (cachedKeyToUse && cachedConvos[cachedKeyToUse]) {
+        getConversation(cachedKeyToUse, cachedConvos)
+          .then(({ updatedConversations, pubKeyPlusGroupName }) => {
+            if (selectedConversationPublicKeyRef.current !== cachedKeyToUse)
+              return;
+            setConversations((prev) => ({
+              ...prev,
+              [cachedKeyToUse]: updatedConversations[cachedKeyToUse],
+            }));
+            setPubKeyPlusGroupName(pubKeyPlusGroupName);
+            cacheConversationMessages(
+              publicKey,
+              cachedKeyToUse,
+              updatedConversations[cachedKeyToUse].messages
+            );
+          })
+          .catch(() => {});
       }
 
       // Restore unread badges from cached data immediately so badges don't
@@ -2182,7 +2284,39 @@ export const MessagingApp: FC = () => {
       let flushTimer: ReturnType<typeof setTimeout> | null = null;
       try {
         const [rawResult] = await Promise.all([
-          fetchMessageThreadsRaw(publicKey),
+          fetchMessageThreadsRaw(
+            publicKey,
+            (partial) => {
+              // Bail if user logged out while the request was in flight
+              if (decryptAbort.signal.aborted) return;
+              // Whichever resolves first (DMs or groups) — render shells immediately
+              const { conversations: partialShells } = buildShellConversations(
+                partial.messageThreads,
+                publicKey
+              );
+              if (Object.keys(partialShells).length > 0) {
+                setConversations((prev) => ({ ...prev, ...partialShells }));
+                setConversationsLoading(false);
+              }
+              // Extract usernames/pics from partial profile data
+              const usernames: Record<string, string> = {};
+              const pics: Record<string, string> = {};
+              for (const [pk, profile] of Object.entries(
+                partial.publicKeyToProfileEntryResponseMap
+              )) {
+                if (profile?.Username) usernames[pk] = profile.Username;
+                const ed = profile?.ExtraData;
+                if (ed) {
+                  const pic = ed.NFTProfilePictureUrl || ed.LargeProfilePicURL;
+                  if (pic) pics[pk] = pic;
+                }
+              }
+              if (Object.keys(usernames).length) mergeUsernames(usernames);
+              if (Object.keys(pics).length)
+                setProfilePicByPublicKey((s) => ({ ...s, ...pics }));
+            },
+            true /* useTimeout */
+          ),
           classificationPromise,
           privacyPromise,
         ]);
@@ -2208,8 +2342,7 @@ export const MessagingApp: FC = () => {
           // on auto-first-message + blockchain confirmation (was 30-60s).
           // The conversation appears in the background once confirmed.
           setConversations({});
-          setLoading(false);
-          setAutoFetchConversations(false);
+          setConversationsLoading(false);
 
           // Fire-and-forget: send welcome message, merge when confirmed.
           // Guard against double-sends (e.g., StrictMode, rapid remount).
@@ -2278,10 +2411,9 @@ export const MessagingApp: FC = () => {
             ...profilePicUrls,
           }));
 
-          // Show conversation list with shimmer previews — clears the spinner
+          // Show conversation list with shimmer previews — clears the loading skeleton
           setConversations(shellConversations);
-          setLoading(false);
-          setAutoFetchConversations(false);
+          setConversationsLoading(false);
 
           const shellKeyToUse =
             selectedKey ||
@@ -2395,9 +2527,13 @@ export const MessagingApp: FC = () => {
         // Clear debounced flush timer to prevent stale state writes
         if (flushTimer) clearTimeout(flushTimer);
         console.error("[ChatOn] Failed to fetch conversations:", e);
-        toast.error("Couldn't load conversations — tap to retry");
-        setLoading(false);
-        setAutoFetchConversations(false);
+        setConversationsLoading(false);
+
+        setConversationsError(
+          e instanceof Error && e.message.includes("timed out")
+            ? "Loading timed out — your messages are safe on-chain."
+            : "Couldn't load conversations."
+        );
         return;
       }
     } else {
@@ -2411,8 +2547,8 @@ export const MessagingApp: FC = () => {
         ]);
       } catch (e) {
         console.error("[ChatOn] Failed to fetch conversations:", e);
-        setLoading(false);
-        setAutoFetchConversations(false);
+        setConversationsLoading(false);
+
         return;
       }
     }
@@ -2617,8 +2753,7 @@ export const MessagingApp: FC = () => {
       ) {
         setLoadingConversation(false);
       }
-      setLoading(false);
-      setAutoFetchConversations(false);
+      setConversationsLoading(false);
     }
 
     if (autoScroll) {
@@ -2778,8 +2913,8 @@ export const MessagingApp: FC = () => {
     const pending = useStore.getState().pendingConversationKey;
     if (pending) useStore.getState().setPendingConversationKey(null);
 
-    setLoading(true);
-    setAutoFetchConversations(true);
+    setConversationsLoading(true);
+    setConversationsError(null);
     rehydrateConversation(pending || "", false, !isMobile || !!pending);
   }, [appUser, isMobile, rehydrateConversation]);
 
@@ -2891,138 +3026,134 @@ export const MessagingApp: FC = () => {
         )}
 
       {/* Loading / setup states (non-onboarding) */}
-      {!showOnboarding &&
-        (!hasSetupMessaging(appUser) || isLoadingUser || loading) && (
-          <div className="m-auto relative top-8 overflow-hidden pt-[30px] pb-[50px]">
-            <div className="bg-gradient"></div>
-            <div className="w-full lg:max-w-[1200px] m-auto bg-transparent p-0 shadow-none">
-              <div>
-                {(autoFetchConversations || isLoadingUser || loading) && (
-                  <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-10">
-                    <Loader2 className="w-11 h-11 animate-spin text-[#34F080]" />
-                  </div>
-                )}
-                {!autoFetchConversations &&
-                  !hasSetupMessaging(appUser) &&
-                  !isLoadingUser &&
-                  !loading && (
-                    <div className="text-left flex flex-col lg:flex-row items-center justify-between">
-                      <div className="w-full lg:w-[50%]">
+      {!showOnboarding && (!hasSetupMessaging(appUser) || isLoadingUser) && (
+        <div className="m-auto relative top-8 overflow-hidden pt-[30px] pb-[50px]">
+          <div className="bg-gradient"></div>
+          <div className="w-full lg:max-w-[1200px] m-auto bg-transparent p-0 shadow-none">
+            <div>
+              {isLoadingUser && (
+                <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-10">
+                  <Loader2 className="w-11 h-11 animate-spin text-[#34F080]" />
+                </div>
+              )}
+              {!hasSetupMessaging(appUser) && !isLoadingUser && (
+                <div className="text-left flex flex-col lg:flex-row items-center justify-between">
+                  <div className="w-full lg:w-[50%]">
+                    <div>
+                      {appUser ? (
                         <div>
-                          {appUser ? (
-                            <div>
-                              <h2 className="text-2xl font-bold mb-3 text-white">
-                                Set up your account
-                              </h2>
-                              <p className="text-lg mb-6 text-gray-400">
-                                It seems like your account needs more
-                                configuration to be able to send messages. Press
-                                the button below to set it up automatically
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="text-left w-full md:max-w-[100%]">
-                              <h2 className="text-3xl lg:text-3xl font-semibold mb-6 text-white">
-                                Chat with anyone, on DeSo or Ethereum. Without
-                                the risk of being censored.
-                              </h2>
-                              <p className="text-sm mb-5 text-gray-400">
-                                DeSo Chat Protocol is a censorship-resistant
-                                messaging protocol built on top of the DeSo
-                                blockchain. It enables fully decentralized
-                                cross-chain messaging between DeSo and Ethereum
-                                wallets (and soon, Solana).
-                              </p>
-                              <p className="text-sm mb-5 text-gray-400">
-                                This is possible due to DeSo's infinite-state
-                                blockchain & derived keys cryptography.
-                              </p>
-                              <p className="text-sm mb-5 text-gray-400">
-                                Messages are stored directly on-chain, at an
-                                average cost of ~$0.000002 (
-                                <em>basically free</em>), with end-to-end
-                                encryption, and support for DMs & group chats —
-                                including fully on-chain social, identity,
-                                creator coins, tokens & NFTs.
-                              </p>
-                            </div>
-                          )}
+                          <h2 className="text-2xl font-bold mb-3 text-white">
+                            Set up your account
+                          </h2>
+                          <p className="text-lg mb-6 text-gray-400">
+                            It seems like your account needs more configuration
+                            to be able to send messages. Press the button below
+                            to set it up automatically
+                          </p>
                         </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 mb-6 text-[#34F080]">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="w-5 h-5" /> E2EE messages &
-                            group chats
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="w-5 h-5" /> 100% on-chain
-                            (fully synced)
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="w-5 h-5" /> Sign in with
-                            DeSo & MetaMask
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="w-5 h-5" /> Message DeSo &
-                            Ethereum wallets
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="w-5 h-5" /> Open-source &
-                            built on DeSo
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="w-5 h-5" /> On-chain social,
-                            identity & assets
-                          </div>
+                      ) : (
+                        <div className="text-left w-full md:max-w-[100%]">
+                          <h2 className="text-3xl lg:text-3xl font-semibold mb-6 text-white">
+                            Chat with anyone, on DeSo or Ethereum. Without the
+                            risk of being censored.
+                          </h2>
+                          <p className="text-sm mb-5 text-gray-400">
+                            DeSo Chat Protocol is a censorship-resistant
+                            messaging protocol built on top of the DeSo
+                            blockchain. It enables fully decentralized
+                            cross-chain messaging between DeSo and Ethereum
+                            wallets (and soon, Solana).
+                          </p>
+                          <p className="text-sm mb-5 text-gray-400">
+                            This is possible due to DeSo's infinite-state
+                            blockchain & derived keys cryptography.
+                          </p>
+                          <p className="text-sm mb-5 text-gray-400">
+                            Messages are stored directly on-chain, at an average
+                            cost of ~$0.000002 (<em>basically free</em>), with
+                            end-to-end encryption, and support for DMs & group
+                            chats — including fully on-chain social, identity,
+                            creator coins, tokens & NFTs.
+                          </p>
                         </div>
-                        <MessagingSetupButton />
-                        <p className="mt-5 text-sm mb-5 text-blue-300/40">
-                          This project is fully open-sourced for developers to
-                          fork & build on top of. You can add features like ENS
-                          support, NFT profile pictures, message tipping, paid
-                          DMs, token-gated group chats and more. Visit&nbsp;
-                          <a
-                            target="_blank"
-                            className="underline text-blue-300/40 hover:text-blue-300"
-                            href="https://github.com/sungkhum/chaton"
-                            rel="noreferrer"
-                          >
-                            Github Repository &rarr;
-                          </a>{" "}
-                          or&nbsp;
-                          <a
-                            target="_blank"
-                            className="underline text-blue-300/40 hover:text-blue-300"
-                            href="https://github.com/sungkhum/chaton"
-                            rel="noreferrer"
-                          >
-                            Developer Docs &rarr;
-                          </a>
-                        </p>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 mb-6 text-[#34F080]">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-5 h-5" /> E2EE messages &
+                        group chats
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-5 h-5" /> 100% on-chain (fully
+                        synced)
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-5 h-5" /> Sign in with DeSo &
+                        MetaMask
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-5 h-5" /> Message DeSo &
+                        Ethereum wallets
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-5 h-5" /> Open-source & built
+                        on DeSo
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-5 h-5" /> On-chain social,
+                        identity & assets
                       </div>
                     </div>
-                  )}
+                    <MessagingSetupButton />
+                    <p className="mt-5 text-sm mb-5 text-blue-300/40">
+                      This project is fully open-sourced for developers to fork
+                      & build on top of. You can add features like ENS support,
+                      NFT profile pictures, message tipping, paid DMs,
+                      token-gated group chats and more. Visit&nbsp;
+                      <a
+                        target="_blank"
+                        className="underline text-blue-300/40 hover:text-blue-300"
+                        href="https://github.com/sungkhum/chaton"
+                        rel="noreferrer"
+                      >
+                        Github Repository &rarr;
+                      </a>{" "}
+                      or&nbsp;
+                      <a
+                        target="_blank"
+                        className="underline text-blue-300/40 hover:text-blue-300"
+                        href="https://github.com/sungkhum/chaton"
+                        rel="noreferrer"
+                      >
+                        Developer Docs &rarr;
+                      </a>
+                    </p>
+                  </div>
+                </div>
+              )}
 
-                {!autoFetchConversations &&
-                  hasSetupMessaging(appUser) &&
-                  !isLoadingUser &&
-                  !loading && (
-                    <MessagingConversationButton
-                      onClick={rehydrateConversation}
-                    />
-                  )}
-              </div>
+              {hasSetupMessaging(appUser) && !isLoadingUser && (
+                <MessagingConversationButton onClick={rehydrateConversation} />
+              )}
             </div>
           </div>
-        )}
+        </div>
+      )}
       {!showOnboarding &&
         hasSetupMessaging(appUser) &&
         appUser &&
-        !isLoadingUser &&
-        !loading && (
+        !isLoadingUser && (
           <div className="flex h-full">
             <div className="w-full md:w-[340px] lg:w-[380px] xl:w-[420px] border-r border-white/5 bg-[#080d16] shrink-0">
               <MessagingConversationAccount
                 rehydrateConversation={rehydrateConversation}
+                conversationsLoading={conversationsLoading}
+                conversationsError={conversationsError}
+                onRetryLoad={() => {
+                  setConversationsError(null);
+                  setConversationsLoading(true);
+                  rehydrateConversation();
+                }}
                 onClick={async (key: string) => {
                   if (key === selectedConversationPublicKey) {
                     // Still clear unread badge if a message arrived while viewing
@@ -3589,8 +3720,57 @@ export const MessagingApp: FC = () => {
                             localId
                           );
                         }}
-                        onReact={async (timestampNanosString, emoji) => {
+                        onReact={async (
+                          timestampNanosString,
+                          emoji,
+                          forceAction
+                        ) => {
                           if (!appUser || !selectedConversation) return;
+                          const myKey = appUser.PublicKeyBase58Check;
+                          const convKey = selectedConversationPublicKey;
+
+                          // Determine if this is an add or remove (toggle logic).
+                          // Check if the user already has an active "add" reaction
+                          // for this emoji on this message (last-write-wins).
+                          let action: "add" | "remove" = forceAction || "add";
+                          if (!forceAction) {
+                            const msgs = selectedConversation.messages;
+                            let latestTs = -1;
+                            let latestAction: "add" | "remove" = "add";
+                            for (const m of msgs) {
+                              const p = parseMessageType(m);
+                              if (
+                                p.type === "reaction" &&
+                                p.replyTo === timestampNanosString &&
+                                p.emoji === emoji &&
+                                m.SenderInfo.OwnerPublicKeyBase58Check === myKey
+                              ) {
+                                const ts = m.MessageInfo.TimestampNanos;
+                                if (ts > latestTs) {
+                                  latestTs = ts;
+                                  latestAction = p.action || "add";
+                                }
+                              }
+                            }
+                            // If they already have an active "add", toggle to "remove"
+                            if (latestTs > -1 && latestAction === "add") {
+                              action = "remove";
+                            }
+                          }
+
+                          // Debounce: skip if there's already a pending reaction
+                          // for this same emoji+target combo
+                          const msgs = selectedConversation.messages;
+                          const hasPending = msgs.some(
+                            (m: any) =>
+                              m._status === "sending" &&
+                              m._localId?.startsWith("local-reaction-") &&
+                              m.MessageInfo?.ExtraData?.["msg:replyTo"] ===
+                                timestampNanosString &&
+                              m.MessageInfo?.ExtraData?.["msg:emoji"] === emoji
+                          );
+                          if (hasPending) return;
+
                           const recipientPublicKey =
                             selectedConversation.ChatType === ChatType.DM
                               ? selectedConversation.firstMessagePublicKey
@@ -3611,17 +3791,19 @@ export const MessagingApp: FC = () => {
                             );
                           const preview =
                             reactedToMsg?.DecryptedMessage?.slice(0, 30) || "";
-                          const fallbackText = preview
-                            ? `Reacted ${emoji} to "${preview}${
-                                (reactedToMsg?.DecryptedMessage?.length ?? 0) >
-                                30
-                                  ? "…"
-                                  : ""
-                              }"`
-                            : `Reacted ${emoji}`;
+                          const fallbackText =
+                            action === "remove"
+                              ? `Removed ${emoji} reaction`
+                              : preview
+                              ? `Reacted ${emoji} to "${preview}${
+                                  (reactedToMsg?.DecryptedMessage?.length ??
+                                    0) > 30
+                                    ? "…"
+                                    : ""
+                                }"`
+                              : `Reacted ${emoji}`;
 
                           // Optimistic: insert a mock reaction message immediately
-                          const convKey = selectedConversationPublicKey;
                           const localId = `local-reaction-${Date.now()}-${Math.random()}`;
                           const TimestampNanos = new Date().getTime() * 1e6;
                           const mockReaction = {
@@ -3630,8 +3812,7 @@ export const MessagingApp: FC = () => {
                             _status: "sending" as const,
                             _localId: localId,
                             SenderInfo: {
-                              OwnerPublicKeyBase58Check:
-                                appUser.PublicKeyBase58Check,
+                              OwnerPublicKeyBase58Check: myKey,
                               AccessGroupKeyName:
                                 DEFAULT_KEY_MESSAGING_GROUP_NAME,
                             },
@@ -3646,6 +3827,7 @@ export const MessagingApp: FC = () => {
                                 type: "reaction",
                                 replyTo: timestampNanosString,
                                 emoji,
+                                action,
                               }),
                             },
                           } as DecryptedMessageEntryResponse & {
@@ -3667,7 +3849,7 @@ export const MessagingApp: FC = () => {
                           try {
                             await encryptAndSendNewMessage(
                               fallbackText,
-                              appUser.PublicKeyBase58Check,
+                              myKey,
                               recipientPublicKey,
                               recipientKeyName,
                               DEFAULT_KEY_MESSAGING_GROUP_NAME,
@@ -3675,10 +3857,9 @@ export const MessagingApp: FC = () => {
                                 type: "reaction",
                                 replyTo: timestampNanosString,
                                 emoji,
+                                action,
                               })
                             );
-                            // No push notification for reactions — they're lightweight
-                            // metadata. The WebSocket handles real-time UI updates.
                             // Mark as sent
                             setConversations((prev) => ({
                               ...prev,
@@ -3702,7 +3883,11 @@ export const MessagingApp: FC = () => {
                                 ),
                               },
                             }));
-                            toast.error("Failed to send reaction");
+                            toast.error(
+                              action === "remove"
+                                ? "Failed to remove reaction"
+                                : "Failed to send reaction"
+                            );
                           }
                         }}
                         onTip={(msg, amountUsd) => {
