@@ -216,7 +216,6 @@ export const MessagingDisplayAvatar: FC<{
           position: "relative",
         }}
         className={`rounded-full overflow-hidden flex items-center justify-center font-semibold select-none ${borderColor}`}
-        title={publicKey}
       >
         <span style={{ color: avatarColor.text, lineHeight: 1 }}>
           {initials}
@@ -234,8 +233,8 @@ export const MessagingDisplayAvatar: FC<{
               objectFit: "cover",
             }}
             className={`rounded-full ${borderColor}`}
-            alt={publicKey}
-            title={publicKey}
+            alt={username || ""}
+            title={username || undefined}
             onLoad={handleImgLoad}
             onError={handleImgError}
           />

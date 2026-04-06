@@ -784,6 +784,17 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
 
     if (!isNewArrival) return;
 
+    // Don't auto-scroll for hidden message types (reactions, tip pills) —
+    // they don't appear in the message list so scrolling is disruptive.
+    const newestParsed = parseMessageType(visibleMessages[0]);
+    if (newestParsed.type === "reaction") return;
+    if (
+      newestParsed.type === "tip" &&
+      newestParsed.tipReplyTo &&
+      !tipHasCustomMessage(newestParsed)
+    )
+      return;
+
     const isLastMessageFromMe = visibleMessages[0].IsSender;
     const scrollableArea = messageAreaRef.current;
     if (!scrollableArea || !isLastMessageFromMe) return;
@@ -1648,7 +1659,12 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                           // Reactions row — portaled above the bubble
                           const reactionsRow = onReact
                             ? createPortal(
-                                <div ref={actionBarRef} className="fixed z-50">
+                                <div
+                                  ref={actionBarRef}
+                                  className="fixed z-50"
+                                  onTouchStart={(e) => e.stopPropagation()}
+                                  onTouchEnd={(e) => e.stopPropagation()}
+                                >
                                   <div
                                     className={`flex items-center gap-0.5 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg ${
                                       isMobile ? "px-1.5 py-1.5" : "px-1 py-1"
@@ -1780,6 +1796,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                                   ? "py-1.5 min-w-[200px]"
                                   : "py-1 min-w-[180px]"
                               }`}
+                              onTouchStart={(e) => e.stopPropagation()}
+                              onTouchEnd={(e) => e.stopPropagation()}
                             >
                               {onReply && (
                                 <button
@@ -1953,7 +1971,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                                       message.MessageInfo.TimestampNanosString,
                                       emoji
                                     );
-                                    setReactionPickerFor(null);
+                                    closeMobileAction();
                                   }}
                                 />
                               </Suspense>
@@ -1961,61 +1979,58 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                           </div>,
                           document.body
                         )}
-                    </div>
 
-                    {/* Reaction pills + Tip pills */}
-                    {(reactions ||
-                      tips ||
-                      pendingTipTimestamps?.has(
-                        message.MessageInfo.TimestampNanosString
-                      )) && (
-                      <div
-                        className={`-mt-3 relative z-10 flex flex-wrap items-center gap-1 ${
-                          IsSender ? "justify-end" : ""
-                        }`}
-                      >
-                        {reactions && (
-                          <ReactionPills
-                            reactions={reactions}
-                            currentUserKey={appUser?.PublicKeyBase58Check}
-                            isSender={IsSender}
-                            onReactionClick={(emoji) =>
-                              onReact?.(
-                                message.MessageInfo.TimestampNanosString,
-                                emoji
-                              )
-                            }
-                            onRemoveReaction={(emoji) =>
-                              onReact?.(
-                                message.MessageInfo.TimestampNanosString,
-                                emoji,
-                                "remove"
-                              )
-                            }
-                            getUsernameByPublicKey={getUsernameByPublicKey}
-                            profilePicByPublicKey={profilePicByPublicKey}
-                          />
-                        )}
-                        {tips && (
-                          <TipPills
-                            tips={tips}
-                            currentUserKey={appUser?.PublicKeyBase58Check}
-                            getUsernameByPublicKey={getUsernameByPublicKey}
-                            profilePicByPublicKey={profilePicByPublicKey}
-                          />
-                        )}
-                        {pendingTipTimestamps?.has(
+                      {/* Reaction pills + Tip pills — inside inline-block wrapper so
+                        pills inherit the bubble's width and left-align beneath it */}
+                      {(reactions ||
+                        tips ||
+                        pendingTipTimestamps?.has(
                           message.MessageInfo.TimestampNanosString
-                        ) && (
-                          <div className="flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-full text-xs bg-white/5 border border-white/10 animate-pulse">
-                            <Loader2 className="w-3.5 h-3.5 text-gray-400 animate-spin" />
-                            <span className="text-gray-400 text-[11px] font-semibold">
-                              Tipping...
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                        )) && (
+                        <div className="-mt-3 relative z-10 flex flex-wrap items-center gap-1">
+                          {reactions && (
+                            <ReactionPills
+                              reactions={reactions}
+                              currentUserKey={appUser?.PublicKeyBase58Check}
+                              isSender={IsSender}
+                              onReactionClick={(emoji) =>
+                                onReact?.(
+                                  message.MessageInfo.TimestampNanosString,
+                                  emoji
+                                )
+                              }
+                              onRemoveReaction={(emoji) =>
+                                onReact?.(
+                                  message.MessageInfo.TimestampNanosString,
+                                  emoji,
+                                  "remove"
+                                )
+                              }
+                              getUsernameByPublicKey={getUsernameByPublicKey}
+                              profilePicByPublicKey={profilePicByPublicKey}
+                            />
+                          )}
+                          {tips && (
+                            <TipPills
+                              tips={tips}
+                              currentUserKey={appUser?.PublicKeyBase58Check}
+                              getUsernameByPublicKey={getUsernameByPublicKey}
+                              profilePicByPublicKey={profilePicByPublicKey}
+                            />
+                          )}
+                          {pendingTipTimestamps?.has(
+                            message.MessageInfo.TimestampNanosString
+                          ) && (
+                            <div className="flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-full text-xs bg-white/5 border border-white/10 animate-pulse">
+                              <Loader2 className="w-3.5 h-3.5 text-gray-400 animate-spin" />
+                              <span className="text-gray-400 text-[11px] font-semibold">
+                                Tipping...
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   {/* Own messages don't need avatar — green bubble alignment is enough */}
                 </div>
@@ -2061,7 +2076,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
         {unreadReactionTargets.length > 0 && (
           <button
             onClick={scrollToNextReaction}
-            className={`pointer-events-auto flex items-center gap-1 justify-center glass-btn-primary rounded-full shadow-[0_0_12px_rgba(52,240,128,0.15)] text-sm cursor-pointer transition-all ${
+            className={`pointer-events-auto relative flex items-center justify-center glass-btn-primary rounded-full shadow-[0_0_12px_rgba(52,240,128,0.15)] text-sm cursor-pointer transition-all ${
               isMobile ? "w-11 h-11" : "w-10 h-10"
             }`}
             aria-label={`${unreadReactionTargets.length} unread reaction${
@@ -2072,29 +2087,25 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
               className="w-5 h-5 text-[#34F080] drop-shadow-[0_0_6px_rgba(52,240,128,0.5)]"
               strokeWidth={2}
             />
-            {unreadReactionTargets.length > 1 && (
-              <span className="text-[10px] font-bold text-[#34F080]">
-                {unreadReactionTargets.length}
-              </span>
-            )}
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[#34F080] text-[10px] font-bold text-[#0d1520] px-1 shadow-md">
+              {unreadReactionTargets.length}
+            </span>
           </button>
         )}
         {/* Unread @mentions */}
         {unreadMentionTimestamps.length > 0 && (
           <button
             onClick={scrollToNextMention}
-            className={`pointer-events-auto flex items-center justify-center bg-[#141c2b] hover:bg-[#1a2538] border border-[#34F080]/30 rounded-full shadow-lg cursor-pointer transition-all ${
+            className={`pointer-events-auto relative flex items-center justify-center bg-[#141c2b] hover:bg-[#1a2538] border border-[#34F080]/30 rounded-full shadow-lg cursor-pointer transition-all ${
               isMobile ? "w-11 h-11" : "w-10 h-10"
             }`}
             aria-label={`${unreadMentionTimestamps.length} unread mention${
               unreadMentionTimestamps.length === 1 ? "" : "s"
             }`}
           >
-            <span className="text-[#34F080] text-sm font-bold">
-              @
-              {unreadMentionTimestamps.length > 1
-                ? unreadMentionTimestamps.length
-                : ""}
+            <span className="text-[#34F080] text-sm font-bold">@</span>
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[#34F080] text-[10px] font-bold text-[#0d1520] px-1 shadow-md">
+              {unreadMentionTimestamps.length}
             </span>
           </button>
         )}

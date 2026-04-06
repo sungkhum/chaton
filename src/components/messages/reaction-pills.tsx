@@ -132,7 +132,7 @@ export const ReactionPills = ({
                   <div
                     key={pk}
                     className="rounded-full ring-1 ring-[#141c2b] overflow-hidden"
-                    title={getUsernameByPublicKey?.[pk] || pk.slice(0, 8)}
+                    title={getUsernameByPublicKey?.[pk] || undefined}
                   >
                     <MessagingDisplayAvatar
                       publicKey={pk}
@@ -152,36 +152,45 @@ export const ReactionPills = ({
             </button>
 
             {/* Desktop hover tooltip — shows username + emoji per line */}
-            {!isMobile && tooltipEmoji === emoji && !showDetail && (
-              <div
-                className={`absolute bottom-full mb-1.5 z-20 bg-[#0d1520] border border-white/[0.08] rounded-lg px-2.5 py-1.5 shadow-lg pointer-events-none animate-[fadeIn_100ms_ease-out] ${
-                  isSender ? "right-0" : "left-0"
-                }`}
-              >
-                <div className="flex flex-col gap-0.5">
-                  {keys.slice(0, 5).map((pk) => {
-                    const name =
-                      pk === currentUserKey
-                        ? "You"
-                        : getUsernameByPublicKey?.[pk] || pk.slice(0, 8);
-                    return (
-                      <div
-                        key={pk}
-                        className="flex items-center gap-1.5 text-xs text-gray-300 whitespace-nowrap"
-                      >
-                        <span className="truncate max-w-[140px]">{name}</span>
-                        <AnimatedEmoji emoji={emoji} size={13} />
-                      </div>
-                    );
-                  })}
-                  {keys.length > 5 && (
-                    <span className="text-[10px] text-gray-500">
-                      +{keys.length - 5} more
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
+            {!isMobile &&
+              tooltipEmoji === emoji &&
+              !showDetail &&
+              (() => {
+                const tooltipNames = keys
+                  .slice(0, 5)
+                  .map((pk) =>
+                    pk === currentUserKey
+                      ? "You"
+                      : getUsernameByPublicKey?.[pk] || null
+                  )
+                  .filter(Boolean) as string[];
+                const extraCount = keys.length > 5 ? keys.length - 5 : 0;
+                if (tooltipNames.length === 0 && extraCount === 0) return null;
+                return (
+                  <div
+                    className={`absolute bottom-full mb-1.5 z-20 bg-[#0d1520] border border-white/[0.08] rounded-lg px-2.5 py-1.5 shadow-lg pointer-events-none animate-[fadeIn_100ms_ease-out] ${
+                      isSender ? "right-0" : "left-0"
+                    }`}
+                  >
+                    <div className="flex flex-col gap-0.5">
+                      {tooltipNames.map((name) => (
+                        <div
+                          key={name}
+                          className="flex items-center gap-1.5 text-xs text-gray-300 whitespace-nowrap"
+                        >
+                          <span className="truncate max-w-[140px]">{name}</span>
+                          <AnimatedEmoji emoji={emoji} size={13} />
+                        </div>
+                      ))}
+                      {extraCount > 0 && (
+                        <span className="text-[10px] text-gray-500">
+                          +{extraCount} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
           </div>
         );
       })}

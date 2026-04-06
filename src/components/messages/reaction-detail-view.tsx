@@ -179,7 +179,7 @@ export const ReactionDetailView = ({
                 isMe ? "flex-1 min-w-0" : "flex-1"
               }`}
             >
-              {username || `${publicKey.slice(0, 8)}...`}
+              {username || "Anonymous"}
             </span>
             {/* Emoji badges (in "All" tab, show which emojis this person used) */}
             {!activeTab && (
