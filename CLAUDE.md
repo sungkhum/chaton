@@ -119,6 +119,10 @@ field. This is a shared convention any DeSo messaging app can adopt:
 - `msg:replyPreview` — truncated preview text of the replied-to message
 - `msg:replySender` — username of the sender of the replied-to message
 - `msg:gifTitle` — title of a GIF or sticker from KLIPY
+- `msg:lang` — ISO 639-1 language code detected at send time (e.g., `"en"`, `"es"`).
+  Detected client-side via `franc-min` (< 1ms). Omitted for messages shorter than
+  10 characters. Stored in plaintext (not encrypted) so any app can read it for
+  translation without needing the decryption key.
 - `msg:systemAction` — system log action: `member-joined`, `member-left`
 - `msg:systemMembers` — JSON array of `{pk, un}` entries for the users involved
 
