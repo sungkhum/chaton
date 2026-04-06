@@ -139,7 +139,7 @@ export function getCachedUserProfile(publicKey: string): CachedProfile | null {
 // ---------------------------------------------------------------------------
 
 interface CachedClassification {
-  mutualFollows: string[];
+  followedUsers: string[];
   approvedUsers: string[];
   blockedUsers: string[];
   approvedAssociationIds: [string, string][];
@@ -153,7 +153,7 @@ interface CachedClassification {
 }
 
 export interface ClassificationData {
-  mutualFollows: Set<string>;
+  followedUsers: Set<string>;
   approvedUsers: Set<string>;
   blockedUsers: Set<string>;
   approvedAssociationIds: Map<string, string>;
@@ -171,7 +171,7 @@ export function cacheClassificationData(
   data: ClassificationData
 ): void {
   const serialized: CachedClassification = {
-    mutualFollows: Array.from(data.mutualFollows),
+    followedUsers: Array.from(data.followedUsers),
     approvedUsers: Array.from(data.approvedUsers),
     blockedUsers: Array.from(data.blockedUsers),
     approvedAssociationIds: Array.from(data.approvedAssociationIds.entries()),
@@ -196,7 +196,9 @@ export function getCachedClassificationData(
   const raw = lsGet<CachedClassification>(publicKey, "classification");
   if (!raw) return null;
   return {
-    mutualFollows: new Set(raw.mutualFollows),
+    followedUsers: new Set(
+      raw.followedUsers || (raw as any).mutualFollows || []
+    ),
     approvedUsers: new Set(raw.approvedUsers),
     blockedUsers: new Set(raw.blockedUsers),
     approvedAssociationIds: new Map(raw.approvedAssociationIds),

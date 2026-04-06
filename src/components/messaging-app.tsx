@@ -68,7 +68,7 @@ import {
   fetchChatAssociations,
   fetchJoinRequestCountsForOwner,
   fetchMessageThreadsRaw,
-  fetchMutualFollows,
+  fetchFollowedUsers,
   fetchPrivacyMode,
   getConversations,
   getConversationsDifferential,
@@ -184,6 +184,19 @@ import {
   hideMessage,
 } from "../services/hidden-messages.service";
 
+/**
+ * Find the timestamp of the latest message NOT sent by the current user.
+ * In group chats the user might have sent the latest message (or a reaction)
+ * while there are still unread messages from others above it.
+ * Returns 0 if no incoming message is found.
+ */
+function latestIncomingTimestamp(convo: Conversation): number {
+  for (const m of convo.messages) {
+    if (!m.IsSender) return m.MessageInfo.TimestampNanos;
+  }
+  return 0;
+}
+
 export const MockBubble: FC<{
   username: string;
   avatar: string;
@@ -259,7 +272,7 @@ export const MessagingApp: FC = () => {
     isLoadingUser,
     allAccessGroups,
     lockRefresh,
-    mutualFollows,
+    followedUsers,
     approvedUsers,
     blockedUsers,
     initiatedChats,
@@ -275,7 +288,7 @@ export const MessagingApp: FC = () => {
       isLoadingUser: s.isLoadingUser,
       allAccessGroups: s.allAccessGroups,
       lockRefresh: s.lockRefresh,
-      mutualFollows: s.mutualFollows,
+      followedUsers: s.followedUsers,
       approvedUsers: s.approvedUsers,
       blockedUsers: s.blockedUsers,
       initiatedChats: s.initiatedChats,
@@ -858,9 +871,8 @@ export const MessagingApp: FC = () => {
                     store.archivedGroups.has(k)
                   )
                     continue;
-                  const latestMsg = convo.messages[0];
-                  if (!latestMsg || latestMsg.IsSender) continue;
-                  const msgTs = latestMsg.MessageInfo.TimestampNanos;
+                  const msgTs = latestIncomingTimestamp(convo);
+                  if (!msgTs) continue;
                   const lastRead = lastReadTimestamps[k];
                   if (lastRead === undefined) {
                     cacheLastReadTimestamp(
@@ -930,10 +942,10 @@ export const MessagingApp: FC = () => {
       if (!user) return;
       const ts = Number(timestamp);
       cacheLastReadTimestamp(user.PublicKeyBase58Check, conversationKey, ts);
-      // Clear unread if cursor >= latest message
+      // Clear unread if cursor >= latest incoming message
       const convo = conversationsRef.current[conversationKey];
-      const latestTs = convo?.messages[0]?.MessageInfo?.TimestampNanos;
-      if (latestTs && ts >= latestTs) {
+      const incomingTs = convo ? latestIncomingTimestamp(convo) : 0;
+      if (incomingTs && ts >= incomingTs) {
         clearUnread(conversationKey);
         removeUnreadConversation(conversationKey);
       }
@@ -951,21 +963,29 @@ export const MessagingApp: FC = () => {
       const store = useStore.getState();
       const convos = conversationsRef.current;
       const unreadMap = new Map<string, number>();
+      // Track conversations we positively confirmed as read (cursor >= latest
+      // incoming message). Only these should have their badges cleared —
+      // skipping a conversation (no messages, missing cursor, etc.) must NOT
+      // remove an existing badge set by incrementUnread.
+      const confirmedRead = new Set<string>();
+      const currentKey = selectedConversationPublicKeyRef.current;
       for (const [k, convo] of Object.entries(convos)) {
+        if (k === currentKey) continue; // Viewing — already read
         if (store.mutedConversations.has(k) || store.archivedGroups.has(k))
           continue;
-        const latestMsg = convo.messages[0];
-        if (!latestMsg || latestMsg.IsSender) continue;
-        const msgTs = latestMsg.MessageInfo.TimestampNanos;
+        const msgTs = latestIncomingTimestamp(convo);
+        if (!msgTs) continue; // No incoming messages — nothing to mark unread
         const lastRead = merged[k];
-        if (lastRead !== undefined && msgTs > lastRead) {
+        if (lastRead === undefined) continue; // No cursor — preserve existing state
+        if (msgTs > lastRead) {
           unreadMap.set(k, 1);
+        } else {
+          confirmedRead.add(k);
         }
       }
-      // Clear conversations that were unread but are now read (the key fix
-      // for cross-device sync — initializeUnread only adds, never removes)
+      // Only clear conversations we have positive evidence are read
       for (const existingKey of store.unreadByConversation.keys()) {
-        if (!unreadMap.has(existingKey)) {
+        if (confirmedRead.has(existingKey)) {
           clearUnread(existingKey);
           removeUnreadConversation(existingKey);
         }
@@ -1003,7 +1023,7 @@ export const MessagingApp: FC = () => {
           convo,
           key,
           appUser.PublicKeyBase58Check,
-          mutualFollows,
+          followedUsers,
           approvedUsers,
           blockedUsers,
           initiatedChats,
@@ -1023,7 +1043,7 @@ export const MessagingApp: FC = () => {
       };
     }, [
       conversations,
-      mutualFollows,
+      followedUsers,
       approvedUsers,
       blockedUsers,
       initiatedChats,
@@ -1846,7 +1866,7 @@ export const MessagingApp: FC = () => {
         // Silently re-fetch classification data (associations, follows) so
         // accept/block/dismiss actions from other devices sync without reload.
         Promise.all([
-          fetchMutualFollows(publicKey),
+          fetchFollowedUsers(publicKey),
           fetchChatAssociations(publicKey),
           fetchArchivedGroups(publicKey),
         ])
@@ -2125,7 +2145,7 @@ export const MessagingApp: FC = () => {
       // Hydrate classification from cache if not yet loaded
       if (cachedClassification && !chatRequestsLoaded) {
         setClassificationData(
-          cachedClassification.mutualFollows,
+          cachedClassification.followedUsers,
           cachedClassification.approvedUsers,
           cachedClassification.blockedUsers,
           cachedClassification.approvedAssociationIds,
@@ -2216,9 +2236,8 @@ export const MessagingApp: FC = () => {
       for (const [k, convo] of Object.entries(cachedConvos)) {
         if (k === cachedKeyToUse) continue;
         if (cachedMuted.has(k) || cachedArchived.has(k)) continue;
-        const latestMsg = convo.messages[0];
-        if (!latestMsg || latestMsg.IsSender) continue;
-        const msgTs = latestMsg.MessageInfo.TimestampNanos;
+        const msgTs = latestIncomingTimestamp(convo);
+        if (!msgTs) continue;
         const lastRead = cachedLastRead[k];
         if (lastRead !== undefined && msgTs > lastRead) {
           cachedUnreadMap.set(k, 1);
@@ -2232,7 +2251,7 @@ export const MessagingApp: FC = () => {
     // --- Classification + privacy (always run in parallel) ---
     const classificationPromise = !chatRequestsLoaded
       ? Promise.all([
-          fetchMutualFollows(publicKey),
+          fetchFollowedUsers(publicKey),
           fetchChatAssociations(publicKey),
           fetchArchivedGroups(publicKey),
         ])
@@ -2693,9 +2712,8 @@ export const MessagingApp: FC = () => {
       for (const [k, convo] of Object.entries(conversationsResponse)) {
         if (k === keyToUse) continue; // Currently selected conversation
         if (muted.has(k) || archived.has(k)) continue; // Skip muted/archived
-        const latestMsg = convo.messages[0];
-        if (!latestMsg || latestMsg.IsSender) continue; // No messages or I sent the latest
-        const msgTs = latestMsg.MessageInfo.TimestampNanos;
+        const msgTs = latestIncomingTimestamp(convo);
+        if (!msgTs) continue; // No incoming messages
         const lastRead = lastReadTimestamps[k];
         if (lastRead === undefined) {
           // First time seeing this conversation — seed as read
@@ -4329,6 +4347,10 @@ export const MessagingApp: FC = () => {
                           _status: string;
                           _localId: string;
                         };
+
+                        // Sending a message = implicit "caught up" — clear
+                        // the unread divider so it doesn't persist above.
+                        setOpenedLastReadNanos(null);
 
                         // Optimistic: insert immediately
                         const convKey = selectedConversationPublicKey;

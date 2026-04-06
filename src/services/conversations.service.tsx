@@ -1273,19 +1273,10 @@ async function fetchAllFollowsPaginated(
   return keys;
 }
 
-export async function fetchMutualFollows(
+export async function fetchFollowedUsers(
   publicKey: string
 ): Promise<Set<string>> {
-  const [iFollow, followsMe] = await Promise.all([
-    fetchAllFollowsPaginated(publicKey, false),
-    fetchAllFollowsPaginated(publicKey, true),
-  ]);
-
-  const mutual = new Set<string>();
-  for (const key of iFollow) {
-    if (followsMe.has(key)) mutual.add(key);
-  }
-  return mutual;
+  return fetchAllFollowsPaginated(publicKey, false);
 }
 
 /** Fetch all associations of a single type. Returns Map<targetPubKey, associationId>. */
@@ -1339,7 +1330,7 @@ export function classifyConversation(
   conversation: Conversation,
   conversationKey: string,
   myPublicKey: string,
-  mutualFollows: Set<string>,
+  followedUsers: Set<string>,
   approvedUsers: Set<string>,
   blockedUsers: Set<string>,
   initiatedChats: Set<string>,
@@ -1357,7 +1348,7 @@ export function classifyConversation(
   if (blockedUsers.has(otherKey)) return "blocked";
   if (dismissedUsers.has(otherKey)) return "dismissed";
   if (archivedChats.has(otherKey)) return "archived";
-  if (mutualFollows.has(otherKey)) return "chat";
+  if (followedUsers.has(otherKey)) return "chat";
   if (approvedUsers.has(otherKey)) return "chat";
   if (initiatedChats.has(otherKey)) return "chat";
 

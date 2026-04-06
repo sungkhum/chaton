@@ -59,7 +59,7 @@ on-chain follows and User Associations (no backend needed).
 3. `chaton:chat-blocked` association exists → hidden (blocked)
 4. `chaton:chat-dismissed` association exists → hidden (dismissed)
 5. `chaton:chat-archived` association exists → Archived
-6. Mutual DeSo follow → Chats
+6. Current user follows the other user on DeSo → Chats
 7. `chaton:chat-approved` association exists → Chats
 8. User initiated the conversation (via search) → Chats
 9. Current user sent the first message → Chats

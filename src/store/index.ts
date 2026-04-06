@@ -53,7 +53,7 @@ interface ChatOnState {
   setMutedConversations: (muted: Set<string>) => void;
 
   // Chat Requests
-  mutualFollows: Set<string>;
+  followedUsers: Set<string>;
   approvedUsers: Set<string>;
   blockedUsers: Set<string>;
   initiatedChats: Set<string>;
@@ -84,7 +84,7 @@ interface ChatOnState {
   setPrivacyMode: (mode: PrivacyMode, associationId?: string | null) => void;
 
   setClassificationData: (
-    mutualFollows: Set<string>,
+    followedUsers: Set<string>,
     approved: Set<string>,
     blocked: Set<string>,
     approvedIds: Map<string, string>,
@@ -140,7 +140,7 @@ const EMPTY_MAP = new Map<string, string>();
 function classificationSnapshot(
   state: ChatOnState,
   overrides: Partial<{
-    mutualFollows: Set<string>;
+    followedUsers: Set<string>;
     approvedUsers: Set<string>;
     blockedUsers: Set<string>;
     approvedAssociationIds: Map<string, string>;
@@ -154,7 +154,7 @@ function classificationSnapshot(
   }> = {}
 ) {
   return {
-    mutualFollows: overrides.mutualFollows ?? state.mutualFollows,
+    followedUsers: overrides.followedUsers ?? state.followedUsers,
     approvedUsers: overrides.approvedUsers ?? state.approvedUsers,
     blockedUsers: overrides.blockedUsers ?? state.blockedUsers,
     approvedAssociationIds:
@@ -299,7 +299,7 @@ export const useStore = create<ChatOnState>((set) => ({
     }),
 
   // Chat Requests
-  mutualFollows: EMPTY_SET,
+  followedUsers: EMPTY_SET,
   approvedUsers: EMPTY_SET,
   blockedUsers: EMPTY_SET,
   initiatedChats: EMPTY_SET,
@@ -350,7 +350,7 @@ export const useStore = create<ChatOnState>((set) => ({
     }),
 
   setClassificationData: (
-    mutualFollows,
+    followedUsers,
     approved,
     blocked,
     approvedIds,
@@ -366,7 +366,7 @@ export const useStore = create<ChatOnState>((set) => ({
       const publicKey = state.appUser?.PublicKeyBase58Check;
       if (publicKey) {
         cacheClassificationData(publicKey, {
-          mutualFollows,
+          followedUsers,
           approvedUsers: approved,
           blockedUsers: blocked,
           approvedAssociationIds: approvedIds,
@@ -380,7 +380,7 @@ export const useStore = create<ChatOnState>((set) => ({
         });
       }
       return {
-        mutualFollows,
+        followedUsers,
         approvedUsers: approved,
         blockedUsers: blocked,
         approvedAssociationIds: approvedIds,
@@ -630,7 +630,7 @@ export const useStore = create<ChatOnState>((set) => ({
     if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
     clearActiveServiceWorkerKeys();
     set({
-      mutualFollows: EMPTY_SET,
+      followedUsers: EMPTY_SET,
       approvedUsers: EMPTY_SET,
       blockedUsers: EMPTY_SET,
       initiatedChats: EMPTY_SET,
