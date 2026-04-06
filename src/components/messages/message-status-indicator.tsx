@@ -1,4 +1,4 @@
-import { CheckCheck, AlertCircle, Loader2, Trash2 } from "lucide-react";
+import { Check, CheckCheck, AlertCircle, Loader2, Trash2 } from "lucide-react";
 import { MessageStatus } from "../../store";
 
 interface MessageStatusIndicatorProps {
@@ -20,9 +20,17 @@ export const MessageStatusIndicator = ({
     case "sending":
       return <Loader2 className="w-3 h-3 text-[#34F080] animate-spin" />;
     case "sent":
-      return <Loader2 className="w-3 h-3 text-[#34F080] animate-spin" />;
+      return (
+        <span className="status-check-enter inline-flex">
+          <Check className="w-3 h-3 text-[#34F080]" />
+        </span>
+      );
     case "confirmed":
-      return <CheckCheck className="w-3 h-3 text-[#34F080]" />;
+      return (
+        <span className="status-confirm-enter inline-flex">
+          <CheckCheck className="w-3 h-3 text-[#34F080]" />
+        </span>
+      );
     case "failed":
       return (
         <div className="flex items-center gap-2">

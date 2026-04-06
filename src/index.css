@@ -69,6 +69,23 @@
   animation: pill-scale-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* Message status indicator transitions (sending → sent → confirmed → gone) */
+@keyframes status-check-in {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes status-confirm-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.status-check-enter {
+  animation: status-check-in 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.status-confirm-enter {
+  animation: status-confirm-pop 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",

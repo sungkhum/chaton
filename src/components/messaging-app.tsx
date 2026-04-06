@@ -526,6 +526,10 @@ export const MessagingApp: FC = () => {
     selectedConversationPublicKey
   );
   selectedConversationPublicKeyRef.current = selectedConversationPublicKey;
+  const conversationsRef = useRef(conversations);
+  conversationsRef.current = conversations;
+  const allAccessGroupsRef = useRef(allAccessGroups);
+  allAccessGroupsRef.current = allAccessGroups;
 
   // Shared merge logic: reconcile optimistic messages with blockchain-confirmed data.
   // Used by both the WebSocket handler and the polling interval.
@@ -675,6 +679,193 @@ export const MessagingApp: FC = () => {
       });
     },
     [appUser]
+  );
+
+  // Dedicated sender-side confirmation poller: after a message is sent, poll the
+  // single conversation at short intervals to confirm the message on-chain quickly
+  // instead of waiting for the general poll cycle (15s–5min).
+  //
+  // Coalesced per-conversation: rapid-fire sends share a single poller per conv
+  // instead of spawning one poller per message, avoiding API call storms.
+  const confirmationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const pendingConfirmationsRef = useRef<
+    Map<
+      string,
+      {
+        localIds: Set<string>;
+        chatType: ChatType;
+        firstMessagePublicKey: string;
+        recipientGroupKeyName: string;
+        attempt: number;
+      }
+    >
+  >(new Map());
+  // Clean up confirmation timer on unmount
+  useEffect(
+    () => () => {
+      if (confirmationTimerRef.current)
+        clearTimeout(confirmationTimerRef.current);
+    },
+    []
+  );
+
+  const CONFIRM_MAX_ATTEMPTS = 8;
+  const CONFIRM_INTERVAL_MS = 3000;
+
+  const runConfirmationCheck = useCallback(async () => {
+    confirmationTimerRef.current = null;
+    if (!appUser) return;
+    const myPk = appUser.PublicKeyBase58Check;
+    const pending = pendingConfirmationsRef.current;
+    if (pending.size === 0) return;
+
+    // Process each conversation with pending confirmations
+    const convKeysToRemove: string[] = [];
+    for (const [convKey, entry] of pending) {
+      entry.attempt++;
+      try {
+        // Remove localIds already confirmed by normal polling
+        const conv = conversationsRef.current[convKey];
+        if (!conv) {
+          convKeysToRemove.push(convKey);
+          continue;
+        }
+        const activeLocalIds = conv.messages
+          .filter((m: any) => m._localId && entry.localIds.has(m._localId))
+          .map((m: any) => m._localId as string);
+        if (activeLocalIds.length === 0) {
+          convKeysToRemove.push(convKey);
+          continue;
+        }
+        // Update the set to only track still-pending messages
+        entry.localIds = new Set(activeLocalIds);
+
+        // Lightweight single-conversation fetch
+        let decrypted: DecryptedMessageEntryResponse[];
+        if (entry.chatType === ChatType.DM) {
+          const resp = await getPaginatedDMThread({
+            UserGroupOwnerPublicKeyBase58Check: myPk,
+            UserGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
+            PartyGroupOwnerPublicKeyBase58Check: entry.firstMessagePublicKey,
+            PartyGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
+            MaxMessagesToFetch: MESSAGES_ONE_REQUEST_LIMIT,
+            StartTimeStamp: new Date().valueOf() * 1e6,
+          });
+          const result = await decryptAccessGroupMessagesWithRetry(
+            myPk,
+            resp.ThreadMessages,
+            allAccessGroupsRef.current
+          );
+          decrypted = result.decrypted;
+        } else {
+          const resp = await getPaginatedGroupChatThread({
+            UserPublicKeyBase58Check: entry.firstMessagePublicKey,
+            AccessGroupKeyName: entry.recipientGroupKeyName,
+            StartTimeStamp: new Date().valueOf() * 1e6,
+            MaxMessagesToFetch: MESSAGES_ONE_REQUEST_LIMIT,
+          });
+          const result = await decryptAccessGroupMessagesWithRetry(
+            myPk,
+            resp.GroupChatMessages,
+            allAccessGroupsRef.current
+          );
+          decrypted = result.decrypted;
+        }
+
+        // Check if any pending messages now appear on-chain
+        const currentConv = conversationsRef.current[convKey];
+        if (!currentConv) {
+          convKeysToRemove.push(convKey);
+          continue;
+        }
+
+        const anyFound = currentConv.messages.some((m: any) => {
+          if (!m._localId || !entry.localIds.has(m._localId)) return false;
+          const targetKey = msgDedupeKey(
+            m.SenderInfo.OwnerPublicKeyBase58Check,
+            m.DecryptedMessage,
+            m.MessageInfo?.ExtraData
+          );
+          return decrypted.some(
+            (d) =>
+              msgDedupeKey(
+                d.SenderInfo.OwnerPublicKeyBase58Check,
+                d.DecryptedMessage,
+                d.MessageInfo?.ExtraData
+              ) === targetKey
+          );
+        });
+
+        if (anyFound) {
+          // At least one message confirmed — merge full thread to reconcile all
+          mergeConversationUpdate(
+            {
+              ...conversationsRef.current,
+              [convKey]: { ...currentConv, messages: decrypted },
+            },
+            convKey,
+            decrypted
+          );
+          // Remove confirmed localIds; mergeConversationUpdate handles the rest
+          convKeysToRemove.push(convKey);
+        } else if (entry.attempt >= CONFIRM_MAX_ATTEMPTS) {
+          convKeysToRemove.push(convKey);
+        }
+      } catch {
+        // Silently ignore — normal polling is the fallback
+        if (entry.attempt >= CONFIRM_MAX_ATTEMPTS) {
+          convKeysToRemove.push(convKey);
+        }
+      }
+    }
+
+    for (const key of convKeysToRemove) {
+      pending.delete(key);
+    }
+
+    // Schedule next tick if there are still pending confirmations
+    if (pending.size > 0) {
+      confirmationTimerRef.current = setTimeout(
+        runConfirmationCheck,
+        CONFIRM_INTERVAL_MS
+      );
+    }
+  }, [appUser, mergeConversationUpdate]);
+
+  const scheduleConfirmationCheck = useCallback(
+    (
+      convKey: string,
+      localId: string,
+      chatType: ChatType,
+      firstMessagePublicKey: string,
+      recipientGroupKeyName: string
+    ) => {
+      const pending = pendingConfirmationsRef.current;
+      const existing = pending.get(convKey);
+      if (existing) {
+        // Coalesce: add this message to the existing conversation poller
+        existing.localIds.add(localId);
+      } else {
+        pending.set(convKey, {
+          localIds: new Set([localId]),
+          chatType,
+          firstMessagePublicKey,
+          recipientGroupKeyName,
+          attempt: 0,
+        });
+      }
+
+      // Ensure the shared timer is running
+      if (!confirmationTimerRef.current) {
+        confirmationTimerRef.current = setTimeout(
+          runConfirmationCheck,
+          CONFIRM_INTERVAL_MS
+        );
+      }
+    },
+    [runConfirmationCheck]
   );
 
   // Guard against concurrent WS-triggered fetches (e.g. rapid-fire notifications)
@@ -1425,8 +1616,6 @@ export const MessagingApp: FC = () => {
 
   // Retry a single pending message (used by startup retry and the retry button)
   const retryingIds = useRef(new Set<string>());
-  const conversationsRef = useRef(conversations);
-  conversationsRef.current = conversations;
   const retryPendingMessage = useCallback(
     async (pending: PendingMessage) => {
       if (!appUser) return;
@@ -1570,6 +1759,15 @@ export const MessagingApp: FC = () => {
             },
           };
         });
+        // Start dedicated confirmation poller for this message
+        const retryConv = conversationsRef.current[conversationKey];
+        scheduleConfirmationCheck(
+          conversationKey,
+          localId,
+          retryConv?.ChatType ?? ChatType.DM,
+          recipientPublicKey,
+          recipientAccessGroupKeyName
+        );
       } catch (e: any) {
         const errorStr = e?.toString() || "Unknown error";
 
@@ -4452,6 +4650,16 @@ export const MessagingApp: FC = () => {
                               ),
                             },
                           }));
+                          // Start dedicated confirmation poller for this message.
+                          // Checks the single conversation every 3s to confirm
+                          // on-chain quickly instead of waiting for the general poll.
+                          scheduleConfirmationCheck(
+                            convKey,
+                            localId,
+                            selectedConversation.ChatType,
+                            recipientPublicKey,
+                            recipientAccessGroupKeyName
+                          );
                         } catch (e: any) {
                           // Update status to "failed" — pending message stays in IndexedDB for retry
                           setConversations((prev) => ({

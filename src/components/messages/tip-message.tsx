@@ -127,18 +127,18 @@ export const TipFooter = ({
 
   return (
     <div
-      className={`flex items-center gap-2 mt-2.5 px-2.5 py-1.5 rounded-lg ${glassClass}`}
+      className={`flex items-center gap-1.5 mt-2.5 px-2.5 py-1.5 rounded-lg min-w-0 ${glassClass}`}
     >
       <CircleDollarSign className={`w-4 h-4 shrink-0 ${textColor}`} />
       <span
-        className={`text-xs font-bold ${textColor}`}
+        className={`text-xs font-bold shrink-0 ${textColor}`}
         style={{ textShadow: `0 0 8px ${glowColor}40` }}
       >
         Tipped {usdAmount ?? "..."}
       </span>
       {recipient && (
         <>
-          <span className="text-white/25 text-xs">to</span>
+          <span className="text-white/25 text-xs shrink-0">to</span>
           {recipientPublicKey && (
             <MessagingDisplayAvatar
               publicKey={recipientPublicKey}
@@ -148,7 +148,7 @@ export const TipFooter = ({
               disableLink
             />
           )}
-          <span className="text-xs text-gray-200 font-medium truncate">
+          <span className="text-xs text-gray-200 font-medium truncate min-w-0">
             {recipientUsername ? `@${recipientUsername}` : `${recipient}...`}
           </span>
         </>
