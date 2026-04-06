@@ -1093,7 +1093,7 @@ export const MessagingConversationAccount: FC<{
                 toast.success("Invite link copied!");
               }
             }}
-            className="pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-full glass-invite hover:border-[#34F080]/40 hover:bg-[#34F080]/10 text-gray-400 hover:text-[#34F080] text-sm font-medium cursor-pointer transition-all active:scale-95"
+            className="pointer-events-auto flex items-center gap-2 px-4 py-3 rounded-full glass-invite hover:border-[#34F080]/40 hover:bg-[#34F080]/10 text-gray-400 hover:text-[#34F080] text-sm font-medium cursor-pointer transition-all active:scale-95"
           >
             <Share2 className="w-4 h-4" />
             <span>Invite Friends</span>
