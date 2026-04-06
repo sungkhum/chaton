@@ -6,6 +6,8 @@ interface Props {
 
 interface State {
   hasError: boolean;
+  error: Error | null;
+  errorInfo: ErrorInfo | null;
 }
 
 /**
@@ -14,18 +16,19 @@ interface State {
  * and offers a retry instead of showing a white screen.
  */
 export class RouteErrorBoundary extends Component<Props, State> {
-  state: State = { hasError: false };
+  state: State = { hasError: false, error: null, errorInfo: null };
 
-  static getDerivedStateFromError(): State {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error, errorInfo: null };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("Route load failed:", error, info);
+    this.setState({ errorInfo: info });
   }
 
   handleRetry = () => {
-    this.setState({ hasError: false });
+    this.setState({ hasError: false, error: null, errorInfo: null });
     window.location.reload();
   };
 
@@ -49,6 +52,19 @@ export class RouteErrorBoundary extends Component<Props, State> {
             >
               Reload Page
             </button>
+            {this.state.error && (
+              <details className="mt-6 text-left">
+                <summary className="text-xs text-white/40 cursor-pointer hover:text-white/60">
+                  Error details (tap to expand)
+                </summary>
+                <pre className="mt-2 p-3 rounded-lg bg-black/40 border border-white/5 text-[10px] text-white/50 overflow-auto max-h-48 whitespace-pre-wrap break-all">
+                  {this.state.error.name}: {this.state.error.message}
+                  {this.state.error.stack && `\n\n${this.state.error.stack}`}
+                  {this.state.errorInfo?.componentStack &&
+                    `\n\nComponent Stack:${this.state.errorInfo.componentStack}`}
+                </pre>
+              </details>
+            )}
           </div>
         </div>
       );

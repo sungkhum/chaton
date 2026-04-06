@@ -31,10 +31,18 @@ const updateViewport = () => {
   _vpRaf = requestAnimationFrame(() => {
     const vv = window.visualViewport;
     if (vv) {
-      document.documentElement.style.setProperty("--app-height", `${vv.height}px`);
-      document.documentElement.style.setProperty("--app-offset", `${vv.offsetTop}px`);
+      // Guard against 0 height — can happen on PWA resume from suspension
+      // on some iOS/Android versions, causing content to be invisible.
+      const h =
+        vv.height > 0 ? vv.height : window.innerHeight || window.screen.height;
+      document.documentElement.style.setProperty("--app-height", `${h}px`);
+      document.documentElement.style.setProperty(
+        "--app-offset",
+        `${vv.offsetTop}px`
+      );
     } else {
-      document.documentElement.style.setProperty("--app-height", `${window.innerHeight}px`);
+      const h = window.innerHeight || window.screen.height;
+      document.documentElement.style.setProperty("--app-height", `${h}px`);
       document.documentElement.style.setProperty("--app-offset", "0px");
     }
   });

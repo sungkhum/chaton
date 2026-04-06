@@ -304,10 +304,17 @@ function App() {
           return;
         }
 
-        // No user — logged out
+        // No user — logged out.
+        // Only clear appUser if an explicit logout event occurred. Transient
+        // subscribe callbacks with currentUser=null (e.g. identity iframe
+        // reinitializing on PWA resume) must NOT blank the screen.
         if (!currentUser) {
-          setAppUser(null);
-          setIsLoadingUser(false);
+          if (!store.appUser) {
+            // No user was loaded yet — safe to stay in logged-out state
+            setIsLoadingUser(false);
+          }
+          // If appUser is already set, ignore this spurious null — the user
+          // is still logged in and we already have their data.
           return;
         }
 
@@ -350,8 +357,12 @@ function App() {
       })
       .catch((err) => {
         console.error("[ChatOn] identity.subscribe failed:", err);
-        setAppUser(null);
-        setIsLoadingUser(false);
+        // Only clear loading state — don't blank the screen by setting
+        // appUser=null if the user is already loaded from snapshot.
+        const store = useStore.getState();
+        if (!store.appUser) {
+          setIsLoadingUser(false);
+        }
       });
   }, []);
 
@@ -565,15 +576,17 @@ function App() {
   }
 
   return (
-    <div className="App">
-      <Header />
-      <section className="h-[calc(100%-56px)] mt-[56px] overflow-hidden">
-        <MessagingApp />
-      </section>
-      <InstallPrompt />
-      <SwUpdatePrompt />
-      <Toaster position="top-right" theme="dark" />
-    </div>
+    <RouteErrorBoundary>
+      <div className="App">
+        <Header />
+        <section className="h-[calc(100%-56px)] mt-[56px] overflow-hidden">
+          <MessagingApp />
+        </section>
+        <InstallPrompt />
+        <SwUpdatePrompt />
+        <Toaster position="top-right" theme="dark" />
+      </div>
+    </RouteErrorBoundary>
   );
 }
 
