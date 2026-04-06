@@ -180,7 +180,13 @@ export const ImageMessage = ({
   caption,
 }: ImageMessageProps) => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  // rerender-lazy-state-init: probe the browser cache synchronously so a
+  // remount after optimistic→confirmed merge skips the skeleton entirely.
+  const [loaded, setLoaded] = useState(() => {
+    const probe = new Image();
+    probe.src = imageUrl;
+    return probe.complete && probe.naturalWidth > 0;
+  });
   const aspectRatio = width && height ? width / height : undefined;
   const isPortrait = aspectRatio !== undefined && aspectRatio < 1;
 

@@ -8,8 +8,20 @@ interface GifMessageProps {
   caption?: string;
 }
 
-export const GifMessage = ({ gifUrl, title, width, height, caption }: GifMessageProps) => {
-  const [loaded, setLoaded] = useState(false);
+export const GifMessage = ({
+  gifUrl,
+  title,
+  width,
+  height,
+  caption,
+}: GifMessageProps) => {
+  // rerender-lazy-state-init: probe browser cache so remounts after
+  // optimistic→confirmed merge skip the skeleton entirely.
+  const [loaded, setLoaded] = useState(() => {
+    const probe = new Image();
+    probe.src = gifUrl;
+    return probe.complete && probe.naturalWidth > 0;
+  });
   const aspectRatio = width && height ? width / height : undefined;
 
   return (
@@ -26,7 +38,9 @@ export const GifMessage = ({ gifUrl, title, width, height, caption }: GifMessage
       <img
         src={gifUrl}
         alt={title || "GIF"}
-        className={`w-full h-auto object-cover transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"}`}
+        className={`w-full h-auto object-cover transition-opacity duration-200 ${
+          loaded ? "opacity-100" : "opacity-0"
+        }`}
         style={aspectRatio ? { aspectRatio } : undefined}
         loading="lazy"
         onLoad={() => setLoaded(true)}
