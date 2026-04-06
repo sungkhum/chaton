@@ -617,8 +617,10 @@ export const MessagingApp: FC = () => {
         return merged;
       });
 
-      // After 1.5s, strip the confirmed tags so the checkmark disappears gracefully.
-      // The next poll will see these as normal blockchain messages.
+      // Strip confirmed tags after the CSS animation completes (pop-in 300ms +
+      // hold + fade-out at 1.2s for 300ms = 1.5s total). The composite animation
+      // on .status-confirm-enter handles the visual lifecycle purely in CSS,
+      // so we only need this single state update to clean up.
       if (hasNewlyConfirmed) {
         setTimeout(() => {
           setConversations((prev) => {
