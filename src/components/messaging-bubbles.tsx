@@ -1215,7 +1215,11 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
               "video",
               "audio",
             ].includes(parsed.type);
-            if (isMedia) {
+            const isSticker = parsed.type === "sticker";
+            if (isSticker) {
+              // Stickers float without a bubble (like Telegram/WhatsApp)
+              senderStyles = "bg-transparent";
+            } else if (isMedia) {
               senderStyles = IsSender
                 ? "glass-sent text-white"
                 : "glass-received text-gray-200";
