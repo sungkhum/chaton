@@ -1488,7 +1488,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                     IsSender ? "ml-auto justify-end" : "mr-auto justify-start"
                   } ${
                     isWideMedia
-                      ? "max-w-[90%] md:max-w-[80%]"
+                      ? "max-w-[90%] md:max-w-[70%]"
                       : "max-w-[80%] md:max-w-[65%]"
                   } ${
                     isLastInGroup ? "mb-4" : "mb-0.5"

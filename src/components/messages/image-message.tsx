@@ -189,12 +189,22 @@ export const ImageMessage = ({
   });
   const aspectRatio = width && height ? width / height : undefined;
   const isPortrait = aspectRatio !== undefined && aspectRatio < 1;
+  // Don't upscale low-res images — cap at natural pixel width.
+  // High-res images (>=600px) get no cap so the bubble wrapper controls sizing.
+  const isSmall = width !== undefined && width < 180;
+  const isHighRes = width !== undefined && width >= 600;
+  const maxWidth = width && !isHighRes ? Math.min(width, 400) : undefined;
 
   const closeLightbox = useCallback(() => setLightboxOpen(false), []);
 
   return (
     <>
-      <div className={`min-w-[180px] ${isPortrait ? "md:max-w-sm" : "w-full"}`}>
+      <div
+        className={`${isSmall ? "" : "min-w-[180px]"} ${
+          isPortrait ? "md:max-w-sm" : "w-full"
+        }`}
+        style={maxWidth ? { maxWidth } : undefined}
+      >
         <div
           className="cursor-pointer overflow-hidden relative"
           onClick={() => setLightboxOpen(true)}
