@@ -30,9 +30,8 @@ queue = "chaton-push-events"
 
 [[queues.consumers]]
 queue = "chaton-push-events"
-max_batch_size = 10
+max_batch_size = 50
 max_batch_timeout = 10
-max_concurrency = 5
 
 # Poll DeSo for new messages every minute
 [triggers]
