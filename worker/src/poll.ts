@@ -9,7 +9,7 @@ import {
   getCronOffset,
   setCronOffset,
   getThreadStates,
-  upsertThreadState,
+  upsertThreadStateBatch,
   cleanupNotificationDedup,
   cleanupInactiveSubscriptions,
 } from "./db";
@@ -151,26 +151,32 @@ export async function handleScheduled(env: Env): Promise<void> {
 
   if (batch.length === 0) return;
 
-  // Process users sequentially to avoid overwhelming the DeSo node.
-  for (const user of batch) {
-    try {
-      await pollUserThreads(env, nodeUrl, user.id, user.deso_public_key);
-    } catch (err) {
-      // Single retry after 2s — DeSo node may be temporarily overloaded
-      console.warn(
-        `Poll failed for ${user.deso_public_key}, retrying:`,
-        err instanceof Error ? err.message : err
-      );
-      try {
-        await new Promise((r) => setTimeout(r, 2000));
-        await pollUserThreads(env, nodeUrl, user.id, user.deso_public_key);
-      } catch (retryErr) {
-        console.error(
-          `Poll retry failed for ${user.deso_public_key}:`,
-          retryErr instanceof Error ? retryErr.message : retryErr
-        );
-      }
-    }
+  // Process users in parallel batches of 5 to reduce wall time while
+  // keeping DeSo node load reasonable.
+  const PARALLEL = 5;
+  for (let i = 0; i < batch.length; i += PARALLEL) {
+    const chunk = batch.slice(i, i + PARALLEL);
+    await Promise.allSettled(
+      chunk.map(async (user) => {
+        try {
+          await pollUserThreads(env, nodeUrl, user.id, user.deso_public_key);
+        } catch (err) {
+          // Single retry — no sleep, just retry immediately
+          console.warn(
+            `Poll failed for ${user.deso_public_key}, retrying:`,
+            err instanceof Error ? err.message : err
+          );
+          try {
+            await pollUserThreads(env, nodeUrl, user.id, user.deso_public_key);
+          } catch (retryErr) {
+            console.error(
+              `Poll retry failed for ${user.deso_public_key}:`,
+              retryErr instanceof Error ? retryErr.message : retryErr
+            );
+          }
+        }
+      })
+    );
   }
 
   // Save offset for next cron run
@@ -255,14 +261,6 @@ async function pollUserThreads(
     );
   }
 
-  // Now that pushes are safely enqueued, persist the new timestamps
-  for (const update of stateUpdates) {
-    await upsertThreadState(
-      env.DB,
-      userId,
-      update.key,
-      update.type,
-      update.timestamp
-    );
-  }
+  // Now that pushes are safely enqueued, persist the new timestamps in one batch
+  await upsertThreadStateBatch(env.DB, userId, stateUpdates);
 }

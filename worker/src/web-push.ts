@@ -163,6 +163,21 @@ async function encrypt(
   return concat(salt, rs, new Uint8Array([65]), asPublic, ciphertext);
 }
 
+// ── VAPID key cache ──
+// Importing the VAPID key is expensive (PKCS8 + P-256) and the key never
+// changes between requests.  Cache by base64url value so the import runs
+// once per Worker instance instead of once per push notification.
+
+let cachedVapidKeyValue: string | null = null;
+let cachedVapidKey: CryptoKey | null = null;
+
+async function getVapidKey(base64urlKey: string): Promise<CryptoKey> {
+  if (cachedVapidKey && cachedVapidKeyValue === base64urlKey) return cachedVapidKey;
+  cachedVapidKey = await importVapidPrivateKey(base64urlKey);
+  cachedVapidKeyValue = base64urlKey;
+  return cachedVapidKey;
+}
+
 // ── Public API ──
 
 /**
@@ -185,7 +200,7 @@ export async function sendPushNotification(
   vapidSubject: string
 ): Promise<"sent" | "expired" | "error"> {
   try {
-    const privateKey = await importVapidPrivateKey(vapidPrivateKeyBase64url);
+    const privateKey = await getVapidKey(vapidPrivateKeyBase64url);
     const { authorization } = await createVapidAuth(subscription.endpoint, privateKey, vapidSubject);
 
     // NOTE: Declarative Web Push (Safari 18.4+) was evaluated but deferred.

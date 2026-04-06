@@ -194,6 +194,26 @@ export async function upsertThreadState(
     .run();
 }
 
+/** Batch insert/update thread states in a single D1 batch call. */
+export async function upsertThreadStateBatch(
+  db: D1Database,
+  userId: number,
+  updates: Array<{ key: string; type: string; timestamp: string }>
+): Promise<void> {
+  if (updates.length === 0) return;
+  const stmts = updates.map(({ key, type, timestamp }) =>
+    db
+      .prepare(
+        `INSERT INTO thread_state (user_id, thread_key, thread_type, last_seen_timestamp)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT (user_id, thread_key) DO UPDATE SET
+           last_seen_timestamp = excluded.last_seen_timestamp`
+      )
+      .bind(userId, key, type, timestamp)
+  );
+  await db.batch(stmts);
+}
+
 /** Mark a subscription as inactive (expired/gone). */
 export async function deactivateSubscription(
   db: D1Database,
