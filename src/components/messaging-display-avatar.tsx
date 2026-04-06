@@ -5,10 +5,40 @@ import { getProfileURL } from "../utils/helpers";
 
 /**
  * Module-level cache of image URLs that have successfully loaded.
- * Survives component remounts — once we know a URL works, skip the
- * opacity-0 loading phase on subsequent mounts.
+ * Hydrated from localStorage on init so avatars display instantly across
+ * page refreshes and sessions — no initials→image flash for returning users.
  */
-const loadedUrlCache = new Set<string>();
+const CACHE_KEY = "chaton:avatar-cache";
+const CACHE_MAX = 500;
+
+const loadedUrlCache = new Set<string>(
+  (() => {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      return raw ? (JSON.parse(raw) as string[]) : [];
+    } catch {
+      return [];
+    }
+  })()
+);
+
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+function persistCache() {
+  // Debounce: batch rapid image loads into a single localStorage write
+  if (persistTimer) return;
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    try {
+      const entries = [...loadedUrlCache];
+      const trimmed =
+        entries.length > CACHE_MAX ? entries.slice(-CACHE_MAX) : entries;
+      localStorage.setItem(CACHE_KEY, JSON.stringify(trimmed));
+    } catch {
+      // Storage full or unavailable — cache still works in-memory
+    }
+  }, 2000);
+}
 
 function ConditionalLink({
   children,
@@ -117,10 +147,13 @@ export const MessagingDisplayAvatar: FC<{
   const prevCandidateKeyRef = useRef(candidateKey);
   if (prevCandidateKeyRef.current !== candidateKey) {
     prevCandidateKeyRef.current = candidateKey;
-    setUrlIndex(0);
     setImgFailed(false);
-    const firstUrl = candidateUrls[0] || "";
-    setImgLoaded(!!firstUrl && loadedUrlCache.has(firstUrl));
+    // Find the first cached candidate so we can skip the flash
+    const cachedIdx = candidateUrls.findIndex((u) => loadedUrlCache.has(u));
+    const bestIdx = cachedIdx >= 0 ? cachedIdx : 0;
+    setUrlIndex(bestIdx);
+    const bestUrl = candidateUrls[bestIdx] || "";
+    setImgLoaded(!!bestUrl && loadedUrlCache.has(bestUrl));
     loadedUrlRef.current = null;
   }
 
@@ -142,11 +175,11 @@ export const MessagingDisplayAvatar: FC<{
 
   const handleImgLoad = useCallback(() => {
     setImgLoaded(true);
-    // Cache this URL module-wide so future mounts are instant
     const url = candidateUrls[urlIndex];
     if (url) {
       loadedUrlCache.add(url);
       loadedUrlRef.current = url;
+      persistCache();
     }
   }, [candidateUrls, urlIndex]);
 
