@@ -47,6 +47,9 @@ export const MSG_TIP_AMOUNT_USDC = "msg:tipAmountUsdc";
 /** "true" when the user typed a custom message with their tip. Absent = fallback text only. */
 export const MSG_TIP_CUSTOM_MESSAGE = "msg:tipHasCustomMessage";
 
+// Language detection metadata — any DeSo messaging app can read this
+export const MSG_LANG = "msg:lang";
+
 /** ExtraData keys always encrypted (reaction privacy — default). */
 export const STANDARD_ENCRYPTED_KEYS = [
   MSG_EMOJI,
@@ -161,6 +164,8 @@ export interface ParsedMessage {
   tipRecipient?: string;
   /** True when the user typed a custom message with their tip. */
   tipHasCustomMessage?: boolean;
+  /** ISO 639-1 language code detected at send time (e.g., "en", "es"). */
+  lang?: string;
 }
 
 /**
@@ -318,6 +323,7 @@ export function parseMessageType(
     systemMembers: extra[MSG_SYSTEM_MEMBERS]
       ? (JSON.parse(extra[MSG_SYSTEM_MEMBERS]) as MentionEntry[])
       : undefined,
+    lang: extra[MSG_LANG] || undefined,
   };
 }
 

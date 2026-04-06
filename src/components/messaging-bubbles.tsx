@@ -21,6 +21,7 @@ import {
   Ban,
   Heart,
   MessageSquare,
+  Languages,
 } from "lucide-react";
 import React, {
   FC,
@@ -50,7 +51,13 @@ import {
   MESSAGES_ONE_REQUEST_LIMIT,
 } from "../utils/constants";
 import { parseMessageType, tipHasCustomMessage } from "../utils/extra-data";
-import { getCachedTipCurrency } from "../services/cache.service";
+import {
+  getCachedTipCurrency,
+  getCachedPreferredLanguage,
+  getCachedAutoTranslate,
+} from "../services/cache.service";
+import { useTranslation } from "../hooks/useTranslation";
+import { getLanguageName } from "./language-selector";
 import { ConversationMap } from "../utils/types";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { MessageStatusIndicator } from "./messages/message-status-indicator";
@@ -134,10 +141,18 @@ function MessageContent({
   message,
   tipRecipientUsername,
   tipRecipientPicUrl,
+  translatedText,
+  translatedSourceLang,
+  showingOriginal,
+  onToggleOriginal,
 }: {
   message: DecryptedMessageEntryResponse;
   tipRecipientUsername?: string;
   tipRecipientPicUrl?: string;
+  translatedText?: string;
+  translatedSourceLang?: string;
+  showingOriginal?: boolean;
+  onToggleOriginal?: () => void;
 }) {
   const parsed = parseMessageType(message);
 
@@ -321,14 +336,29 @@ function MessageContent({
           </span>
         );
       }
+      const displayText =
+        translatedText && !showingOriginal ? translatedText : messageToShow;
       const firstUrl = extractFirstUrl(messageToShow);
-      // Fragment (not <div>) so FormattedMessage stays inline in the bubble flow,
-      // allowing the Telegram-style timestamp spacer to sit on the same line.
       return (
         <>
           <FormattedMessage mentions={parsed.mentions}>
-            {messageToShow}
+            {displayText}
           </FormattedMessage>
+          {translatedText && onToggleOriginal && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleOriginal();
+              }}
+              className="block text-[10px] text-white/30 mt-0.5 italic cursor-pointer hover:text-white/50 transition-colors"
+            >
+              {showingOriginal
+                ? "🌐 See translation"
+                : `🌐 Translated from ${getLanguageName(
+                    translatedSourceLang || ""
+                  )}`}
+            </button>
+          )}
           {firstUrl && <LinkPreview url={firstUrl} />}
         </>
       );
@@ -383,6 +413,36 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   const unreadDividerRef = useRef<HTMLDivElement>(null);
   const hasScrolledToUnreadRef = useRef(false);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+
+  // --- Translation ---
+  // js-cache-storage: read localStorage once via lazy useState, not on every render
+  const [preferredLang] = useState(() =>
+    appUser
+      ? getCachedPreferredLanguage(appUser.PublicKeyBase58Check) ||
+        navigator.language?.split("-")[0] ||
+        "en"
+      : "en"
+  );
+  const [autoTranslateEnabled] = useState(() =>
+    appUser ? getCachedAutoTranslate(appUser.PublicKeyBase58Check) : false
+  );
+  const { translations, translatingKeys, translateMessage } = useTranslation(
+    conversation.messages,
+    appUser?.PublicKeyBase58Check,
+    preferredLang,
+    autoTranslateEnabled
+  );
+  const [showingOriginalKeys, setShowingOriginalKeys] = useState<Set<string>>(
+    new Set()
+  );
+  const toggleOriginal = useCallback((key: string) => {
+    setShowingOriginalKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
 
   // Micro-tip button color based on user's preferred currency (DESO=blue, USDC=green)
   const tipCurrencyPref = appUser
@@ -1245,6 +1305,11 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
               "video",
               "audio",
             ].includes(parsed.type);
+            // High-res images/videos get a wider bubble so they're not cramped
+            const isWideMedia =
+              (parsed.type === "image" || parsed.type === "video") &&
+              parsed.mediaWidth !== undefined &&
+              parsed.mediaWidth >= 600;
             const isSticker = parsed.type === "sticker";
             if (isSticker) {
               // Stickers float without a bubble (like Telegram/WhatsApp)
@@ -1421,7 +1486,11 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                   data-ts={message.MessageInfo.TimestampNanosString}
                   className={`mx-0 last:pt-4 ${
                     IsSender ? "ml-auto justify-end" : "mr-auto justify-start"
-                  } max-w-[80%] md:max-w-[65%] ${
+                  } ${
+                    isWideMedia
+                      ? "max-w-[90%] md:max-w-[80%]"
+                      : "max-w-[80%] md:max-w-[65%]"
+                  } ${
                     isLastInGroup ? "mb-4" : "mb-0.5"
                   } transition-[margin-bottom] duration-150 ease-out inline-flex items-end text-left group ${
                     mobileActionFor === messageKey ? "relative z-50" : ""
@@ -1518,6 +1587,12 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                               ? profilePicByPublicKey?.[parsed.tipRecipient]
                               : undefined
                           }
+                          translatedText={translations.get(messageKey)?.text}
+                          translatedSourceLang={
+                            translations.get(messageKey)?.sourceLang
+                          }
+                          showingOriginal={showingOriginalKeys.has(messageKey)}
+                          onToggleOriginal={() => toggleOriginal(messageKey)}
                         />
                         {/* Inline timestamp: invisible spacer reserves room, real timestamp is absolute-positioned */}
                         {(() => {
@@ -1854,6 +1929,29 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                                   >
                                     <Copy className="w-4 h-4 text-gray-400 shrink-0" />
                                     Copy
+                                  </button>
+                                )}
+                              {message.DecryptedMessage &&
+                                parsed.type === "text" &&
+                                !IsSender && (
+                                  <button
+                                    onClick={() => {
+                                      translateMessage(message);
+                                      closeMobileAction();
+                                    }}
+                                    disabled={translatingKeys.has(messageKey)}
+                                    className={`w-full flex items-center gap-3 ${
+                                      isMobile ? "px-4 py-3" : "px-3 py-2"
+                                    } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors disabled:opacity-50`}
+                                  >
+                                    {translatingKeys.has(messageKey) ? (
+                                      <Loader2 className="w-4 h-4 text-gray-400 shrink-0 animate-spin" />
+                                    ) : (
+                                      <Languages className="w-4 h-4 text-gray-400 shrink-0" />
+                                    )}
+                                    {translations.has(messageKey)
+                                      ? "Show Original"
+                                      : "Translate"}
                                   </button>
                                 )}
                               {onPrivateMessage &&

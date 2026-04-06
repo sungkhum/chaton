@@ -8,6 +8,9 @@ atomic-tip.ts
 avatar.ts
   fn hashToColorIndex
   fn getInitials
+detect-language.ts
+  fn detectLanguageSync
+  fn detectLanguage
 exchange-rate.ts
   fn fetchExchangeRate
   fn usdToNanos

@@ -126,8 +126,10 @@ import {
   MSG_REPLY_TO,
   MSG_REPLY_PREVIEW,
   MSG_REPLY_SENDER,
+  MSG_LANG,
   type MentionEntry,
 } from "../utils/extra-data";
+import { detectLanguageSync } from "../utils/detect-language";
 const LazyTipConfirmDialog = lazy(() =>
   import("./tip-confirm-dialog").then((m) => ({ default: m.TipConfirmDialog }))
 );
@@ -4512,6 +4514,16 @@ export const MessagingApp: FC = () => {
                           };
                           setReplyToMessage(null);
                         }
+                        // Detect message language (franc, < 1ms) and store in ExtraData
+                        // so receivers can skip detection and translate efficiently.
+                        const detectedLang = detectLanguageSync(messageToSend);
+                        if (detectedLang) {
+                          extraData = {
+                            ...extraData,
+                            [MSG_LANG]: detectedLang,
+                          };
+                        }
+
                         // Generate a mock message to display in the UI to give
                         // the user immediate feedback.
                         const TimestampNanos = new Date().getTime() * 1e6;

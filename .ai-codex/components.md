@@ -33,6 +33,7 @@
     JoinGroupModal
     JoinGroupPage
     LandingPage
+    LanguageSelector
     LegalPage
     LinkAttachmentPanel
     ManageMembersDialog

@@ -22,6 +22,7 @@ import { SaveToClipboard } from "./shared/save-to-clipboard";
 import { EditProfileDialog } from "./edit-profile-dialog";
 import { SupportChatOnDialog } from "./support-chaton-dialog";
 import { TipCurrencyToggle } from "./tip-currency-toggle";
+import { LanguageSelector } from "./language-selector";
 import { UserAccountList } from "./user-account-list";
 
 export const Header = () => {
@@ -161,6 +162,7 @@ export const Header = () => {
                     <NotificationToggle />
                     <PrivacyToggle />
                     <TipCurrencyToggle />
+                    <LanguageSelector />
 
                     <div className="border-t border-white/[0.06] my-1.5" />
 

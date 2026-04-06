@@ -237,6 +237,26 @@ export function getCachedTipCurrency(publicKey: string): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// Translation preferences (localStorage — sync)
+// ---------------------------------------------------------------------------
+
+export function cachePreferredLanguage(publicKey: string, lang: string): void {
+  lsSet(publicKey, "preferredLanguage", lang);
+}
+
+export function getCachedPreferredLanguage(publicKey: string): string | null {
+  return lsGet<string>(publicKey, "preferredLanguage");
+}
+
+export function cacheAutoTranslate(publicKey: string, enabled: boolean): void {
+  lsSet(publicKey, "autoTranslate", enabled);
+}
+
+export function getCachedAutoTranslate(publicKey: string): boolean {
+  return lsGet<boolean>(publicKey, "autoTranslate") ?? false;
+}
+
+// ---------------------------------------------------------------------------
 // Username map (localStorage — sync)
 // ---------------------------------------------------------------------------
 
