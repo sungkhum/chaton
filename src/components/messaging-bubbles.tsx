@@ -20,6 +20,7 @@ import {
   Copy,
   Ban,
   Heart,
+  MessageSquare,
 } from "lucide-react";
 import React, {
   FC,
@@ -99,6 +100,7 @@ export interface MessagingBubblesProps {
   onDeleteForEveryone?: (message: DecryptedMessageEntryResponse) => void;
   onTip?: (message: DecryptedMessageEntryResponse, amountUsd?: number) => void;
   onMicroTip?: (message: DecryptedMessageEntryResponse) => void;
+  onPrivateMessage?: (senderPublicKey: string) => void;
   pendingTipTimestamps?: Set<string>;
   hiddenMessageIds?: Set<string>;
 }
@@ -350,6 +352,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   onDeleteForEveryone,
   onTip,
   onMicroTip,
+  onPrivateMessage,
   pendingTipTimestamps,
   hiddenMessageIds,
 }: MessagingBubblesProps) => {
@@ -1851,6 +1854,39 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                                   >
                                     <Copy className="w-4 h-4 text-gray-400 shrink-0" />
                                     Copy
+                                  </button>
+                                )}
+                              {onPrivateMessage &&
+                                !IsSender &&
+                                conversation.ChatType !== ChatType.DM &&
+                                !(message as any)._localId && (
+                                  <button
+                                    onClick={() => {
+                                      onPrivateMessage(
+                                        message.SenderInfo
+                                          .OwnerPublicKeyBase58Check
+                                      );
+                                      closeMobileAction();
+                                    }}
+                                    className={`w-full flex items-center gap-3 min-w-0 ${
+                                      isMobile ? "px-4 py-3" : "px-3 py-2"
+                                    } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
+                                  >
+                                    <MessageSquare className="w-4 h-4 text-gray-400 shrink-0" />
+                                    <span className="truncate">
+                                      Message{" "}
+                                      {getUsernameByPublicKey[
+                                        message.SenderInfo
+                                          .OwnerPublicKeyBase58Check
+                                      ]
+                                        ? `@${
+                                            getUsernameByPublicKey[
+                                              message.SenderInfo
+                                                .OwnerPublicKeyBase58Check
+                                            ]
+                                          }`
+                                        : "privately"}
+                                    </span>
                                   </button>
                                 )}
                               {onTip &&

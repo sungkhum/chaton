@@ -4335,6 +4335,12 @@ export const MessagingApp: FC = () => {
                             });
                           }
                         }}
+                        onPrivateMessage={(senderPublicKey) => {
+                          rehydrateConversation(
+                            senderPublicKey + DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                            true
+                          );
+                        }}
                       />
                     )}
                   </div>
