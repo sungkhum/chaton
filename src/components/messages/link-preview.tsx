@@ -5,9 +5,18 @@ import {
   MessageCircle,
   Repeat2,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import { fetchOgData, OgData } from "../../services/og.service";
 import { detectLinkService } from "../../utils/link-services";
+
+const LazyJoinLinkPreview = lazy(() =>
+  import("./join-link-preview").then((m) => ({ default: m.JoinLinkPreview }))
+);
+
+// Match internal join links: getchaton.com/join/CODE or localhost:PORT/join/CODE
+// Strips trailing slash, query params, and hash fragments before matching
+const JOIN_URL_RE =
+  /^https?:\/\/(?:(?:www\.)?getchaton\.com|localhost:\d+)\/join\/([A-Za-z0-9]+)/;
 
 /** Extract the first http/https URL from a string. Returns null if none found. */
 const URL_RE = /https?:\/\/[^\s<>"{}|\\^`[\]]+/;
@@ -111,6 +120,20 @@ function TweetPreview({ og, url }: { og: OgData; url: string }) {
 }
 
 export function LinkPreview({ url }: { url: string }) {
+  // Render a rich in-app card for ChatOn join links instead of a generic OG preview
+  const joinMatch = url.match(JOIN_URL_RE);
+  if (joinMatch) {
+    return (
+      <Suspense fallback={null}>
+        <LazyJoinLinkPreview code={joinMatch[1]} />
+      </Suspense>
+    );
+  }
+
+  return <GenericLinkPreview url={url} />;
+}
+
+function GenericLinkPreview({ url }: { url: string }) {
   const [og, setOg] = useState<OgData | null>(null);
   const [loading, setLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
