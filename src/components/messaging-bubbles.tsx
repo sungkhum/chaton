@@ -1069,6 +1069,13 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   }, [displayMessages, lastReadTimestampNanos]);
 
   // --- Unread mentions & reactions (Telegram-style indicators) ---
+  // Tracks timestamps the user has already viewed by clicking the floating buttons
+  const [dismissedMentions, setDismissedMentions] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [dismissedReactions, setDismissedReactions] = useState<Set<string>>(
+    () => new Set()
+  );
 
   // Messages from others that @mention the current user (unread only)
   const myPublicKey = appUser?.PublicKeyBase58Check;
@@ -1083,11 +1090,13 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
         parsed.mentions &&
         parsed.mentions.some((m) => m.pk === myPublicKey)
       ) {
-        result.push(msg.MessageInfo.TimestampNanosString);
+        if (!dismissedMentions.has(msg.MessageInfo.TimestampNanosString)) {
+          result.push(msg.MessageInfo.TimestampNanosString);
+        }
       }
     }
     return result.length > 0 ? result : EMPTY_STRINGS;
-  }, [displayMessages, lastReadTimestampNanos, myPublicKey]);
+  }, [displayMessages, lastReadTimestampNanos, myPublicKey, dismissedMentions]);
 
   // Unread reactions to the current user's messages — returns timestamps of
   // the *target* messages (the user's messages that were reacted to)
@@ -1111,12 +1120,19 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
         parsed.action !== "remove" &&
         myTimestamps.has(parsed.replyTo)
       ) {
-        targets.add(parsed.replyTo);
+        if (!dismissedReactions.has(parsed.replyTo)) {
+          targets.add(parsed.replyTo);
+        }
       }
     }
     if (targets.size === 0) return EMPTY_STRINGS;
     return Array.from(targets);
-  }, [visibleMessages, lastReadTimestampNanos, myPublicKey]);
+  }, [
+    visibleMessages,
+    lastReadTimestampNanos,
+    myPublicKey,
+    dismissedReactions,
+  ]);
 
   // Cycling index for scroll-to-mention / scroll-to-reaction buttons
   const mentionIdxRef = useRef(0);
@@ -1149,15 +1165,17 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   const scrollToNextMention = useCallback(() => {
     if (unreadMentionTimestamps.length === 0) return;
     const idx = mentionIdxRef.current % unreadMentionTimestamps.length;
-    scrollToMessage(unreadMentionTimestamps[idx]);
-    mentionIdxRef.current = idx + 1;
+    const ts = unreadMentionTimestamps[idx];
+    scrollToMessage(ts);
+    setDismissedMentions((prev) => new Set(prev).add(ts));
   }, [unreadMentionTimestamps, scrollToMessage]);
 
   const scrollToNextReaction = useCallback(() => {
     if (unreadReactionTargets.length === 0) return;
     const idx = reactionIdxRef.current % unreadReactionTargets.length;
-    scrollToMessage(unreadReactionTargets[idx]);
-    reactionIdxRef.current = idx + 1;
+    const ts = unreadReactionTargets[idx];
+    scrollToMessage(ts);
+    setDismissedReactions((prev) => new Set(prev).add(ts));
   }, [unreadReactionTargets, scrollToMessage]);
 
   return (
@@ -1445,28 +1463,6 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                   transition: "border-radius 150ms ease-out",
                 };
 
-            const messagingDisplayAvatar = (
-              <div
-                className={`w-[36px] shrink-0 ${IsSender ? "ml-3" : "mr-3"}`}
-              >
-                <MessagingDisplayAvatar
-                  username={
-                    getUsernameByPublicKey[
-                      message.SenderInfo.OwnerPublicKeyBase58Check
-                    ]
-                  }
-                  publicKey={message.SenderInfo.OwnerPublicKeyBase58Check}
-                  extraDataPicUrl={
-                    profilePicByPublicKey?.[
-                      message.SenderInfo.OwnerPublicKeyBase58Check
-                    ]
-                  }
-                  diameter={36}
-                  classNames="relative"
-                />
-              </div>
-            );
-
             // Invisible spacer matching avatar column width for continuation messages
             const avatarSpacer = (
               <div
@@ -1519,7 +1515,39 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                   }}
                 >
                   {!IsSender &&
-                    (isLastInGroup ? messagingDisplayAvatar : avatarSpacer)}
+                    (isLastInGroup ? (
+                      <div
+                        className={`w-[36px] shrink-0 mr-3 transition-[margin] duration-150 ${
+                          reactions ||
+                          tips ||
+                          pendingTipTimestamps?.has(
+                            message.MessageInfo.TimestampNanosString
+                          )
+                            ? "mb-[14px]"
+                            : ""
+                        }`}
+                      >
+                        <MessagingDisplayAvatar
+                          username={
+                            getUsernameByPublicKey[
+                              message.SenderInfo.OwnerPublicKeyBase58Check
+                            ]
+                          }
+                          publicKey={
+                            message.SenderInfo.OwnerPublicKeyBase58Check
+                          }
+                          extraDataPicUrl={
+                            profilePicByPublicKey?.[
+                              message.SenderInfo.OwnerPublicKeyBase58Check
+                            ]
+                          }
+                          diameter={36}
+                          classNames="relative"
+                        />
+                      </div>
+                    ) : (
+                      avatarSpacer
+                    ))}
                   <div
                     className={`w-full ${
                       IsSender ? "text-right" : "text-left"
