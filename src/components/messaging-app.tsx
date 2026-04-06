@@ -4766,6 +4766,7 @@ export const MessagingApp: FC = () => {
                 const recipientName = tipData.recipientUsername
                   ? `@${tipData.recipientUsername}`
                   : tipData.recipientPublicKey.slice(0, 8);
+                const hasCustomMessage = !!tipData.message?.trim();
                 const fallback = tipData.message || `Tipped ${recipientName}`;
 
                 await encryptAndSendNewMessage(
@@ -4785,6 +4786,7 @@ export const MessagingApp: FC = () => {
                     tipTxHash: tipData.txHash,
                     tipReplyTo: tipData.tipReplyTo,
                     tipRecipient: tipData.recipientPublicKey,
+                    tipHasCustomMessage: hasCustomMessage,
                   })
                 );
                 // No push notification for tips

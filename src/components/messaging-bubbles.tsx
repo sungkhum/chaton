@@ -48,7 +48,7 @@ import {
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
   MESSAGES_ONE_REQUEST_LIMIT,
 } from "../utils/constants";
-import { parseMessageType } from "../utils/extra-data";
+import { parseMessageType, tipHasCustomMessage } from "../utils/extra-data";
 import { getCachedTipCurrency } from "../services/cache.service";
 import { ConversationMap } from "../utils/types";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
@@ -106,9 +106,6 @@ export interface MessagingBubblesProps {
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
 
 const GROUP_TIME_GAP_NS = 5 * 60 * 1e9; // 5 minutes in nanoseconds
-
-/** Matches the auto-generated fallback text for tips: "Tipped @username" or "Tipped <8-char pubkey>" */
-const DEFAULT_TIP_TEXT_RE = /^Tipped (@\S+|\S{8})$/;
 
 function convertTstampToDateTime(tstampNanos: number) {
   const date = new Date(tstampNanos / 1e6);
@@ -270,11 +267,8 @@ function MessageContent({
 
     case "tip": {
       // Custom message tips render message-first with a compact tip footer.
-      // Default fallback text is "Tipped @username" or "Tipped <pubkey8>" —
-      // anything else is a user-written custom message.
-      const hasCustomMessage =
-        !!messageToShow && !DEFAULT_TIP_TEXT_RE.test(messageToShow);
-      if (hasCustomMessage) {
+      // Explicit flag from ExtraData; fallback to regex for old messages.
+      if (tipHasCustomMessage(parsed)) {
         return (
           <div className="select-text">
             <FormattedMessage>{messageToShow}</FormattedMessage>
@@ -939,10 +933,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
       // Hide tips attached to a parent message unless they have a custom message.
       // Tips without custom messages show only as tip pills on the parent.
       if (parsed.type === "tip" && parsed.tipReplyTo) {
-        const tipText = msg.DecryptedMessage || "";
-        const hasCustomMessage =
-          !!tipText && !DEFAULT_TIP_TEXT_RE.test(tipText);
-        if (!hasCustomMessage) return false;
+        if (!tipHasCustomMessage(parsed)) return false;
       }
       return true;
     });
@@ -1273,10 +1264,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
             const isGroupable = (m: (typeof displayMessages)[0]) => {
               const p = parseMessageType(m);
               if (p.type === "system") return false;
-              if (p.type === "tip") {
-                const msg = m.DecryptedMessage || "";
-                return !!msg && !DEFAULT_TIP_TEXT_RE.test(msg);
-              }
+              if (p.type === "tip") return tipHasCustomMessage(p);
               return true;
             };
             let prevMessage: (typeof displayMessages)[0] | undefined;

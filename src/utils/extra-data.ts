@@ -44,6 +44,8 @@ export const MSG_TIP_CURRENCY = "msg:tipCurrency";
 /** USDC tip amount stored as hex uint256 string (e.g., "0x2386f26fc10000" for 0.01 USDC).
  *  Parse with `BigInt(value)` — NOT `parseInt`. 1 USDC = 1e18 base units. */
 export const MSG_TIP_AMOUNT_USDC = "msg:tipAmountUsdc";
+/** "true" when the user typed a custom message with their tip. Absent = fallback text only. */
+export const MSG_TIP_CUSTOM_MESSAGE = "msg:tipHasCustomMessage";
 
 /** ExtraData keys always encrypted (reaction privacy — default). */
 export const STANDARD_ENCRYPTED_KEYS = [
@@ -157,6 +159,8 @@ export interface ParsedMessage {
   /** JSON array of {pk, un} entries for members involved in the system action */
   systemMembers?: MentionEntry[];
   tipRecipient?: string;
+  /** True when the user typed a custom message with their tip. */
+  tipHasCustomMessage?: boolean;
 }
 
 /**
@@ -309,6 +313,7 @@ export function parseMessageType(
     tipTxHash: extra[MSG_TIP_TX_HASH],
     tipReplyTo: extra[MSG_TIP_REPLY_TO],
     tipRecipient: extra[MSG_TIP_RECIPIENT],
+    tipHasCustomMessage: extra[MSG_TIP_CUSTOM_MESSAGE] === "true",
     systemAction: extra[MSG_SYSTEM_ACTION] as SystemAction | undefined,
     systemMembers: extra[MSG_SYSTEM_MEMBERS]
       ? (JSON.parse(extra[MSG_SYSTEM_MEMBERS]) as MentionEntry[])
@@ -395,9 +400,29 @@ export function buildExtraData(
   if (parsed.tipTxHash) extra[MSG_TIP_TX_HASH] = parsed.tipTxHash;
   if (parsed.tipReplyTo) extra[MSG_TIP_REPLY_TO] = parsed.tipReplyTo;
   if (parsed.tipRecipient) extra[MSG_TIP_RECIPIENT] = parsed.tipRecipient;
+  if (parsed.tipHasCustomMessage) extra[MSG_TIP_CUSTOM_MESSAGE] = "true";
   if (parsed.systemAction) extra[MSG_SYSTEM_ACTION] = parsed.systemAction;
   if (parsed.systemMembers && parsed.systemMembers.length > 0)
     extra[MSG_SYSTEM_MEMBERS] = JSON.stringify(parsed.systemMembers);
 
   return extra;
+}
+
+/** Matches "Tipped @username" or "Tipped <8-char pubkey>" (old dialog path fallback). */
+const DEFAULT_TIP_TEXT_RE = /^Tipped (@\S+|\S{8})$/;
+/** Matches "Tipped $X.XX to @username" (micro-tip path fallback). */
+const MICRO_TIP_TEXT_RE = /^Tipped \$[\d.]+ to (@\S+|\S{8})$/;
+
+/**
+ * Check whether a tip message has a user-written custom message.
+ * Uses the explicit `msg:tipHasCustomMessage` flag when present (new messages);
+ * falls back to regex matching for old messages sent before the flag existed.
+ */
+export function tipHasCustomMessage(parsed: ParsedMessage): boolean {
+  if (parsed.tipHasCustomMessage) return true;
+  const text = parsed.text || "";
+  if (!text) return false;
+  if (DEFAULT_TIP_TEXT_RE.test(text)) return false;
+  if (MICRO_TIP_TEXT_RE.test(text)) return false;
+  return true;
 }

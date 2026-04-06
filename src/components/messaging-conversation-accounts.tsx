@@ -6,6 +6,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  CircleDollarSign,
   FileIcon,
   Image as ImageIcon,
   MessageSquarePlus,
@@ -40,7 +41,11 @@ import {
   MessageSearchResult,
   SearchProgress,
 } from "../services/message-search.service";
-import { getGroupImageUrl, parseMessageType } from "../utils/extra-data";
+import {
+  getGroupImageUrl,
+  parseMessageType,
+  tipHasCustomMessage,
+} from "../utils/extra-data";
 import {
   formatRelativeTimestamp,
   getChatNameFromConversation,
@@ -113,6 +118,16 @@ const PreviewText = memo(function PreviewText({
           {parsed.fileName || text || "File"}
         </span>
       );
+    case "tip": {
+      // Show the custom message text if the user wrote one, otherwise "Tip"
+      const customText = tipHasCustomMessage(parsed) ? text : undefined;
+      return (
+        <span className="flex items-center gap-0">
+          <CircleDollarSign className={iconClass} />
+          {customText || "Tip"}
+        </span>
+      );
+    }
     default:
       return <>{text || ""}</>;
   }
