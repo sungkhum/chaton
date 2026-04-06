@@ -20,6 +20,7 @@ const CHATON_REGISTRY_KEY =
 const INVITE_ASSOCIATION_TYPE = "chaton:group-invite-code";
 const DEFAULT_OG_IMAGE = "https://getchaton.com/chaton-invited.webp";
 const RESOLVE_TIMEOUT_MS = 3000;
+const CACHE_TTL_SECONDS = 3600; // 1 hour — invite code → group name rarely changes
 
 interface GroupMeta {
   name: string;
@@ -67,7 +68,7 @@ async function resolveGroupMeta(code: string): Promise<GroupMeta | null> {
   if (!ownerKey || !groupKeyName) return null;
 
   // 2. Fetch group entry for display name + image
-  const groupRes = await fetch(`${DESO_NODE}/api/v0/get-bulk-access-groups`, {
+  const groupRes = await fetch(`${DESO_NODE}/api/v0/get-bulk-access-group-entries`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -100,7 +101,7 @@ function buildOGValues(group: GroupMeta | null) {
   if (group) {
     const title = `You're invited to ${group.name} — ChatOn`;
     const description = `You're invited to join ${group.name} on ChatOn — end-to-end encrypted, decentralized, and free.`;
-    const image = group.imageUrl || DEFAULT_OG_IMAGE;
+    const image = DEFAULT_OG_IMAGE;
     return { title, description, image };
   }
   return {
@@ -150,8 +151,15 @@ class TitleRewriter implements HTMLRewriterElementContentHandlers {
 }
 
 export const onRequest: PagesFunction = async (context) => {
-  // Extract invite code from the path (e.g. /join/k7Xm2p → k7Xm2p)
   const url = new URL(context.request.url);
+  const cacheKey = new Request(url.toString(), { method: "GET" });
+  const cache = caches.default;
+
+  // Serve from edge cache if available (covers viral traffic)
+  const cached = await cache.match(cacheKey);
+  if (cached) return cached;
+
+  // Extract invite code from the path (e.g. /join/k7Xm2p → k7Xm2p)
   const match = url.pathname.match(/^\/join\/([A-Za-z0-9]+)$/);
   const code = match?.[1];
 
@@ -168,15 +176,29 @@ export const onRequest: PagesFunction = async (context) => {
   const og = buildOGValues(group);
 
   // Fetch the SPA index.html from static assets
-  const assetUrl = new URL(context.request.url);
+  const assetUrl = new URL(url.toString());
   assetUrl.pathname = "/";
   const response = await context.env.ASSETS.fetch(
     new Request(assetUrl.toString(), context.request)
   );
 
   // Rewrite OG meta tags on the edge
-  return new HTMLRewriter()
+  const rewritten = new HTMLRewriter()
     .on("meta", new OGMetaRewriter(og))
     .on("title", new TitleRewriter(og.title))
     .transform(response);
+
+  // Cache the rewritten response — only when we successfully resolved the group,
+  // so generic fallbacks don't get stuck in cache for an hour
+  if (group) {
+    const cacheable = new Response(rewritten.body, rewritten);
+    cacheable.headers.set(
+      "Cache-Control",
+      `public, max-age=${CACHE_TTL_SECONDS}`
+    );
+    context.waitUntil(cache.put(cacheKey, cacheable.clone()));
+    return cacheable;
+  }
+
+  return rewritten;
 };
