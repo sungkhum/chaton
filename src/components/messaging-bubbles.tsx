@@ -931,29 +931,18 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   // Filter out reaction messages (aggregated), hidden messages (delete for me),
   // and small tip messages (≤$5) that are attached to another message (shown on pill instead)
   const displayMessages = useMemo(() => {
-    const SMALL_TIP_DESO_NANOS = 1e9; // ~1 DESO
-    const SMALL_TIP_USDC_BASE = 5_000_000; // $5 USDC
     return visibleMessages.filter((msg) => {
       const parsed = parseMessageType(msg);
       if (parsed.type === "reaction") return false;
       if (hiddenMessageIds?.has(msg.MessageInfo.TimestampNanosString))
         return false;
-      // Hide small tips that are attached to a parent message — they show on the tip pill.
-      // Always keep tips with custom messages visible regardless of amount.
+      // Hide tips attached to a parent message unless they have a custom message.
+      // Tips without custom messages show only as tip pills on the parent.
       if (parsed.type === "tip" && parsed.tipReplyTo) {
         const tipText = msg.DecryptedMessage || "";
         const hasCustomMessage =
           !!tipText && !DEFAULT_TIP_TEXT_RE.test(tipText);
-        if (!hasCustomMessage) {
-          const isSmallDeso =
-            (!parsed.tipCurrency || parsed.tipCurrency === "DESO") &&
-            (parsed.tipAmountNanos || 0) <= SMALL_TIP_DESO_NANOS;
-          const isSmallUsdc =
-            parsed.tipCurrency === "USDC" &&
-            BigInt(parsed.tipAmountUsdcBaseUnits || "0") <=
-              BigInt(SMALL_TIP_USDC_BASE);
-          if (isSmallDeso || isSmallUsdc) return false;
-        }
+        if (!hasCustomMessage) return false;
       }
       return true;
     });
