@@ -720,9 +720,13 @@ export const SendMessageButtonAndInput = forwardRef<
 
     const typingLabel =
       typingUsers.length === 1
-        ? `${typingUsers[0]} is typing...`
-        : typingUsers.length > 1
-        ? `${typingUsers.slice(0, 2).join(", ")} are typing...`
+        ? `${typingUsers[0]} is typing`
+        : typingUsers.length === 2
+        ? `${typingUsers[0]} and ${typingUsers[1]} are typing`
+        : typingUsers.length > 2
+        ? `${typingUsers[0]}, ${typingUsers[1]}, and ${
+            typingUsers.length - 2
+          } more are typing`
         : null;
 
     const showMentionPicker =
@@ -756,8 +760,13 @@ export const SendMessageButtonAndInput = forwardRef<
         )}
 
         {typingLabel && (
-          <div className="text-xs text-gray-400 px-2 pb-1 animate-pulse">
-            {typingLabel}
+          <div className="typing-indicator-bar">
+            <span className="typing-indicator-text">{typingLabel}</span>
+            <span className="typing-dots" aria-hidden="true">
+              <span className="typing-dot" />
+              <span className="typing-dot" />
+              <span className="typing-dot" />
+            </span>
           </div>
         )}
 

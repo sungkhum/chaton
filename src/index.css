@@ -1027,6 +1027,67 @@ input::placeholder {
   margin: 2rem 0;
 }
 
+/* ── Typing indicator ─────────────────────────────────── */
+
+.typing-indicator-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 0.5rem 0.25rem;
+  animation: typing-slide-in 200ms ease-out both;
+}
+
+.typing-indicator-text {
+  font-size: 0.7rem;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.typing-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #34F080;
+  opacity: 0.6;
+  animation: typing-bounce 1.4s ease-in-out infinite;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+@keyframes typing-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+@keyframes typing-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(*),
@@ -1039,5 +1100,14 @@ input::placeholder {
   .modal-backdrop-enter,
   .modal-card-enter {
     animation: none !important;
+  }
+
+  .typing-dot {
+    animation: none;
+    opacity: 0.6;
+  }
+
+  .typing-indicator-bar {
+    animation: none;
   }
 }
