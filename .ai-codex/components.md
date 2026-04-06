@@ -32,6 +32,7 @@
     JoinConfirmationModal
     JoinGroupModal
     JoinGroupPage
+    JoinLinkPreview
     LandingPage
     LanguageSelector
     LegalPage

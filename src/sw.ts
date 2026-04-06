@@ -386,4 +386,16 @@ self.addEventListener("notificationclick", (event) => {
   );
 });
 
+// Global catch handler — serves offline.html when any navigation request fails.
+// This covers precache misses (iOS aggressively evicts SW caches) that the
+// `fallbacks` config doesn't catch, since `fallbacks` only applies to
+// runtime caching handlers, not the precache route serving index.html.
+serwist.setCatchHandler(async ({ request }) => {
+  if (request.destination === "document") {
+    const offlineResponse = await serwist.matchPrecache("/offline.html");
+    if (offlineResponse) return offlineResponse;
+  }
+  return Response.error();
+});
+
 serwist.addEventListeners();
