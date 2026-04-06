@@ -7,14 +7,24 @@ interface StickerMessageProps {
   height?: number;
 }
 
-export const StickerMessage = ({ stickerUrl, title, width, height }: StickerMessageProps) => {
+export const StickerMessage = ({
+  stickerUrl,
+  title,
+  width,
+  height,
+}: StickerMessageProps) => {
   const [loaded, setLoaded] = useState(false);
   const aspectRatio = width && height ? width / height : undefined;
 
   return (
     <div
-      className="max-w-[140px] md:max-w-[180px] relative"
-      style={aspectRatio ? { aspectRatio } : undefined}
+      className="relative"
+      style={{
+        // Fluid sticker width: 120px on small phones, scales up to 180px on desktop.
+        // clamp() guarantees a non-zero width so aspect-ratio can compute height.
+        width: "clamp(120px, 30vw, 180px)",
+        ...(aspectRatio ? { aspectRatio } : {}),
+      }}
     >
       {!loaded && (
         <div
@@ -25,9 +35,10 @@ export const StickerMessage = ({ stickerUrl, title, width, height }: StickerMess
       <img
         src={stickerUrl}
         alt={title || "Sticker"}
-        className={`w-full h-auto object-contain transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"}`}
+        className={`w-full h-auto object-contain transition-opacity duration-200 ${
+          loaded ? "opacity-100" : "opacity-0"
+        }`}
         style={aspectRatio ? { aspectRatio } : undefined}
-        loading="lazy"
         onLoad={() => setLoaded(true)}
         onError={() => setLoaded(true)}
       />
