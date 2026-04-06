@@ -4500,7 +4500,7 @@ export const MessagingApp: FC = () => {
                             [MSG_REPLY_TO]: replyToMessage.timestamp,
                             [MSG_REPLY_PREVIEW]: replyToMessage.text.slice(
                               0,
-                              100
+                              200
                             ),
                             [MSG_REPLY_SENDER]: replyToMessage.sender,
                           };

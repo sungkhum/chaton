@@ -17,7 +17,10 @@ export const ReplyPreview = ({
       {replySender && (
         <div className="text-[#34F080] font-semibold mb-0.5">{replySender}</div>
       )}
-      <div className="line-clamp-2">{replyPreview}</div>
+      <div className="line-clamp-2 break-words">
+        {replyPreview}
+        {replyPreview.length >= 100 && !/[.!?…]$/.test(replyPreview) && "…"}
+      </div>
     </div>
   );
 };

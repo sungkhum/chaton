@@ -569,6 +569,16 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     const spaceAbove = bubbleRect.top - minTop;
     const spaceBelow = maxBottom - bubbleRect.bottom;
 
+    // Visible portion of the bubble within the scroll area
+    const visibleTop = Math.max(bubbleRect.top, minTop);
+    const visibleBottom = Math.min(bubbleRect.bottom, maxBottom);
+    const visibleBubbleHeight = Math.max(0, visibleBottom - visibleTop);
+
+    // For tall bubbles (images, long text), splitting bar above and menu below
+    // creates a huge gap. Stack them together as a single unit instead.
+    const maxSplitDistance = 250;
+    const isTallBubble = visibleBubbleHeight > maxSplitDistance;
+
     const barFitsAbove = spaceAbove >= barHeight + gap;
     const menuFitsBelow = spaceBelow >= menuHeight + gap;
     const bothFitAbove = spaceAbove >= barHeight + menuHeight + gap * 3;
@@ -577,8 +587,19 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     let barTop: number | undefined;
     let menuTop: number | undefined;
 
-    if (barFitsAbove && menuFitsBelow) {
-      // Ideal split: reactions above bubble, menu below bubble
+    if (isTallBubble) {
+      // Tall bubble: stack bar + menu together at the visible center
+      const totalHeight = barHeight + gap + menuHeight;
+      const visibleMid = (visibleTop + visibleBottom) / 2;
+      let stackTop = visibleMid - totalHeight / 2;
+      stackTop = Math.max(
+        minTop + pad,
+        Math.min(stackTop, maxBottom - totalHeight - pad)
+      );
+      if (bar) barTop = stackTop;
+      if (menu) menuTop = stackTop + barHeight + gap;
+    } else if (barFitsAbove && menuFitsBelow) {
+      // Normal split: reactions above bubble, menu below bubble
       if (bar) barTop = bubbleRect.top - barHeight - gap;
       if (menu) menuTop = bubbleRect.bottom + gap;
     } else if (bothFitAbove) {
@@ -1471,7 +1492,9 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                         {/* Reply preview inside the bubble (Telegram-style) */}
                         {parsed.replyTo && parsed.replyPreview && (
                           <div
-                            className={`mb-1.5 mt-0.5 ${isMedia ? "px-3" : ""}`}
+                            className={`mb-1.5 ${
+                              isMedia ? "px-3 pt-2" : "mt-0.5"
+                            }`}
                           >
                             <ReplyPreview
                               replyPreview={parsed.replyPreview}
