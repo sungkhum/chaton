@@ -11,7 +11,10 @@ export function TipCurrencyToggle() {
   const appUser = useStore((s) => s.appUser);
   const [currency, setCurrency] = useState<TipCurrency>(() => {
     if (!appUser) return "DESO";
-    return (getCachedTipCurrency(appUser.PublicKeyBase58Check) as TipCurrency) || "DESO";
+    return (
+      (getCachedTipCurrency(appUser.PublicKeyBase58Check) as TipCurrency) ||
+      "DESO"
+    );
   });
 
   const toggle = useCallback(() => {
@@ -28,11 +31,11 @@ export function TipCurrencyToggle() {
   return (
     <button
       onClick={toggle}
-      className="flex items-center justify-between w-full pt-[9px] pb-2 px-3 rounded-md transition-colors text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer"
+      className="flex items-center justify-between w-full py-2.5 px-3 rounded-lg transition-colors text-gray-400 hover:text-white hover:bg-white/[0.06] cursor-pointer"
     >
       <div className="flex items-center">
-        <Coins className="mr-3 w-5 h-5" />
-        <span className="text-base">Tip Currency</span>
+        <Coins className="mr-3 w-[18px] h-[18px]" />
+        <span className="text-[14px]">Tip Currency</span>
       </div>
 
       <div className="flex bg-white/5 border border-white/10 rounded-full p-0.5 text-[11px] font-semibold">

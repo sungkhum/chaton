@@ -63,7 +63,8 @@ const UserAccountList = ({ onSwitch }: { onSwitch?: () => void }) => {
     }
 
     // Refresh in background (no loading spinner if we have cached data)
-    const hasCachedData = cached && loggedInUserKeys.every((key) => cached[key]);
+    const hasCachedData =
+      cached && loggedInUserKeys.every((key) => cached[key]);
     if (!hasCachedData) setLoading(true);
 
     const fetchLoggedInUsers = async () => {
@@ -125,7 +126,13 @@ const UserAccountList = ({ onSwitch }: { onSwitch?: () => void }) => {
     : allAccounts.slice(0, COLLAPSED_ACCOUNTS_NUM);
 
   return (
-    <div className={`mb-0 ${loading || visibleAccounts.length > 0 ? "border-b border-white/10" : ""}`}>
+    <div
+      className={`mb-0 ${
+        loading || visibleAccounts.length > 0
+          ? "border-b border-white/[0.06]"
+          : ""
+      }`}
+    >
       {loading ? (
         <div className="flex justify-center my-2 h-[29px]">
           <Loader2 className="w-6 h-6 animate-spin text-[#34F080]" />
@@ -138,7 +145,9 @@ const UserAccountList = ({ onSwitch }: { onSwitch?: () => void }) => {
             style={
               showMore
                 ? {
-                    maxHeight: `${EXPANDED_ACCOUNTS_NUM * ACCOUNT_LIST_ITEM_HEIGHT_PX}px`,
+                    maxHeight: `${
+                      EXPANDED_ACCOUNTS_NUM * ACCOUNT_LIST_ITEM_HEIGHT_PX
+                    }px`,
                     overflowY: "scroll",
                   }
                 : {}
@@ -148,16 +157,20 @@ const UserAccountList = ({ onSwitch }: { onSwitch?: () => void }) => {
               <div
                 key={option.key}
                 onClick={() => option.onclick(option.key)}
-                className="cursor-pointer text-md pl-2 py-1 hover:bg-white/5 rounded-md transition-colors"
+                className="cursor-pointer text-md pl-2 py-1.5 hover:bg-white/[0.06] rounded-lg transition-colors"
               >
-                <div className={`flex items-center ${option.isActive ? "font-bold text-white" : "text-gray-300"}`}>
+                <div
+                  className={`flex items-center ${
+                    option.isActive ? "font-bold text-white" : "text-gray-300"
+                  }`}
+                >
                   <MessagingDisplayAvatar
                     publicKey={option.key}
                     username={option.name}
                     classNames="mr-2 ml-0"
                     diameter={28}
                   />
-                  <div className="truncate text-base">{option.name}</div>
+                  <div className="truncate text-[14px]">{option.name}</div>
                 </div>
               </div>
             ))}

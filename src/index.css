@@ -607,6 +607,18 @@ input::placeholder {
   border-color: rgba(239, 68, 68, 0.35);
 }
 
+/* Glassmorphism menu dropdown */
+.glass-menu {
+  background: rgba(12, 18, 30, 0.82);
+  -webkit-backdrop-filter: blur(40px) saturate(1.4);
+  backdrop-filter: blur(40px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.55),
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
 /* Glassmorphism pills (reactions & tips) */
 .glass-pill {
   background: rgba(255, 255, 255, 0.04);

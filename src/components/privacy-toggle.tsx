@@ -8,7 +8,14 @@ import type { PrivacyMode } from "../utils/extra-data";
 
 export function PrivacyToggle() {
   const { appUser, privacyMode, privacyModeAssociationId, setPrivacyMode } =
-    useStore(useShallow((s) => ({ appUser: s.appUser, privacyMode: s.privacyMode, privacyModeAssociationId: s.privacyModeAssociationId, setPrivacyMode: s.setPrivacyMode })));
+    useStore(
+      useShallow((s) => ({
+        appUser: s.appUser,
+        privacyMode: s.privacyMode,
+        privacyModeAssociationId: s.privacyModeAssociationId,
+        setPrivacyMode: s.setPrivacyMode,
+      }))
+    );
   const [loading, setLoading] = useState(false);
 
   const toggle = useCallback(async () => {
@@ -51,15 +58,15 @@ export function PrivacyToggle() {
     <button
       onClick={toggle}
       disabled={loading}
-      className="flex items-center justify-between w-full pt-[9px] pb-2 px-3 rounded-md transition-colors disabled:opacity-50 text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer"
+      className="flex items-center justify-between w-full py-2.5 px-3 rounded-lg transition-colors disabled:opacity-50 text-gray-400 hover:text-white hover:bg-white/[0.06] cursor-pointer"
     >
       <div className="flex items-center">
         {isFull ? (
-          <ShieldCheck className="mr-3 w-5 h-5 text-[#34F080]" />
+          <ShieldCheck className="mr-3 w-[18px] h-[18px] text-[#34F080]" />
         ) : (
-          <Shield className="mr-3 w-5 h-5" />
+          <Shield className="mr-3 w-[18px] h-[18px]" />
         )}
-        <span className="text-base">Encrypt Media</span>
+        <span className="text-[14px]">Encrypt Media</span>
       </div>
 
       <div

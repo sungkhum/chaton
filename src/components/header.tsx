@@ -1,5 +1,6 @@
 import { identity } from "deso-protocol";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useStore } from "../store";
 import { useShallow } from "zustand/react/shallow";
 import {
@@ -9,7 +10,6 @@ import {
   Pencil,
   SmilePlus,
   Wallet,
-  GitFork,
   Heart,
   Share2,
 } from "lucide-react";
@@ -34,24 +34,6 @@ export const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showSupport, setShowSupport] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handleClickOutside = (e: Event) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        e.preventDefault();
-        e.stopPropagation();
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside, true);
-    document.addEventListener("touchstart", handleClickOutside, true);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside, true);
-      document.removeEventListener("touchstart", handleClickOutside, true);
-    };
-  }, [menuOpen]);
 
   return (
     <header className="flex justify-between items-center px-4 h-14 fixed top-0 z-[60] w-full bg-[#080d16]/95 backdrop-blur-xl border-b border-white/5">
@@ -76,7 +58,7 @@ export const Header = () => {
             </div>
           )}
 
-          <div className="relative" ref={menuRef}>
+          <div className="relative">
             <div
               className="cursor-pointer"
               onClick={() => setMenuOpen(!menuOpen)}
@@ -89,150 +71,159 @@ export const Header = () => {
             </div>
 
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-[230px] bg-[#141c2b] border border-white/10 rounded-lg shadow-xl z-50 p-2">
-                <div className="px-2 pt-1 pb-2 flex justify-between items-center border-b border-white/10">
-                  <span className="font-bold text-lg md:text-base text-white">
-                    Profiles
-                  </span>
+              <>
+                {createPortal(
+                  <div
+                    className="fixed inset-0 z-[61]"
+                    onClick={() => setMenuOpen(false)}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                  />,
+                  document.body
+                )}
+                <div className="absolute right-0 top-full mt-2 w-[min(280px,calc(100vw-2rem))] glass-menu rounded-2xl z-[62] p-2.5 max-h-[calc(100dvh-4.5rem)] overflow-y-auto custom-scrollbar">
+                  <div className="px-2 pt-1.5 pb-2.5 flex justify-between items-center border-b border-white/[0.06]">
+                    <span className="font-bold text-[15px] text-white/90 tracking-tight">
+                      Profiles
+                    </span>
+                    <button
+                      className="glass-btn-primary text-[#34F080] font-semibold text-xs py-1 px-2.5 rounded-lg outline-none transition-colors"
+                      onClick={async () => {
+                        setLockRefresh(true);
+                        try {
+                          await identity.login();
+                        } catch (e) {
+                          toast.error(`Error logging in: ${e}`);
+                          console.error(e);
+                        }
+                        setLockRefresh(false);
+                      }}
+                    >
+                      Add
+                    </button>
+                  </div>
+
+                  <UserAccountList onSwitch={() => setMenuOpen(false)} />
+
+                  {appUser && (
+                    <button
+                      className="flex items-center w-full py-2.5 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setShowEditProfile(true);
+                      }}
+                    >
+                      <Pencil className="mr-3 w-[18px] h-[18px]" />
+                      <span className="text-[14px]">Edit Profile</span>
+                    </button>
+                  )}
+
+                  {appUser?.ProfileEntryResponse && (
+                    <a
+                      href={getProfileURL(
+                        appUser.ProfileEntryResponse.Username
+                      )}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center py-2.5 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors"
+                    >
+                      <SmilePlus className="mr-3 w-[18px] h-[18px]" />
+                      <span className="text-[14px]">View Profile</span>
+                    </a>
+                  )}
+
+                  {appUser && (
+                    <div className="flex items-center py-2.5 text-gray-400 hover:text-white px-3 hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors">
+                      <SaveToClipboard
+                        text={appUser.PublicKeyBase58Check}
+                        copyIcon={<Copy className="w-[18px] h-[18px] mr-2" />}
+                        copiedIcon={
+                          <Check className="w-[18px] h-[18px] mr-2" />
+                        }
+                      >
+                        <span className="text-[14px]">Copy Public Key</span>
+                      </SaveToClipboard>
+                    </div>
+                  )}
+
+                  <div className="border-t border-white/[0.06] my-1.5" />
+
+                  <NotificationToggle />
+                  <PrivacyToggle />
+                  <TipCurrencyToggle />
+
+                  <div className="border-t border-white/[0.06] my-1.5" />
+
+                  <a
+                    href="https://wallet.deso.com"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center py-2.5 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors"
+                  >
+                    <Wallet className="mr-3 w-[18px] h-[18px]" />
+                    <span className="text-[14px]">DeSo Wallet</span>
+                  </a>
+
                   <button
-                    className="glass-btn-primary text-[#34F080] font-semibold md:text-sm py-1 px-2 rounded outline-none transition-colors"
+                    className="flex items-center w-full py-2.5 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors"
                     onClick={async () => {
+                      setMenuOpen(false);
+                      const shareData = {
+                        title: "ChatOn",
+                        text: "Chat with me on ChatOn — decentralized, end-to-end encrypted messaging on the blockchain. No censorship, no middlemen.",
+                        url: "https://getchaton.com",
+                      };
+                      if (navigator.share) {
+                        try {
+                          await navigator.share(shareData);
+                        } catch {
+                          /* cancelled */
+                        }
+                      } else {
+                        navigator.clipboard.writeText(
+                          `${shareData.text}\n${shareData.url}`
+                        );
+                        toast.success("Invite link copied!");
+                      }
+                    }}
+                  >
+                    <Share2 className="mr-3 w-[18px] h-[18px]" />
+                    <span className="text-[14px]">Invite Friends</span>
+                  </button>
+
+                  <button
+                    className="flex items-center w-full py-2.5 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setShowSupport(true);
+                    }}
+                  >
+                    <Heart className="mr-3 w-[18px] h-[18px] text-[#34F080]" />
+                    <span className="text-[14px]">Support ChatOn</span>
+                  </button>
+
+                  <div className="border-t border-white/[0.06] my-1.5" />
+
+                  <button
+                    className="flex items-center w-full py-2.5 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors"
+                    onClick={async () => {
+                      if (!appUser) return;
                       setLockRefresh(true);
                       try {
-                        await identity.login();
+                        await identity.logout();
                       } catch (e) {
-                        toast.error(`Error logging in: ${e}`);
+                        toast.error(`Error logging out: ${e}`);
                         console.error(e);
                       }
                       setLockRefresh(false);
+                      setMenuOpen(false);
                     }}
                   >
-                    Add
+                    <LogOut className="mr-3 w-[18px] h-[18px]" />
+                    <span className="text-[14px]">Logout</span>
                   </button>
                 </div>
-
-                <UserAccountList onSwitch={() => setMenuOpen(false)} />
-
-                {appUser && (
-                  <button
-                    className="flex items-center w-full pt-[9px] pb-2 px-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-md cursor-pointer transition-colors"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      setShowEditProfile(true);
-                    }}
-                  >
-                    <Pencil className="mr-3 w-5 h-5" />
-                    <span className="text-base">Edit Profile</span>
-                  </button>
-                )}
-
-                {appUser?.ProfileEntryResponse && (
-                  <a
-                    href={getProfileURL(appUser.ProfileEntryResponse.Username)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center pt-[9px] pb-2 px-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-md cursor-pointer transition-colors"
-                  >
-                    <SmilePlus className="mr-3 w-5 h-5" />
-                    <span className="text-base">View Profile</span>
-                  </a>
-                )}
-
-                {appUser && (
-                  <div className="flex items-center pt-[9px] pb-2 text-gray-300 hover:text-white px-3 hover:bg-white/5 rounded-md cursor-pointer transition-colors">
-                    <SaveToClipboard
-                      text={appUser.PublicKeyBase58Check}
-                      copyIcon={<Copy className="w-5 h-5 mr-2" />}
-                      copiedIcon={<Check className="w-5 h-5 mr-2" />}
-                    >
-                      <span className="text-base">Copy Public Key</span>
-                    </SaveToClipboard>
-                  </div>
-                )}
-
-                <NotificationToggle />
-                <PrivacyToggle />
-                <TipCurrencyToggle />
-
-                <div className="border-t border-white/10 my-1" />
-
-                <a
-                  href="https://wallet.deso.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center pt-[9px] pb-2 px-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-md cursor-pointer transition-colors"
-                >
-                  <Wallet className="mr-3 w-5 h-5" />
-                  <span className="text-base">DeSo Wallet</span>
-                </a>
-
-                <a
-                  href="https://github.com/sungkhum/chaton"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center pt-[9px] pb-2 px-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-md cursor-pointer transition-colors"
-                >
-                  <GitFork className="mr-3 w-5 h-5" />
-                  <span className="text-base">Fork This Project</span>
-                </a>
-
-                <button
-                  className="flex items-center w-full pt-[9px] pb-2 px-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-md cursor-pointer transition-colors"
-                  onClick={async () => {
-                    setMenuOpen(false);
-                    const shareData = {
-                      title: "ChatOn",
-                      text: "Chat with me on ChatOn — decentralized, end-to-end encrypted messaging on the blockchain. No censorship, no middlemen.",
-                      url: "https://getchaton.com",
-                    };
-                    if (navigator.share) {
-                      try {
-                        await navigator.share(shareData);
-                      } catch {
-                        /* cancelled */
-                      }
-                    } else {
-                      navigator.clipboard.writeText(
-                        `${shareData.text}\n${shareData.url}`
-                      );
-                      toast.success("Invite link copied!");
-                    }
-                  }}
-                >
-                  <Share2 className="mr-3 w-5 h-5" />
-                  <span className="text-base">Invite Friends</span>
-                </button>
-
-                <button
-                  className="flex items-center w-full pt-[9px] pb-2 px-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-md cursor-pointer transition-colors"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setShowSupport(true);
-                  }}
-                >
-                  <Heart className="mr-3 w-5 h-5 text-[#34F080]" />
-                  <span className="text-base">Support ChatOn</span>
-                </button>
-
-                <button
-                  className="flex items-center w-full pt-[9px] pb-2 px-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-md cursor-pointer transition-colors"
-                  onClick={async () => {
-                    if (!appUser) return;
-                    setLockRefresh(true);
-                    try {
-                      await identity.logout();
-                    } catch (e) {
-                      toast.error(`Error logging out: ${e}`);
-                      console.error(e);
-                    }
-                    setLockRefresh(false);
-                    setMenuOpen(false);
-                  }}
-                >
-                  <LogOut className="mr-3 w-5 h-5" />
-                  <span className="text-base">Logout</span>
-                </button>
-              </div>
+              </>
             )}
           </div>
         </div>

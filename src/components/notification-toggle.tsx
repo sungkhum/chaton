@@ -247,10 +247,10 @@ export function NotificationToggle() {
     <button
       onClick={isDenied ? undefined : toggle}
       disabled={loading || isDenied}
-      className={`flex items-center justify-between w-full pt-[9px] pb-2 px-3 rounded-md transition-colors disabled:opacity-50 ${
+      className={`flex items-center justify-between w-full py-2.5 px-3 rounded-lg transition-colors disabled:opacity-50 ${
         isDenied
           ? "text-gray-500 cursor-not-allowed"
-          : "text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer"
+          : "text-gray-400 hover:text-white hover:bg-white/[0.06] cursor-pointer"
       }`}
       title={
         isDenied
@@ -260,13 +260,13 @@ export function NotificationToggle() {
     >
       <div className="flex items-center">
         {pushState === "enabled" ? (
-          <BellRing className="mr-3 w-5 h-5 text-[#34F080]" />
+          <BellRing className="mr-3 w-[18px] h-[18px] text-[#34F080]" />
         ) : pushState === "denied" ? (
-          <BellOff className="mr-3 w-5 h-5 text-red-400" />
+          <BellOff className="mr-3 w-[18px] h-[18px] text-red-400" />
         ) : (
-          <Bell className="mr-3 w-5 h-5" />
+          <Bell className="mr-3 w-[18px] h-[18px]" />
         )}
-        <span className="text-base">Notifications</span>
+        <span className="text-[14px]">Notifications</span>
       </div>
 
       {pushState === "denied" ? (
