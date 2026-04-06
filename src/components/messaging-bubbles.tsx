@@ -1977,7 +1977,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                         message.MessageInfo.TimestampNanosString
                       )) && (
                       <div
-                        className={`-mt-1.5 relative z-10 flex flex-wrap items-center gap-1 ${
+                        className={`-mt-3 relative z-10 flex flex-wrap items-center gap-1 ${
                           IsSender ? "justify-end" : ""
                         }`}
                       >
