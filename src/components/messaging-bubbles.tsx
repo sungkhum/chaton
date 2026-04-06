@@ -126,6 +126,11 @@ function convertTstampToDateTime(tstampNanos: number) {
   return date.toLocaleString("default", { hour: "numeric", minute: "numeric" });
 }
 
+/** Detect raw encrypted hex that slipped through decryption without throwing */
+function looksLikeEncryptedHex(text: string): boolean {
+  return text.length >= 64 && /^[0-9a-f]+$/i.test(text);
+}
+
 function MessageContent({
   message,
   tipRecipientUsername,
@@ -150,7 +155,10 @@ function MessageContent({
     );
   }
 
-  if (message.error && !message.DecryptedMessage) {
+  if (
+    (message.error && !message.DecryptedMessage) ||
+    looksLikeEncryptedHex(message.DecryptedMessage)
+  ) {
     return (
       <span className="text-gray-500 italic text-sm select-text flex items-center gap-1.5">
         <Lock className="w-3 h-3 shrink-0" />
@@ -1203,7 +1211,10 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
             if (IsSender) {
               senderStyles = "glass-sent text-white";
             }
-            if (message.error && !message.DecryptedMessage) {
+            if (
+              (message.error && !message.DecryptedMessage) ||
+              looksLikeEncryptedHex(message.DecryptedMessage)
+            ) {
               senderStyles = "bg-white/5 border border-white/10 text-gray-500";
             }
 

@@ -63,7 +63,11 @@ const PreviewText = memo(function PreviewText({
       <span className="inline-block h-3.5 w-32 rounded bg-white/[0.06] animate-pulse" />
     );
   }
-  if (!msg.DecryptedMessage && (msg as any).error) {
+  if (
+    (!msg.DecryptedMessage && (msg as any).error) ||
+    (msg.DecryptedMessage.length >= 64 &&
+      /^[0-9a-f]+$/i.test(msg.DecryptedMessage))
+  ) {
     return <span className="text-gray-600 italic">Unable to load</span>;
   }
 

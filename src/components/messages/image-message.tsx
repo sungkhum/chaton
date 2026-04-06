@@ -182,12 +182,13 @@ export const ImageMessage = ({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const aspectRatio = width && height ? width / height : undefined;
+  const isPortrait = aspectRatio !== undefined && aspectRatio < 1;
 
   const closeLightbox = useCallback(() => setLightboxOpen(false), []);
 
   return (
     <>
-      <div className="w-full min-w-[180px]">
+      <div className={`min-w-[180px] ${isPortrait ? "md:max-w-sm" : "w-full"}`}>
         <div
           className="cursor-pointer overflow-hidden relative"
           onClick={() => setLightboxOpen(true)}
