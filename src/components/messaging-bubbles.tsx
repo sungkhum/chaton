@@ -1056,14 +1056,18 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   }, [unreadReactionTargets]);
 
   const scrollToMessage = useCallback((ts: string) => {
-    const el = messageAreaRef.current?.querySelector<HTMLElement>(
+    const wrapper = messageAreaRef.current?.querySelector<HTMLElement>(
       `[data-ts="${ts}"]`
     );
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      // Brief highlight flash
-      el.classList.add("highlight-flash");
-      setTimeout(() => el.classList.remove("highlight-flash"), 1500);
+    if (wrapper) {
+      wrapper.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Highlight the bubble itself so the flash follows the rounded corners
+      const bubble = wrapper.querySelector<HTMLElement>(
+        ".relative.inline-block > div"
+      );
+      const target = bubble ?? wrapper;
+      target.classList.add("highlight-flash");
+      setTimeout(() => target.classList.remove("highlight-flash"), 1800);
     }
   }, []);
 
@@ -1342,7 +1346,8 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
               return diff > gapNs;
             })();
 
-            // Grouped bubble border-radius: connected corners for consecutive messages
+            // Grouped bubble border-radius: connected corners for consecutive messages.
+            // transition smooths regrouping when new messages arrive.
             const R = 20; // full corner
             const C = 3; // connected corner (adjacent message in group)
             const bubbleRadiusStyle = isEmojiOnly
@@ -1353,12 +1358,14 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                   borderTopRightRadius: isFirstInGroup ? R : C,
                   borderBottomLeftRadius: R,
                   borderBottomRightRadius: isLastInGroup ? R : C,
+                  transition: "border-radius 150ms ease-out",
                 }
               : {
                   borderTopLeftRadius: isFirstInGroup ? R : C,
                   borderTopRightRadius: R,
                   borderBottomLeftRadius: isLastInGroup ? R : C,
                   borderBottomRightRadius: R,
+                  transition: "border-radius 150ms ease-out",
                 };
 
             const messagingDisplayAvatar = (
@@ -1404,7 +1411,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                     IsSender ? "ml-auto justify-end" : "mr-auto justify-start"
                   } max-w-[80%] md:max-w-[65%] ${
                     isLastInGroup ? "mb-4" : "mb-0.5"
-                  } inline-flex items-end text-left group ${
+                  } transition-[margin-bottom] duration-150 ease-out inline-flex items-end text-left group ${
                     mobileActionFor === messageKey ? "relative z-50" : ""
                   } ${isMobile ? "mobile-no-select" : ""}`}
                   style={isMobile ? NO_CALLOUT_STYLE : undefined}
@@ -1481,6 +1488,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                             <ReplyPreview
                               replyPreview={parsed.replyPreview}
                               replySender={parsed.replySender}
+                              onClick={() => scrollToMessage(parsed.replyTo!)}
                             />
                           </div>
                         )}
@@ -1616,17 +1624,25 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                         return null;
                       })()}
 
-                      {/* Status indicator – only on last bubble in a sender group (or failed) to avoid overlap.
+                      {/* Status indicator – shown on every sender message with _status to
+                          avoid the indicator "jumping" between bubbles when grouping changes.
+                          Last-in-group: hangs below the bubble (mb-4 gap has room).
+                          Mid-group: sits inside the bubble bottom-right to avoid overlapping next bubble.
                           Audio processing bubbles have their own internal spinner, so skip the external one. */}
                       {IsSender &&
                         (message as any)._status &&
                         !(
                           parsed.type === "audio" &&
                           (message as any)._status === "processing"
-                        ) &&
-                        (isLastInGroup ||
-                          (message as any)._status === "failed") && (
-                          <div className="absolute -bottom-4 right-0 z-10">
+                        ) && (
+                          <div
+                            className={`absolute z-10 ${
+                              isLastInGroup ||
+                              (message as any)._status === "failed"
+                                ? "-bottom-4 right-0"
+                                : "bottom-0.5 right-1.5"
+                            }`}
+                          >
                             <MessageStatusIndicator
                               status={(message as any)._status}
                               onRetry={

@@ -25,14 +25,16 @@
   to { opacity: 1; }
 }
 
-/* Brief highlight flash when scrolling to a mention or reaction.
+/* Brief highlight pulse when scrolling to a mention, reaction, or quoted reply.
    No border-radius — the message wrapper already has its own grouping radius. */
 @keyframes highlight-flash {
-  0% { background-color: rgba(52, 240, 128, 0.15); }
+  0%   { background-color: rgba(52, 240, 128, 0.30); }
+  25%  { background-color: rgba(52, 240, 128, 0.08); }
+  50%  { background-color: rgba(52, 240, 128, 0.22); }
   100% { background-color: transparent; }
 }
 .highlight-flash {
-  animation: highlight-flash 1.5s ease-out;
+  animation: highlight-flash 1.8s ease-out;
 }
 
 @keyframes slideUp {
@@ -83,7 +85,16 @@
   animation: status-check-in 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .status-confirm-enter {
-  animation: status-confirm-pop 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* Composite: pop in immediately, hold, then fade out after 1.2s.
+     Uses forwards (not both) on the second animation so its backwards-fill
+     doesn't override the pop-in during 0–300ms. */
+  animation:
+    status-confirm-pop 300ms cubic-bezier(0.16, 1, 0.3, 1) both,
+    status-fade-out 300ms cubic-bezier(0.4, 0, 1, 1) 1.2s forwards;
+}
+@keyframes status-fade-out {
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(0.6); opacity: 0; }
 }
 
 body {
