@@ -396,6 +396,19 @@ export const MessagingApp: FC = () => {
   const { isMobile } = useMobile();
   const isIdle = useIdleDetection();
 
+  // Expose conversation setters for Playwright tests (dev only)
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    (window as any).__CHATON_MSG__ = {
+      setConversations,
+      setSelectedConversationPublicKey,
+      setMembersByGroupKey,
+    };
+    return () => {
+      delete (window as any).__CHATON_MSG__;
+    };
+  }, []);
+
   // Adaptive polling: starts at base interval, backs off additively each cycle,
   // resets on WebSocket activity, and pauses entirely when user is idle.
   const baseDelay = isMobile
@@ -4565,7 +4578,7 @@ export const MessagingApp: FC = () => {
                       onCancelEdit={() =>
                         startTransition(() => setEditingMessage(null))
                       }
-                      onSubmitEdit={async (newText, timestamp) => {
+                      onSubmitEdit={async (newText, timestamp, extraData) => {
                         if (
                           !appUser ||
                           !newText.trim() ||
@@ -4592,11 +4605,12 @@ export const MessagingApp: FC = () => {
                               m.MessageInfo.TimestampNanosString === timestamp
                           );
 
-                        // Preserve existing ExtraData (e.g. reply info) and add edited flag
+                        // Preserve existing ExtraData (e.g. reply info), merge new extraData (e.g. image), and add edited flag
                         const existingExtraData =
                           originalMessage?.MessageInfo?.ExtraData || {};
                         const updatedExtraData = {
                           ...existingExtraData,
+                          ...extraData,
                           "msg:edited": "true",
                         };
 

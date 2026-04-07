@@ -29,12 +29,13 @@ test.describe("Landing page", () => {
       })
     ).toBeVisible();
 
+    // Hero CTA buttons
     await expect(
-      page.getByRole("button", { name: /launch app/i })
+      page.getByRole("button", { name: /start messaging/i }).first()
     ).toBeVisible();
 
     await expect(
-      page.getByRole("button", { name: /start messaging for free/i }).first()
+      page.getByRole("link", { name: /explore communities/i })
     ).toBeVisible();
   });
 
@@ -52,7 +53,7 @@ test.describe("Landing page", () => {
     expect(consoleErrors).toEqual([]);
   });
 
-  test("LAUNCH APP button calls identity login", async ({
+  test("Log in button calls identity login", async ({
     page,
     waitForAppReady,
   }, testInfo) => {
@@ -83,9 +84,9 @@ test.describe("Landing page", () => {
       };
     });
 
-    // Use dispatchEvent to avoid Playwright's post-click navigation checks
+    // Landing page uses variant="auth" nav — click "Log in" button
     await page
-      .getByRole("button", { name: /launch app/i })
+      .getByRole("button", { name: /log in/i })
       .first()
       .dispatchEvent("click");
 
@@ -99,7 +100,11 @@ test.describe("Landing page", () => {
     await page.goto("/");
     await waitForAppReady();
 
-    const footer = page.locator("footer");
+    // Scroll to the bottom so the footer is in view
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+
+    // Landing page has its own footer (class="landing-footer")
+    const footer = page.locator("footer.landing-footer");
 
     await expect(
       footer.getByRole("link", { name: /github/i })
@@ -118,23 +123,27 @@ test.describe("Landing page", () => {
     ).toHaveAttribute("href", "/terms");
   });
 
-  test("nav has Features and Technology section links", async ({
+  test("nav has main navigation links", async ({
     page,
     waitForAppReady,
   }, testInfo) => {
-    // These nav links are hidden on mobile (hidden md:flex)
-    test.skip(testInfo.project.name === "mobile", "Desktop-only: nav links hidden on mobile");
+    // Nav links collapse into hamburger on mobile
+    test.skip(testInfo.project.name === "mobile", "Desktop-only: nav links collapse on mobile");
     await page.goto("/");
     await waitForAppReady();
 
     const nav = page.locator("nav");
 
     await expect(
-      nav.getByRole("link", { name: /features/i })
-    ).toHaveAttribute("href", "#features");
+      nav.getByRole("link", { name: /community/i })
+    ).toHaveAttribute("href", "/community");
 
     await expect(
-      nav.getByRole("link", { name: /technology/i })
-    ).toHaveAttribute("href", "#technology");
+      nav.getByRole("link", { name: /blog/i })
+    ).toHaveAttribute("href", "/blog");
+
+    await expect(
+      nav.getByRole("link", { name: /about/i })
+    ).toHaveAttribute("href", "/about");
   });
 });

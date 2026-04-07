@@ -1,8 +1,6 @@
 import { test, expect } from "../fixtures";
 
 // These tests are only meaningful in the mobile project.
-// In desktop/mobile project selection they still run, but the
-// assertions are about mobile-specific rendering.
 test.describe("Mobile viewport", () => {
   test("landing page renders at mobile size", async ({
     page,
@@ -21,15 +19,10 @@ test.describe("Mobile viewport", () => {
       })
     ).toBeVisible();
 
-    // LAUNCH APP button still accessible
+    // Auth buttons accessible (landing page uses variant="auth")
     await expect(
-      page.getByRole("button", { name: /launch app/i })
+      page.getByRole("button", { name: /sign up/i })
     ).toBeVisible();
-
-    // Desktop-only nav links (Features, Technology, Donate) are hidden
-    // They have className "hidden md:flex"
-    const desktopNav = page.locator("nav .hidden.md\\:flex");
-    await expect(desktopNav).toBeHidden();
   });
 
   test("legal page is readable at mobile width", async ({
