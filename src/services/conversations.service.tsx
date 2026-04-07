@@ -1184,6 +1184,17 @@ export const encryptAndUpdateMessage = async (
       newMessageText
     );
 
+    // Encrypt DeSo app media URLs (encryptedVideoURLs, encryptedImageURLs)
+    // to match the standard DeSo format used by Diamond/Focus.
+    for (const key of DESO_APP_ENCRYPTED_KEYS) {
+      if (ExtraData[key]) {
+        ExtraData[key] = await identity.encryptMessage(
+          response.RecipientAccessGroupPublicKeyBase58Check,
+          ExtraData[key]
+        );
+      }
+    }
+
     const keysToEncrypt = getEncryptedExtraDataKeys(
       useStore.getState().privacyMode
     );

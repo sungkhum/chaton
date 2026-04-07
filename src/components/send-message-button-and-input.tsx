@@ -67,7 +67,11 @@ export interface SendMessageButtonAndInputProps {
   typingUsers?: string[];
   editingMessage?: { text: string; timestamp: string } | null;
   onCancelEdit?: () => void;
-  onSubmitEdit?: (newText: string, timestamp: string) => void;
+  onSubmitEdit?: (
+    newText: string,
+    timestamp: string,
+    extraData?: Record<string, string>
+  ) => void;
   /** Group chat members for @mention autocomplete. When provided, enables mentions. */
   mentionCandidates?: MentionCandidate[];
   /** Called when the user taps the $ tip button in the toolbar. */
@@ -209,11 +213,11 @@ export const SendMessageButtonAndInput = forwardRef<
       // Edit mode: submit the edit instead of sending a new message
       if (editingMessage && onSubmitEdit) {
         const msg = text || messageToSend;
-        if (!msg.trim()) {
+        if (!msg.trim() && !extraData) {
           toast.warning("Message cannot be empty");
           return;
         }
-        onSubmitEdit(msg, editingMessage.timestamp);
+        onSubmitEdit(msg, editingMessage.timestamp, extraData);
         setMessageToSend("");
         if (conversationKey) setDraft(conversationKey, "");
         textareaRef.current?.focus();

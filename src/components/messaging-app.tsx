@@ -387,6 +387,9 @@ export const MessagingApp: FC = () => {
   const [pendingTipTimestamps, setPendingTipTimestamps] = useState<Set<string>>(
     new Set()
   );
+  // When true, the detail pane slides back but content stays rendered
+  // (prevents the transparent/empty pane flash during the CSS transition).
+  const [mobileSlideOut, setMobileSlideOut] = useState(false);
   const [dmMenuOpen, setDmMenuOpen] = useState(false);
   const [blockConfirm, setBlockConfirm] = useState<{
     conversationKey: string;
@@ -3175,6 +3178,19 @@ export const MessagingApp: FC = () => {
     rehydrateConversation(pending || "", false, !isMobile || !!pending);
   }, [appUser, isMobile, rehydrateConversation]);
 
+  // On mobile, slide the detail pane out first, then clear the selected key
+  // after the CSS transition finishes so the content stays visible during animation.
+  const handleMobileBack = useCallback(() => {
+    if (mobileSlideOut) return;
+    setMobileSlideOut(true);
+    setEditingMessage(null);
+    setReplyToMessage(null);
+    setTimeout(() => {
+      setSelectedConversationPublicKey("");
+      setMobileSlideOut(false);
+    }, 300); // match transition-[margin-left] duration-300
+  }, [mobileSlideOut]);
+
   const conversationsReady = Object.keys(conversations).length > 0;
   // Guard: if the selected key doesn't match any conversation (e.g. stale
   // cache, race condition during hydration), use a safe key for THIS render
@@ -3674,17 +3690,15 @@ export const MessagingApp: FC = () => {
 
             <div
               className={`w-full h-full shrink-0 md:flex-1 md:min-w-0 bg-[#0a1019] md:ml-0 md:z-auto transition-[margin-left] duration-300 ease-in-out flex flex-col ${
-                selectedConversationPublicKey ? "ml-[-100%] z-50" : ""
+                selectedConversationPublicKey && !mobileSlideOut
+                  ? "ml-[-100%] z-50"
+                  : ""
               }`}
             >
               <header className="flex justify-between items-center border-b border-white/5 relative px-4 md:px-5 h-14 shrink-0">
                 <div
                   className="cursor-pointer py-4 pl-0 pr-6 md:hidden"
-                  onClick={() => {
-                    setSelectedConversationPublicKey("");
-                    setEditingMessage(null);
-                    setReplyToMessage(null);
-                  }}
+                  onClick={handleMobileBack}
                 >
                   <img src="/assets/left-chevron.png" width={20} alt="back" />
                 </div>
@@ -4581,7 +4595,7 @@ export const MessagingApp: FC = () => {
                       onSubmitEdit={async (newText, timestamp, extraData) => {
                         if (
                           !appUser ||
-                          !newText.trim() ||
+                          (!newText.trim() && !extraData) ||
                           !selectedConversation
                         )
                           return;
