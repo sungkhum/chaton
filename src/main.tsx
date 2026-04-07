@@ -55,3 +55,37 @@ if (window.visualViewport) {
   window.addEventListener("resize", updateViewport);
 }
 updateViewport();
+
+/*
+ * Fix stale keyboard height on app resume.
+ *
+ * When the PWA is backgrounded with the keyboard open, iOS can report a stale
+ * (keyboard-reduced) visualViewport.height when the app comes back. Blur the
+ * active element to dismiss any lingering keyboard state, then force a
+ * viewport recalculation. A short delay is needed because iOS doesn't update
+ * visualViewport synchronously on resume.
+ */
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    // Only blur if the viewport looks stale (keyboard height still baked in).
+    // A >150px gap between screen height and visualViewport suggests the OS
+    // is still reporting the keyboard-reduced height from before backgrounding.
+    const vv = window.visualViewport;
+    const screenH = window.innerHeight || window.screen.height;
+    const looksStale = vv && screenH - vv.height > 150;
+
+    if (looksStale) {
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLInputElement
+      ) {
+        active.blur();
+      }
+    }
+    // iOS needs a moment to update visualViewport after resume
+    updateViewport();
+    setTimeout(updateViewport, 100);
+    setTimeout(updateViewport, 300);
+  }
+});

@@ -150,9 +150,9 @@ function getRedditJsonUrl(url: string): string | null {
     const parsed = new URL(url);
     const host = parsed.hostname.replace(/^www\./, "").replace(/^old\./, "");
     if (host !== "reddit.com") return null;
-    // Match /r/<sub>/comments/<id>/ pattern
+    // Match /r/<sub>/comments/<id>/ pattern (subreddits can contain hyphens and underscores)
     const match = parsed.pathname.match(
-      /^\/r\/\w+\/comments\/\w+/
+      /^\/r\/[\w-]+\/comments\/\w+/
     );
     if (!match) return null;
     // Normalise to www.reddit.com and append .json
