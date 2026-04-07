@@ -2371,7 +2371,15 @@ export const MessagingApp: FC = () => {
         cachedLastKey ||
         Object.keys(cachedConvos)[0];
 
-      setConversations(cachedConvos);
+      // Preserve any placeholder conversation injected before rehydration
+      // (e.g. from onPrivateMessage) so the safeSelectedKey guard doesn't
+      // reset the selection.
+      setConversations((prev) => {
+        if (selectedKey && prev[selectedKey] && !cachedConvos[selectedKey]) {
+          return { [selectedKey]: prev[selectedKey], ...cachedConvos };
+        }
+        return cachedConvos;
+      });
       setConversationsLoading(false);
 
       renderedFromCache = true;
@@ -2895,7 +2903,11 @@ export const MessagingApp: FC = () => {
         // that arrived via WebSocket during decryption.
         if (renderedFromCache) {
           for (const k of Object.keys(merged)) {
-            if (!updatedConversations[k] && k !== currentKey) {
+            if (
+              !updatedConversations[k] &&
+              k !== currentKey &&
+              k !== keyToUse
+            ) {
               delete merged[k];
             }
           }
@@ -4364,10 +4376,25 @@ export const MessagingApp: FC = () => {
                           }
                         }}
                         onPrivateMessage={(senderPublicKey) => {
-                          rehydrateConversation(
-                            senderPublicKey + DEFAULT_KEY_MESSAGING_GROUP_NAME,
-                            true
-                          );
+                          const dmKey =
+                            senderPublicKey + DEFAULT_KEY_MESSAGING_GROUP_NAME;
+                          // Inject placeholder so the safeSelectedKey guard
+                          // doesn't reset the selection before rehydration
+                          // adds the real conversation. Order matters:
+                          // setConversations must come before setSelectedConversationPublicKey.
+                          setConversations((prev) => {
+                            if (prev[dmKey]) return prev;
+                            return {
+                              [dmKey]: {
+                                ChatType: ChatType.DM,
+                                firstMessagePublicKey: senderPublicKey,
+                                messages: [],
+                              },
+                              ...prev,
+                            };
+                          });
+                          setSelectedConversationPublicKey(dmKey);
+                          rehydrateConversation(dmKey, true);
                         }}
                       />
                     )}
