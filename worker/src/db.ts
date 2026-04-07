@@ -95,7 +95,8 @@ export async function removeSubscription(
     .run();
 }
 
-/** Get opted-in users with active subscriptions, starting after lastId for rotation.
+/** Get opted-in users with active subscriptions who are NOT currently connected
+ *  via WebSocket (the DO handles push for online users in real-time).
  *  Returns up to `limit` users ordered by id. Pass lastId=0 to start from the beginning. */
 export async function getOptedInUsers(
   db: D1Database,
@@ -107,7 +108,7 @@ export async function getOptedInUsers(
       `SELECT DISTINCT u.id, u.deso_public_key, u.push_enabled
        FROM users u
        JOIN push_subscriptions ps ON ps.user_id = u.id
-       WHERE u.push_enabled = 1 AND ps.is_active = 1 AND u.id > ?
+       WHERE u.push_enabled = 1 AND ps.is_active = 1 AND u.is_online = 0 AND u.id > ?
        ORDER BY u.id ASC
        LIMIT ?`
     )
@@ -245,16 +246,42 @@ export async function incrementFailureCount(
   return row?.failure_count ?? 0;
 }
 
-/** Update last_seen_at timestamp for a user on WebSocket disconnect. */
-export async function updateLastSeen(
+/** Mark a user as online (has an active WebSocket connection to the DO).
+ *  The cron skips online users since the DO handles their push in real-time. */
+export async function setUserOnline(
   db: D1Database,
   desoPublicKey: string
 ): Promise<void> {
   await db
     .prepare(
-      "UPDATE users SET last_seen_at = datetime('now') WHERE deso_public_key = ?"
+      "UPDATE users SET is_online = 1 WHERE deso_public_key = ?"
     )
     .bind(desoPublicKey)
+    .run();
+}
+
+/** Mark a user as offline (no active WebSocket connections). */
+export async function setUserOffline(
+  db: D1Database,
+  desoPublicKey: string
+): Promise<void> {
+  await db
+    .prepare(
+      "UPDATE users SET is_online = 0, last_seen_at = datetime('now') WHERE deso_public_key = ?"
+    )
+    .bind(desoPublicKey)
+    .run();
+}
+
+/** Reset stale is_online flags for users whose last_seen_at is older than 10 minutes.
+ *  Handles the case where the DO crashes/evicts without calling removeClient(). */
+export async function cleanupStaleOnlineFlags(
+  db: D1Database
+): Promise<void> {
+  await db
+    .prepare(
+      "UPDATE users SET is_online = 0 WHERE is_online = 1 AND last_seen_at < datetime('now', '-10 minutes')"
+    )
     .run();
 }
 
@@ -338,12 +365,15 @@ export async function recordPushSent(
     .run();
 }
 
-/** Check if a push was recently sent for this recipient + conversation. */
+/** Check if a push was recently sent for this recipient + conversation.
+ *  Window must exceed the worst-case cron rotation period (ceil(users/20) minutes)
+ *  to prevent the cron/queue path from re-sending a notification the DO already
+ *  delivered. 300s covers up to 100 opted-in users. */
 export async function wasRecentlyNotified(
   db: D1Database,
   recipientPk: string,
   conversationKey: string,
-  withinSeconds: number = 90
+  withinSeconds: number = 300
 ): Promise<boolean> {
   const row = await db
     .prepare(
@@ -356,13 +386,14 @@ export async function wasRecentlyNotified(
   return !!row;
 }
 
-/** Clean up old dedup records (called from cron). */
+/** Clean up old dedup records (called from cron).
+ *  Retention (10 min) must be longer than the dedup window (5 min). */
 export async function cleanupNotificationDedup(
   db: D1Database
 ): Promise<void> {
   await db
     .prepare(
-      "DELETE FROM notification_dedup WHERE sent_at < datetime('now', '-5 minutes')"
+      "DELETE FROM notification_dedup WHERE sent_at < datetime('now', '-10 minutes')"
     )
     .run();
 }

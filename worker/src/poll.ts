@@ -12,6 +12,7 @@ import {
   upsertThreadStateBatch,
   cleanupNotificationDedup,
   cleanupInactiveSubscriptions,
+  cleanupStaleOnlineFlags,
 } from "./db";
 
 // ── DeSo API types (only the fields we need) ──
@@ -137,9 +138,10 @@ export async function handleScheduled(env: Env): Promise<void> {
   const cronStart = Date.now();
   console.log("[cron] started");
 
-  // Purge stale dedup records (older than 5 minutes) and old inactive subscriptions
+  // Purge stale dedup records, inactive subscriptions, and stale online flags
   await cleanupNotificationDedup(env.DB).catch(() => {});
   await cleanupInactiveSubscriptions(env.DB).catch(() => {});
+  await cleanupStaleOnlineFlags(env.DB).catch(() => {});
 
   const nodeUrl = env.DESO_NODE_URL || "https://node.deso.org";
 
@@ -165,7 +167,6 @@ export async function handleScheduled(env: Env): Promise<void> {
   // keeping DeSo node load reasonable.
   const PARALLEL = 5;
   let usersProcessed = 0;
-  let totalPushJobs = 0;
   for (let i = 0; i < batch.length; i += PARALLEL) {
     const chunk = batch.slice(i, i + PARALLEL);
     const results = await Promise.allSettled(

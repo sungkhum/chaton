@@ -1,7 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { sendPushNotification, PushSubscriptionData } from "./web-push";
 import { validateDesoJwt } from "./jwt";
-import { updateLastSeen, getReadCursors, upsertReadCursors, recordPushSent } from "./db";
+import { setUserOnline, setUserOffline, getReadCursors, upsertReadCursors, recordPushSent } from "./db";
 
 interface WsMessage {
   type: "notify" | "typing" | "read" | "register" | "read-sync-init";
@@ -200,9 +200,17 @@ export class ChatRelay extends DurableObject<RelayEnv> {
     }
 
     const existing = this.clients.get(publicKey) || [];
+    const isFirstConnection = existing.length === 0;
     existing.push({ ws, publicKey, lastSeen: Date.now() });
     this.clients.set(publicKey, existing);
     this.broadcastPresence();
+
+    // Mark user as online so the cron skips them (DO handles their push in real-time)
+    if (isFirstConnection) {
+      this.ctx.waitUntil(
+        setUserOnline(this.env.DB, publicKey).catch(() => { /* best-effort */ })
+      );
+    }
 
     // Send stored read cursors from D1 so the client can merge with localStorage
     this.ctx.waitUntil(
@@ -481,8 +489,10 @@ export class ChatRelay extends DurableObject<RelayEnv> {
             upsertReadCursors(this.env.DB, pubKey, cursors).catch(() => {})
           );
         }
+        // Mark user as offline so the cron resumes polling for them.
+        // setUserOffline also updates last_seen_at.
         this.ctx.waitUntil(
-          updateLastSeen(this.env.DB, pubKey).catch(() => {/* best-effort */})
+          setUserOffline(this.env.DB, pubKey).catch(() => {/* best-effort */})
         );
       } else {
         this.clients.set(pubKey, filtered);
