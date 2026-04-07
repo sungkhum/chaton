@@ -228,8 +228,16 @@ const NearZeroInfrastructure = () => (
       </li>
       <li>
         <strong>Dependency on DeSo:</strong> Our infrastructure is simple
-        because DeSo exists. If DeSo had reliability issues, ChatOn would too.
-        The mitigation is that DeSo is a public, permissionless blockchain —
+        because DeSo exists. ChatOn does not run a DeSo node — it uses the
+        existing network through public APIs, the same way a website uses the
+        internet without running backbone routers. DeSo&apos;s node
+        infrastructure is self-sustaining: validators earn block rewards through{" "}
+        <a href="https://revolution.deso.com" target="_blank" rel="noreferrer">
+          Revolution Proof of Stake
+        </a>
+        , token holders stake DESO with validators for yield, and transaction
+        fees are burned to create deflationary pressure. If DeSo had reliability
+        issues, ChatOn would too — but the network is public and permissionless,
         anyone can run a node, and no single entity can shut it down.
       </li>
       <li>

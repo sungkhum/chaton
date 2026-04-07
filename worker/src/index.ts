@@ -175,7 +175,8 @@ export default {
   },
 
   // ── Cron trigger: poll DeSo for new messages ──
-  async scheduled(_event: ScheduledEvent, env: Env): Promise<void> {
+  async scheduled(event: ScheduledEvent, env: Env): Promise<void> {
+    console.log(`[scheduled] cron triggered at ${new Date(event.scheduledTime).toISOString()}`);
     await handleScheduled(env);
   },
 
@@ -184,15 +185,24 @@ export default {
     batch: MessageBatch<PushJob>,
     env: Env
   ): Promise<void> {
+    const queueStart = Date.now();
+    console.log(`[queue] processing batch of ${batch.messages.length} push jobs`);
+    let delivered = 0;
+    let failed = 0;
     for (const msg of batch.messages) {
       try {
+        const jobStart = Date.now();
         await deliverPush(env, msg.body);
         msg.ack();
+        delivered++;
+        console.log(`[queue] push delivered for user ${msg.body.userId} in ${Date.now() - jobStart}ms`);
       } catch (err) {
+        failed++;
         console.error("Push delivery failed:", err);
         msg.retry();
       }
     }
+    console.log(`[queue] batch done: ${delivered} delivered, ${failed} failed in ${Date.now() - queueStart}ms`);
   },
 };
 

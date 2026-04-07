@@ -18,6 +18,16 @@ export interface BlogPostMeta {
  */
 export const BLOG_POSTS: BlogPostMeta[] = [
   {
+    slug: "chaton-vs-signal",
+    title: "ChatOn vs Signal: An Honest Comparison",
+    description:
+      "Signal has the strongest encryption available. ChatOn requires no phone number and no central servers. An honest comparison of where each wins and loses.",
+    date: "2026-04-07",
+    readTime: "10 min read",
+    tags: ["privacy", "comparison", "signal"],
+    component: () => import("./posts/chaton-vs-signal"),
+  },
+  {
     slug: "best-decentralized-messaging-apps-2026",
     title: "Best Decentralized Messaging Apps in 2026",
     description:

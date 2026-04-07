@@ -24,12 +24,20 @@ const ROUTES = [
   "/faq", "/about", "/compare",
   "/blog", "/blog/near-zero-infrastructure",
   "/blog/best-decentralized-messaging-apps-2026",
+  "/blog/chaton-vs-signal",
 ];
 
 const BASE_URL = "https://getchaton.com";
 
 /** Blog posts that need OG images. */
 const OG_POSTS = [
+  {
+    slug: "chaton-vs-signal",
+    title: "ChatOn vs Signal: An Honest Comparison",
+    description:
+      "Signal has the strongest encryption available. ChatOn requires no phone number and no central servers. An honest comparison of where each wins and loses.",
+    date: "April 7, 2026",
+  },
   {
     slug: "best-decentralized-messaging-apps-2026",
     title: "Best Decentralized Messaging Apps in 2026",

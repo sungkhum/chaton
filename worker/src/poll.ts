@@ -127,11 +127,16 @@ async function fetchThreads(
 
 // ── Main cron handler ──
 
-// Max users per cron run to stay within the 30s CPU time limit.
-// Each user requires ~1 DeSo API call + D1 reads/writes.
-const MAX_USERS_PER_RUN = 100;
+// Max users per cron run. Keep low to stay within the CPU time limit.
+// Each user requires ~1 DeSo API call (JSON parse) + D1 reads + BigInt
+// comparisons per thread. The cron runs every minute with offset rotation,
+// so all users still get polled — just spread across more runs.
+const MAX_USERS_PER_RUN = 20;
 
 export async function handleScheduled(env: Env): Promise<void> {
+  const cronStart = Date.now();
+  console.log("[cron] started");
+
   // Purge stale dedup records (older than 5 minutes) and old inactive subscriptions
   await cleanupNotificationDedup(env.DB).catch(() => {});
   await cleanupInactiveSubscriptions(env.DB).catch(() => {});
@@ -149,31 +154,32 @@ export async function handleScheduled(env: Env): Promise<void> {
     batch = await getOptedInUsers(env.DB, MAX_USERS_PER_RUN, 0);
   }
 
-  if (batch.length === 0) return;
+  if (batch.length === 0) {
+    console.log("[cron] no users to poll");
+    return;
+  }
+
+  console.log(`[cron] polling ${batch.length} users (offset after id ${lastId})`);
 
   // Process users in parallel batches of 5 to reduce wall time while
   // keeping DeSo node load reasonable.
   const PARALLEL = 5;
+  let usersProcessed = 0;
+  let totalPushJobs = 0;
   for (let i = 0; i < batch.length; i += PARALLEL) {
     const chunk = batch.slice(i, i + PARALLEL);
-    await Promise.allSettled(
+    const results = await Promise.allSettled(
       chunk.map(async (user) => {
+        const userStart = Date.now();
         try {
           await pollUserThreads(env, nodeUrl, user.id, user.deso_public_key);
+          usersProcessed++;
+          console.log(`[cron] user ${user.id} polled in ${Date.now() - userStart}ms`);
         } catch (err) {
-          // Single retry — no sleep, just retry immediately
-          console.warn(
-            `Poll failed for ${user.deso_public_key}, retrying:`,
+          console.error(
+            `[cron] user ${user.id} failed after ${Date.now() - userStart}ms:`,
             err instanceof Error ? err.message : err
           );
-          try {
-            await pollUserThreads(env, nodeUrl, user.id, user.deso_public_key);
-          } catch (retryErr) {
-            console.error(
-              `Poll retry failed for ${user.deso_public_key}:`,
-              retryErr instanceof Error ? retryErr.message : retryErr
-            );
-          }
         }
       })
     );
@@ -182,6 +188,10 @@ export async function handleScheduled(env: Env): Promise<void> {
   // Save offset for next cron run
   const lastProcessedId = batch[batch.length - 1].id;
   await setCronOffset(env.DB, lastProcessedId).catch(() => {});
+
+  console.log(
+    `[cron] done: ${usersProcessed}/${batch.length} users in ${Date.now() - cronStart}ms`
+  );
 }
 
 async function pollUserThreads(
