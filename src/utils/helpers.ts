@@ -54,7 +54,9 @@ export const getChatNameFromConversation = (
       null
     );
   }
-  const recipientInfo = conversation.messages[0].RecipientInfo;
+  const firstMsg = conversation.messages[0];
+  if (!firstMsg) return null;
+  const recipientInfo = firstMsg.RecipientInfo;
   if (allAccessGroups) {
     const displayName = getGroupDisplayName(
       allAccessGroups,

@@ -9,6 +9,7 @@
     best-decentralized-messaging-apps-2026
     BlogIndex
     BlogPostLayout
+    chaton-vs-signal
     chunk-error-boundary
     community-page
     CommunityTab

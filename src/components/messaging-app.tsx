@@ -2797,7 +2797,10 @@ export const MessagingApp: FC = () => {
       Object.keys(conversationsResponse)[0];
 
     if (keyToUse && !conversationsResponse[keyToUse]) {
-      const isGroup = keyToUse.length > PUBLIC_KEY_LENGTH;
+      const groupKeyName = keyToUse.slice(PUBLIC_KEY_LENGTH);
+      const isGroup =
+        groupKeyName.length > 0 &&
+        groupKeyName !== DEFAULT_KEY_MESSAGING_GROUP_NAME;
       conversationsResponse = {
         [keyToUse]: {
           ChatType: isGroup ? ChatType.GROUPCHAT : ChatType.DM,
