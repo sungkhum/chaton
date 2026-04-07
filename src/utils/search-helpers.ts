@@ -1,7 +1,7 @@
 import { ProfileEntryResponse } from "deso-protocol";
 
 export const shortenLongWord = (
-  key: string | null,
+  key: string | null | undefined,
   endFirstPartAfter = 6,
   startSecondPartAfter = 6,
   separator = "..."

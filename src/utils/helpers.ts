@@ -47,15 +47,14 @@ export const getChatNameFromConversation = (
   conversation: Conversation,
   getUsernameByPublicKeyBase58Check: { [key: string]: string },
   allAccessGroups?: AccessGroupEntryResponse[]
-) => {
+): string | undefined => {
   if (conversation.ChatType === ChatType.DM) {
-    return (
-      getUsernameByPublicKeyBase58Check[conversation.firstMessagePublicKey] ??
-      null
-    );
+    return getUsernameByPublicKeyBase58Check[
+      conversation.firstMessagePublicKey
+    ];
   }
   const firstMsg = conversation.messages[0];
-  if (!firstMsg) return null;
+  if (!firstMsg) return undefined;
   const recipientInfo = firstMsg.RecipientInfo;
   if (allAccessGroups) {
     const displayName = getGroupDisplayName(

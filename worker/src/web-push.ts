@@ -62,7 +62,7 @@ async function importVapidPrivateKey(base64urlKey: string): Promise<CryptoKey> {
 }
 
 async function getVapidPublicKeyBytes(privateKey: CryptoKey): Promise<Uint8Array> {
-  const jwk = await crypto.subtle.exportKey("jwk", privateKey);
+  const jwk = await crypto.subtle.exportKey("jwk", privateKey) as JsonWebKey;
   if (!jwk.x || !jwk.y) throw new Error("Cannot export public key from VAPID key");
   return concat(new Uint8Array([0x04]), unb64url(jwk.x), unb64url(jwk.y));
 }
@@ -126,15 +126,15 @@ async function encrypt(
   const salt = crypto.getRandomValues(new Uint8Array(16));
 
   // Ephemeral ECDH key pair (application server key for this message)
-  const asKey = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
-  const asPublic = new Uint8Array(await crypto.subtle.exportKey("raw", asKey.publicKey));
+  const asKey = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]) as CryptoKeyPair;
+  const asPublic = new Uint8Array(await crypto.subtle.exportKey("raw", asKey.publicKey) as ArrayBuffer);
 
   // Import subscriber's public key for ECDH
   const uaKey = await crypto.subtle.importKey("raw", uaPublic, { name: "ECDH", namedCurve: "P-256" }, false, []);
 
   // Shared secret via ECDH
   const ecdhSecret = new Uint8Array(
-    await crypto.subtle.deriveBits({ name: "ECDH", public: uaKey }, asKey.privateKey, 256)
+    await crypto.subtle.deriveBits({ name: "ECDH", public: uaKey } as EcdhKeyDeriveParams, asKey.privateKey, 256)
   );
 
   // IKM = HKDF(salt=authSecret, ikm=ecdhSecret, info="WebPush: info\0" || uaPublic || asPublic, 32)

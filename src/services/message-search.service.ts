@@ -9,7 +9,12 @@ import {
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
   MESSAGES_ONE_REQUEST_LIMIT,
 } from "../utils/constants";
-import { MSG_DELETED, MSG_FILE_NAME, MSG_GIF_TITLE, MSG_TYPE } from "../utils/extra-data";
+import {
+  MSG_DELETED,
+  MSG_FILE_NAME,
+  MSG_GIF_TITLE,
+  MSG_TYPE,
+} from "../utils/extra-data";
 import { getChatNameFromConversation } from "../utils/helpers";
 import { ConversationMap } from "../utils/types";
 import {
@@ -115,13 +120,17 @@ export async function searchCachedMessages(
   conversations: ConversationMap,
   usernameMap: Record<string, string>,
   allAccessGroups?: AccessGroupEntryResponse[]
-): Promise<{ results: MessageSearchResult[]; searchedTimestamps: Set<string> }> {
+): Promise<{
+  results: MessageSearchResult[];
+  searchedTimestamps: Set<string>;
+}> {
   const queryLower = query.toLowerCase();
   const results: MessageSearchResult[] = [];
   const searchedTimestamps = new Set<string>();
 
   for (const [key, convo] of Object.entries(conversations)) {
-    const convoName = getChatNameFromConversation(convo, usernameMap, allAccessGroups);
+    const convoName =
+      getChatNameFromConversation(convo, usernameMap, allAccessGroups) ?? "";
 
     // Merge in-memory messages with any extra messages from IndexedDB cache
     let allMessages = [...convo.messages];
@@ -159,7 +168,11 @@ export async function searchCachedMessages(
 export async function deepSearchConversation(
   userPublicKey: string,
   conversationKey: string,
-  conversation: { firstMessagePublicKey: string; messages: DecryptedMessageEntryResponse[]; ChatType: ChatType },
+  conversation: {
+    firstMessagePublicKey: string;
+    messages: DecryptedMessageEntryResponse[];
+    ChatType: ChatType;
+  },
   query: string,
   usernameMap: Record<string, string>,
   allAccessGroups: AccessGroupEntryResponse[],
@@ -168,7 +181,9 @@ export async function deepSearchConversation(
   onResult: (result: MessageSearchResult) => void
 ): Promise<void> {
   const queryLower = query.toLowerCase();
-  const convoName = getChatNameFromConversation(conversation, usernameMap, allAccessGroups);
+  const convoName =
+    getChatNameFromConversation(conversation, usernameMap, allAccessGroups) ??
+    "";
 
   // Find the oldest timestamp we've already searched so we can start from there
   let oldestTimestamp: string | undefined;
@@ -176,7 +191,10 @@ export async function deepSearchConversation(
   // Gather all known messages to find the oldest one
   const knownMessages = [...conversation.messages];
   try {
-    const cached = await getCachedConversationMessages(userPublicKey, conversationKey);
+    const cached = await getCachedConversationMessages(
+      userPublicKey,
+      conversationKey
+    );
     if (cached && Array.isArray(cached)) {
       knownMessages.push(...(cached as DecryptedMessageEntryResponse[]));
     }
@@ -187,7 +205,9 @@ export async function deepSearchConversation(
   if (knownMessages.length > 0) {
     // Find oldest message by TimestampNanos
     const sorted = [...knownMessages].sort(
-      (a, b) => Number(a.MessageInfo.TimestampNanos) - Number(b.MessageInfo.TimestampNanos)
+      (a, b) =>
+        Number(a.MessageInfo.TimestampNanos) -
+        Number(b.MessageInfo.TimestampNanos)
     );
     oldestTimestamp = sorted[0].MessageInfo.TimestampNanosString;
   }
@@ -209,7 +229,8 @@ export async function deepSearchConversation(
         const resp = await getPaginatedDMThread({
           UserGroupOwnerPublicKeyBase58Check: userPublicKey,
           UserGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
-          PartyGroupOwnerPublicKeyBase58Check: conversation.firstMessagePublicKey,
+          PartyGroupOwnerPublicKeyBase58Check:
+            conversation.firstMessagePublicKey,
           PartyGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
           StartTimeStampString: cursor,
           MaxMessagesToFetch: MESSAGES_ONE_REQUEST_LIMIT,
@@ -223,7 +244,8 @@ export async function deepSearchConversation(
         if (!refMsg) break;
 
         const resp = await getPaginatedGroupChatThread({
-          UserPublicKeyBase58Check: refMsg.RecipientInfo.OwnerPublicKeyBase58Check,
+          UserPublicKeyBase58Check:
+            refMsg.RecipientInfo.OwnerPublicKeyBase58Check,
           AccessGroupKeyName: refMsg.RecipientInfo.AccessGroupKeyName,
           StartTimeStampString: cursor,
           MaxMessagesToFetch: MESSAGES_ONE_REQUEST_LIMIT,
@@ -252,7 +274,15 @@ export async function deepSearchConversation(
 
         const idx = matchMessage(msg, queryLower);
         if (idx >= 0) {
-          onResult(buildResult(msg, idx, conversationKey, convoName, conversation.ChatType));
+          onResult(
+            buildResult(
+              msg,
+              idx,
+              conversationKey,
+              convoName,
+              conversation.ChatType
+            )
+          );
         }
       }
 
@@ -261,7 +291,9 @@ export async function deepSearchConversation(
 
       // Move cursor to the oldest message in this batch
       const sortedBatch = [...decrypted].sort(
-        (a, b) => Number(a.MessageInfo.TimestampNanos) - Number(b.MessageInfo.TimestampNanos)
+        (a, b) =>
+          Number(a.MessageInfo.TimestampNanos) -
+          Number(b.MessageInfo.TimestampNanos)
       );
       const newCursor = sortedBatch[0].MessageInfo.TimestampNanosString;
 
@@ -273,7 +305,10 @@ export async function deepSearchConversation(
       // Rate limit: wait between pages
       await delay(100);
     } catch (err) {
-      console.warn(`[message-search] Error deep-searching conversation ${conversationKey}:`, err);
+      console.warn(
+        `[message-search] Error deep-searching conversation ${conversationKey}:`,
+        err
+      );
       break;
     }
   }
@@ -281,14 +316,20 @@ export async function deepSearchConversation(
   // Cache newly fetched messages alongside existing ones for faster future searches
   if (allFetchedMessages.length > 0) {
     try {
-      const existing = (await getCachedConversationMessages(userPublicKey, conversationKey)) || [];
+      const existing =
+        (await getCachedConversationMessages(userPublicKey, conversationKey)) ||
+        [];
       const merged = deduplicateMessages([
         ...(existing as DecryptedMessageEntryResponse[]),
         ...conversation.messages,
         ...allFetchedMessages,
       ]);
       // Sort newest first for consistency
-      merged.sort((a, b) => Number(b.MessageInfo.TimestampNanos) - Number(a.MessageInfo.TimestampNanos));
+      merged.sort(
+        (a, b) =>
+          Number(b.MessageInfo.TimestampNanos) -
+          Number(a.MessageInfo.TimestampNanos)
+      );
       await cacheConversationMessages(userPublicKey, conversationKey, merged);
     } catch {
       // cache write failed — non-critical
