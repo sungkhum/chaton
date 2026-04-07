@@ -1,8 +1,8 @@
 import { useRef, useCallback } from "react";
 
-const SWIPE_THRESHOLD = 60; // minimum px to trigger
-const EDGE_ZONE = 40; // px from left edge to start tracking
-const MAX_VERTICAL = 60; // ignore if vertical component is too large
+const SWIPE_THRESHOLD = 50; // minimum px to trigger
+const EDGE_ZONE = 80; // px from left edge to start tracking
+const MAX_VERTICAL = 75; // ignore if vertical component is too large
 
 /**
  * Detects a right-swipe starting from the left edge of the element.

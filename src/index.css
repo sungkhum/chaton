@@ -917,29 +917,39 @@ input::placeholder {
 
 /* Mobile Chat Navigation — iOS-style cover/reveal slide.
    Detail pane slides over the list (forward) and slides away (back).
-   List gets a subtle depth effect (slight scale + dim) to reinforce layering. */
+   The default VT cross-fade is disabled so only explicit animations run. */
 
-@keyframes chat-bg-away {
-  from { transform: scale(1); opacity: 1; }
-  to   { transform: scale(0.98); opacity: 0.7; }
+/* Kill the default cross-fade on these VT pairs — we handle each snapshot ourselves */
+::view-transition-image-pair(.chat-detail-enter),
+::view-transition-image-pair(.chat-detail-exit),
+::view-transition-image-pair(.chat-list-enter),
+::view-transition-image-pair(.chat-list-exit) {
+  isolation: auto;
+}
+::view-transition-old(.chat-detail-enter),
+::view-transition-new(.chat-detail-exit),
+::view-transition-old(.chat-list-enter),
+::view-transition-new(.chat-list-exit) {
+  animation: none;
+  display: none;
 }
 
-/* Forward: detail slides in from right, list recedes */
+/* Forward: detail slides in from right, list stays put */
 ::view-transition-new(.chat-detail-enter) {
   --slide-offset: 100%;
   animation: var(--vt-duration-move) cubic-bezier(0.32, 0.72, 0, 1) both vt-slide;
 }
 ::view-transition-old(.chat-list-exit) {
-  animation: var(--vt-duration-move) ease-out both chat-bg-away;
+  animation: none;
 }
 
-/* Back: detail slides out to right, list returns */
+/* Back: detail slides out to right, list stays put */
 ::view-transition-old(.chat-detail-exit) {
   --slide-offset: 100%;
   animation: var(--vt-duration-move) cubic-bezier(0.32, 0.72, 0, 1) both vt-slide reverse;
 }
 ::view-transition-new(.chat-list-enter) {
-  animation: var(--vt-duration-move) ease-out both chat-bg-away reverse;
+  animation: none;
 }
 
 /* Scale (modals, panels) */
