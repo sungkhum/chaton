@@ -1,4 +1,4 @@
-# Components (generated 2026-04-06)
+# Components (generated 2026-04-07)
 # (c)=client component. UI primitives (shadcn/radix) omitted.
 
 ## src
@@ -6,6 +6,7 @@
     AlertNotification
     AudioMessage
     AudioRecorderPanel
+    best-decentralized-messaging-apps-2026
     BlogIndex
     BlogPostLayout
     chunk-error-boundary
