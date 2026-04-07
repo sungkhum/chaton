@@ -101,6 +101,14 @@ self.addEventListener("message", (event: ExtendableMessageEvent) => {
     activeConversationSetAt = Date.now();
   }
 
+  // Clear notifications for a conversation the user just read
+  if (event.data?.type === "clear-notifications" && event.data.tag) {
+    self.registration
+      .getNotifications({ tag: event.data.tag })
+      .then((notifications) => notifications.forEach((n) => n.close()))
+      .catch(() => {});
+  }
+
   // Allow the client to trigger skipWaiting when the user accepts the update
   if (event.data?.type === "skip-waiting") {
     self.skipWaiting();

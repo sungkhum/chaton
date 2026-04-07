@@ -253,6 +253,22 @@ export const useStore = create<ChatOnState>((set) => ({
         navigator.clearAppBadge().catch(() => {});
       else if (navigator.setAppBadge)
         navigator.setAppBadge(total).catch(() => {});
+      // Dismiss notifications for this conversation from the OS notification tray
+      try {
+        const msg = {
+          type: "clear-notifications",
+          tag: `thread-${conversationKey}`,
+        };
+        if (navigator.serviceWorker?.controller) {
+          navigator.serviceWorker.controller.postMessage(msg);
+        } else {
+          navigator.serviceWorker?.ready.then((reg) =>
+            reg.active?.postMessage(msg)
+          );
+        }
+      } catch {
+        // SW not available
+      }
       return { unreadByConversation: next, totalUnread: total };
     }),
 

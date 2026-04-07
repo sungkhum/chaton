@@ -25,29 +25,31 @@ export const GifMessage = ({
   const aspectRatio = width && height ? width / height : undefined;
 
   return (
-    <div
-      className="overflow-hidden w-full min-w-[180px] max-w-[300px] md:max-w-[350px] relative"
-      style={aspectRatio ? { aspectRatio } : undefined}
-    >
-      {!loaded && (
-        <div
-          className="absolute inset-0 bg-white/10 animate-pulse rounded-lg"
-          style={aspectRatio ? { aspectRatio } : { minHeight: 150 }}
-        />
-      )}
-      <img
-        src={gifUrl}
-        alt={title || "GIF"}
-        className={`w-full h-auto object-cover transition-opacity duration-200 ${
-          loaded ? "opacity-100" : "opacity-0"
-        }`}
+    <div className="w-full min-w-[180px] max-w-[300px] md:max-w-[350px]">
+      <div
+        className="overflow-hidden relative"
         style={aspectRatio ? { aspectRatio } : undefined}
-        loading="lazy"
-        onLoad={() => setLoaded(true)}
-        onError={() => setLoaded(true)}
-      />
+      >
+        {!loaded && (
+          <div
+            className="absolute inset-0 bg-white/10 animate-pulse rounded-lg"
+            style={aspectRatio ? { aspectRatio } : { minHeight: 150 }}
+          />
+        )}
+        <img
+          src={gifUrl}
+          alt={title || "GIF"}
+          className={`w-full h-auto object-cover transition-opacity duration-200 ${
+            loaded ? "opacity-100" : "opacity-0"
+          }`}
+          style={aspectRatio ? { aspectRatio } : undefined}
+          loading="lazy"
+          onLoad={() => setLoaded(true)}
+          onError={() => setLoaded(true)}
+        />
+      </div>
       {caption && (
-        <p className="text-sm text-white mt-2 px-1 whitespace-pre-wrap break-words select-text">
+        <p className="text-sm text-white mt-1.5 px-3 pb-1 whitespace-pre-wrap break-words select-text">
           {caption}
         </p>
       )}
