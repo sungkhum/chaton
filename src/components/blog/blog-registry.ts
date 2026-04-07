@@ -18,6 +18,16 @@ export interface BlogPostMeta {
  */
 export const BLOG_POSTS: BlogPostMeta[] = [
   {
+    slug: "best-decentralized-messaging-apps-2026",
+    title: "Best Decentralized Messaging Apps in 2026",
+    description:
+      "An honest comparison of the best decentralized messaging apps available in 2026 — covering encryption, privacy, features, and tradeoffs for each.",
+    date: "2026-04-06",
+    readTime: "10 min read",
+    tags: ["privacy", "comparison", "decentralized"],
+    component: () => import("./posts/best-decentralized-messaging-apps-2026"),
+  },
+  {
     slug: "near-zero-infrastructure",
     title: "How We Run a Messaging App for Near-Zero Cost",
     description:

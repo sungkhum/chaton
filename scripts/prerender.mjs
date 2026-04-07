@@ -23,12 +23,20 @@ const ROUTES = [
   "/", "/privacy", "/terms", "/support", "/community",
   "/faq", "/about", "/compare",
   "/blog", "/blog/near-zero-infrastructure",
+  "/blog/best-decentralized-messaging-apps-2026",
 ];
 
 const BASE_URL = "https://getchaton.com";
 
 /** Blog posts that need OG images. */
 const OG_POSTS = [
+  {
+    slug: "best-decentralized-messaging-apps-2026",
+    title: "Best Decentralized Messaging Apps in 2026",
+    description:
+      "An honest comparison of the best decentralized messaging apps available in 2026 — covering encryption, privacy, features, and tradeoffs for each.",
+    date: "April 6, 2026",
+  },
   {
     slug: "near-zero-infrastructure",
     title: "How We Run a Messaging App for Near-Zero Cost",
