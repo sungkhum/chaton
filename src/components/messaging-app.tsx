@@ -3433,6 +3433,10 @@ export const MessagingApp: FC = () => {
 
                   setLockRefresh(true);
 
+                  // Start the network fetch immediately — don't wait for
+                  // the cache read to finish first (async-parallel).
+                  const freshPromise = getConversation(key);
+
                   // Try cache-first for messages
                   if (appUser) {
                     const cached = await getCachedConversationMessages(
@@ -3476,7 +3480,7 @@ export const MessagingApp: FC = () => {
 
                   try {
                     const { updatedConversations, pubKeyPlusGroupName } =
-                      await getConversation(key);
+                      await freshPromise;
                     // Only apply if this conversation is still selected
                     // (prevents stale fetch from overwriting after rapid clicks)
                     if (key === selectedConversationPublicKeyRef.current) {

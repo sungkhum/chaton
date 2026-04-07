@@ -145,16 +145,27 @@ const sortConversations = (
   selectedKey: string
 ) =>
   entries.sort(([aPub, convoA], [bPub, convoB]) => {
-    if (convoA.messages.length === 0) {
-      return aPub === selectedKey ? -1 : 1;
-    }
-    if (convoB.messages.length === 0) {
+    const aEmpty = convoA.messages.length === 0;
+    const bEmpty = convoB.messages.length === 0;
+    if (aEmpty || bEmpty) {
+      if (aEmpty && bEmpty) return 0;
+      // Selected empty conversation floats to top; otherwise sinks to bottom
+      if (aEmpty) return aPub === selectedKey ? -1 : 1;
       return bPub === selectedKey ? 1 : -1;
     }
-    return (
-      convoB.messages[0].MessageInfo.TimestampNanos -
-      convoA.messages[0].MessageInfo.TimestampNanos
+    // DeSo nanosecond timestamps exceed Number.MAX_SAFE_INTEGER — use
+    // the lossless string representation with BigInt for correct ordering.
+    const aTs = BigInt(
+      convoA.messages[0].MessageInfo.TimestampNanosString ||
+        String(convoA.messages[0].MessageInfo.TimestampNanos)
     );
+    const bTs = BigInt(
+      convoB.messages[0].MessageInfo.TimestampNanosString ||
+        String(convoB.messages[0].MessageInfo.TimestampNanos)
+    );
+    if (bTs > aTs) return 1;
+    if (bTs < aTs) return -1;
+    return 0;
   });
 
 /** Memoized conversation row — only re-renders when its own data changes. */
