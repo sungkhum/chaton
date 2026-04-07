@@ -34,9 +34,27 @@ const BestDecentralizedMessagingApps2026 = () => (
 
     <p>
       The pattern is clear: if a messaging app depends on a company, governments
-      can pressure that company. Decentralized messaging apps remove the single
-      point of failure. No company to subpoena. No server to block. No CEO to
-      arrest.
+      can pressure that company. Durov&apos;s arrest changed Telegram&apos;s
+      policies overnight. But decentralized protocols don&apos;t work that way.
+      Even when DeSo&apos;s own founder was{" "}
+      <a
+        href="https://www.justice.gov/usao-sdny/pr/founder-bitclout-digital-asset-charged-fraud-connection-sale-bitclout-tokens"
+        target="_blank"
+        rel="noreferrer"
+      >
+        arrested on fraud charges
+      </a>{" "}
+      in July 2024, the blockchain kept running — every node, every message,
+      uninterrupted. (Both cases were later{" "}
+      <a
+        href="https://www.coindesk.com/policy/2026/03/16/sec-drops-case-against-bitclout-s-nader-al-naji"
+        target="_blank"
+        rel="noreferrer"
+      >
+        dropped
+      </a>
+      .) That is the point of decentralization: the network does not depend on
+      any single person, company, or server.
     </p>
 
     <p>
