@@ -33,9 +33,9 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/inject-blog-og.mjs",
+    "build": "vite build && npx tsx scripts/inject-blog-og.ts",
     "prerender": "node scripts/prerender.mjs",
-    "build:production": "vite build && node scripts/inject-blog-og.mjs",
+    "build:production": "vite build && npx tsx scripts/inject-blog-og.ts",
     "preview": "vite preview",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
@@ -60,6 +60,7 @@
     "lint-staged": "^13.1.1",
     "prettier": "^2.8.3",
     "tailwindcss": "^4.2.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.7.3",
     "vite": "^6.3.5",
     "vite-tsconfig-paths": "^5.1.4"

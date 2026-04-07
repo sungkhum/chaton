@@ -175,6 +175,8 @@ Blog posts live in `src/components/blog/posts/`. Adding a new post:
    `BlogPostLayout` (see existing posts for the pattern).
 2. **Register it** in `src/components/blog/blog-registry.ts` — add an entry to
    `BLOG_POSTS` (slug, title, description, date, readTime, tags, component import).
+   This is the **single source of truth** — the build script
+   (`scripts/inject-blog-og.ts`) imports from here automatically.
 3. **Add the route** to the prerender script `scripts/prerender.mjs`:
    - Add `/blog/[slug]` to the `ROUTES` array.
    - Add an entry to `OG_POSTS` with slug, title, and formatted date.
@@ -186,6 +188,15 @@ Blog posts live in `src/components/blog/posts/`. Adding a new post:
 The OG image lives in `public/` (not `dist/`) so Vite includes it in every
 build automatically. Cloudflare Pages does not run Playwright, so prerender
 runs locally — only the OG image needs to be committed.
+
+### How blog OG tags work on Cloudflare Pages
+
+`npm run build` runs `vite build && npx tsx scripts/inject-blog-og.ts`. The
+inject script imports `BLOG_POSTS` directly from `blog-registry.ts` (via
+`tsx`), reads the built `dist/index.html`, replaces OG/meta tags for each
+post, and writes to `dist/blog/{slug}/index.html`. Cloudflare Pages serves
+these static files, so social crawlers see correct OG tags without needing
+Playwright or SSR.
 
 ### Fact-checking blog content
 
