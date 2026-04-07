@@ -37,6 +37,7 @@ import {
   useState,
   useCallback,
   startTransition,
+  ViewTransition,
 } from "react";
 import { toast } from "sonner";
 import { useMessageSearch } from "../hooks/useMessageSearch";
@@ -47,6 +48,7 @@ import {
   useTypingDisplay,
 } from "../hooks/useTypingIndicator";
 import { usePresence } from "../hooks/usePresence";
+import { useSwipeBack } from "../hooks/useSwipeBack";
 import {
   needsPermissionUpgrade,
   requestFullPermissions,
@@ -387,9 +389,6 @@ export const MessagingApp: FC = () => {
   const [pendingTipTimestamps, setPendingTipTimestamps] = useState<Set<string>>(
     new Set()
   );
-  // When true, the detail pane slides back but content stays rendered
-  // (prevents the transparent/empty pane flash during the CSS transition).
-  const [mobileSlideOut, setMobileSlideOut] = useState(false);
   const [dmMenuOpen, setDmMenuOpen] = useState(false);
   const [blockConfirm, setBlockConfirm] = useState<{
     conversationKey: string;
@@ -3178,18 +3177,15 @@ export const MessagingApp: FC = () => {
     rehydrateConversation(pending || "", false, !isMobile || !!pending);
   }, [appUser, isMobile, rehydrateConversation]);
 
-  // On mobile, slide the detail pane out first, then clear the selected key
-  // after the CSS transition finishes so the content stays visible during animation.
   const handleMobileBack = useCallback(() => {
-    if (mobileSlideOut) return;
-    setMobileSlideOut(true);
-    setEditingMessage(null);
-    setReplyToMessage(null);
-    setTimeout(() => {
+    startTransition(() => {
       setSelectedConversationPublicKey("");
-      setMobileSlideOut(false);
-    }, 300); // match transition-[margin-left] duration-300
-  }, [mobileSlideOut]);
+      setEditingMessage(null);
+      setReplyToMessage(null);
+    });
+  }, []);
+
+  const swipeHandlers = useSwipeBack(handleMobileBack);
 
   const conversationsReady = Object.keys(conversations).length > 0;
   // Guard: if the selected key doesn't match any conversation (e.g. stale
@@ -3514,213 +3510,281 @@ export const MessagingApp: FC = () => {
         appUser &&
         !isLoadingUser && (
           <div className="flex h-full">
-            <div className="w-full md:w-[340px] lg:w-[380px] xl:w-[420px] border-r border-white/5 bg-[#080d16] shrink-0">
-              <MessagingConversationAccount
-                rehydrateConversation={rehydrateConversation}
-                conversationsLoading={conversationsLoading}
-                conversationsError={conversationsError}
-                onRetryLoad={() => {
-                  setConversationsError(null);
-                  setConversationsLoading(true);
-                  rehydrateConversation();
-                }}
-                onClick={async (key: string) => {
-                  if (key === selectedConversationPublicKey) {
-                    // Still clear unread badge if a message arrived while viewing
-                    if (unreadByConversation.has(key)) {
+            {(!isMobile || !selectedConversationPublicKey) && (
+              <ViewTransition
+                enter="chat-list-enter"
+                exit="chat-list-exit"
+                default="none"
+              >
+                <div className="w-full md:w-[340px] lg:w-[380px] xl:w-[420px] border-r border-white/5 bg-[#080d16] shrink-0">
+                  <MessagingConversationAccount
+                    rehydrateConversation={rehydrateConversation}
+                    conversationsLoading={conversationsLoading}
+                    conversationsError={conversationsError}
+                    onRetryLoad={() => {
+                      setConversationsError(null);
+                      setConversationsLoading(true);
+                      rehydrateConversation();
+                    }}
+                    onClick={async (key: string) => {
+                      if (key === selectedConversationPublicKey) {
+                        // Still clear unread badge if a message arrived while viewing
+                        if (unreadByConversation.has(key)) {
+                          clearUnread(key);
+                          removeUnreadConversation(key);
+                          const ts =
+                            conversations[key]?.messages[0]?.MessageInfo
+                              ?.TimestampNanos;
+                          sendRead(key, ts ? String(ts) : undefined);
+                          if (appUser && ts) {
+                            cacheLastReadTimestamp(
+                              appUser.PublicKeyBase58Check,
+                              key,
+                              ts
+                            );
+                          }
+                        }
+                        return;
+                      }
+                      // Capture the last-read timestamp BEFORE updating it,
+                      // so MessagingBubblesAndAvatar can show the "new messages" divider.
+                      if (appUser) {
+                        const timestamps = getCachedLastReadTimestamps(
+                          appUser.PublicKeyBase58Check
+                        );
+                        setOpenedLastReadNanos(timestamps[key] ?? null);
+                      } else {
+                        setOpenedLastReadNanos(null);
+                      }
+
+                      startTransition(() => {
+                        setSelectedConversationPublicKey(key);
+                        setPubKeyPlusGroupName(key);
+                        setLoadingConversation(true);
+                        setEditingMessage(null);
+                        setReplyToMessage(null);
+                      });
                       clearUnread(key);
                       removeUnreadConversation(key);
-                      const ts =
-                        conversations[key]?.messages[0]?.MessageInfo
-                          ?.TimestampNanos;
-                      sendRead(key, ts ? String(ts) : undefined);
-                      if (appUser && ts) {
-                        cacheLastReadTimestamp(
-                          appUser.PublicKeyBase58Check,
-                          key,
-                          ts
-                        );
-                      }
-                    }
-                    return;
-                  }
-                  // Capture the last-read timestamp BEFORE updating it,
-                  // so MessagingBubblesAndAvatar can show the "new messages" divider.
-                  if (appUser) {
-                    const timestamps = getCachedLastReadTimestamps(
-                      appUser.PublicKeyBase58Check
-                    );
-                    setOpenedLastReadNanos(timestamps[key] ?? null);
-                  } else {
-                    setOpenedLastReadNanos(null);
-                  }
-
-                  setSelectedConversationPublicKey(key);
-                  setPubKeyPlusGroupName(key);
-                  setLoadingConversation(true);
-                  setEditingMessage(null);
-                  setReplyToMessage(null);
-                  clearUnread(key);
-                  removeUnreadConversation(key);
-                  {
-                    const ts =
-                      conversations[key]?.messages[0]?.MessageInfo
-                        ?.TimestampNanos;
-                    sendRead(key, ts ? String(ts) : undefined);
-                    if (appUser && ts) {
-                      cacheLastReadTimestamp(
-                        appUser.PublicKeyBase58Check,
-                        key,
-                        ts
-                      );
-                    }
-                  }
-
-                  // Cache the last selected conversation
-                  if (appUser) {
-                    cacheLastConversationKey(appUser.PublicKeyBase58Check, key);
-                  }
-
-                  setLockRefresh(true);
-
-                  // Start the network fetch immediately — don't wait for
-                  // the cache read to finish first (async-parallel).
-                  const freshPromise = getConversation(key);
-
-                  // Try cache-first for messages
-                  if (appUser) {
-                    const cached = await getCachedConversationMessages(
-                      appUser.PublicKeyBase58Check,
-                      key
-                    );
-                    if (
-                      cached &&
-                      cached.length > 0 &&
-                      key === selectedConversationPublicKeyRef.current
-                    ) {
-                      setConversations((prev) => {
-                        const existing = prev[key];
-                        if (!existing) return prev;
-                        const listHead = existing.messages[0];
-                        const cacheHead = cached[0] as
-                          | DecryptedMessageEntryResponse
-                          | undefined;
-                        // If the conversation list has a newer message than
-                        // the cache (message arrived since cache was written),
-                        // keep it at position 0 so the sort order doesn't
-                        // visibly jump during the slide transition.
-                        let messages =
-                          cached as DecryptedMessageEntryResponse[];
-                        if (
-                          listHead &&
-                          cacheHead &&
-                          listHead.MessageInfo.TimestampNanos >
-                            cacheHead.MessageInfo.TimestampNanos
-                        ) {
-                          messages = [listHead, ...messages];
+                      {
+                        const ts =
+                          conversations[key]?.messages[0]?.MessageInfo
+                            ?.TimestampNanos;
+                        sendRead(key, ts ? String(ts) : undefined);
+                        if (appUser && ts) {
+                          cacheLastReadTimestamp(
+                            appUser.PublicKeyBase58Check,
+                            key,
+                            ts
+                          );
                         }
-                        return {
-                          ...prev,
-                          [key]: { ...existing, messages },
-                        };
-                      });
-                      setLoadingConversation(false);
-                    }
-                  }
+                      }
 
-                  try {
-                    const { updatedConversations, pubKeyPlusGroupName } =
-                      await freshPromise;
-                    // Only apply if this conversation is still selected
-                    // (prevents stale fetch from overwriting after rapid clicks)
-                    if (key === selectedConversationPublicKeyRef.current) {
-                      setConversations((prev) => ({
-                        ...prev,
-                        [key]: updatedConversations[key],
-                      }));
-                      setPubKeyPlusGroupName(pubKeyPlusGroupName);
-
-                      // Cache the fetched messages
-                      if (appUser && updatedConversations[key]) {
-                        cacheConversationMessages(
+                      // Cache the last selected conversation
+                      if (appUser) {
+                        cacheLastConversationKey(
                           appUser.PublicKeyBase58Check,
-                          key,
-                          updatedConversations[key].messages
+                          key
                         );
                       }
-                    }
-                  } finally {
-                    // Only unlock if still on this conversation to avoid
-                    // releasing the lock for a subsequent click's fetch
-                    if (key === selectedConversationPublicKeyRef.current) {
-                      setLoadingConversation(false);
-                      setLockRefresh(false);
-                    }
-                  }
-                }}
-                conversations={chatConversations}
-                requestConversations={requestConversations}
-                archivedConversations={archivedConversations}
-                onAccept={handleAcceptRequest}
-                onBlock={handleBlockRequest}
-                onDismiss={handleDismissRequest}
-                onUnarchive={handleUnarchiveGroup}
-                onUnarchiveChat={handleUnarchiveChat}
-                onUnblock={handleUnblock}
-                onUndismiss={handleUndismiss}
-                blockedUsers={blockedUsers}
-                dismissedUsers={dismissedUsers}
-                getUsernameByPublicKeyBase58Check={
-                  usernameByPublicKeyBase58Check
-                }
-                selectedConversationPublicKey={selectedConversationPublicKey}
-                unreadByConversation={unreadByConversation}
-                mutedConversations={mutedConversations}
-                searchQuery={searchQuery}
-                searchResults={searchResults}
-                isSearching={isMessageSearching}
-                isDeepSearching={isDeepSearching}
-                searchProgress={searchProgress}
-                onSearchQueryChange={setSearchQuery}
-                onSearchResultClick={handleSearchResultClick}
-                searchClearTrigger={searchClearTrigger}
-                highlightsByConversation={highlightsByConversation}
-              />
-            </div>
 
-            <div
-              className={`w-full h-full shrink-0 md:flex-1 md:min-w-0 bg-[#0a1019] md:ml-0 md:z-auto transition-[margin-left] duration-300 ease-in-out flex flex-col ${
-                selectedConversationPublicKey && !mobileSlideOut
-                  ? "ml-[-100%] z-50"
-                  : ""
-              }`}
-            >
-              <header className="flex justify-between items-center border-b border-white/5 relative px-4 md:px-5 h-14 shrink-0">
-                <div
-                  className="cursor-pointer py-4 pl-0 pr-6 md:hidden"
-                  onClick={handleMobileBack}
-                >
-                  <img src="/assets/left-chevron.png" width={20} alt="back" />
+                      setLockRefresh(true);
+
+                      // Start the network fetch immediately — don't wait for
+                      // the cache read to finish first (async-parallel).
+                      const freshPromise = getConversation(key);
+
+                      // Try cache-first for messages
+                      if (appUser) {
+                        const cached = await getCachedConversationMessages(
+                          appUser.PublicKeyBase58Check,
+                          key
+                        );
+                        if (
+                          cached &&
+                          cached.length > 0 &&
+                          key === selectedConversationPublicKeyRef.current
+                        ) {
+                          setConversations((prev) => {
+                            const existing = prev[key];
+                            if (!existing) return prev;
+                            const listHead = existing.messages[0];
+                            const cacheHead = cached[0] as
+                              | DecryptedMessageEntryResponse
+                              | undefined;
+                            // If the conversation list has a newer message than
+                            // the cache (message arrived since cache was written),
+                            // keep it at position 0 so the sort order doesn't
+                            // visibly jump during the slide transition.
+                            let messages =
+                              cached as DecryptedMessageEntryResponse[];
+                            if (
+                              listHead &&
+                              cacheHead &&
+                              listHead.MessageInfo.TimestampNanos >
+                                cacheHead.MessageInfo.TimestampNanos
+                            ) {
+                              messages = [listHead, ...messages];
+                            }
+                            return {
+                              ...prev,
+                              [key]: { ...existing, messages },
+                            };
+                          });
+                          setLoadingConversation(false);
+                        }
+                      }
+
+                      try {
+                        const { updatedConversations, pubKeyPlusGroupName } =
+                          await freshPromise;
+                        // Only apply if this conversation is still selected
+                        // (prevents stale fetch from overwriting after rapid clicks)
+                        if (key === selectedConversationPublicKeyRef.current) {
+                          setConversations((prev) => ({
+                            ...prev,
+                            [key]: updatedConversations[key],
+                          }));
+                          setPubKeyPlusGroupName(pubKeyPlusGroupName);
+
+                          // Cache the fetched messages
+                          if (appUser && updatedConversations[key]) {
+                            cacheConversationMessages(
+                              appUser.PublicKeyBase58Check,
+                              key,
+                              updatedConversations[key].messages
+                            );
+                          }
+                        }
+                      } finally {
+                        // Only unlock if still on this conversation to avoid
+                        // releasing the lock for a subsequent click's fetch
+                        if (key === selectedConversationPublicKeyRef.current) {
+                          setLoadingConversation(false);
+                          setLockRefresh(false);
+                        }
+                      }
+                    }}
+                    conversations={chatConversations}
+                    requestConversations={requestConversations}
+                    archivedConversations={archivedConversations}
+                    onAccept={handleAcceptRequest}
+                    onBlock={handleBlockRequest}
+                    onDismiss={handleDismissRequest}
+                    onUnarchive={handleUnarchiveGroup}
+                    onUnarchiveChat={handleUnarchiveChat}
+                    onUnblock={handleUnblock}
+                    onUndismiss={handleUndismiss}
+                    blockedUsers={blockedUsers}
+                    dismissedUsers={dismissedUsers}
+                    getUsernameByPublicKeyBase58Check={
+                      usernameByPublicKeyBase58Check
+                    }
+                    selectedConversationPublicKey={
+                      selectedConversationPublicKey
+                    }
+                    unreadByConversation={unreadByConversation}
+                    mutedConversations={mutedConversations}
+                    searchQuery={searchQuery}
+                    searchResults={searchResults}
+                    isSearching={isMessageSearching}
+                    isDeepSearching={isDeepSearching}
+                    searchProgress={searchProgress}
+                    onSearchQueryChange={setSearchQuery}
+                    onSearchResultClick={handleSearchResultClick}
+                    searchClearTrigger={searchClearTrigger}
+                    highlightsByConversation={highlightsByConversation}
+                  />
                 </div>
-                {selectedConversation &&
-                  (selectedConversation.messages[0] ||
-                    (!isGroupChat &&
-                      selectedConversation.firstMessagePublicKey)) && (
-                    <div className="flex items-center gap-2 min-w-0 px-2 md:hidden">
-                      {isGroupChat && selectedGroupImageUrl && (
-                        <MessagingDisplayAvatar
-                          publicKey={getCurrentChatName()}
-                          groupChat
-                          groupImageUrl={selectedGroupImageUrl}
-                          diameter={32}
-                        />
+              </ViewTransition>
+            )}
+
+            {(!isMobile || selectedConversationPublicKey) && (
+              <ViewTransition
+                enter="chat-detail-enter"
+                exit="chat-detail-exit"
+                default="none"
+              >
+                <div
+                  {...(isMobile ? swipeHandlers : {})}
+                  className="w-full h-full shrink-0 md:flex-1 md:min-w-0 bg-[#0a1019] flex flex-col"
+                >
+                  <header className="flex justify-between items-center border-b border-white/5 relative px-4 md:px-5 h-14 shrink-0">
+                    <div
+                      className="cursor-pointer py-4 pl-0 pr-6 md:hidden"
+                      onClick={handleMobileBack}
+                    >
+                      <img
+                        src="/assets/left-chevron.png"
+                        width={20}
+                        alt="back"
+                      />
+                    </div>
+                    {selectedConversation &&
+                      (selectedConversation.messages[0] ||
+                        (!isGroupChat &&
+                          selectedConversation.firstMessagePublicKey)) && (
+                        <div className="flex items-center gap-2 min-w-0 px-2 md:hidden">
+                          {isGroupChat && selectedGroupImageUrl && (
+                            <MessagingDisplayAvatar
+                              publicKey={getCurrentChatName()}
+                              groupChat
+                              groupImageUrl={selectedGroupImageUrl}
+                              diameter={32}
+                            />
+                          )}
+                          <div className="min-w-0">
+                            <span className="text-white font-bold text-base truncate block">
+                              {getCurrentChatName()}
+                            </span>
+                            {(() => {
+                              if (isGroupChat) {
+                                const memberKeys = chatMembers
+                                  ? Object.keys(chatMembers)
+                                  : [];
+                                const online = getOnlineCount(memberKeys);
+                                const total = memberKeys.length;
+                                if (total === 0) return null;
+                                return (
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <span className="text-gray-500">
+                                      {total}{" "}
+                                      {total === 1 ? "member" : "members"}
+                                    </span>
+                                    {online > 0 && (
+                                      <span className="flex items-center gap-1 text-[#34F080]/80">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse" />
+                                        {online} online
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              const otherKey =
+                                selectedConversation?.firstMessagePublicKey;
+                              if (!otherKey) return null;
+                              const presence = getPresence(otherKey);
+                              if (presence.status === "online")
+                                return (
+                                  <span className="flex items-center gap-1 text-[#34F080] text-xs">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse" />
+                                    Online
+                                  </span>
+                                );
+                              if (presence.status === "last-seen")
+                                return (
+                                  <span className="text-gray-500 text-xs whitespace-nowrap">
+                                    {formatLastSeen(presence.timestamp)}
+                                  </span>
+                                );
+                              return null;
+                            })()}
+                          </div>
+                        </div>
                       )}
-                      <div className="min-w-0">
-                        <span className="text-white font-bold text-base truncate block">
-                          {getCurrentChatName()}
-                        </span>
-                        {(() => {
-                          if (isGroupChat) {
+                    <div className="text-gray-400 items-center hidden md:block">
+                      {isGroupChat
+                        ? (() => {
                             const memberKeys = chatMembers
                               ? Object.keys(chatMembers)
                               : [];
@@ -3728,767 +3792,875 @@ export const MessagingApp: FC = () => {
                             const total = memberKeys.length;
                             if (total === 0) return null;
                             return (
-                              <div className="flex items-center gap-2 text-xs">
-                                <span className="text-gray-500">
-                                  {total} {total === 1 ? "member" : "members"}
-                                </span>
+                              <span className="text-gray-500 text-sm whitespace-nowrap inline-flex items-center gap-1">
+                                {total} {total === 1 ? "member" : "members"}
                                 {online > 0 && (
-                                  <span className="flex items-center gap-1 text-[#34F080]/80">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse" />
-                                    {online} online
-                                  </span>
+                                  <>
+                                    {" "}
+                                    ·{" "}
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse inline-block" />
+                                    <span className="text-[#34F080]/80">
+                                      {online} online
+                                    </span>
+                                  </>
                                 )}
-                              </div>
-                            );
-                          }
-                          const otherKey =
-                            selectedConversation?.firstMessagePublicKey;
-                          if (!otherKey) return null;
-                          const presence = getPresence(otherKey);
-                          if (presence.status === "online")
-                            return (
-                              <span className="flex items-center gap-1 text-[#34F080] text-xs">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse" />
-                                Online
                               </span>
                             );
-                          if (presence.status === "last-seen")
-                            return (
-                              <span className="text-gray-500 text-xs whitespace-nowrap">
-                                {formatLastSeen(presence.timestamp)}
-                              </span>
-                            );
-                          return null;
-                        })()}
-                      </div>
-                    </div>
-                  )}
-                <div className="text-gray-400 items-center hidden md:block">
-                  {isGroupChat
-                    ? (() => {
-                        const memberKeys = chatMembers
-                          ? Object.keys(chatMembers)
-                          : [];
-                        const online = getOnlineCount(memberKeys);
-                        const total = memberKeys.length;
-                        if (total === 0) return null;
-                        return (
-                          <span className="text-gray-500 text-sm whitespace-nowrap inline-flex items-center gap-1">
-                            {total} {total === 1 ? "member" : "members"}
-                            {online > 0 && (
-                              <>
-                                {" "}
-                                ·{" "}
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse inline-block" />
-                                <span className="text-[#34F080]/80">
-                                  {online} online
+                          })()
+                        : (() => {
+                            const otherKey =
+                              selectedConversation?.firstMessagePublicKey;
+                            if (!otherKey) return null;
+                            const presence = getPresence(otherKey);
+                            if (presence.status === "online")
+                              return (
+                                <span className="flex items-center gap-1.5 text-[#34F080] text-sm">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse" />
+                                  Online
                                 </span>
-                              </>
-                            )}
-                          </span>
-                        );
-                      })()
-                    : (() => {
-                        const otherKey =
-                          selectedConversation?.firstMessagePublicKey;
-                        if (!otherKey) return null;
-                        const presence = getPresence(otherKey);
-                        if (presence.status === "online")
-                          return (
-                            <span className="flex items-center gap-1.5 text-[#34F080] text-sm">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse" />
-                              Online
-                            </span>
-                          );
-                        if (presence.status === "last-seen")
-                          return (
-                            <span className="text-gray-500 text-sm whitespace-nowrap">
-                              {formatLastSeen(presence.timestamp)}
-                            </span>
-                          );
-                        return null;
-                      })()}
-                </div>
-                <div
-                  className={`flex items-center gap-3 justify-end shrink-0 ${
-                    !isGroupOwner ? "md:w-full md:shrink" : ""
-                  }`}
-                >
-                  {selectedConversationPublicKey && (
-                    <button
-                      onClick={() => {
-                        toggleMute(selectedConversationPublicKey);
-                        const wasMuted = mutedConversations.has(
-                          selectedConversationPublicKey
-                        );
-                        toast(
-                          wasMuted
-                            ? "Notifications unmuted"
-                            : "Notifications muted",
-                          {
-                            icon: wasMuted ? (
-                              <Bell className="w-4 h-4" />
-                            ) : (
-                              <BellOff className="w-4 h-4" />
-                            ),
-                            duration: 2000,
-                          }
-                        );
-                      }}
-                      className="p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
-                      title={
-                        mutedConversations.has(selectedConversationPublicKey)
-                          ? "Unmute notifications"
-                          : "Mute notifications"
-                      }
+                              );
+                            if (presence.status === "last-seen")
+                              return (
+                                <span className="text-gray-500 text-sm whitespace-nowrap">
+                                  {formatLastSeen(presence.timestamp)}
+                                </span>
+                              );
+                            return null;
+                          })()}
+                    </div>
+                    <div
+                      className={`flex items-center gap-3 justify-end shrink-0 ${
+                        !isGroupOwner ? "md:w-full md:shrink" : ""
+                      }`}
                     >
-                      {mutedConversations.has(selectedConversationPublicKey) ? (
-                        <BellOff className="w-5 h-5 text-gray-500" />
-                      ) : (
-                        <Bell className="w-5 h-5 text-gray-400" />
-                      )}
-                    </button>
-                  )}
-                  {isGroupChat ? (
-                    <Suspense fallback={null}>
-                      <LazyManageMembersDialog
-                        conversation={selectedConversation}
-                        conversationKey={selectedConversationPublicKey}
-                        onSuccess={rehydrateConversation}
-                        onLeaveGroup={handleArchiveGroup}
-                        onOptimisticSystemMessage={
-                          handleOptimisticSystemMessage
-                        }
-                        isGroupOwner={!!isGroupOwner}
-                      />
-                    </Suspense>
-                  ) : (
-                    selectedConversation &&
-                    selectedConversation.firstMessagePublicKey && (
-                      <>
+                      {selectedConversationPublicKey && (
                         <button
                           onClick={() => {
-                            handleArchiveChat(
-                              selectedConversationPublicKey,
-                              selectedConversation.firstMessagePublicKey
+                            toggleMute(selectedConversationPublicKey);
+                            const wasMuted = mutedConversations.has(
+                              selectedConversationPublicKey
+                            );
+                            toast(
+                              wasMuted
+                                ? "Notifications unmuted"
+                                : "Notifications muted",
+                              {
+                                icon: wasMuted ? (
+                                  <Bell className="w-4 h-4" />
+                                ) : (
+                                  <BellOff className="w-4 h-4" />
+                                ),
+                                duration: 2000,
+                              }
                             );
                           }}
                           className="p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
-                          title="Archive chat"
-                        >
-                          <Archive className="w-5 h-5 text-gray-400" />
-                        </button>
-                        {/* Three-dot menu for DM actions (block, etc.) */}
-                        <div className="relative">
-                          <button
-                            onClick={() => setDmMenuOpen(!dmMenuOpen)}
-                            className="p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
-                            title="More options"
-                          >
-                            <EllipsisVertical className="w-5 h-5 text-gray-400" />
-                          </button>
-                          {dmMenuOpen && (
-                            <>
-                              <div
-                                className="fixed inset-0 z-40"
-                                onClick={() => setDmMenuOpen(false)}
-                              />
-                              <div className="absolute right-0 top-full mt-1 z-50 bg-[#141c2b] border border-white/10 rounded-lg shadow-xl py-1 min-w-[160px]">
-                                <button
-                                  onClick={() => {
-                                    setDmMenuOpen(false);
-                                    setBlockConfirm({
-                                      conversationKey:
-                                        selectedConversationPublicKey,
-                                      publicKey:
-                                        selectedConversation.firstMessagePublicKey,
-                                      name:
-                                        activeChatUsersMap[
-                                          selectedConversation
-                                            .firstMessagePublicKey
-                                        ] || "this user",
-                                    });
-                                  }}
-                                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-red-400 hover:bg-white/5 cursor-pointer transition-colors"
-                                >
-                                  <ShieldBan className="w-4 h-4" />
-                                  Block user
-                                </button>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                        <MessagingDisplayAvatar
-                          username={
-                            activeChatUsersMap[
-                              selectedConversation.firstMessagePublicKey
-                            ]
-                          }
-                          publicKey={selectedConversation.firstMessagePublicKey}
-                          diameter={40}
-                          classNames="shrink-0"
-                        />
-                      </>
-                    )
-                  )}
-                </div>
-              </header>
-
-              {/* Pinned message bar */}
-              {pinnedMessageTimestamp && isGroupChat && (
-                <div className="shrink-0 border-b border-white/5 bg-[#0a1019] flex items-center group">
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() =>
-                      bubblesRef.current?.scrollToMessage(
-                        pinnedMessageTimestamp
-                      )
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        bubblesRef.current?.scrollToMessage(
-                          pinnedMessageTimestamp
-                        );
-                      }
-                    }}
-                    className="flex-1 min-w-0 flex items-center gap-3 px-4 md:px-5 py-2 text-left hover:bg-white/5 transition-colors cursor-pointer"
-                  >
-                    <Pin className="w-4 h-4 text-[#34F080] shrink-0 rotate-45" />
-                    <div className="min-w-0 flex-1">
-                      <span className="text-[11px] font-semibold text-[#34F080] block leading-tight">
-                        Pinned Message
-                      </span>
-                      <span className="text-xs text-gray-400 truncate block leading-tight">
-                        {pinnedMessage?.DecryptedMessage || "Tap to view"}
-                      </span>
-                    </div>
-                  </div>
-                  {isGroupOwner && (
-                    <button
-                      onClick={() => handlePinMessage("")}
-                      className="p-2.5 mr-1 md:mr-2 rounded-full hover:bg-white/10 transition-colors md:opacity-0 md:group-hover:opacity-100 cursor-pointer"
-                      aria-label="Unpin message"
-                    >
-                      <X className="w-3.5 h-3.5 text-gray-500" />
-                    </button>
-                  )}
-                </div>
-              )}
-
-              <div className="pr-2 rounded-none w-[100%] bg-transparent ml-[calc-340px] pb-0 flex-1 min-h-0">
-                <div className="border-none flex flex-col h-full">
-                  <div className="overflow-hidden flex-1 min-h-0">
-                    {loadingConversation || !selectedConversation ? (
-                      <div className="h-full flex items-center justify-center">
-                        <Loader2 className="w-11 h-11 animate-spin text-[#34F080]" />
-                      </div>
-                    ) : (
-                      <MessagingBubblesAndAvatar
-                        ref={bubblesRef}
-                        key={selectedConversationPublicKey}
-                        conversationPublicKey={selectedConversationPublicKey}
-                        conversations={conversations}
-                        getUsernameByPublicKey={activeChatUsersMap}
-                        profilePicByPublicKey={profilePicByPublicKey}
-                        lastReadTimestampNanos={openedLastReadNanos}
-                        onPin={isGroupOwner ? handlePinMessage : undefined}
-                        pinnedMessageTimestamp={pinnedMessageTimestamp}
-                        onScroll={(e: Array<DecryptedMessageEntryResponse>) => {
-                          setConversations((prev) => ({
-                            ...prev,
-                            [selectedConversationPublicKey]: {
-                              ...prev[selectedConversationPublicKey],
-                              messages: [
-                                ...prev[selectedConversationPublicKey].messages,
-                                ...e,
-                              ],
-                            },
-                          }));
-                        }}
-                        onReply={(msg) => {
-                          sendInputRef.current?.focus();
-                          const senderKey =
-                            msg.SenderInfo.OwnerPublicKeyBase58Check;
-                          startTransition(() => {
-                            setEditingMessage(null);
-                            setReplyToMessage({
-                              text: msg.DecryptedMessage || "",
-                              timestamp: msg.MessageInfo.TimestampNanosString,
-                              sender:
-                                activeChatUsersMap[senderKey] || senderKey,
-                            });
-                          });
-                        }}
-                        hiddenMessageIds={hiddenMessageIds}
-                        pendingTipTimestamps={pendingTipTimestamps}
-                        onEdit={(msg) => {
-                          sendInputRef.current?.focus();
-                          startTransition(() => {
-                            setReplyToMessage(null);
-                            setEditingMessage({
-                              text: msg.DecryptedMessage || "",
-                              timestamp: msg.MessageInfo.TimestampNanosString,
-                            });
-                          });
-                        }}
-                        onDeleteForMe={async (timestampNanosString) => {
-                          if (!appUser) return;
-                          setHiddenMessageIds((prev) => {
-                            const next = new Set(prev);
-                            next.add(timestampNanosString);
-                            return next;
-                          });
-                          await hideMessage(
-                            appUser.PublicKeyBase58Check,
-                            timestampNanosString
-                          );
-                        }}
-                        onDeleteForEveryone={async (message) => {
-                          if (!appUser || !selectedConversation) return;
-                          const convKey = selectedConversationPublicKey;
-                          const recipientPublicKey =
-                            selectedConversation.ChatType === ChatType.DM
-                              ? selectedConversation.firstMessagePublicKey
-                              : selectedConversation.messages[0].RecipientInfo
-                                  .OwnerPublicKeyBase58Check;
-                          const recipientKeyName =
-                            selectedConversation.ChatType === ChatType.DM
-                              ? DEFAULT_KEY_MESSAGING_GROUP_NAME
-                              : selectedConversation.messages[0].RecipientInfo
-                                  .AccessGroupKeyName;
-                          const timestampNanosString =
-                            message.MessageInfo.TimestampNanosString;
-
-                          // Save original for rollback
-                          const originalMessage = message;
-
-                          // Preserve existing ExtraData and add deleted flag
-                          const existingExtraData =
-                            message.MessageInfo?.ExtraData || {};
-                          const deletedExtraData = {
-                            ...existingExtraData,
-                            "msg:deleted": "true",
-                          };
-
-                          // Optimistic: replace message with tombstone
-                          setConversations((prev) => ({
-                            ...prev,
-                            [convKey]: {
-                              ...prev[convKey],
-                              messages: prev[convKey].messages.map((m) =>
-                                m.MessageInfo.TimestampNanosString ===
-                                timestampNanosString
-                                  ? {
-                                      ...m,
-                                      DecryptedMessage: "",
-                                      MessageInfo: {
-                                        ...m.MessageInfo,
-                                        ExtraData: deletedExtraData,
-                                      },
-                                    }
-                                  : m
-                              ),
-                            },
-                          }));
-                          setLockRefresh(true);
-
-                          try {
-                            await encryptAndUpdateMessage(
-                              "[deleted]",
-                              appUser.PublicKeyBase58Check,
-                              recipientPublicKey,
-                              recipientKeyName,
-                              DEFAULT_KEY_MESSAGING_GROUP_NAME,
-                              timestampNanosString,
-                              deletedExtraData
-                            );
-                            // No push notification for deletions
-                          } catch {
-                            toast.error(
-                              "Failed to delete message for everyone"
-                            );
-                            // Rollback
-                            setConversations((prev) => ({
-                              ...prev,
-                              [convKey]: {
-                                ...prev[convKey],
-                                messages: prev[convKey].messages.map((m) =>
-                                  m.MessageInfo.TimestampNanosString ===
-                                  timestampNanosString
-                                    ? originalMessage
-                                    : m
-                                ),
-                              },
-                            }));
-                          } finally {
-                            setLockRefresh(false);
-                          }
-                        }}
-                        onRetry={async (localId) => {
-                          if (!appUser) return;
-                          const pendingMsgs = await getPendingMessages(
-                            appUser.PublicKeyBase58Check
-                          );
-                          const pending = pendingMsgs.find(
-                            (m) => m.localId === localId
-                          );
-                          if (pending) {
-                            retryPendingMessage(pending);
-                          }
-                        }}
-                        onDeleteFailed={(localId) => {
-                          if (!appUser) return;
-                          const convKey = selectedConversationPublicKey;
-                          // Remove the failed optimistic message from UI
-                          setConversations((prev) => ({
-                            ...prev,
-                            [convKey]: {
-                              ...prev[convKey],
-                              messages: prev[convKey].messages.filter(
-                                (m: any) => m._localId !== localId
-                              ),
-                            },
-                          }));
-                          // Remove from pending messages storage
-                          removePendingMessage(
-                            appUser.PublicKeyBase58Check,
-                            localId
-                          );
-                        }}
-                        onReact={async (
-                          timestampNanosString,
-                          emoji,
-                          forceAction
-                        ) => {
-                          if (!appUser || !selectedConversation) return;
-                          const myKey = appUser.PublicKeyBase58Check;
-                          const convKey = selectedConversationPublicKey;
-
-                          // Determine if this is an add or remove (toggle logic).
-                          // Check if the user already has an active "add" reaction
-                          // for this emoji on this message (last-write-wins).
-                          let action: "add" | "remove" = forceAction || "add";
-                          if (!forceAction) {
-                            const msgs = selectedConversation.messages;
-                            let latestTs = -1;
-                            let latestAction: "add" | "remove" = "add";
-                            for (const m of msgs) {
-                              const p = parseMessageType(m);
-                              if (
-                                p.type === "reaction" &&
-                                p.replyTo === timestampNanosString &&
-                                p.emoji === emoji &&
-                                m.SenderInfo.OwnerPublicKeyBase58Check === myKey
-                              ) {
-                                const ts = m.MessageInfo.TimestampNanos;
-                                if (ts > latestTs) {
-                                  latestTs = ts;
-                                  latestAction = p.action || "add";
-                                }
-                              }
-                            }
-                            // If they already have an active "add", toggle to "remove"
-                            if (latestTs > -1 && latestAction === "add") {
-                              action = "remove";
-                            }
-                          }
-
-                          // Debounce: skip if there's already a pending reaction
-                          // for this same emoji+target combo
-                          const msgs = selectedConversation.messages;
-                          const hasPending = msgs.some(
-                            (m: any) =>
-                              m._status === "sending" &&
-                              m._localId?.startsWith("local-reaction-") &&
-                              m.MessageInfo?.ExtraData?.["msg:replyTo"] ===
-                                timestampNanosString &&
-                              m.MessageInfo?.ExtraData?.["msg:emoji"] === emoji
-                          );
-                          if (hasPending) return;
-
-                          const recipientPublicKey =
-                            selectedConversation.ChatType === ChatType.DM
-                              ? selectedConversation.firstMessagePublicKey
-                              : selectedConversation.messages[0].RecipientInfo
-                                  .OwnerPublicKeyBase58Check;
-                          const recipientKeyName =
-                            selectedConversation.ChatType === ChatType.DM
-                              ? DEFAULT_KEY_MESSAGING_GROUP_NAME
-                              : selectedConversation.messages[0].RecipientInfo
-                                  .AccessGroupKeyName;
-
-                          // Build a human-readable fallback for apps without reaction support
-                          const reactedToMsg =
-                            selectedConversation.messages.find(
-                              (m) =>
-                                m.MessageInfo.TimestampNanosString ===
-                                timestampNanosString
-                            );
-                          const preview =
-                            reactedToMsg?.DecryptedMessage?.slice(0, 30) || "";
-                          const fallbackText =
-                            action === "remove"
-                              ? `Removed ${emoji} reaction`
-                              : preview
-                              ? `Reacted ${emoji} to "${preview}${
-                                  (reactedToMsg?.DecryptedMessage?.length ??
-                                    0) > 30
-                                    ? "…"
-                                    : ""
-                                }"`
-                              : `Reacted ${emoji}`;
-
-                          // Optimistic: insert a mock reaction message immediately
-                          const localId = `local-reaction-${Date.now()}-${Math.random()}`;
-                          const TimestampNanos = new Date().getTime() * 1e6;
-                          const mockReaction = {
-                            DecryptedMessage: fallbackText,
-                            IsSender: true,
-                            _status: "sending" as const,
-                            _localId: localId,
-                            SenderInfo: {
-                              OwnerPublicKeyBase58Check: myKey,
-                              AccessGroupKeyName:
-                                DEFAULT_KEY_MESSAGING_GROUP_NAME,
-                            },
-                            RecipientInfo: {
-                              OwnerPublicKeyBase58Check: recipientPublicKey,
-                              AccessGroupKeyName: recipientKeyName,
-                            },
-                            MessageInfo: {
-                              TimestampNanos,
-                              TimestampNanosString: String(TimestampNanos),
-                              ExtraData: buildExtraData({
-                                type: "reaction",
-                                replyTo: timestampNanosString,
-                                emoji,
-                                action,
-                              }),
-                            },
-                          } as DecryptedMessageEntryResponse & {
-                            _status: string;
-                            _localId: string;
-                          };
-
-                          setConversations((prev) => ({
-                            ...prev,
-                            [convKey]: {
-                              ...prev[convKey],
-                              messages: [
-                                mockReaction,
-                                ...prev[convKey].messages,
-                              ],
-                            },
-                          }));
-
-                          try {
-                            await encryptAndSendNewMessage(
-                              fallbackText,
-                              myKey,
-                              recipientPublicKey,
-                              recipientKeyName,
-                              DEFAULT_KEY_MESSAGING_GROUP_NAME,
-                              buildExtraData({
-                                type: "reaction",
-                                replyTo: timestampNanosString,
-                                emoji,
-                                action,
-                              })
-                            );
-                            // Mark as sent
-                            setConversations((prev) => ({
-                              ...prev,
-                              [convKey]: {
-                                ...prev[convKey],
-                                messages: prev[convKey].messages.map((m: any) =>
-                                  m._localId === localId
-                                    ? { ...m, _status: "sent" }
-                                    : m
-                                ),
-                              },
-                            }));
-                          } catch {
-                            // Remove failed optimistic reaction
-                            setConversations((prev) => ({
-                              ...prev,
-                              [convKey]: {
-                                ...prev[convKey],
-                                messages: prev[convKey].messages.filter(
-                                  (m: any) => m._localId !== localId
-                                ),
-                              },
-                            }));
-                            toast.error(
-                              action === "remove"
-                                ? "Failed to remove reaction"
-                                : "Failed to send reaction"
-                            );
-                          }
-                        }}
-                        onTip={(msg, amountUsd) => {
-                          if (!appUser) return;
-                          const senderPk =
-                            msg.SenderInfo.OwnerPublicKeyBase58Check;
-                          if (senderPk === appUser.PublicKeyBase58Check) {
-                            toast.info("You can't tip yourself");
-                            return;
-                          }
-                          const { blockedUsers, dismissedUsers } =
-                            useStore.getState();
-                          if (
-                            blockedUsers.has(senderPk) ||
-                            dismissedUsers.has(senderPk)
-                          )
-                            return;
-                          setTipTarget({
-                            recipientPublicKey: senderPk,
-                            recipientUsername: activeChatUsersMap[senderPk],
-                            tipReplyTo: msg.MessageInfo.TimestampNanosString,
-                            initialAmountUsd: amountUsd,
-                          });
-                          setPendingTipTimestamps((prev) =>
-                            new Set(prev).add(
-                              msg.MessageInfo.TimestampNanosString
+                          title={
+                            mutedConversations.has(
+                              selectedConversationPublicKey
                             )
-                          );
-                        }}
-                        onMicroTip={async (msg) => {
-                          if (!appUser || !selectedConversation) return;
-                          const senderPk =
-                            msg.SenderInfo.OwnerPublicKeyBase58Check;
-                          if (senderPk === appUser.PublicKeyBase58Check) {
-                            toast.info("You can't tip yourself");
-                            return;
+                              ? "Unmute notifications"
+                              : "Mute notifications"
                           }
-                          const { blockedUsers, dismissedUsers } =
-                            useStore.getState();
-                          if (
-                            blockedUsers.has(senderPk) ||
-                            dismissedUsers.has(senderPk)
+                        >
+                          {mutedConversations.has(
+                            selectedConversationPublicKey
+                          ) ? (
+                            <BellOff className="w-5 h-5 text-gray-500" />
+                          ) : (
+                            <Bell className="w-5 h-5 text-gray-400" />
+                          )}
+                        </button>
+                      )}
+                      {isGroupChat ? (
+                        <Suspense fallback={null}>
+                          <LazyManageMembersDialog
+                            conversation={selectedConversation}
+                            conversationKey={selectedConversationPublicKey}
+                            onSuccess={rehydrateConversation}
+                            onLeaveGroup={handleArchiveGroup}
+                            onOptimisticSystemMessage={
+                              handleOptimisticSystemMessage
+                            }
+                            isGroupOwner={!!isGroupOwner}
+                          />
+                        </Suspense>
+                      ) : (
+                        selectedConversation &&
+                        selectedConversation.firstMessagePublicKey && (
+                          <>
+                            <button
+                              onClick={() => {
+                                handleArchiveChat(
+                                  selectedConversationPublicKey,
+                                  selectedConversation.firstMessagePublicKey
+                                );
+                              }}
+                              className="p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                              title="Archive chat"
+                            >
+                              <Archive className="w-5 h-5 text-gray-400" />
+                            </button>
+                            {/* Three-dot menu for DM actions (block, etc.) */}
+                            <div className="relative">
+                              <button
+                                onClick={() => setDmMenuOpen(!dmMenuOpen)}
+                                className="p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                                title="More options"
+                              >
+                                <EllipsisVertical className="w-5 h-5 text-gray-400" />
+                              </button>
+                              {dmMenuOpen && (
+                                <>
+                                  <div
+                                    className="fixed inset-0 z-40"
+                                    onClick={() => setDmMenuOpen(false)}
+                                  />
+                                  <div className="absolute right-0 top-full mt-1 z-50 bg-[#141c2b] border border-white/10 rounded-lg shadow-xl py-1 min-w-[160px]">
+                                    <button
+                                      onClick={() => {
+                                        setDmMenuOpen(false);
+                                        setBlockConfirm({
+                                          conversationKey:
+                                            selectedConversationPublicKey,
+                                          publicKey:
+                                            selectedConversation.firstMessagePublicKey,
+                                          name:
+                                            activeChatUsersMap[
+                                              selectedConversation
+                                                .firstMessagePublicKey
+                                            ] || "this user",
+                                        });
+                                      }}
+                                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-red-400 hover:bg-white/5 cursor-pointer transition-colors"
+                                    >
+                                      <ShieldBan className="w-4 h-4" />
+                                      Block user
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                            <MessagingDisplayAvatar
+                              username={
+                                activeChatUsersMap[
+                                  selectedConversation.firstMessagePublicKey
+                                ]
+                              }
+                              publicKey={
+                                selectedConversation.firstMessagePublicKey
+                              }
+                              diameter={40}
+                              classNames="shrink-0"
+                            />
+                          </>
+                        )
+                      )}
+                    </div>
+                  </header>
+
+                  {/* Pinned message bar */}
+                  {pinnedMessageTimestamp && isGroupChat && (
+                    <div className="shrink-0 border-b border-white/5 bg-[#0a1019] flex items-center group">
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() =>
+                          bubblesRef.current?.scrollToMessage(
+                            pinnedMessageTimestamp
                           )
-                            return;
-                          // Cooldown check
-                          const now = Date.now();
-                          if (now - lastMicroTipTime < MICRO_TIP_COOLDOWN_MS) {
-                            toast.info(
-                              "Please wait a moment before sending another tip"
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            bubblesRef.current?.scrollToMessage(
+                              pinnedMessageTimestamp
                             );
-                            return;
                           }
-                          lastMicroTipTime = now;
-                          const tipTs = msg.MessageInfo.TimestampNanosString;
-                          setPendingTipTimestamps((prev) =>
-                            new Set(prev).add(tipTs)
-                          );
+                        }}
+                        className="flex-1 min-w-0 flex items-center gap-3 px-4 md:px-5 py-2 text-left hover:bg-white/5 transition-colors cursor-pointer"
+                      >
+                        <Pin className="w-4 h-4 text-[#34F080] shrink-0 rotate-45" />
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[11px] font-semibold text-[#34F080] block leading-tight">
+                            Pinned Message
+                          </span>
+                          <span className="text-xs text-gray-400 truncate block leading-tight">
+                            {pinnedMessage?.DecryptedMessage || "Tap to view"}
+                          </span>
+                        </div>
+                      </div>
+                      {isGroupOwner && (
+                        <button
+                          onClick={() => handlePinMessage("")}
+                          className="p-2.5 mr-1 md:mr-2 rounded-full hover:bg-white/10 transition-colors md:opacity-0 md:group-hover:opacity-100 cursor-pointer"
+                          aria-label="Unpin message"
+                        >
+                          <X className="w-3.5 h-3.5 text-gray-500" />
+                        </button>
+                      )}
+                    </div>
+                  )}
 
-                          try {
-                            const tipCurrency =
-                              (getCachedTipCurrency(
-                                appUser.PublicKeyBase58Check
-                              ) as TipCurrency) || "DESO";
-                            let txHash = "";
-                            let tipAmountNanos = 0;
-                            let tipAmountUsdcBaseUnits: string | undefined;
+                  <div className="pr-2 rounded-none w-[100%] bg-transparent ml-[calc-340px] pb-0 flex-1 min-h-0">
+                    <div className="border-none flex flex-col h-full">
+                      <div className="overflow-hidden flex-1 min-h-0">
+                        {loadingConversation || !selectedConversation ? (
+                          <div className="h-full flex items-center justify-center">
+                            <Loader2 className="w-11 h-11 animate-spin text-[#34F080]" />
+                          </div>
+                        ) : (
+                          <MessagingBubblesAndAvatar
+                            ref={bubblesRef}
+                            key={selectedConversationPublicKey}
+                            conversationPublicKey={
+                              selectedConversationPublicKey
+                            }
+                            conversations={conversations}
+                            getUsernameByPublicKey={activeChatUsersMap}
+                            profilePicByPublicKey={profilePicByPublicKey}
+                            lastReadTimestampNanos={openedLastReadNanos}
+                            onPin={isGroupOwner ? handlePinMessage : undefined}
+                            pinnedMessageTimestamp={pinnedMessageTimestamp}
+                            onScroll={(
+                              e: Array<DecryptedMessageEntryResponse>
+                            ) => {
+                              setConversations((prev) => ({
+                                ...prev,
+                                [selectedConversationPublicKey]: {
+                                  ...prev[selectedConversationPublicKey],
+                                  messages: [
+                                    ...prev[selectedConversationPublicKey]
+                                      .messages,
+                                    ...e,
+                                  ],
+                                },
+                              }));
+                            }}
+                            onReply={(msg) => {
+                              sendInputRef.current?.focus();
+                              const senderKey =
+                                msg.SenderInfo.OwnerPublicKeyBase58Check;
+                              startTransition(() => {
+                                setEditingMessage(null);
+                                setReplyToMessage({
+                                  text: msg.DecryptedMessage || "",
+                                  timestamp:
+                                    msg.MessageInfo.TimestampNanosString,
+                                  sender:
+                                    activeChatUsersMap[senderKey] || senderKey,
+                                });
+                              });
+                            }}
+                            hiddenMessageIds={hiddenMessageIds}
+                            pendingTipTimestamps={pendingTipTimestamps}
+                            onEdit={(msg) => {
+                              sendInputRef.current?.focus();
+                              startTransition(() => {
+                                setReplyToMessage(null);
+                                setEditingMessage({
+                                  text: msg.DecryptedMessage || "",
+                                  timestamp:
+                                    msg.MessageInfo.TimestampNanosString,
+                                });
+                              });
+                            }}
+                            onDeleteForMe={async (timestampNanosString) => {
+                              if (!appUser) return;
+                              setHiddenMessageIds((prev) => {
+                                const next = new Set(prev);
+                                next.add(timestampNanosString);
+                                return next;
+                              });
+                              await hideMessage(
+                                appUser.PublicKeyBase58Check,
+                                timestampNanosString
+                              );
+                            }}
+                            onDeleteForEveryone={async (message) => {
+                              if (!appUser || !selectedConversation) return;
+                              const convKey = selectedConversationPublicKey;
+                              const recipientPublicKey =
+                                selectedConversation.ChatType === ChatType.DM
+                                  ? selectedConversation.firstMessagePublicKey
+                                  : selectedConversation.messages[0]
+                                      .RecipientInfo.OwnerPublicKeyBase58Check;
+                              const recipientKeyName =
+                                selectedConversation.ChatType === ChatType.DM
+                                  ? DEFAULT_KEY_MESSAGING_GROUP_NAME
+                                  : selectedConversation.messages[0]
+                                      .RecipientInfo.AccessGroupKeyName;
+                              const timestampNanosString =
+                                message.MessageInfo.TimestampNanosString;
 
-                            if (tipCurrency === "USDC") {
-                              const usdcAmount = usdToUsdcBaseUnits(0.01);
-                              const balance = await fetchUsdcBalance(
+                              // Save original for rollback
+                              const originalMessage = message;
+
+                              // Preserve existing ExtraData and add deleted flag
+                              const existingExtraData =
+                                message.MessageInfo?.ExtraData || {};
+                              const deletedExtraData = {
+                                ...existingExtraData,
+                                "msg:deleted": "true",
+                              };
+
+                              // Optimistic: replace message with tombstone
+                              setConversations((prev) => ({
+                                ...prev,
+                                [convKey]: {
+                                  ...prev[convKey],
+                                  messages: prev[convKey].messages.map((m) =>
+                                    m.MessageInfo.TimestampNanosString ===
+                                    timestampNanosString
+                                      ? {
+                                          ...m,
+                                          DecryptedMessage: "",
+                                          MessageInfo: {
+                                            ...m.MessageInfo,
+                                            ExtraData: deletedExtraData,
+                                          },
+                                        }
+                                      : m
+                                  ),
+                                },
+                              }));
+                              setLockRefresh(true);
+
+                              try {
+                                await encryptAndUpdateMessage(
+                                  "[deleted]",
+                                  appUser.PublicKeyBase58Check,
+                                  recipientPublicKey,
+                                  recipientKeyName,
+                                  DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                                  timestampNanosString,
+                                  deletedExtraData
+                                );
+                                // No push notification for deletions
+                              } catch {
+                                toast.error(
+                                  "Failed to delete message for everyone"
+                                );
+                                // Rollback
+                                setConversations((prev) => ({
+                                  ...prev,
+                                  [convKey]: {
+                                    ...prev[convKey],
+                                    messages: prev[convKey].messages.map((m) =>
+                                      m.MessageInfo.TimestampNanosString ===
+                                      timestampNanosString
+                                        ? originalMessage
+                                        : m
+                                    ),
+                                  },
+                                }));
+                              } finally {
+                                setLockRefresh(false);
+                              }
+                            }}
+                            onRetry={async (localId) => {
+                              if (!appUser) return;
+                              const pendingMsgs = await getPendingMessages(
                                 appUser.PublicKeyBase58Check
                               );
-                              if (balance < usdcAmount) {
-                                toast.info("Insufficient USDC balance");
+                              const pending = pendingMsgs.find(
+                                (m) => m.localId === localId
+                              );
+                              if (pending) {
+                                retryPendingMessage(pending);
+                              }
+                            }}
+                            onDeleteFailed={(localId) => {
+                              if (!appUser) return;
+                              const convKey = selectedConversationPublicKey;
+                              // Remove the failed optimistic message from UI
+                              setConversations((prev) => ({
+                                ...prev,
+                                [convKey]: {
+                                  ...prev[convKey],
+                                  messages: prev[convKey].messages.filter(
+                                    (m: any) => m._localId !== localId
+                                  ),
+                                },
+                              }));
+                              // Remove from pending messages storage
+                              removePendingMessage(
+                                appUser.PublicKeyBase58Check,
+                                localId
+                              );
+                            }}
+                            onReact={async (
+                              timestampNanosString,
+                              emoji,
+                              forceAction
+                            ) => {
+                              if (!appUser || !selectedConversation) return;
+                              const myKey = appUser.PublicKeyBase58Check;
+                              const convKey = selectedConversationPublicKey;
+
+                              // Determine if this is an add or remove (toggle logic).
+                              // Check if the user already has an active "add" reaction
+                              // for this emoji on this message (last-write-wins).
+                              let action: "add" | "remove" =
+                                forceAction || "add";
+                              if (!forceAction) {
+                                const msgs = selectedConversation.messages;
+                                let latestTs = -1;
+                                let latestAction: "add" | "remove" = "add";
+                                for (const m of msgs) {
+                                  const p = parseMessageType(m);
+                                  if (
+                                    p.type === "reaction" &&
+                                    p.replyTo === timestampNanosString &&
+                                    p.emoji === emoji &&
+                                    m.SenderInfo.OwnerPublicKeyBase58Check ===
+                                      myKey
+                                  ) {
+                                    const ts = m.MessageInfo.TimestampNanos;
+                                    if (ts > latestTs) {
+                                      latestTs = ts;
+                                      latestAction = p.action || "add";
+                                    }
+                                  }
+                                }
+                                // If they already have an active "add", toggle to "remove"
+                                if (latestTs > -1 && latestAction === "add") {
+                                  action = "remove";
+                                }
+                              }
+
+                              // Debounce: skip if there's already a pending reaction
+                              // for this same emoji+target combo
+                              const msgs = selectedConversation.messages;
+                              const hasPending = msgs.some(
+                                (m: any) =>
+                                  m._status === "sending" &&
+                                  m._localId?.startsWith("local-reaction-") &&
+                                  m.MessageInfo?.ExtraData?.["msg:replyTo"] ===
+                                    timestampNanosString &&
+                                  m.MessageInfo?.ExtraData?.["msg:emoji"] ===
+                                    emoji
+                              );
+                              if (hasPending) return;
+
+                              const recipientPublicKey =
+                                selectedConversation.ChatType === ChatType.DM
+                                  ? selectedConversation.firstMessagePublicKey
+                                  : selectedConversation.messages[0]
+                                      .RecipientInfo.OwnerPublicKeyBase58Check;
+                              const recipientKeyName =
+                                selectedConversation.ChatType === ChatType.DM
+                                  ? DEFAULT_KEY_MESSAGING_GROUP_NAME
+                                  : selectedConversation.messages[0]
+                                      .RecipientInfo.AccessGroupKeyName;
+
+                              // Build a human-readable fallback for apps without reaction support
+                              const reactedToMsg =
+                                selectedConversation.messages.find(
+                                  (m) =>
+                                    m.MessageInfo.TimestampNanosString ===
+                                    timestampNanosString
+                                );
+                              const preview =
+                                reactedToMsg?.DecryptedMessage?.slice(0, 30) ||
+                                "";
+                              const fallbackText =
+                                action === "remove"
+                                  ? `Removed ${emoji} reaction`
+                                  : preview
+                                  ? `Reacted ${emoji} to "${preview}${
+                                      (reactedToMsg?.DecryptedMessage?.length ??
+                                        0) > 30
+                                        ? "…"
+                                        : ""
+                                    }"`
+                                  : `Reacted ${emoji}`;
+
+                              // Optimistic: insert a mock reaction message immediately
+                              const localId = `local-reaction-${Date.now()}-${Math.random()}`;
+                              const TimestampNanos = new Date().getTime() * 1e6;
+                              const mockReaction = {
+                                DecryptedMessage: fallbackText,
+                                IsSender: true,
+                                _status: "sending" as const,
+                                _localId: localId,
+                                SenderInfo: {
+                                  OwnerPublicKeyBase58Check: myKey,
+                                  AccessGroupKeyName:
+                                    DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                                },
+                                RecipientInfo: {
+                                  OwnerPublicKeyBase58Check: recipientPublicKey,
+                                  AccessGroupKeyName: recipientKeyName,
+                                },
+                                MessageInfo: {
+                                  TimestampNanos,
+                                  TimestampNanosString: String(TimestampNanos),
+                                  ExtraData: buildExtraData({
+                                    type: "reaction",
+                                    replyTo: timestampNanosString,
+                                    emoji,
+                                    action,
+                                  }),
+                                },
+                              } as DecryptedMessageEntryResponse & {
+                                _status: string;
+                                _localId: string;
+                              };
+
+                              setConversations((prev) => ({
+                                ...prev,
+                                [convKey]: {
+                                  ...prev[convKey],
+                                  messages: [
+                                    mockReaction,
+                                    ...prev[convKey].messages,
+                                  ],
+                                },
+                              }));
+
+                              try {
+                                await encryptAndSendNewMessage(
+                                  fallbackText,
+                                  myKey,
+                                  recipientPublicKey,
+                                  recipientKeyName,
+                                  DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                                  buildExtraData({
+                                    type: "reaction",
+                                    replyTo: timestampNanosString,
+                                    emoji,
+                                    action,
+                                  })
+                                );
+                                // Mark as sent
+                                setConversations((prev) => ({
+                                  ...prev,
+                                  [convKey]: {
+                                    ...prev[convKey],
+                                    messages: prev[convKey].messages.map(
+                                      (m: any) =>
+                                        m._localId === localId
+                                          ? { ...m, _status: "sent" }
+                                          : m
+                                    ),
+                                  },
+                                }));
+                              } catch {
+                                // Remove failed optimistic reaction
+                                setConversations((prev) => ({
+                                  ...prev,
+                                  [convKey]: {
+                                    ...prev[convKey],
+                                    messages: prev[convKey].messages.filter(
+                                      (m: any) => m._localId !== localId
+                                    ),
+                                  },
+                                }));
+                                toast.error(
+                                  action === "remove"
+                                    ? "Failed to remove reaction"
+                                    : "Failed to send reaction"
+                                );
+                              }
+                            }}
+                            onTip={(msg, amountUsd) => {
+                              if (!appUser) return;
+                              const senderPk =
+                                msg.SenderInfo.OwnerPublicKeyBase58Check;
+                              if (senderPk === appUser.PublicKeyBase58Check) {
+                                toast.info("You can't tip yourself");
                                 return;
                               }
-                              if (appUser.BalanceNanos < 1e6) {
+                              const { blockedUsers, dismissedUsers } =
+                                useStore.getState();
+                              if (
+                                blockedUsers.has(senderPk) ||
+                                dismissedUsers.has(senderPk)
+                              )
+                                return;
+                              setTipTarget({
+                                recipientPublicKey: senderPk,
+                                recipientUsername: activeChatUsersMap[senderPk],
+                                tipReplyTo:
+                                  msg.MessageInfo.TimestampNanosString,
+                                initialAmountUsd: amountUsd,
+                              });
+                              setPendingTipTimestamps((prev) =>
+                                new Set(prev).add(
+                                  msg.MessageInfo.TimestampNanosString
+                                )
+                              );
+                            }}
+                            onMicroTip={async (msg) => {
+                              if (!appUser || !selectedConversation) return;
+                              const senderPk =
+                                msg.SenderInfo.OwnerPublicKeyBase58Check;
+                              if (senderPk === appUser.PublicKeyBase58Check) {
+                                toast.info("You can't tip yourself");
+                                return;
+                              }
+                              const { blockedUsers, dismissedUsers } =
+                                useStore.getState();
+                              if (
+                                blockedUsers.has(senderPk) ||
+                                dismissedUsers.has(senderPk)
+                              )
+                                return;
+                              // Cooldown check
+                              const now = Date.now();
+                              if (
+                                now - lastMicroTipTime <
+                                MICRO_TIP_COOLDOWN_MS
+                              ) {
                                 toast.info(
-                                  "Need a small amount of DESO for fees"
+                                  "Please wait a moment before sending another tip"
                                 );
                                 return;
                               }
+                              lastMicroTipTime = now;
+                              const tipTs =
+                                msg.MessageInfo.TimestampNanosString;
+                              setPendingTipTimestamps((prev) =>
+                                new Set(prev).add(tipTs)
+                              );
 
-                              const hasPerms = identity.hasPermissions({
-                                GlobalDESOLimit: 1e6,
-                                DAOCoinOperationLimitMap: {
-                                  [USDC_CREATOR_PUBLIC_KEY]: { transfer: 1 },
-                                },
-                              });
-                              if (!hasPerms) {
-                                await identity.requestPermissions({
-                                  GlobalDESOLimit: 1e7,
-                                  TransactionCountLimitMap: {
-                                    AUTHORIZE_DERIVED_KEY: 1,
-                                  },
-                                  DAOCoinOperationLimitMap: {
-                                    [USDC_CREATOR_PUBLIC_KEY]: { transfer: 1 },
-                                  },
+                              try {
+                                const tipCurrency =
+                                  (getCachedTipCurrency(
+                                    appUser.PublicKeyBase58Check
+                                  ) as TipCurrency) || "DESO";
+                                let txHash = "";
+                                let tipAmountNanos = 0;
+                                let tipAmountUsdcBaseUnits: string | undefined;
+
+                                if (tipCurrency === "USDC") {
+                                  const usdcAmount = usdToUsdcBaseUnits(0.01);
+                                  const balance = await fetchUsdcBalance(
+                                    appUser.PublicKeyBase58Check
+                                  );
+                                  if (balance < usdcAmount) {
+                                    toast.info("Insufficient USDC balance");
+                                    return;
+                                  }
+                                  if (appUser.BalanceNanos < 1e6) {
+                                    toast.info(
+                                      "Need a small amount of DESO for fees"
+                                    );
+                                    return;
+                                  }
+
+                                  const hasPerms = identity.hasPermissions({
+                                    GlobalDESOLimit: 1e6,
+                                    DAOCoinOperationLimitMap: {
+                                      [USDC_CREATOR_PUBLIC_KEY]: {
+                                        transfer: 1,
+                                      },
+                                    },
+                                  });
+                                  if (!hasPerms) {
+                                    await identity.requestPermissions({
+                                      GlobalDESOLimit: 1e7,
+                                      TransactionCountLimitMap: {
+                                        AUTHORIZE_DERIVED_KEY: 1,
+                                      },
+                                      DAOCoinOperationLimitMap: {
+                                        [USDC_CREATOR_PUBLIC_KEY]: {
+                                          transfer: 1,
+                                        },
+                                      },
+                                    });
+                                  }
+                                  const result = await withAuth(() =>
+                                    transferDeSoToken({
+                                      SenderPublicKeyBase58Check:
+                                        appUser.PublicKeyBase58Check,
+                                      ProfilePublicKeyBase58CheckOrUsername:
+                                        USDC_CREATOR_PUBLIC_KEY,
+                                      ReceiverPublicKeyBase58CheckOrUsername:
+                                        senderPk,
+                                      DAOCoinToTransferNanos:
+                                        toHexUint256(usdcAmount),
+                                      MinFeeRateNanosPerKB: 1000,
+                                    })
+                                  );
+                                  txHash =
+                                    (result as any)?.TxnHashHex ||
+                                    (result as any)?.TransactionIDBase58Check ||
+                                    "";
+                                  tipAmountUsdcBaseUnits =
+                                    toHexUint256(usdcAmount);
+                                  invalidateUsdcBalanceCache();
+                                } else {
+                                  if (appUser.BalanceNanos <= 0) {
+                                    toast.info("Add funds to send tips");
+                                    return;
+                                  }
+                                  const rate = await fetchExchangeRate();
+                                  tipAmountNanos = usdToNanos(0.01, rate);
+                                  if (tipAmountNanos <= 0) {
+                                    toast.error(
+                                      "Could not calculate tip amount"
+                                    );
+                                    return;
+                                  }
+                                  if (tipAmountNanos > appUser.BalanceNanos) {
+                                    toast.info("Insufficient balance");
+                                    return;
+                                  }
+
+                                  const hasPerms = identity.hasPermissions({
+                                    GlobalDESOLimit: tipAmountNanos,
+                                    TransactionCountLimitMap: {
+                                      BASIC_TRANSFER: 1,
+                                    },
+                                  });
+                                  if (!hasPerms) {
+                                    await identity.requestPermissions({
+                                      GlobalDESOLimit: tipAmountNanos + 1e7,
+                                      TransactionCountLimitMap: {
+                                        AUTHORIZE_DERIVED_KEY: 1,
+                                        BASIC_TRANSFER: 1,
+                                      },
+                                    });
+                                  }
+                                  const result = await withAuth(() =>
+                                    sendDeso({
+                                      SenderPublicKeyBase58Check:
+                                        appUser.PublicKeyBase58Check,
+                                      RecipientPublicKeyOrUsername: senderPk,
+                                      AmountNanos: tipAmountNanos,
+                                      MinFeeRateNanosPerKB: 1000,
+                                    })
+                                  );
+                                  txHash =
+                                    (result as any)?.TxnHashHex ||
+                                    (result as any)?.TransactionIDBase58Check ||
+                                    "";
+                                }
+
+                                // Send tip message
+                                const recipientPublicKey =
+                                  selectedConversation.ChatType === ChatType.DM
+                                    ? selectedConversation.firstMessagePublicKey
+                                    : selectedConversation.messages[0]
+                                        .RecipientInfo
+                                        .OwnerPublicKeyBase58Check;
+                                const recipientKeyName =
+                                  selectedConversation.ChatType === ChatType.DM
+                                    ? DEFAULT_KEY_MESSAGING_GROUP_NAME
+                                    : selectedConversation.messages[0]
+                                        .RecipientInfo.AccessGroupKeyName;
+
+                                const senderUsername =
+                                  activeChatUsersMap[senderPk];
+                                const fallback = `Tipped $0.01 to ${
+                                  senderUsername
+                                    ? `@${senderUsername}`
+                                    : senderPk.slice(0, 8)
+                                }`;
+
+                                await encryptAndSendNewMessage(
+                                  fallback,
+                                  appUser.PublicKeyBase58Check,
+                                  recipientPublicKey,
+                                  recipientKeyName,
+                                  DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                                  buildExtraData({
+                                    type: "tip",
+                                    tipAmountNanos:
+                                      tipCurrency === "DESO"
+                                        ? tipAmountNanos
+                                        : undefined,
+                                    tipAmountUsdcBaseUnits,
+                                    tipCurrency,
+                                    tipTxHash: txHash,
+                                    tipReplyTo:
+                                      msg.MessageInfo.TimestampNanosString,
+                                    tipRecipient: senderPk,
+                                  })
+                                );
+                                // No push notification for tips
+                                useStore.getState().addSessionTipUsd(0.01);
+                                toast.success(
+                                  `Tipped $0.01 ${tipCurrency} to ${
+                                    senderUsername
+                                      ? `@${senderUsername}`
+                                      : "user"
+                                  }`
+                                );
+                              } catch (error: any) {
+                                const errMsg =
+                                  error?.message || error?.toString?.() || "";
+                                if (
+                                  errMsg.includes("user cancelled") ||
+                                  errMsg.includes("WINDOW_CLOSED")
+                                ) {
+                                  toast.error("Transaction cancelled.");
+                                } else {
+                                  toast.error("Tip failed.");
+                                  console.error("Micro-tip error:", error);
+                                }
+                              } finally {
+                                setPendingTipTimestamps((prev) => {
+                                  const next = new Set(prev);
+                                  next.delete(tipTs);
+                                  return next;
                                 });
                               }
-                              const result = await withAuth(() =>
-                                transferDeSoToken({
-                                  SenderPublicKeyBase58Check:
-                                    appUser.PublicKeyBase58Check,
-                                  ProfilePublicKeyBase58CheckOrUsername:
-                                    USDC_CREATOR_PUBLIC_KEY,
-                                  ReceiverPublicKeyBase58CheckOrUsername:
-                                    senderPk,
-                                  DAOCoinToTransferNanos:
-                                    toHexUint256(usdcAmount),
-                                  MinFeeRateNanosPerKB: 1000,
-                                })
-                              );
-                              txHash =
-                                (result as any)?.TxnHashHex ||
-                                (result as any)?.TransactionIDBase58Check ||
-                                "";
-                              tipAmountUsdcBaseUnits = toHexUint256(usdcAmount);
-                              invalidateUsdcBalanceCache();
-                            } else {
-                              if (appUser.BalanceNanos <= 0) {
-                                toast.info("Add funds to send tips");
-                                return;
-                              }
-                              const rate = await fetchExchangeRate();
-                              tipAmountNanos = usdToNanos(0.01, rate);
-                              if (tipAmountNanos <= 0) {
-                                toast.error("Could not calculate tip amount");
-                                return;
-                              }
-                              if (tipAmountNanos > appUser.BalanceNanos) {
-                                toast.info("Insufficient balance");
-                                return;
-                              }
-
-                              const hasPerms = identity.hasPermissions({
-                                GlobalDESOLimit: tipAmountNanos,
-                                TransactionCountLimitMap: { BASIC_TRANSFER: 1 },
-                              });
-                              if (!hasPerms) {
-                                await identity.requestPermissions({
-                                  GlobalDESOLimit: tipAmountNanos + 1e7,
-                                  TransactionCountLimitMap: {
-                                    AUTHORIZE_DERIVED_KEY: 1,
-                                    BASIC_TRANSFER: 1,
+                            }}
+                            onPrivateMessage={(senderPublicKey) => {
+                              const dmKey =
+                                senderPublicKey +
+                                DEFAULT_KEY_MESSAGING_GROUP_NAME;
+                              // Inject placeholder so the safeSelectedKey guard
+                              // doesn't reset the selection before rehydration
+                              // adds the real conversation. Order matters:
+                              // setConversations must come before setSelectedConversationPublicKey.
+                              setConversations((prev) => {
+                                if (prev[dmKey]) return prev;
+                                return {
+                                  [dmKey]: {
+                                    ChatType: ChatType.DM,
+                                    firstMessagePublicKey: senderPublicKey,
+                                    messages: [],
                                   },
-                                });
-                              }
-                              const result = await withAuth(() =>
-                                sendDeso({
-                                  SenderPublicKeyBase58Check:
-                                    appUser.PublicKeyBase58Check,
-                                  RecipientPublicKeyOrUsername: senderPk,
-                                  AmountNanos: tipAmountNanos,
-                                  MinFeeRateNanosPerKB: 1000,
-                                })
-                              );
-                              txHash =
-                                (result as any)?.TxnHashHex ||
-                                (result as any)?.TransactionIDBase58Check ||
-                                "";
-                            }
+                                  ...prev,
+                                };
+                              });
+                              setSelectedConversationPublicKey(dmKey);
+                              rehydrateConversation(dmKey, true);
+                            }}
+                          />
+                        )}
+                      </div>
 
-                            // Send tip message
+                      {selectedConversation && (
+                        <SendMessageButtonAndInput
+                          ref={sendInputRef}
+                          key={selectedConversationPublicKey}
+                          conversationKey={selectedConversationPublicKey}
+                          replyTo={replyToMessage}
+                          onCancelReply={() =>
+                            startTransition(() => setReplyToMessage(null))
+                          }
+                          editingMessage={editingMessage}
+                          onCancelEdit={() =>
+                            startTransition(() => setEditingMessage(null))
+                          }
+                          onSubmitEdit={async (
+                            newText,
+                            timestamp,
+                            extraData
+                          ) => {
+                            if (
+                              !appUser ||
+                              (!newText.trim() && !extraData) ||
+                              !selectedConversation
+                            )
+                              return;
+                            setEditingMessage(null);
+                            const convKey = selectedConversationPublicKey;
                             const recipientPublicKey =
                               selectedConversation.ChatType === ChatType.DM
                                 ? selectedConversation.firstMessagePublicKey
@@ -4500,170 +4672,24 @@ export const MessagingApp: FC = () => {
                                 : selectedConversation.messages[0].RecipientInfo
                                     .AccessGroupKeyName;
 
-                            const senderUsername = activeChatUsersMap[senderPk];
-                            const fallback = `Tipped $0.01 to ${
-                              senderUsername
-                                ? `@${senderUsername}`
-                                : senderPk.slice(0, 8)
-                            }`;
+                            // Find original message for rollback
+                            const originalMessage =
+                              selectedConversation.messages.find(
+                                (m) =>
+                                  m.MessageInfo.TimestampNanosString ===
+                                  timestamp
+                              );
 
-                            await encryptAndSendNewMessage(
-                              fallback,
-                              appUser.PublicKeyBase58Check,
-                              recipientPublicKey,
-                              recipientKeyName,
-                              DEFAULT_KEY_MESSAGING_GROUP_NAME,
-                              buildExtraData({
-                                type: "tip",
-                                tipAmountNanos:
-                                  tipCurrency === "DESO"
-                                    ? tipAmountNanos
-                                    : undefined,
-                                tipAmountUsdcBaseUnits,
-                                tipCurrency,
-                                tipTxHash: txHash,
-                                tipReplyTo:
-                                  msg.MessageInfo.TimestampNanosString,
-                                tipRecipient: senderPk,
-                              })
-                            );
-                            // No push notification for tips
-                            useStore.getState().addSessionTipUsd(0.01);
-                            toast.success(
-                              `Tipped $0.01 ${tipCurrency} to ${
-                                senderUsername ? `@${senderUsername}` : "user"
-                              }`
-                            );
-                          } catch (error: any) {
-                            const errMsg =
-                              error?.message || error?.toString?.() || "";
-                            if (
-                              errMsg.includes("user cancelled") ||
-                              errMsg.includes("WINDOW_CLOSED")
-                            ) {
-                              toast.error("Transaction cancelled.");
-                            } else {
-                              toast.error("Tip failed.");
-                              console.error("Micro-tip error:", error);
-                            }
-                          } finally {
-                            setPendingTipTimestamps((prev) => {
-                              const next = new Set(prev);
-                              next.delete(tipTs);
-                              return next;
-                            });
-                          }
-                        }}
-                        onPrivateMessage={(senderPublicKey) => {
-                          const dmKey =
-                            senderPublicKey + DEFAULT_KEY_MESSAGING_GROUP_NAME;
-                          // Inject placeholder so the safeSelectedKey guard
-                          // doesn't reset the selection before rehydration
-                          // adds the real conversation. Order matters:
-                          // setConversations must come before setSelectedConversationPublicKey.
-                          setConversations((prev) => {
-                            if (prev[dmKey]) return prev;
-                            return {
-                              [dmKey]: {
-                                ChatType: ChatType.DM,
-                                firstMessagePublicKey: senderPublicKey,
-                                messages: [],
-                              },
-                              ...prev,
+                            // Preserve existing ExtraData (e.g. reply info), merge new extraData (e.g. image), and add edited flag
+                            const existingExtraData =
+                              originalMessage?.MessageInfo?.ExtraData || {};
+                            const updatedExtraData = {
+                              ...existingExtraData,
+                              ...extraData,
+                              "msg:edited": "true",
                             };
-                          });
-                          setSelectedConversationPublicKey(dmKey);
-                          rehydrateConversation(dmKey, true);
-                        }}
-                      />
-                    )}
-                  </div>
 
-                  {selectedConversation && (
-                    <SendMessageButtonAndInput
-                      ref={sendInputRef}
-                      key={selectedConversationPublicKey}
-                      conversationKey={selectedConversationPublicKey}
-                      replyTo={replyToMessage}
-                      onCancelReply={() =>
-                        startTransition(() => setReplyToMessage(null))
-                      }
-                      editingMessage={editingMessage}
-                      onCancelEdit={() =>
-                        startTransition(() => setEditingMessage(null))
-                      }
-                      onSubmitEdit={async (newText, timestamp, extraData) => {
-                        if (
-                          !appUser ||
-                          (!newText.trim() && !extraData) ||
-                          !selectedConversation
-                        )
-                          return;
-                        setEditingMessage(null);
-                        const convKey = selectedConversationPublicKey;
-                        const recipientPublicKey =
-                          selectedConversation.ChatType === ChatType.DM
-                            ? selectedConversation.firstMessagePublicKey
-                            : selectedConversation.messages[0].RecipientInfo
-                                .OwnerPublicKeyBase58Check;
-                        const recipientKeyName =
-                          selectedConversation.ChatType === ChatType.DM
-                            ? DEFAULT_KEY_MESSAGING_GROUP_NAME
-                            : selectedConversation.messages[0].RecipientInfo
-                                .AccessGroupKeyName;
-
-                        // Find original message for rollback
-                        const originalMessage =
-                          selectedConversation.messages.find(
-                            (m) =>
-                              m.MessageInfo.TimestampNanosString === timestamp
-                          );
-
-                        // Preserve existing ExtraData (e.g. reply info), merge new extraData (e.g. image), and add edited flag
-                        const existingExtraData =
-                          originalMessage?.MessageInfo?.ExtraData || {};
-                        const updatedExtraData = {
-                          ...existingExtraData,
-                          ...extraData,
-                          "msg:edited": "true",
-                        };
-
-                        // Optimistic: update message text and add edited flag
-                        setConversations((prev) => ({
-                          ...prev,
-                          [convKey]: {
-                            ...prev[convKey],
-                            messages: prev[convKey].messages.map((m) =>
-                              m.MessageInfo.TimestampNanosString === timestamp
-                                ? {
-                                    ...m,
-                                    DecryptedMessage: newText,
-                                    MessageInfo: {
-                                      ...m.MessageInfo,
-                                      ExtraData: updatedExtraData,
-                                    },
-                                  }
-                                : m
-                            ),
-                          },
-                        }));
-                        setLockRefresh(true);
-
-                        try {
-                          await encryptAndUpdateMessage(
-                            newText,
-                            appUser.PublicKeyBase58Check,
-                            recipientPublicKey,
-                            recipientKeyName,
-                            DEFAULT_KEY_MESSAGING_GROUP_NAME,
-                            timestamp,
-                            updatedExtraData
-                          );
-                          // No push notification for edits
-                        } catch {
-                          toast.error("Failed to edit message");
-                          // Rollback
-                          if (originalMessage) {
+                            // Optimistic: update message text and add edited flag
                             setConversations((prev) => ({
                               ...prev,
                               [convKey]: {
@@ -4671,274 +4697,320 @@ export const MessagingApp: FC = () => {
                                 messages: prev[convKey].messages.map((m) =>
                                   m.MessageInfo.TimestampNanosString ===
                                   timestamp
-                                    ? originalMessage
-                                    : m
-                                ),
-                              },
-                            }));
-                          }
-                        } finally {
-                          setLockRefresh(false);
-                        }
-                      }}
-                      onKeystroke={() =>
-                        onKeystroke(selectedConversationPublicKey)
-                      }
-                      typingUsers={getTypingUsersForConversation(
-                        selectedConversationPublicKey
-                      )
-                        .map(
-                          (pk) =>
-                            usernameByPublicKeyBase58Check[pk] ||
-                            shortenLongWord(pk)
-                        )
-                        .filter(Boolean)}
-                      mentionCandidates={
-                        isGroupChat && chatMembers
-                          ? Object.entries(chatMembers)
-                              .filter(
-                                ([pk, profile]) =>
-                                  pk !== appUser?.PublicKeyBase58Check &&
-                                  profile?.Username
-                              )
-                              .map(([pk, profile]) => ({
-                                publicKey: pk,
-                                username: profile!.Username,
-                              }))
-                          : undefined
-                      }
-                      onTipClick={
-                        selectedConversation.ChatType === ChatType.DM
-                          ? () => {
-                              const recipientPk =
-                                selectedConversation.firstMessagePublicKey;
-                              if (
-                                recipientPk === appUser?.PublicKeyBase58Check
-                              ) {
-                                toast.info("You can't tip yourself");
-                                return;
-                              }
-                              setTipTarget({
-                                recipientPublicKey: recipientPk,
-                                recipientUsername:
-                                  activeChatUsersMap[recipientPk],
-                              });
-                            }
-                          : undefined
-                      }
-                      onClick={async (
-                        messageToSend: string,
-                        extraData?: Record<string, string>,
-                        options?: {
-                          prepare?: () => Promise<Record<string, string>>;
-                        }
-                      ) => {
-                        if (!selectedConversation) return;
-                        // Merge reply data into extraData if replying
-                        if (replyToMessage) {
-                          extraData = {
-                            ...extraData,
-                            [MSG_REPLY_TO]: replyToMessage.timestamp,
-                            [MSG_REPLY_PREVIEW]: replyToMessage.text.slice(
-                              0,
-                              200
-                            ),
-                            [MSG_REPLY_SENDER]: replyToMessage.sender,
-                          };
-                          setReplyToMessage(null);
-                        }
-                        // Detect message language (franc, < 1ms) and store in ExtraData
-                        // so receivers can skip detection and translate efficiently.
-                        const detectedLang = detectLanguageSync(messageToSend);
-                        if (detectedLang) {
-                          extraData = {
-                            ...extraData,
-                            [MSG_LANG]: detectedLang,
-                          };
-                        }
-
-                        // Generate a mock message to display in the UI to give
-                        // the user immediate feedback.
-                        const TimestampNanos = new Date().getTime() * 1e6;
-                        const recipientPublicKey =
-                          selectedConversation.ChatType === ChatType.DM
-                            ? selectedConversation.firstMessagePublicKey
-                            : selectedConversation.messages[0].RecipientInfo
-                                .OwnerPublicKeyBase58Check;
-                        const recipientAccessGroupKeyName =
-                          selectedConversation.ChatType === ChatType.DM
-                            ? DEFAULT_KEY_MESSAGING_GROUP_NAME
-                            : selectedConversation.messages[0].RecipientInfo
-                                .AccessGroupKeyName;
-                        const localId = `local-${Date.now()}-${Math.random()}`;
-                        const hasPrepare = !!options?.prepare;
-                        const mockMessage = {
-                          DecryptedMessage: messageToSend,
-                          IsSender: true,
-                          _status: (hasPrepare
-                            ? "processing"
-                            : "sending") as string,
-                          _localId: localId,
-                          SenderInfo: {
-                            OwnerPublicKeyBase58Check:
-                              appUser.PublicKeyBase58Check,
-                            AccessGroupKeyName:
-                              DEFAULT_KEY_MESSAGING_GROUP_NAME,
-                          },
-                          RecipientInfo: {
-                            OwnerPublicKeyBase58Check: recipientPublicKey,
-                            AccessGroupKeyName: recipientAccessGroupKeyName,
-                          },
-                          MessageInfo: {
-                            TimestampNanos,
-                            TimestampNanosString: String(TimestampNanos),
-                            ExtraData: extraData || {},
-                          },
-                        } as DecryptedMessageEntryResponse & {
-                          _status: string;
-                          _localId: string;
-                        };
-
-                        // Sending a message = implicit "caught up" — clear
-                        // the unread divider so it doesn't persist above.
-                        setOpenedLastReadNanos(null);
-
-                        // Optimistic: insert immediately
-                        const convKey = selectedConversationPublicKey;
-                        setConversations((prev) => ({
-                          ...prev,
-                          [convKey]: {
-                            ...prev[convKey],
-                            messages: [mockMessage, ...prev[convKey].messages],
-                          },
-                        }));
-                        setLockRefresh(true);
-
-                        // If a prepare callback was provided (e.g. audio upload),
-                        // run it now to get the final extraData before sending.
-                        if (hasPrepare) {
-                          try {
-                            extraData = await options!.prepare!();
-                            // Update the bubble with the real data
-                            setConversations((prev) => ({
-                              ...prev,
-                              [convKey]: {
-                                ...prev[convKey],
-                                messages: prev[convKey].messages.map((m: any) =>
-                                  m._localId === localId
                                     ? {
                                         ...m,
-                                        _status: "sending",
+                                        DecryptedMessage: newText,
                                         MessageInfo: {
                                           ...m.MessageInfo,
-                                          ExtraData: extraData,
+                                          ExtraData: updatedExtraData,
                                         },
                                       }
                                     : m
                                 ),
                               },
                             }));
-                          } catch (e: any) {
-                            // Remove the processing bubble on failure
+                            setLockRefresh(true);
+
+                            try {
+                              await encryptAndUpdateMessage(
+                                newText,
+                                appUser.PublicKeyBase58Check,
+                                recipientPublicKey,
+                                recipientKeyName,
+                                DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                                timestamp,
+                                updatedExtraData
+                              );
+                              // No push notification for edits
+                            } catch {
+                              toast.error("Failed to edit message");
+                              // Rollback
+                              if (originalMessage) {
+                                setConversations((prev) => ({
+                                  ...prev,
+                                  [convKey]: {
+                                    ...prev[convKey],
+                                    messages: prev[convKey].messages.map((m) =>
+                                      m.MessageInfo.TimestampNanosString ===
+                                      timestamp
+                                        ? originalMessage
+                                        : m
+                                    ),
+                                  },
+                                }));
+                              }
+                            } finally {
+                              setLockRefresh(false);
+                            }
+                          }}
+                          onKeystroke={() =>
+                            onKeystroke(selectedConversationPublicKey)
+                          }
+                          typingUsers={getTypingUsersForConversation(
+                            selectedConversationPublicKey
+                          )
+                            .map(
+                              (pk) =>
+                                usernameByPublicKeyBase58Check[pk] ||
+                                shortenLongWord(pk)
+                            )
+                            .filter(Boolean)}
+                          mentionCandidates={
+                            isGroupChat && chatMembers
+                              ? Object.entries(chatMembers)
+                                  .filter(
+                                    ([pk, profile]) =>
+                                      pk !== appUser?.PublicKeyBase58Check &&
+                                      profile?.Username
+                                  )
+                                  .map(([pk, profile]) => ({
+                                    publicKey: pk,
+                                    username: profile!.Username,
+                                  }))
+                              : undefined
+                          }
+                          onTipClick={
+                            selectedConversation.ChatType === ChatType.DM
+                              ? () => {
+                                  const recipientPk =
+                                    selectedConversation.firstMessagePublicKey;
+                                  if (
+                                    recipientPk ===
+                                    appUser?.PublicKeyBase58Check
+                                  ) {
+                                    toast.info("You can't tip yourself");
+                                    return;
+                                  }
+                                  setTipTarget({
+                                    recipientPublicKey: recipientPk,
+                                    recipientUsername:
+                                      activeChatUsersMap[recipientPk],
+                                  });
+                                }
+                              : undefined
+                          }
+                          onClick={async (
+                            messageToSend: string,
+                            extraData?: Record<string, string>,
+                            options?: {
+                              prepare?: () => Promise<Record<string, string>>;
+                            }
+                          ) => {
+                            if (!selectedConversation) return;
+                            // Merge reply data into extraData if replying
+                            if (replyToMessage) {
+                              extraData = {
+                                ...extraData,
+                                [MSG_REPLY_TO]: replyToMessage.timestamp,
+                                [MSG_REPLY_PREVIEW]: replyToMessage.text.slice(
+                                  0,
+                                  200
+                                ),
+                                [MSG_REPLY_SENDER]: replyToMessage.sender,
+                              };
+                              setReplyToMessage(null);
+                            }
+                            // Detect message language (franc, < 1ms) and store in ExtraData
+                            // so receivers can skip detection and translate efficiently.
+                            const detectedLang =
+                              detectLanguageSync(messageToSend);
+                            if (detectedLang) {
+                              extraData = {
+                                ...extraData,
+                                [MSG_LANG]: detectedLang,
+                              };
+                            }
+
+                            // Generate a mock message to display in the UI to give
+                            // the user immediate feedback.
+                            const TimestampNanos = new Date().getTime() * 1e6;
+                            const recipientPublicKey =
+                              selectedConversation.ChatType === ChatType.DM
+                                ? selectedConversation.firstMessagePublicKey
+                                : selectedConversation.messages[0].RecipientInfo
+                                    .OwnerPublicKeyBase58Check;
+                            const recipientAccessGroupKeyName =
+                              selectedConversation.ChatType === ChatType.DM
+                                ? DEFAULT_KEY_MESSAGING_GROUP_NAME
+                                : selectedConversation.messages[0].RecipientInfo
+                                    .AccessGroupKeyName;
+                            const localId = `local-${Date.now()}-${Math.random()}`;
+                            const hasPrepare = !!options?.prepare;
+                            const mockMessage = {
+                              DecryptedMessage: messageToSend,
+                              IsSender: true,
+                              _status: (hasPrepare
+                                ? "processing"
+                                : "sending") as string,
+                              _localId: localId,
+                              SenderInfo: {
+                                OwnerPublicKeyBase58Check:
+                                  appUser.PublicKeyBase58Check,
+                                AccessGroupKeyName:
+                                  DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                              },
+                              RecipientInfo: {
+                                OwnerPublicKeyBase58Check: recipientPublicKey,
+                                AccessGroupKeyName: recipientAccessGroupKeyName,
+                              },
+                              MessageInfo: {
+                                TimestampNanos,
+                                TimestampNanosString: String(TimestampNanos),
+                                ExtraData: extraData || {},
+                              },
+                            } as DecryptedMessageEntryResponse & {
+                              _status: string;
+                              _localId: string;
+                            };
+
+                            // Sending a message = implicit "caught up" — clear
+                            // the unread divider so it doesn't persist above.
+                            setOpenedLastReadNanos(null);
+
+                            // Optimistic: insert immediately
+                            const convKey = selectedConversationPublicKey;
                             setConversations((prev) => ({
                               ...prev,
                               [convKey]: {
                                 ...prev[convKey],
-                                messages: prev[convKey].messages.filter(
-                                  (m: any) => m._localId !== localId
-                                ),
+                                messages: [
+                                  mockMessage,
+                                  ...prev[convKey].messages,
+                                ],
                               },
                             }));
-                            setLockRefresh(false);
-                            toast.error(`Upload failed: ${e.message || e}`);
-                            return;
-                          }
-                        }
+                            setLockRefresh(true);
 
-                        // Persist to IndexedDB so the message survives app close.
-                        // Awaited so the write lands before the blockchain call starts.
-                        const pending: PendingMessage = {
-                          localId,
-                          conversationKey: convKey,
-                          messageText: messageToSend,
-                          senderPublicKey: appUser.PublicKeyBase58Check,
-                          recipientPublicKey,
-                          recipientAccessGroupKeyName,
-                          extraData,
-                          createdAt: Date.now(),
-                        };
-                        await addPendingMessage(pending);
+                            // If a prepare callback was provided (e.g. audio upload),
+                            // run it now to get the final extraData before sending.
+                            if (hasPrepare) {
+                              try {
+                                extraData = await options!.prepare!();
+                                // Update the bubble with the real data
+                                setConversations((prev) => ({
+                                  ...prev,
+                                  [convKey]: {
+                                    ...prev[convKey],
+                                    messages: prev[convKey].messages.map(
+                                      (m: any) =>
+                                        m._localId === localId
+                                          ? {
+                                              ...m,
+                                              _status: "sending",
+                                              MessageInfo: {
+                                                ...m.MessageInfo,
+                                                ExtraData: extraData,
+                                              },
+                                            }
+                                          : m
+                                    ),
+                                  },
+                                }));
+                              } catch (e: any) {
+                                // Remove the processing bubble on failure
+                                setConversations((prev) => ({
+                                  ...prev,
+                                  [convKey]: {
+                                    ...prev[convKey],
+                                    messages: prev[convKey].messages.filter(
+                                      (m: any) => m._localId !== localId
+                                    ),
+                                  },
+                                }));
+                                setLockRefresh(false);
+                                toast.error(`Upload failed: ${e.message || e}`);
+                                return;
+                              }
+                            }
 
-                        try {
-                          await encryptAndSendNewMessage(
-                            messageToSend,
-                            appUser.PublicKeyBase58Check,
-                            recipientPublicKey,
-                            recipientAccessGroupKeyName,
-                            DEFAULT_KEY_MESSAGING_GROUP_NAME,
-                            extraData
-                          );
-                          // Sent successfully — remove from IndexedDB
-                          removePendingMessage(
-                            appUser.PublicKeyBase58Check,
-                            localId
-                          );
-                          // Notify via WebSocket relay
-                          notifyConversation(
-                            convKey,
-                            recipientPublicKey,
-                            usernameByPublicKeyBase58Check[
-                              appUser.PublicKeyBase58Check
-                            ] || appUser.PublicKeyBase58Check
-                          );
-                          // Update status to "sent" (blockchain accepted)
-                          setConversations((prev) => ({
-                            ...prev,
-                            [convKey]: {
-                              ...prev[convKey],
-                              messages: prev[convKey].messages.map((m: any) =>
-                                m._localId === localId
-                                  ? { ...m, _status: "sent" }
-                                  : m
-                              ),
-                            },
-                          }));
-                          // Start dedicated confirmation poller for this message.
-                          // Checks the single conversation every 3s to confirm
-                          // on-chain quickly instead of waiting for the general poll.
-                          scheduleConfirmationCheck(
-                            convKey,
-                            localId,
-                            selectedConversation.ChatType,
-                            recipientPublicKey,
-                            recipientAccessGroupKeyName
-                          );
-                        } catch (e: any) {
-                          // Update status to "failed" — pending message stays in IndexedDB for retry
-                          setConversations((prev) => ({
-                            ...prev,
-                            [convKey]: {
-                              ...prev[convKey],
-                              messages: prev[convKey].messages.map((m: any) =>
-                                m._localId === localId
-                                  ? { ...m, _status: "failed" }
-                                  : m
-                              ),
-                            },
-                          }));
-                          toast.error(
-                            `An error occurred while sending your message. Error: ${e.toString()}`
-                          );
-                          return Promise.reject(e);
-                        } finally {
-                          setLockRefresh(false);
-                        }
-                      }}
-                    />
-                  )}
+                            // Persist to IndexedDB so the message survives app close.
+                            // Awaited so the write lands before the blockchain call starts.
+                            const pending: PendingMessage = {
+                              localId,
+                              conversationKey: convKey,
+                              messageText: messageToSend,
+                              senderPublicKey: appUser.PublicKeyBase58Check,
+                              recipientPublicKey,
+                              recipientAccessGroupKeyName,
+                              extraData,
+                              createdAt: Date.now(),
+                            };
+                            await addPendingMessage(pending);
+
+                            try {
+                              await encryptAndSendNewMessage(
+                                messageToSend,
+                                appUser.PublicKeyBase58Check,
+                                recipientPublicKey,
+                                recipientAccessGroupKeyName,
+                                DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                                extraData
+                              );
+                              // Sent successfully — remove from IndexedDB
+                              removePendingMessage(
+                                appUser.PublicKeyBase58Check,
+                                localId
+                              );
+                              // Notify via WebSocket relay
+                              notifyConversation(
+                                convKey,
+                                recipientPublicKey,
+                                usernameByPublicKeyBase58Check[
+                                  appUser.PublicKeyBase58Check
+                                ] || appUser.PublicKeyBase58Check
+                              );
+                              // Update status to "sent" (blockchain accepted)
+                              setConversations((prev) => ({
+                                ...prev,
+                                [convKey]: {
+                                  ...prev[convKey],
+                                  messages: prev[convKey].messages.map(
+                                    (m: any) =>
+                                      m._localId === localId
+                                        ? { ...m, _status: "sent" }
+                                        : m
+                                  ),
+                                },
+                              }));
+                              // Start dedicated confirmation poller for this message.
+                              // Checks the single conversation every 3s to confirm
+                              // on-chain quickly instead of waiting for the general poll.
+                              scheduleConfirmationCheck(
+                                convKey,
+                                localId,
+                                selectedConversation.ChatType,
+                                recipientPublicKey,
+                                recipientAccessGroupKeyName
+                              );
+                            } catch (e: any) {
+                              // Update status to "failed" — pending message stays in IndexedDB for retry
+                              setConversations((prev) => ({
+                                ...prev,
+                                [convKey]: {
+                                  ...prev[convKey],
+                                  messages: prev[convKey].messages.map(
+                                    (m: any) =>
+                                      m._localId === localId
+                                        ? { ...m, _status: "failed" }
+                                        : m
+                                  ),
+                                },
+                              }));
+                              toast.error(
+                                `An error occurred while sending your message. Error: ${e.toString()}`
+                              );
+                              return Promise.reject(e);
+                            } finally {
+                              setLockRefresh(false);
+                            }
+                          }}
+                        />
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </ViewTransition>
+            )}
           </div>
         )}
       {/* Block confirmation dialog */}

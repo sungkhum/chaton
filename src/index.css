@@ -915,6 +915,33 @@ input::placeholder {
     var(--vt-duration-move) ease-in-out both vt-slide;
 }
 
+/* Mobile Chat Navigation — iOS-style cover/reveal slide.
+   Detail pane slides over the list (forward) and slides away (back).
+   List gets a subtle depth effect (slight scale + dim) to reinforce layering. */
+
+@keyframes chat-bg-away {
+  from { transform: scale(1); opacity: 1; }
+  to   { transform: scale(0.98); opacity: 0.7; }
+}
+
+/* Forward: detail slides in from right, list recedes */
+::view-transition-new(.chat-detail-enter) {
+  --slide-offset: 100%;
+  animation: var(--vt-duration-move) cubic-bezier(0.32, 0.72, 0, 1) both vt-slide;
+}
+::view-transition-old(.chat-list-exit) {
+  animation: var(--vt-duration-move) ease-out both chat-bg-away;
+}
+
+/* Back: detail slides out to right, list returns */
+::view-transition-old(.chat-detail-exit) {
+  --slide-offset: 100%;
+  animation: var(--vt-duration-move) cubic-bezier(0.32, 0.72, 0, 1) both vt-slide reverse;
+}
+::view-transition-new(.chat-list-enter) {
+  animation: var(--vt-duration-move) ease-out both chat-bg-away reverse;
+}
+
 /* Scale (modals, panels) */
 ::view-transition-old(.scale-out) {
   animation: var(--vt-duration-exit) ease-in vt-scale-down;
