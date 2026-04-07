@@ -31,7 +31,14 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "sonner";
 import useKeyDown from "../hooks/useKeyDown";
 import { useMembers } from "../hooks/useMembers";
@@ -123,6 +130,32 @@ export const ManageMembersDialog = ({
       fetchPresenceForKeys(members.map((m) => m.id));
     }
   }, [open, members, fetchPresenceForKeys]);
+
+  // Sort members: online first, then by last-seen (most recent first), then alphabetically
+  const sortedMembers = useMemo(() => {
+    return [...members].sort((a, b) => {
+      const pa = getPresence(a.id);
+      const pb = getPresence(b.id);
+
+      // Online users first
+      if (pa.status === "online" && pb.status !== "online") return -1;
+      if (pb.status === "online" && pa.status !== "online") return 1;
+
+      // Both online or both not-online: sort by last-seen timestamp (most recent first)
+      if (pa.status === "last-seen" && pb.status === "last-seen") {
+        const diff =
+          new Date(pb.timestamp).getTime() - new Date(pa.timestamp).getTime();
+        if (diff !== 0) return diff;
+      }
+
+      // last-seen before unknown
+      if (pa.status === "last-seen" && pb.status === "unknown") return -1;
+      if (pb.status === "last-seen" && pa.status === "unknown") return 1;
+
+      // Same status/timestamp: alphabetical by name
+      return a.text.localeCompare(b.text, undefined, { sensitivity: "base" });
+    });
+  }, [members, getPresence]);
 
   // Focus trap: keep Tab cycling within the dialog
   const handleTrapFocus = useCallback((e: KeyboardEvent) => {
@@ -1457,7 +1490,7 @@ export const ManageMembersDialog = ({
                           <Loader2 className="w-11 h-11 mt-4 animate-spin text-[#34F080] mx-auto" />
                         </div>
                       ) : (
-                        members.map((member) => {
+                        sortedMembers.map((member) => {
                           const memberPresence = getPresence(member.id);
                           return (
                             <div
