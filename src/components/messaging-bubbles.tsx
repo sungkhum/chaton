@@ -691,6 +691,15 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
       menuTop = Math.max(minTop, Math.min(menuTop, maxBottom - menuHeight));
       menu.style.top = `${menuTop}px`;
       menu.style.bottom = "auto";
+      // Constrain menu height so it doesn't overflow the scroll area on short screens
+      const maxMenuHeight = maxBottom - menuTop - pad;
+      if (menuHeight > maxMenuHeight && maxMenuHeight > 100) {
+        menu.style.maxHeight = `${maxMenuHeight}px`;
+        menu.style.overflowY = "auto";
+      } else {
+        menu.style.maxHeight = "";
+        menu.style.overflowY = "";
+      }
       positionHorizontally(menu);
     }
   }, [mobileActionFor, hoveredMessage, isMobile, actionBarFlipped]);
@@ -1041,12 +1050,25 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
   const { unreadDividerIndex, unreadCount } = useMemo(() => {
     if (lastReadTimestampNanos == null || displayMessages.length === 0)
       return { unreadDividerIndex: -1, unreadCount: 0 };
+    // Sending a message implies the user has read everything up to that
+    // point. Advance the effective last-read to the user's latest sent
+    // message so the divider doesn't persist above messages they've
+    // clearly seen and responded to.
+    let effectiveLastRead = lastReadTimestampNanos;
+    for (const msg of displayMessages) {
+      if (msg.MessageInfo.TimestampNanos <= lastReadTimestampNanos) break;
+      if (msg.IsSender) {
+        // newest-first — first IsSender hit is the latest sent message
+        effectiveLastRead = msg.MessageInfo.TimestampNanos;
+        break;
+      }
+    }
     let dividerIdx = -1;
     let count = 0;
     for (let i = 0; i < displayMessages.length; i++) {
       const msg = displayMessages[i];
       const ts = msg.MessageInfo.TimestampNanos;
-      if (ts <= lastReadTimestampNanos) {
+      if (ts <= effectiveLastRead) {
         dividerIdx = i;
         break;
       }
@@ -1943,7 +1965,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
                           const actionMenu = createPortal(
                             <div
                               ref={actionMenuRef}
-                              className={`fixed z-50 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg ${
+                              className={`fixed z-50 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg overscroll-contain ${
                                 isMobile
                                   ? "py-1.5 min-w-[200px]"
                                   : "py-1 min-w-[180px]"
