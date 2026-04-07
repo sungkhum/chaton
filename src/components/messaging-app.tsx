@@ -3444,13 +3444,32 @@ export const MessagingApp: FC = () => {
                       cached.length > 0 &&
                       key === selectedConversationPublicKeyRef.current
                     ) {
-                      setConversations((prev) => ({
-                        ...prev,
-                        [key]: {
-                          ...prev[key],
-                          messages: cached as DecryptedMessageEntryResponse[],
-                        },
-                      }));
+                      setConversations((prev) => {
+                        const existing = prev[key];
+                        if (!existing) return prev;
+                        const listHead = existing.messages[0];
+                        const cacheHead = cached[0] as
+                          | DecryptedMessageEntryResponse
+                          | undefined;
+                        // If the conversation list has a newer message than
+                        // the cache (message arrived since cache was written),
+                        // keep it at position 0 so the sort order doesn't
+                        // visibly jump during the slide transition.
+                        let messages =
+                          cached as DecryptedMessageEntryResponse[];
+                        if (
+                          listHead &&
+                          cacheHead &&
+                          listHead.MessageInfo.TimestampNanos >
+                            cacheHead.MessageInfo.TimestampNanos
+                        ) {
+                          messages = [listHead, ...messages];
+                        }
+                        return {
+                          ...prev,
+                          [key]: { ...existing, messages },
+                        };
+                      });
                       setLoadingConversation(false);
                     }
                   }
