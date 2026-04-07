@@ -3,11 +3,15 @@ export interface OgData {
   description?: string;
   image?: string;
   // Tweet-specific fields (from fxtwitter)
-  type?: "tweet";
+  type?: "tweet" | "reddit";
   author?: string;
   authorHandle?: string;
   authorAvatar?: string;
   metrics?: { replies?: number; retweets?: number; likes?: number };
+  // Reddit-specific fields
+  subreddit?: string;
+  score?: number;
+  numComments?: number;
 }
 
 const RELAY_URL = (import.meta.env.VITE_RELAY_URL || "").replace(

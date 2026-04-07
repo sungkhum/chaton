@@ -27,11 +27,15 @@ interface OgResult {
   image?: string;
   siteName?: string;
   // Tweet-specific fields (only set by fetchTweetData)
-  type?: "tweet";
+  type?: "tweet" | "reddit";
   author?: string;
   authorHandle?: string;
   authorAvatar?: string;
   metrics?: { replies?: number; retweets?: number; likes?: number };
+  // Reddit-specific fields (only set by fetchRedditData)
+  subreddit?: string;
+  score?: number;
+  numComments?: number;
   [key: string]: unknown;
 }
 
@@ -138,6 +142,71 @@ async function readHead(res: Response): Promise<string> {
   }
   reader.cancel();
   return html;
+}
+
+/** Detect Reddit post URLs and return the JSON API URL */
+function getRedditJsonUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "").replace(/^old\./, "");
+    if (host !== "reddit.com") return null;
+    // Match /r/<sub>/comments/<id>/ pattern
+    const match = parsed.pathname.match(
+      /^\/r\/\w+\/comments\/\w+/
+    );
+    if (!match) return null;
+    // Normalise to www.reddit.com and append .json
+    return `https://www.reddit.com${match[0]}.json`;
+  } catch {
+    return null;
+  }
+}
+
+/** Fetch Reddit post data via public JSON API (no auth needed) */
+async function fetchRedditData(jsonUrl: string): Promise<OgResult | null> {
+  try {
+    const res = await fetch(jsonUrl, {
+      headers: { "User-Agent": "ChatOnBot/1.0" },
+    });
+    if (!res.ok) return null;
+
+    const data = (await res.json()) as {
+      data?: { children?: { data: Record<string, unknown> }[] };
+    }[];
+
+    const post = data?.[0]?.data?.children?.[0]?.data;
+    if (!post) return null;
+
+    const title = post.title as string | undefined;
+    const selftext = post.selftext as string | undefined;
+    const subreddit = post.subreddit_name_prefixed as string | undefined;
+    const author = post.author as string | undefined;
+    const score = post.score as number | undefined;
+    const numComments = post.num_comments as number | undefined;
+
+    // Try to get an image: preview > thumbnail > nothing
+    const previewUrl = (
+      (post.preview as { images?: { source?: { url?: string } }[] })
+        ?.images?.[0]?.source?.url
+    );
+    const thumbnail = post.thumbnail as string | undefined;
+    const image =
+      (previewUrl ? decodeHtmlEntities(previewUrl) : null) ??
+      (thumbnail && thumbnail.startsWith("http") ? thumbnail : undefined);
+
+    return {
+      type: "reddit",
+      title,
+      description: selftext ? selftext.slice(0, 300) : undefined,
+      image,
+      author,
+      subreddit,
+      score,
+      numComments,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** Detect x.com / twitter.com tweet URLs and extract the path for fxtwitter */
@@ -262,6 +331,14 @@ export async function handleOgFetch(request: Request): Promise<Response> {
     const tweetData = await fetchTweetData(tweetPath);
     if (tweetData) return cacheAndReturn(cache, cacheKey, tweetData);
     // Fall through to generic fetch if fxtwitter fails
+  }
+
+  // Reddit: use public .json API (reddit.com blocks bot user agents)
+  const redditJsonUrl = getRedditJsonUrl(targetUrl);
+  if (redditJsonUrl) {
+    const redditData = await fetchRedditData(redditJsonUrl);
+    if (redditData) return cacheAndReturn(cache, cacheKey, redditData);
+    // Fall through to generic fetch if JSON API fails
   }
 
   // Fetch the page

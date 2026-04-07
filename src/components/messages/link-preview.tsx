@@ -1,4 +1,5 @@
 import {
+  ArrowBigUp,
   ExternalLink,
   Heart,
   LinkIcon,
@@ -119,6 +120,81 @@ function TweetPreview({ og, url }: { og: OgData; url: string }) {
   );
 }
 
+function RedditPreview({ og, url }: { og: OgData; url: string }) {
+  const [imageError, setImageError] = useState(false);
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block rounded-lg overflow-hidden hover:brightness-110 transition group mt-1.5"
+    >
+      <div className="bg-gradient-to-br from-orange-900/30 to-red-900/20 border border-orange-700/30 rounded-lg overflow-hidden">
+        {/* Subreddit row */}
+        <div className="flex items-center gap-2 px-3 pt-2.5 pb-1">
+          {og.subreddit && (
+            <span className="text-[12px] font-medium text-orange-400">
+              {og.subreddit}
+            </span>
+          )}
+          {og.author && (
+            <span className="text-[12px] text-gray-500 truncate">
+              u/{og.author}
+            </span>
+          )}
+        </div>
+
+        {/* Post title */}
+        {og.title && (
+          <div className="px-3 pb-1.5 text-[13px] text-gray-200 leading-snug line-clamp-3 font-medium">
+            {og.title}
+          </div>
+        )}
+
+        {/* Self text preview */}
+        {og.description && (
+          <div className="px-3 pb-1.5 text-[12px] text-gray-400 leading-snug line-clamp-2">
+            {og.description}
+          </div>
+        )}
+
+        {/* Media */}
+        {og.image && !imageError && (
+          <div className="mx-3 mb-2 rounded-md overflow-hidden">
+            <img
+              src={og.image}
+              alt={og.title || "Reddit post"}
+              className="w-full max-h-[200px] object-cover"
+              onError={() => setImageError(true)}
+            />
+          </div>
+        )}
+
+        {/* Metrics bar */}
+        <div className="flex items-center gap-4 px-3 pb-2.5 text-[11px] text-gray-500">
+          {og.score != null && (
+            <span className="flex items-center gap-1">
+              <ArrowBigUp className="w-3.5 h-3.5" />
+              {formatCount(og.score)}
+            </span>
+          )}
+          {og.numComments != null && (
+            <span className="flex items-center gap-1">
+              <MessageCircle className="w-3 h-3" />
+              {formatCount(og.numComments)}
+            </span>
+          )}
+          <span className="ml-auto flex items-center gap-1 text-gray-600">
+            Reddit
+            <ExternalLink className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </span>
+        </div>
+      </div>
+    </a>
+  );
+}
+
 export function LinkPreview({ url }: { url: string }) {
   // Render a rich in-app card for ChatOn join links instead of a generic OG preview
   const joinMatch = url.match(JOIN_URL_RE);
@@ -156,6 +232,9 @@ function GenericLinkPreview({ url }: { url: string }) {
 
   // Tweet-specific card
   if (og.type === "tweet") return <TweetPreview og={og} url={url} />;
+
+  // Reddit-specific card
+  if (og.type === "reddit") return <RedditPreview og={og} url={url} />;
 
   const domain = getDomain(url);
   const service = detectLinkService(url);
