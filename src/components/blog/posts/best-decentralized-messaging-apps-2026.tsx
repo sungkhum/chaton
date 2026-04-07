@@ -433,7 +433,7 @@ const BestDecentralizedMessagingApps2026 = () => (
             <th>Encryption</th>
             <th>Forward secrecy</th>
             <th>Phone required</th>
-            <th>Open source</th>
+            <th>License</th>
             <th>Works offline</th>
           </tr>
         </thead>
@@ -441,58 +441,58 @@ const BestDecentralizedMessagingApps2026 = () => (
           <tr>
             <td>SimpleX Chat</td>
             <td>Double ratchet + PQ</td>
-            <td>Yes</td>
-            <td>No</td>
+            <td className="cell-yes">&#10003; Yes</td>
+            <td className="cell-yes">&#10003; No</td>
             <td>AGPLv3</td>
-            <td>No</td>
+            <td className="cell-no">&#10005; No</td>
           </tr>
           <tr>
             <td>Session</td>
             <td>Session Protocol (libsodium)</td>
-            <td>No (V2 planned)</td>
-            <td>No</td>
+            <td className="cell-partial">&#9675; V2 planned</td>
+            <td className="cell-yes">&#10003; No</td>
             <td>GPLv3</td>
-            <td>No</td>
+            <td className="cell-no">&#10005; No</td>
           </tr>
           <tr>
             <td>ChatOn</td>
             <td>ECDH + AES-128-CTR</td>
-            <td>No</td>
-            <td>No</td>
+            <td className="cell-no">&#10005; No</td>
+            <td className="cell-yes">&#10003; No</td>
             <td>AGPLv3</td>
-            <td>No</td>
+            <td className="cell-no">&#10005; No</td>
           </tr>
           <tr>
             <td>Status</td>
             <td>X3DH + double ratchet</td>
-            <td>Yes</td>
-            <td>No</td>
+            <td className="cell-yes">&#10003; Yes</td>
+            <td className="cell-yes">&#10003; No</td>
             <td>MPL-2.0</td>
-            <td>No</td>
+            <td className="cell-no">&#10005; No</td>
           </tr>
           <tr>
             <td>Briar</td>
             <td>Bramble protocol</td>
-            <td>Yes</td>
-            <td>No</td>
+            <td className="cell-yes">&#10003; Yes</td>
+            <td className="cell-yes">&#10003; No</td>
             <td>GPLv3</td>
-            <td>Yes (BT/Wi-Fi)</td>
+            <td className="cell-yes">&#10003; BT / Wi-Fi</td>
           </tr>
           <tr>
             <td>OpenChat</td>
             <td>E2E (opt-in)</td>
-            <td>N/A</td>
-            <td>No</td>
+            <td className="cell-no">N/A</td>
+            <td className="cell-yes">&#10003; No</td>
             <td>AGPL-3.0</td>
-            <td>No</td>
+            <td className="cell-no">&#10005; No</td>
           </tr>
           <tr>
             <td>XMTP</td>
             <td>MLS + PQ</td>
-            <td>Yes</td>
-            <td>No (wallet needed)</td>
+            <td className="cell-yes">&#10003; Yes</td>
+            <td className="cell-partial">&#9675; Wallet needed</td>
             <td>MIT</td>
-            <td>No</td>
+            <td className="cell-no">&#10005; No</td>
           </tr>
         </tbody>
       </table>

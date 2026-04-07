@@ -367,7 +367,13 @@ input::placeholder {
   backdrop-filter: blur(40px);
   border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  /* Only transition hover properties — `all` fights GSAP entrance animations
+     (GSAP sets transform/opacity inline → CSS transition intercepts them,
+     producing a visible double-transition on page load). */
+  transition: background 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .landing-glass-card:hover {
@@ -1037,6 +1043,85 @@ input::placeholder {
   border: none;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   margin: 2rem 0;
+}
+
+/* ── Blog comparison table ─────────────────────────────── */
+
+.prose-chaton table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1.5rem 0 2rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.prose-chaton thead {
+  background: rgba(52, 240, 128, 0.06);
+}
+
+.prose-chaton th {
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+}
+
+.prose-chaton td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  vertical-align: middle;
+  color: #9ca3af;
+}
+
+.prose-chaton tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.prose-chaton tbody tr {
+  transition: background 0.15s;
+}
+
+.prose-chaton tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.prose-chaton tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.prose-chaton tbody tr:nth-child(even):hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* First column (app name) — bold + white */
+.prose-chaton td:first-child {
+  color: #fff;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Visual indicators for Yes/No cells */
+.prose-chaton .cell-yes {
+  color: #34F080;
+  font-weight: 500;
+}
+
+.prose-chaton .cell-no {
+  color: #6b7280;
+}
+
+.prose-chaton .cell-partial {
+  color: #f59e0b;
+  font-weight: 500;
 }
 
 /* ── Typing indicator ─────────────────────────────────── */
