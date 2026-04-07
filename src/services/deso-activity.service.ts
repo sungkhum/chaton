@@ -20,7 +20,7 @@ export async function fetchDesoActivity(
       const aliases = chunk
         .map(
           (pk, i) =>
-            `user${i}: affectedPublicKeys(filter: { publicKey: { equalTo: "${pk}" } }, orderBy: [TIMESTAMP_DESC], first: 1) { nodes { publicKey timestamp } }`
+            `user${i}: transactions(filter: { publicKey: { equalTo: "${pk}" } }, orderBy: [TIMESTAMP_DESC], first: 1) { nodes { publicKey timestamp } }`
         )
         .join("\n");
 
