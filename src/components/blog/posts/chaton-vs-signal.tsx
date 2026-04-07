@@ -403,11 +403,12 @@ const ChatonVsSignal = () => (
     </p>
 
     <p>
-      The result: there is no pressure to monetize users, find advertisers, or
-      seek ongoing philanthropic support. ChatOn can exist indefinitely because
-      its infrastructure costs are nearly zero, and the blockchain it depends on
-      is funded by its own token economics — not by any single
-      organization&apos;s donations.
+      The result: ChatOn doesn&apos;t need ads, data harvesting, or premium
+      tiers to keep the lights on. The app does generate revenue — a 10%
+      platform fee on in-chat tips of $0.10 or more — but that funds ongoing
+      development, not infrastructure. If nobody tipped, the app would still
+      run. That is a fundamentally different position from needing $50 million
+      in annual donations to keep servers online.
     </p>
 
     <h2>Features</h2>

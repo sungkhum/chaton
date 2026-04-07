@@ -190,9 +190,11 @@ const NearZeroInfrastructure = () => (
 
     <ul>
       <li>
-        <strong>No pressure to monetize:</strong> When your server bill is
-        negligible, you don't need to sell ads, harvest data, or gate features
-        behind a paywall. The product can just be good.
+        <strong>Monetization on your terms:</strong> When your server bill is
+        negligible, you don&apos;t need to sell ads, harvest data, or gate
+        features behind a paywall. ChatOn earns revenue through a small platform
+        fee on in-chat tips — but that funds development, not infrastructure. If
+        that revenue disappeared, the app would still run.
       </li>
       <li>
         <strong>No shutdown risk from costs:</strong> Messaging apps die when
