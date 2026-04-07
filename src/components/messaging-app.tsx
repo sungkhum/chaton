@@ -6,6 +6,8 @@ import {
   Archive,
   EllipsisVertical,
   ShieldBan,
+  Pin,
+  X,
 } from "lucide-react";
 import { useStore } from "../store";
 import { useShallow } from "zustand/react/shallow";
@@ -21,6 +23,7 @@ import {
   sendDeso,
   identity,
   transferDeSoToken,
+  updateAccessGroup,
 } from "deso-protocol";
 import { useInterval } from "hooks/useInterval";
 import { useIdleDetection } from "hooks/useIdleDetection";
@@ -122,6 +125,8 @@ import {
   buildExtraData,
   getGroupDisplayName,
   getGroupImageUrl,
+  getGroupPinnedMessage,
+  GROUP_PINNED_MESSAGE,
   parseMessageType,
   MSG_REPLY_TO,
   MSG_REPLY_PREVIEW,
@@ -159,7 +164,10 @@ const LazyManageMembersDialog = lazy(() =>
     default: m.ManageMembersDialog,
   }))
 );
-import { MessagingBubblesAndAvatar } from "./messaging-bubbles";
+import {
+  MessagingBubblesAndAvatar,
+  type MessagingBubblesHandle,
+} from "./messaging-bubbles";
 import { MessagingConversationAccount } from "./messaging-conversation-accounts";
 import { MessagingConversationButton } from "./messaging-conversation-button";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
@@ -357,6 +365,7 @@ export const MessagingApp: FC = () => {
     sender: string;
   } | null>(null);
   const sendInputRef = useRef<SendMessageInputHandle>(null);
+  const bubblesRef = useRef<MessagingBubblesHandle>(null);
   const [editingMessage, setEditingMessage] = useState<{
     text: string;
     timestamp: string;
@@ -3184,6 +3193,103 @@ export const MessagingApp: FC = () => {
           selectedConversation.messages[0].RecipientInfo.AccessGroupKeyName
         )
       : undefined;
+  const pinnedMessageTimestamp =
+    isGroupChat && selectedConversation?.messages[0]
+      ? getGroupPinnedMessage(
+          allAccessGroups,
+          selectedConversation.messages[0].RecipientInfo
+            .OwnerPublicKeyBase58Check,
+          selectedConversation.messages[0].RecipientInfo.AccessGroupKeyName
+        )
+      : undefined;
+  const pinnedMessage = useMemo(() => {
+    if (!pinnedMessageTimestamp || !selectedConversation) return undefined;
+    return selectedConversation.messages.find(
+      (m) => m.MessageInfo.TimestampNanosString === pinnedMessageTimestamp
+    );
+  }, [pinnedMessageTimestamp, selectedConversation]);
+  const handlePinMessage = useCallback(
+    async (timestampNanosString: string) => {
+      if (!appUser || !selectedConversation || !isGroupChat) return;
+      const recipientInfo = selectedConversation.messages[0]?.RecipientInfo;
+      if (!recipientInfo) return;
+      const groupOwnerKey = recipientInfo.OwnerPublicKeyBase58Check;
+      const groupKeyName = recipientInfo.AccessGroupKeyName;
+
+      const group = allAccessGroups.find(
+        (g) =>
+          g.AccessGroupOwnerPublicKeyBase58Check === groupOwnerKey &&
+          g.AccessGroupKeyName === groupKeyName
+      );
+      if (!group) return;
+
+      const oldPinned = group.ExtraData?.[GROUP_PINNED_MESSAGE] || "";
+      const isPinning = !!timestampNanosString;
+
+      // Optimistic: update Zustand store immediately
+      const updatedGroups = allAccessGroups.map((g) => {
+        if (
+          g.AccessGroupOwnerPublicKeyBase58Check === groupOwnerKey &&
+          g.AccessGroupKeyName === groupKeyName
+        ) {
+          const newExtraData = { ...(g.ExtraData || {}) };
+          if (isPinning) {
+            newExtraData[GROUP_PINNED_MESSAGE] = timestampNanosString;
+          } else {
+            delete newExtraData[GROUP_PINNED_MESSAGE];
+          }
+          return { ...g, ExtraData: newExtraData };
+        }
+        return g;
+      });
+      useStore.setState({ allAccessGroups: updatedGroups });
+      toast.success(isPinning ? "Message pinned" : "Message unpinned");
+
+      try {
+        const mergedExtraData = { ...(group.ExtraData || {}) };
+        if (isPinning) {
+          mergedExtraData[GROUP_PINNED_MESSAGE] = timestampNanosString;
+        } else {
+          mergedExtraData[GROUP_PINNED_MESSAGE] = "";
+        }
+
+        await withAuth(() =>
+          updateAccessGroup({
+            AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+            AccessGroupKeyName: groupKeyName,
+            AccessGroupPublicKeyBase58Check:
+              group.AccessGroupPublicKeyBase58Check,
+            MinFeeRateNanosPerKB: 1000,
+            ExtraData: mergedExtraData,
+          })
+        );
+      } catch (err) {
+        console.error("Failed to pin message:", err);
+        toast.error(
+          isPinning ? "Failed to pin message" : "Failed to unpin message"
+        );
+        // Rollback
+        const rollbackGroups = allAccessGroups.map((g) => {
+          if (
+            g.AccessGroupOwnerPublicKeyBase58Check === groupOwnerKey &&
+            g.AccessGroupKeyName === groupKeyName
+          ) {
+            const newExtraData = { ...(g.ExtraData || {}) };
+            if (oldPinned) {
+              newExtraData[GROUP_PINNED_MESSAGE] = oldPinned;
+            } else {
+              delete newExtraData[GROUP_PINNED_MESSAGE];
+            }
+            return { ...g, ExtraData: newExtraData };
+          }
+          return g;
+        });
+        useStore.setState({ allAccessGroups: rollbackGroups });
+      }
+    },
+    [appUser, selectedConversation, isGroupChat, allAccessGroups]
+  );
+
   const chatMembers = membersByGroupKey[selectedConversationPublicKey];
 
   // Fetch presence data when a conversation is selected
@@ -3554,11 +3660,11 @@ export const MessagingApp: FC = () => {
             </div>
 
             <div
-              className={`w-full h-full shrink-0 md:flex-1 md:min-w-0 bg-[#0a1019] md:ml-0 md:z-auto transition-[margin-left] duration-300 ease-in-out ${
+              className={`w-full h-full shrink-0 md:flex-1 md:min-w-0 bg-[#0a1019] md:ml-0 md:z-auto transition-[margin-left] duration-300 ease-in-out flex flex-col ${
                 selectedConversationPublicKey ? "ml-[-100%] z-50" : ""
               }`}
             >
-              <header className="flex justify-between items-center border-b border-white/5 relative px-4 md:px-5 h-14">
+              <header className="flex justify-between items-center border-b border-white/5 relative px-4 md:px-5 h-14 shrink-0">
                 <div
                   className="cursor-pointer py-4 pl-0 pr-6 md:hidden"
                   onClick={() => {
@@ -3801,7 +3907,50 @@ export const MessagingApp: FC = () => {
                 </div>
               </header>
 
-              <div className="pr-2 rounded-none w-[100%] bg-transparent ml-[calc-340px] pb-0 h-[calc(100%-56px)]">
+              {/* Pinned message bar */}
+              {pinnedMessageTimestamp && isGroupChat && (
+                <div className="shrink-0 border-b border-white/5 bg-[#0a1019] flex items-center group">
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() =>
+                      bubblesRef.current?.scrollToMessage(
+                        pinnedMessageTimestamp
+                      )
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        bubblesRef.current?.scrollToMessage(
+                          pinnedMessageTimestamp
+                        );
+                      }
+                    }}
+                    className="flex-1 min-w-0 flex items-center gap-3 px-4 md:px-5 py-2 text-left hover:bg-white/5 transition-colors cursor-pointer"
+                  >
+                    <Pin className="w-4 h-4 text-[#34F080] shrink-0 rotate-45" />
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[11px] font-semibold text-[#34F080] block leading-tight">
+                        Pinned Message
+                      </span>
+                      <span className="text-xs text-gray-400 truncate block leading-tight">
+                        {pinnedMessage?.DecryptedMessage || "Tap to view"}
+                      </span>
+                    </div>
+                  </div>
+                  {isGroupOwner && (
+                    <button
+                      onClick={() => handlePinMessage("")}
+                      className="p-2.5 mr-1 md:mr-2 rounded-full hover:bg-white/10 transition-colors md:opacity-0 md:group-hover:opacity-100 cursor-pointer"
+                      aria-label="Unpin message"
+                    >
+                      <X className="w-3.5 h-3.5 text-gray-500" />
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <div className="pr-2 rounded-none w-[100%] bg-transparent ml-[calc-340px] pb-0 flex-1 min-h-0">
                 <div className="border-none flex flex-col h-full">
                   <div className="overflow-hidden flex-1 min-h-0">
                     {loadingConversation || !selectedConversation ? (
@@ -3810,12 +3959,15 @@ export const MessagingApp: FC = () => {
                       </div>
                     ) : (
                       <MessagingBubblesAndAvatar
+                        ref={bubblesRef}
                         key={selectedConversationPublicKey}
                         conversationPublicKey={selectedConversationPublicKey}
                         conversations={conversations}
                         getUsernameByPublicKey={activeChatUsersMap}
                         profilePicByPublicKey={profilePicByPublicKey}
                         lastReadTimestampNanos={openedLastReadNanos}
+                        onPin={isGroupOwner ? handlePinMessage : undefined}
+                        pinnedMessageTimestamp={pinnedMessageTimestamp}
                         onScroll={(e: Array<DecryptedMessageEntryResponse>) => {
                           setConversations((prev) => ({
                             ...prev,

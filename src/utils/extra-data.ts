@@ -100,6 +100,7 @@ export function getEncryptedExtraDataKeys(
 // Generic DeSo access group ExtraData keys — any messaging app can adopt these
 export const GROUP_IMAGE_URL = "group:imageUrl";
 export const GROUP_DISPLAY_NAME = "group:displayName";
+export const GROUP_PINNED_MESSAGE = "group:pinnedMessage";
 
 export type TipCurrency = "DESO" | "USDC";
 
@@ -359,6 +360,23 @@ export function getGroupDisplayName(
       g.AccessGroupKeyName === groupKeyName
   );
   return group?.ExtraData?.[GROUP_DISPLAY_NAME] || undefined;
+}
+
+/**
+ * Look up the pinned message timestamp from an access group's ExtraData.
+ * Returns the TimestampNanosString of the pinned message, or undefined if none.
+ */
+export function getGroupPinnedMessage(
+  allAccessGroups: AccessGroupEntryResponse[],
+  ownerPublicKey: string,
+  groupKeyName: string
+): string | undefined {
+  const group = allAccessGroups.find(
+    (g) =>
+      g.AccessGroupOwnerPublicKeyBase58Check === ownerPublicKey &&
+      g.AccessGroupKeyName === groupKeyName
+  );
+  return group?.ExtraData?.[GROUP_PINNED_MESSAGE] || undefined;
 }
 
 export function buildExtraData(

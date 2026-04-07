@@ -21,7 +21,7 @@ extra-data.ts
   fn parseMessageType
   fn getGroupImageUrl
   fn getGroupDisplayName
-  +2 more
+  +3 more
 helpers.ts
   fn copyTextToClipboard
   fn getProfileURL
