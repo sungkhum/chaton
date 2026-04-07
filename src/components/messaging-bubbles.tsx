@@ -55,6 +55,7 @@ import {
   getCachedTipCurrency,
   getCachedPreferredLanguage,
   getCachedAutoTranslate,
+  getCachedLastReadTimestamps,
 } from "../services/cache.service";
 import { useTranslation } from "../hooks/useTranslation";
 import { getLanguageName } from "./language-selector";
@@ -1077,14 +1078,41 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     () => new Set()
   );
 
-  // Messages from others that @mention the current user (unread only)
+  // The `lastReadTimestampNanos` prop is frozen at conversation-open time so
+  // the "New messages" divider stays stable. But for reaction/mention indicators,
+  // we need the *current* cached lastRead — which is updated whenever the user
+  // is actively viewing and new messages arrive (via polling/WS). Without this,
+  // dismissed reactions reappear after app restart because the frozen prop is
+  // older than the cached value.
   const myPublicKey = appUser?.PublicKeyBase58Check;
+
+  // Read the cached lastRead once on mount and re-read only when the message
+  // count changes (a lightweight proxy for poll/WS updates that also call
+  // cacheLastReadTimestamp). Avoids hitting localStorage + JSON.parse on every
+  // render. (js-cache-storage)
+  const messageCount = visibleMessages.length;
+  const cachedLastRead = useMemo(() => {
+    if (!myPublicKey || !conversationPublicKey) return undefined;
+    const timestamps = getCachedLastReadTimestamps(myPublicKey);
+    return timestamps[conversationPublicKey];
+  }, [myPublicKey, conversationPublicKey, messageCount]);
+
+  // Use the greater of the frozen open-time value and the cached value.
+  // The frozen value ensures we still show reactions that arrived before the
+  // user opened; the cached value handles reopens where the user already
+  // advanced past them in a previous session.
+  const reactionCutoffNanos =
+    cachedLastRead !== undefined && lastReadTimestampNanos != null
+      ? Math.max(cachedLastRead, lastReadTimestampNanos)
+      : lastReadTimestampNanos;
+
+  // Messages from others that @mention the current user (unread only)
   const unreadMentionTimestamps = useMemo(() => {
-    if (!lastReadTimestampNanos || !myPublicKey) return EMPTY_STRINGS;
+    if (!reactionCutoffNanos || !myPublicKey) return EMPTY_STRINGS;
     const result: string[] = [];
     for (const msg of displayMessages) {
       if (msg.IsSender) continue;
-      if (msg.MessageInfo.TimestampNanos <= lastReadTimestampNanos) break; // sorted newest-first
+      if (msg.MessageInfo.TimestampNanos <= reactionCutoffNanos) break; // sorted newest-first
       const parsed = parseMessageType(msg);
       if (
         parsed.mentions &&
@@ -1096,12 +1124,12 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
       }
     }
     return result.length > 0 ? result : EMPTY_STRINGS;
-  }, [displayMessages, lastReadTimestampNanos, myPublicKey, dismissedMentions]);
+  }, [displayMessages, reactionCutoffNanos, myPublicKey, dismissedMentions]);
 
   // Unread reactions to the current user's messages — returns timestamps of
   // the *target* messages (the user's messages that were reacted to)
   const unreadReactionTargets = useMemo(() => {
-    if (!lastReadTimestampNanos || !myPublicKey) return EMPTY_STRINGS;
+    if (!reactionCutoffNanos || !myPublicKey) return EMPTY_STRINGS;
     // Build a set of the current user's message timestamps for quick lookup
     const myTimestamps = new Set<string>();
     for (const msg of visibleMessages) {
@@ -1112,7 +1140,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     const targets = new Set<string>();
     for (const msg of visibleMessages) {
       if (msg.IsSender) continue;
-      if (msg.MessageInfo.TimestampNanos <= lastReadTimestampNanos) break; // sorted newest-first
+      if (msg.MessageInfo.TimestampNanos <= reactionCutoffNanos) break; // sorted newest-first
       const parsed = parseMessageType(msg);
       if (
         parsed.type === "reaction" &&
@@ -1127,12 +1155,7 @@ export const MessagingBubblesAndAvatar: FC<MessagingBubblesProps> = ({
     }
     if (targets.size === 0) return EMPTY_STRINGS;
     return Array.from(targets);
-  }, [
-    visibleMessages,
-    lastReadTimestampNanos,
-    myPublicKey,
-    dismissedReactions,
-  ]);
+  }, [visibleMessages, reactionCutoffNanos, myPublicKey, dismissedReactions]);
 
   // Cycling index for scroll-to-mention / scroll-to-reaction buttons
   const mentionIdxRef = useRef(0);
