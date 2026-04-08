@@ -371,7 +371,7 @@ function MessageContent({
 }
 
 export interface MessagingBubblesHandle {
-  scrollToMessage: (ts: string) => void;
+  scrollToMessage: (ts: string) => boolean;
 }
 
 export const MessagingBubblesAndAvatar = React.forwardRef<
@@ -1226,7 +1226,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       reactionIdxRef.current = 0;
     }, [unreadReactionTargets]);
 
-    const scrollToMessage = useCallback((ts: string) => {
+    const scrollToMessage = useCallback((ts: string): boolean => {
       const wrapper = messageAreaRef.current?.querySelector<HTMLElement>(
         `[data-ts="${ts}"]`
       );
@@ -1239,7 +1239,9 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
         const target = bubble ?? wrapper;
         target.classList.add("highlight-flash");
         setTimeout(() => target.classList.remove("highlight-flash"), 1800);
+        return true;
       }
+      return false;
     }, []);
 
     React.useImperativeHandle(ref, () => ({ scrollToMessage }), [
