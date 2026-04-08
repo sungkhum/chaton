@@ -30,6 +30,8 @@ yarn-error.log*
 
 TICKET.md
 CHATONTICKETSYSTEM.md
+MACMINI.md
+HUMANBUG.md
 
 # local tool configs
 .claude/

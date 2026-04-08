@@ -1,175 +1,529 @@
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import {
+  X,
+  Bug,
+  Lightbulb,
+  Wrench,
+  HelpCircle,
+  Heart,
+  MessageCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "../store";
 import { submitFeedback } from "../services/feedback.service";
+import { submitManualBugReport } from "../services/ticket.service";
 
 const CATEGORIES = [
-  { value: "feature-request", label: "Feature Request", icon: "\u{1F4A1}" },
-  { value: "improvement", label: "Improvement", icon: "\u{1F527}" },
-  { value: "question", label: "Question", icon: "\u{2753}" },
-  { value: "praise", label: "Love Something", icon: "\u{2764}\u{FE0F}" },
-  { value: "other", label: "Other", icon: "\u{1F4AC}" },
+  {
+    value: "feature-request",
+    label: "Feature Request",
+    icon: Lightbulb,
+    description: "I have an idea for something new",
+  },
+  {
+    value: "improvement",
+    label: "Improvement",
+    icon: Wrench,
+    description: "Make something better",
+  },
+  {
+    value: "bug",
+    label: "Report a Bug",
+    icon: Bug,
+    description: "Something isn't working right",
+  },
+  {
+    value: "question",
+    label: "Question",
+    icon: HelpCircle,
+    description: "I need help with something",
+  },
+  {
+    value: "praise",
+    label: "Love Something",
+    icon: Heart,
+    description: "Tell us what's great",
+  },
+  {
+    value: "other",
+    label: "Other",
+    icon: MessageCircle,
+    description: "Something else",
+  },
 ] as const;
 
-type Step = "category" | "describe" | "confirm" | "done";
+type Category = (typeof CATEGORIES)[number]["value"];
+
+const FREQUENCY_OPTIONS = [
+  { value: "first-time", label: "Only once so far" },
+  { value: "sometimes", label: "It happens sometimes" },
+  { value: "every-time", label: "Every single time" },
+] as const;
+
+// Bug path: category → describe (combined) → frequency → confirm → done
+// Feedback path: category → describe → done (submit directly, no confirm)
+type Step =
+  | "category"
+  | "bug-describe"
+  | "bug-frequency"
+  | "confirm"
+  | "describe"
+  | "done";
 
 export function FeedbackModal() {
   const feedbackModalOpen = useStore((s) => s.feedbackModalOpen);
   const closeFeedbackModal = useStore((s) => s.closeFeedbackModal);
   const [step, setStep] = useState<Step>("category");
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState<Category | "">("");
   const [description, setDescription] = useState("");
+
+  // Bug-specific fields
+  const [whatWentWrong, setWhatWentWrong] = useState("");
+  const [whatWereDoing, setWhatWereDoing] = useState("");
+  const [frequency, setFrequency] = useState("");
+
   const [submitting, setSubmitting] = useState(false);
   const inflight = useRef(false);
 
   if (!feedbackModalOpen) return null;
 
+  const isBugPath = category === "bug";
   const selectedCategory = CATEGORIES.find((c) => c.value === category);
+  const hasContent =
+    description.trim() || whatWentWrong.trim() || whatWereDoing.trim();
 
   const handleSubmit = async () => {
     if (inflight.current) return;
     inflight.current = true;
     setSubmitting(true);
     try {
-      await submitFeedback({ category, description });
+      if (isBugPath) {
+        await submitManualBugReport({
+          whatWentWrong,
+          whatWereDoing,
+          frequency: frequency as "first-time" | "sometimes" | "every-time",
+        });
+      } else {
+        await submitFeedback({ category, description });
+      }
       setStep("done");
     } catch {
-      toast.error("Couldn't submit feedback. Try again later.");
+      toast.error("Couldn't submit. Try again later.");
     } finally {
       setSubmitting(false);
       inflight.current = false;
     }
   };
 
-  const handleClose = () => {
-    closeFeedbackModal();
+  const resetState = () => {
     setStep("category");
     setCategory("");
     setDescription("");
+    setWhatWentWrong("");
+    setWhatWereDoing("");
+    setFrequency("");
+    inflight.current = false;
   };
 
-  return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-t-2xl bg-zinc-900 p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-white">Send Feedback</h3>
-          <button
-            onClick={handleClose}
-            className="text-zinc-400 hover:text-white"
-          >
-            <X size={20} />
-          </button>
-        </div>
+  const handleClose = () => {
+    closeFeedbackModal();
+    resetState();
+  };
 
-        {step === "category" ? (
-          <div>
-            <p className="mb-3 text-sm text-zinc-300">What kind of feedback?</p>
-            <div className="flex flex-col gap-2">
-              {CATEGORIES.map((cat) => (
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target !== e.currentTarget) return;
+    if (submitting) return;
+    if (hasContent && step !== "done") {
+      if (!window.confirm("Discard your draft?")) return;
+    }
+    handleClose();
+  };
+
+  const handleCategorySelect = (value: Category) => {
+    setCategory(value);
+    setStep(value === "bug" ? "bug-describe" : "describe");
+  };
+
+  const goBack = () => {
+    if (isBugPath) {
+      const prev: Record<string, Step> = {
+        "bug-frequency": "bug-describe",
+        confirm: "bug-frequency",
+      };
+      const target = prev[step];
+      if (target) {
+        setStep(target);
+      } else {
+        setStep("category");
+        setCategory("");
+      }
+    } else {
+      setStep("category");
+      setCategory("");
+    }
+  };
+
+  // Step indicators
+  const bugStepNumber =
+    step === "bug-describe"
+      ? 1
+      : step === "bug-frequency"
+      ? 2
+      : step === "confirm"
+      ? 3
+      : 0;
+  const totalBugSteps = 3;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60 sm:items-center"
+      onClick={handleBackdropClick}
+    >
+      <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-[#0a1628] shadow-2xl shadow-black/50 sm:max-h-[90vh] sm:rounded-2xl">
+        {/* Gradient accent bar */}
+        <div className="h-[2px] bg-gradient-to-r from-[#34F080] via-[#20E0AA] to-[#40B8E0]" />
+
+        <div className="overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+          {/* Header */}
+          <div className="mb-5 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              {step !== "category" && step !== "done" ? (
                 <button
-                  key={cat.value}
-                  onClick={() => {
-                    setCategory(cat.value);
-                    setStep("describe");
-                  }}
-                  className="flex items-center gap-3 rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-left text-sm text-zinc-300 transition-colors hover:border-zinc-500"
+                  onClick={goBack}
+                  aria-label="Go back"
+                  className="-ml-2 mr-0.5 rounded-lg p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white/70"
                 >
-                  <span className="text-lg">{cat.icon}</span>
-                  <span>{cat.label}</span>
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M15 18l-6-6 6-6" />
+                  </svg>
                 </button>
-              ))}
+              ) : null}
+              <h3 className="text-[15px] font-semibold text-white">
+                {step === "done"
+                  ? isBugPath
+                    ? "Bug Reported"
+                    : "Feedback Sent"
+                  : isBugPath && step !== "category"
+                  ? "Report a Bug"
+                  : "Send Feedback"}
+              </h3>
             </div>
-          </div>
-        ) : step === "describe" ? (
-          <div>
-            {selectedCategory ? (
-              <p className="mb-1 text-xs text-zinc-500">
-                {selectedCategory.icon} {selectedCategory.label}
-              </p>
-            ) : null}
-            <p className="mb-2 text-sm text-zinc-300">Tell us more</p>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={
-                category === "feature-request"
-                  ? "Describe the feature you'd like to see..."
-                  : category === "improvement"
-                  ? "What could we do better?"
-                  : category === "praise"
-                  ? "What do you love about ChatOn?"
-                  : "Share your thoughts..."
-              }
-              maxLength={1000}
-              rows={5}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 p-3 text-sm text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
-            />
-            <div className="mt-2 text-right text-xs text-zinc-500">
-              {description.length}/1000
-            </div>
-            <div className="mt-3 flex gap-2">
-              <button
-                onClick={() => setStep("category")}
-                className="flex-1 rounded-lg bg-zinc-700 px-4 py-2.5 text-sm text-zinc-300"
-              >
-                Back
-              </button>
-              <button
-                onClick={() => {
-                  if (description.trim()) setStep("confirm");
-                }}
-                disabled={!description.trim()}
-                className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        ) : step === "confirm" ? (
-          <div>
-            <div className="space-y-1 rounded-lg bg-zinc-800 p-3 text-sm">
-              <p>
-                <span className="text-zinc-500">Type:</span>{" "}
-                <span className="text-zinc-300">
-                  {selectedCategory
-                    ? `${selectedCategory.icon} ${selectedCategory.label}`
-                    : category}
-                </span>
-              </p>
-              <p>
-                <span className="text-zinc-500">Feedback:</span>{" "}
-                <span className="text-zinc-300">{description}</span>
-              </p>
-            </div>
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={handleClose}
-                className="flex-1 rounded-lg bg-zinc-700 px-4 py-2.5 text-sm text-zinc-300"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={submitting}
-                className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40"
-              >
-                {submitting ? "Sending..." : "Submit"}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="py-4 text-center">
-            <p className="text-sm text-zinc-300">Thanks for your feedback!</p>
             <button
-              onClick={handleClose}
-              className="mt-4 rounded-lg bg-zinc-700 px-6 py-2 text-sm text-zinc-300"
+              onClick={() => {
+                if (submitting) return;
+                if (hasContent && step !== "done") {
+                  if (!window.confirm("Discard your draft?")) return;
+                }
+                handleClose();
+              }}
+              aria-label="Close"
+              className="rounded-lg p-2 text-white/30 transition-colors hover:bg-white/5 hover:text-white/60"
             >
-              Close
+              <X size={18} />
             </button>
           </div>
-        )}
+
+          {/* Bug path: step indicator */}
+          {isBugPath && bugStepNumber > 0 ? (
+            <div
+              className="mb-4 flex gap-1.5"
+              role="progressbar"
+              aria-valuenow={bugStepNumber}
+              aria-valuemax={totalBugSteps}
+              aria-label={`Step ${bugStepNumber} of ${totalBugSteps}`}
+            >
+              {Array.from({ length: totalBugSteps }, (_, i) => (
+                <div
+                  key={i}
+                  className={`h-[3px] flex-1 rounded-full transition-colors ${
+                    i < bugStepNumber ? "bg-[#34F080]" : "bg-white/10"
+                  }`}
+                />
+              ))}
+            </div>
+          ) : null}
+
+          {/* ── Category selection ── */}
+          {step === "category" ? (
+            <div className="flex flex-col gap-1.5">
+              {CATEGORIES.map((cat) => {
+                const Icon = cat.icon;
+                return (
+                  <button
+                    key={cat.value}
+                    onClick={() => handleCategorySelect(cat.value)}
+                    className="flex items-center gap-3.5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-left transition-all hover:border-[#34F080]/30 hover:bg-[#34F080]/5 active:scale-[0.98]"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.06] text-white/50">
+                      <Icon size={18} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white/90">
+                        {cat.label}
+                      </p>
+                      <p className="text-xs text-white/35">{cat.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+
+          {/* ── Bug path: Combined describe screen ── */}
+          {step === "bug-describe" ? (
+            <div>
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="bug-problem"
+                    className="mb-1.5 block text-sm font-medium text-white/80"
+                  >
+                    What went wrong?
+                  </label>
+                  <textarea
+                    id="bug-problem"
+                    value={whatWentWrong}
+                    onChange={(e) => setWhatWentWrong(e.target.value)}
+                    placeholder="e.g. Messages aren't loading, the screen goes blank..."
+                    maxLength={500}
+                    rows={3}
+                    autoFocus
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] p-3.5 text-sm text-white placeholder-white/35 transition-colors focus:border-white/20 focus:bg-white/[0.04] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="bug-context"
+                    className="mb-1.5 block text-sm font-medium text-white/80"
+                  >
+                    What were you trying to do?{" "}
+                    <span className="font-normal text-white/30">
+                      (optional)
+                    </span>
+                  </label>
+                  <textarea
+                    id="bug-context"
+                    value={whatWereDoing}
+                    onChange={(e) => setWhatWereDoing(e.target.value)}
+                    placeholder="e.g. I was trying to send a photo in a group chat..."
+                    maxLength={500}
+                    rows={2}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] p-3.5 text-sm text-white placeholder-white/35 transition-colors focus:border-white/20 focus:bg-white/[0.04] focus:outline-none"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  if (whatWentWrong.trim()) setStep("bug-frequency");
+                }}
+                disabled={!whatWentWrong.trim()}
+                className="mt-4 w-full rounded-xl bg-gradient-to-r from-[#34F080] to-[#20E0AA] px-4 py-2.5 text-sm font-semibold text-black transition-all hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] active:scale-[0.98] disabled:opacity-30 disabled:shadow-none"
+              >
+                Continue
+              </button>
+            </div>
+          ) : null}
+
+          {/* ── Bug path: Frequency ── */}
+          {step === "bug-frequency" ? (
+            <div>
+              <p className="mb-1 text-sm font-medium text-white/80">
+                Has this happened before?
+              </p>
+              <p className="mb-3 text-xs text-white/35">
+                Helps us understand how urgent this is
+              </p>
+              <div
+                className="flex flex-col gap-2"
+                role="radiogroup"
+                aria-label="Frequency"
+              >
+                {FREQUENCY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    role="radio"
+                    aria-checked={frequency === opt.value}
+                    onClick={() => {
+                      setFrequency(opt.value);
+                      setStep("confirm");
+                    }}
+                    className={`rounded-xl border px-4 py-3 text-left text-sm transition-all active:scale-[0.98] ${
+                      frequency === opt.value
+                        ? "border-[#34F080]/40 bg-[#34F080]/10 text-[#34F080]"
+                        : "border-white/[0.06] bg-white/[0.02] text-white/70 hover:border-white/15 hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {/* ── Bug path: Confirm ── */}
+          {step === "confirm" ? (
+            <div>
+              <div className="space-y-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm">
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-white/40">
+                    What went wrong
+                  </p>
+                  <p className="mt-0.5 break-words text-white/70">
+                    {whatWentWrong}
+                  </p>
+                </div>
+                {whatWereDoing.trim() ? (
+                  <>
+                    <div className="border-t border-white/[0.04]" />
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-white/40">
+                        What you were doing
+                      </p>
+                      <p className="mt-0.5 break-words text-white/70">
+                        {whatWereDoing}
+                      </p>
+                    </div>
+                  </>
+                ) : null}
+                <div className="border-t border-white/[0.04]" />
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-white/40">
+                    Frequency
+                  </p>
+                  <p className="mt-0.5 text-white/70">
+                    {
+                      FREQUENCY_OPTIONS.find((o) => o.value === frequency)
+                        ?.label
+                    }
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <button
+                  onClick={() => {
+                    if (submitting) return;
+                    if (hasContent) {
+                      if (!window.confirm("Discard your draft?")) return;
+                    }
+                    handleClose();
+                  }}
+                  className="flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/50 transition-colors hover:bg-white/[0.06]"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="flex-1 rounded-xl bg-gradient-to-r from-[#34F080] to-[#20E0AA] px-4 py-2.5 text-sm font-semibold text-black transition-all hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] active:scale-[0.98] disabled:opacity-30 disabled:shadow-none"
+                >
+                  {submitting ? "Sending..." : "Submit"}
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {/* ── Feedback path: Describe (submits directly) ── */}
+          {step === "describe" ? (
+            <div>
+              {selectedCategory ? (
+                <div className="mb-3 flex items-center gap-2">
+                  <selectedCategory.icon size={14} className="text-white/40" />
+                  <p className="text-xs text-white/40">
+                    {selectedCategory.label}
+                  </p>
+                </div>
+              ) : null}
+              <label
+                htmlFor="feedback-description"
+                className="mb-3 block text-sm font-medium text-white/80"
+              >
+                Tell us more
+              </label>
+              <textarea
+                id="feedback-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={
+                  category === "feature-request"
+                    ? "Describe the feature you'd like to see..."
+                    : category === "improvement"
+                    ? "What could we do better?"
+                    : category === "praise"
+                    ? "What do you love about ChatOn?"
+                    : "Share your thoughts..."
+                }
+                maxLength={1000}
+                rows={5}
+                autoFocus
+                className="w-full rounded-xl border border-white/10 bg-white/[0.03] p-3.5 text-sm text-white placeholder-white/35 transition-colors focus:border-white/20 focus:bg-white/[0.04] focus:outline-none"
+              />
+              <div className="mt-1.5 text-right text-[11px] text-white/30">
+                {description.length}/1000
+              </div>
+              <div className="mt-2 flex gap-2">
+                <button
+                  onClick={goBack}
+                  className="flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/50 transition-colors hover:bg-white/[0.06]"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={!description.trim() || submitting}
+                  className="flex-1 rounded-xl bg-gradient-to-r from-[#34F080] to-[#20E0AA] px-4 py-2.5 text-sm font-semibold text-black transition-all hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] active:scale-[0.98] disabled:opacity-30 disabled:shadow-none"
+                >
+                  {submitting ? "Sending..." : "Submit"}
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {/* ── Done ── */}
+          {step === "done" ? (
+            <div className="py-6 text-center">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#34F080]/10">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#34F080"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-white/80">
+                {isBugPath
+                  ? "Thanks for reporting this!"
+                  : "Thanks for your feedback!"}
+              </p>
+              <p className="mt-1 text-xs text-white/35">
+                {isBugPath
+                  ? "We'll investigate and work on a fix. We read every report."
+                  : "Your input helps us make ChatOn better. We read every one."}
+              </p>
+              <button
+                onClick={handleClose}
+                className="mt-5 rounded-xl border border-white/10 bg-white/[0.03] px-8 py-2 text-sm text-white/50 transition-colors hover:bg-white/[0.06]"
+              >
+                Close
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>,
     document.body
