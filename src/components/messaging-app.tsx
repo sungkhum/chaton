@@ -66,6 +66,7 @@ import {
   cleanupOwnJoinRequests,
   deleteArchiveAssociation,
   deleteAssociationById,
+  cacheDecryptionResult,
   encryptAndSendNewMessage,
   encryptAndUpdateMessage,
   fetchArchivedGroups,
@@ -4690,6 +4691,20 @@ export const MessagingApp: FC = () => {
                             };
 
                             // Optimistic: update message text and add edited flag
+                            if (originalMessage) {
+                              const updatedMsg = {
+                                ...originalMessage,
+                                DecryptedMessage: newText,
+                                MessageInfo: {
+                                  ...originalMessage.MessageInfo,
+                                  ExtraData: updatedExtraData,
+                                },
+                              };
+                              cacheDecryptionResult(
+                                originalMessage.MessageInfo.TimestampNanos,
+                                updatedMsg
+                              );
+                            }
                             setConversations((prev) => ({
                               ...prev,
                               [convKey]: {
@@ -4726,6 +4741,10 @@ export const MessagingApp: FC = () => {
                               toast.error("Failed to edit message");
                               // Rollback
                               if (originalMessage) {
+                                cacheDecryptionResult(
+                                  originalMessage.MessageInfo.TimestampNanos,
+                                  originalMessage
+                                );
                                 setConversations((prev) => ({
                                   ...prev,
                                   [convKey]: {

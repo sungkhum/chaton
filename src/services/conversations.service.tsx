@@ -688,7 +688,10 @@ const DECRYPTION_CACHE_MAX_SIZE = 5000;
 const decryptionResultCache = new Map<number, DecryptedMessageEntryResponse>();
 
 /** Cache a decryption result, evicting oldest entries if over the size limit. */
-function cacheDecryptionResult(ts: number, msg: DecryptedMessageEntryResponse) {
+export function cacheDecryptionResult(
+  ts: number,
+  msg: DecryptedMessageEntryResponse
+) {
   decryptionResultCache.set(ts, msg);
   if (decryptionResultCache.size > DECRYPTION_CACHE_MAX_SIZE) {
     // Map iterates in insertion order — delete the oldest entry
