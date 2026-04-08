@@ -60,8 +60,10 @@ import type { DecryptedMessageEntryResponse } from "deso-protocol";
 /** Render conversation preview text with shimmer for undecrypted and fallback for failed */
 const PreviewText = memo(function PreviewText({
   msg,
+  senderName,
 }: {
   msg: DecryptedMessageEntryResponse;
+  senderName?: string;
 }) {
   if (msg.DecryptedMessage === UNDECRYPTED_PLACEHOLDER) {
     return (
@@ -79,11 +81,15 @@ const PreviewText = memo(function PreviewText({
   const parsed = parseMessageType(msg);
   const text = parsed.text?.slice(0, 60);
   const iconClass = "inline-block size-3.5 mr-1 -mt-px opacity-60";
+  const namePrefix = senderName ? (
+    <span className="text-white/60">{senderName}: </span>
+  ) : null;
 
   switch (parsed.type) {
     case "audio":
       return (
         <span className="flex items-center gap-0">
+          {namePrefix}
           <Mic className={iconClass} />
           {text || "Voice message"}
         </span>
@@ -91,6 +97,7 @@ const PreviewText = memo(function PreviewText({
     case "image":
       return (
         <span className="flex items-center gap-0">
+          {namePrefix}
           <ImageIcon className={iconClass} />
           {text || "Photo"}
         </span>
@@ -98,6 +105,7 @@ const PreviewText = memo(function PreviewText({
     case "video":
       return (
         <span className="flex items-center gap-0">
+          {namePrefix}
           <Video className={iconClass} />
           {text || "Video"}
         </span>
@@ -105,15 +113,22 @@ const PreviewText = memo(function PreviewText({
     case "gif":
       return (
         <span className="flex items-center gap-0">
+          {namePrefix}
           <ImageIcon className={iconClass} />
           {text || "GIF"}
         </span>
       );
     case "sticker":
-      return <>{text || "Sticker"}</>;
+      return (
+        <>
+          {namePrefix}
+          {text || "Sticker"}
+        </>
+      );
     case "file":
       return (
         <span className="flex items-center gap-0">
+          {namePrefix}
           <FileIcon className={iconClass} />
           {parsed.fileName || text || "File"}
         </span>
@@ -123,13 +138,19 @@ const PreviewText = memo(function PreviewText({
       const customText = tipHasCustomMessage(parsed) ? text : undefined;
       return (
         <span className="flex items-center gap-0">
+          {namePrefix}
           <CircleDollarSign className={iconClass} />
           {customText || "Tip"}
         </span>
       );
     }
     default:
-      return <>{text || ""}</>;
+      return (
+        <>
+          {namePrefix}
+          {text || ""}
+        </>
+      );
   }
 });
 
@@ -288,7 +309,17 @@ const ConversationRow = memo(function ConversationRow({
               }`}
             >
               {conversation.messages[0] ? (
-                <PreviewText msg={conversation.messages[0]} />
+                <PreviewText
+                  msg={conversation.messages[0]}
+                  senderName={
+                    isGroupChat
+                      ? getUsernameByPublicKeyBase58Check[
+                          conversation.messages[0].SenderInfo
+                            ?.OwnerPublicKeyBase58Check
+                        ]
+                      : undefined
+                  }
+                />
               ) : (
                 ""
               )}
@@ -662,6 +693,15 @@ export const MessagingConversationAccount: FC<{
                                           <p className="truncate text-sm text-gray-500">
                                             <PreviewText
                                               msg={value.messages[0]}
+                                              senderName={
+                                                isGroupChat
+                                                  ? getUsernameByPublicKeyBase58Check[
+                                                      value.messages[0]
+                                                        .SenderInfo
+                                                        ?.OwnerPublicKeyBase58Check
+                                                    ]
+                                                  : undefined
+                                              }
                                             />
                                           </p>
                                         )}
