@@ -12,6 +12,7 @@ import {
   Wallet,
   Heart,
   Share2,
+  MessageSquareText,
 } from "lucide-react";
 import { NotificationToggle } from "./notification-toggle";
 import { PrivacyToggle } from "./privacy-toggle";
@@ -212,6 +213,17 @@ export const Header = () => {
                     >
                       <Heart className="mr-3 w-[18px] h-[18px] text-[#34F080]" />
                       <span className="text-[14px]">Support ChatOn</span>
+                    </button>
+
+                    <button
+                      className="flex items-center w-full py-2.5 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        useStore.getState().openFeedbackModal();
+                      }}
+                    >
+                      <MessageSquareText className="mr-3 w-[18px] h-[18px]" />
+                      <span className="text-[14px]">Send Feedback</span>
                     </button>
 
                     <div className="border-t border-white/[0.06] my-1.5" />
