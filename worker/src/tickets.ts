@@ -83,9 +83,19 @@ export async function handleTicketSubmit(
       return json({ error: "Required field is empty after sanitization" }, 400);
     }
 
-    // Upsert: same user + error + component = update existing
-    const result = await env.DB.prepare(
-      `
+    // User-reported bugs (unknown error code) always get their own ticket.
+    // Auto-captured errors upsert: same user + error + component = update existing.
+    const isUserReported = errorCode === "unknown";
+
+    const sql = isUserReported
+      ? `
+      INSERT INTO tickets (
+        error_code, error_message, stack_trace, component, route,
+        app_version, user_agent, platform, user_description, frequency,
+        additional_context, submitter_public_key, signature, nonce
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `
+      : `
       INSERT INTO tickets (
         error_code, error_message, stack_trace, component, route,
         app_version, user_agent, platform, user_description, frequency,
@@ -101,8 +111,9 @@ export async function handleTicketSubmit(
         signature = excluded.signature,
         nonce = excluded.nonce,
         updated_at = datetime('now')
-    `
-    )
+    `;
+
+    const result = await env.DB.prepare(sql)
       .bind(
         errorCode,
         errorMessage,
