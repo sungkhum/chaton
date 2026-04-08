@@ -3287,6 +3287,60 @@ export const MessagingApp: FC = () => {
       (m) => m.MessageInfo.TimestampNanosString === pinnedMessageTimestamp
     );
   }, [pinnedMessageTimestamp, selectedConversation]);
+  const [loadingPinnedMessage, setLoadingPinnedMessage] = useState(false);
+  const handleScrollToPinnedMessage = useCallback(async () => {
+    if (!pinnedMessageTimestamp) return;
+    // If the message is already in the DOM, scroll to it directly
+    if (bubblesRef.current?.scrollToMessage(pinnedMessageTimestamp)) return;
+    // Message not loaded — fetch a batch around the pinned timestamp
+    if (!appUser || !selectedConversation || !isGroupChat) return;
+    const recipientInfo = selectedConversation.messages[0]?.RecipientInfo;
+    if (!recipientInfo) return;
+    setLoadingPinnedMessage(true);
+    try {
+      const tsNanos = BigInt(pinnedMessageTimestamp);
+      const messages = await getPaginatedGroupChatThread({
+        UserPublicKeyBase58Check: recipientInfo.OwnerPublicKeyBase58Check,
+        AccessGroupKeyName: recipientInfo.AccessGroupKeyName,
+        StartTimeStampString: (tsNanos + 1n).toString(),
+        MaxMessagesToFetch: MESSAGES_ONE_REQUEST_LIMIT,
+      });
+      if (messages.GroupChatMessages.length === 0) {
+        toast.error("Pinned message not found");
+        return;
+      }
+      const { decrypted, updatedAllAccessGroups } =
+        await decryptAccessGroupMessagesWithRetry(
+          appUser.PublicKeyBase58Check,
+          messages.GroupChatMessages,
+          allAccessGroups
+        );
+      setAllAccessGroups(updatedAllAccessGroups);
+      setConversations((prev) =>
+        updateConv(prev, selectedConversationPublicKey, (c) => ({
+          ...c,
+          messages: decrypted,
+        }))
+      );
+      // Wait for re-render then scroll
+      requestAnimationFrame(() => {
+        bubblesRef.current?.scrollToMessage(pinnedMessageTimestamp);
+      });
+    } catch (e) {
+      console.error("Failed to load pinned message:", e);
+      toast.error("Failed to load pinned message");
+    } finally {
+      setLoadingPinnedMessage(false);
+    }
+  }, [
+    pinnedMessageTimestamp,
+    appUser,
+    selectedConversation,
+    isGroupChat,
+    selectedConversationPublicKey,
+    allAccessGroups,
+    setAllAccessGroups,
+  ]);
   const handlePinMessage = useCallback(
     async (timestampNanosString: string) => {
       if (!appUser || !selectedConversation || !isGroupChat) return;
@@ -4024,17 +4078,11 @@ export const MessagingApp: FC = () => {
                       <div
                         role="button"
                         tabIndex={0}
-                        onClick={() =>
-                          bubblesRef.current?.scrollToMessage(
-                            pinnedMessageTimestamp
-                          )
-                        }
+                        onClick={() => handleScrollToPinnedMessage()}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
-                            bubblesRef.current?.scrollToMessage(
-                              pinnedMessageTimestamp
-                            );
+                            handleScrollToPinnedMessage();
                           }
                         }}
                         className="flex-1 min-w-0 flex items-center gap-3 px-4 md:px-5 py-2 text-left hover:bg-white/5 transition-colors cursor-pointer"
@@ -4045,7 +4093,10 @@ export const MessagingApp: FC = () => {
                             Pinned Message
                           </span>
                           <span className="text-xs text-gray-400 truncate block leading-tight">
-                            {pinnedMessage?.DecryptedMessage || "Tap to view"}
+                            {loadingPinnedMessage
+                              ? "Loading…"
+                              : pinnedMessage?.DecryptedMessage ||
+                                "Tap to view"}
                           </span>
                         </div>
                       </div>
