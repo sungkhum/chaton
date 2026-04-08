@@ -68,4 +68,3 @@ with-auth.ts
   fn requestFullPermissions
 community-cache.ts  fn clearCommunityCache
 profanity-filter.ts  fn containsProfanity
-types.ts  fn updateConv

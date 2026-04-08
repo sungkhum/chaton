@@ -688,7 +688,10 @@ const DECRYPTION_CACHE_MAX_SIZE = 5000;
 const decryptionResultCache = new Map<number, DecryptedMessageEntryResponse>();
 
 /** Cache a decryption result, evicting oldest entries if over the size limit. */
-function cacheDecryptionResult(ts: number, msg: DecryptedMessageEntryResponse) {
+export function cacheDecryptionResult(
+  ts: number,
+  msg: DecryptedMessageEntryResponse
+) {
   decryptionResultCache.set(ts, msg);
   if (decryptionResultCache.size > DECRYPTION_CACHE_MAX_SIZE) {
     // Map iterates in insertion order — delete the oldest entry
@@ -699,6 +702,12 @@ function cacheDecryptionResult(ts: number, msg: DecryptedMessageEntryResponse) {
 
 // Per-conversation latest timestamp — used by differential polling to detect changes.
 const conversationLatestTimestamp = new Map<string, number>();
+
+/** Invalidate caches for a single edited message, forcing re-decrypt on next poll. */
+export function invalidateMessageCache(ts: number, convKey: string) {
+  decryptionResultCache.delete(ts);
+  conversationLatestTimestamp.delete(convKey);
+}
 
 /** Clear all decryption caches (call on login/logout). */
 export const clearDecryptionCaches = () => {

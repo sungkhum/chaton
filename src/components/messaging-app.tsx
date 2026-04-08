@@ -66,6 +66,8 @@ import {
   cleanupOwnJoinRequests,
   deleteArchiveAssociation,
   deleteAssociationById,
+  cacheDecryptionResult,
+  invalidateMessageCache,
   encryptAndSendNewMessage,
   encryptAndUpdateMessage,
   fetchArchivedGroups,
@@ -4690,6 +4692,20 @@ export const MessagingApp: FC = () => {
                             };
 
                             // Optimistic: update message text and add edited flag
+                            if (originalMessage) {
+                              const updatedMsg = {
+                                ...originalMessage,
+                                DecryptedMessage: newText,
+                                MessageInfo: {
+                                  ...originalMessage.MessageInfo,
+                                  ExtraData: updatedExtraData,
+                                },
+                              };
+                              cacheDecryptionResult(
+                                originalMessage.MessageInfo.TimestampNanos,
+                                updatedMsg
+                              );
+                            }
                             setConversations((prev) => ({
                               ...prev,
                               [convKey]: {
@@ -4721,11 +4737,34 @@ export const MessagingApp: FC = () => {
                                 timestamp,
                                 updatedExtraData
                               );
+                              // Force re-decrypt on next poll so blockchain
+                              // data replaces the optimistic cache entry
+                              if (originalMessage) {
+                                invalidateMessageCache(
+                                  originalMessage.MessageInfo.TimestampNanos,
+                                  convKey
+                                );
+                              }
+                              // Update per-conversation IndexedDB cache so
+                              // navigating away and back doesn't show stale text
+                              const currentConv =
+                                conversationsRef.current[convKey];
+                              if (currentConv) {
+                                cacheConversationMessages(
+                                  appUser.PublicKeyBase58Check,
+                                  convKey,
+                                  currentConv.messages
+                                );
+                              }
                               // No push notification for edits
                             } catch {
                               toast.error("Failed to edit message");
                               // Rollback
                               if (originalMessage) {
+                                cacheDecryptionResult(
+                                  originalMessage.MessageInfo.TimestampNanos,
+                                  originalMessage
+                                );
                                 setConversations((prev) => ({
                                   ...prev,
                                   [convKey]: {
