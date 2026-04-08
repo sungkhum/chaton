@@ -67,6 +67,7 @@ import {
   deleteArchiveAssociation,
   deleteAssociationById,
   cacheDecryptionResult,
+  invalidateMessageCache,
   encryptAndSendNewMessage,
   encryptAndUpdateMessage,
   fetchArchivedGroups,
@@ -4736,6 +4737,25 @@ export const MessagingApp: FC = () => {
                                 timestamp,
                                 updatedExtraData
                               );
+                              // Force re-decrypt on next poll so blockchain
+                              // data replaces the optimistic cache entry
+                              if (originalMessage) {
+                                invalidateMessageCache(
+                                  originalMessage.MessageInfo.TimestampNanos,
+                                  convKey
+                                );
+                              }
+                              // Update per-conversation IndexedDB cache so
+                              // navigating away and back doesn't show stale text
+                              const currentConv =
+                                conversationsRef.current[convKey];
+                              if (currentConv) {
+                                cacheConversationMessages(
+                                  appUser.PublicKeyBase58Check,
+                                  convKey,
+                                  currentConv.messages
+                                );
+                              }
                               // No push notification for edits
                             } catch {
                               toast.error("Failed to edit message");

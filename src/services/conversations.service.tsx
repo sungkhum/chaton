@@ -703,6 +703,12 @@ export function cacheDecryptionResult(
 // Per-conversation latest timestamp — used by differential polling to detect changes.
 const conversationLatestTimestamp = new Map<string, number>();
 
+/** Invalidate caches for a single edited message, forcing re-decrypt on next poll. */
+export function invalidateMessageCache(ts: number, convKey: string) {
+  decryptionResultCache.delete(ts);
+  conversationLatestTimestamp.delete(convKey);
+}
+
 /** Clear all decryption caches (call on login/logout). */
 export const clearDecryptionCaches = () => {
   accessGroupsCache = null;
