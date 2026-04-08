@@ -5,16 +5,50 @@
 
 import type { ComponentType, SVGProps } from "react";
 import {
-  SiGoogledrive, SiGoogledocs, SiGooglesheets, SiGoogleslides, SiGoogleforms,
-  SiDropbox, SiBox, SiIcloud, SiWetransfer,
-  SiGithub, SiGitlab, SiBitbucket, SiCodesandbox, SiStackblitz,
-  SiNpm, SiVercel, SiNetlify,
-  SiFigma, SiMiro, SiSketch,
-  SiYoutube, SiVimeo, SiLoom, SiTwitch, SiSpotify, SiSoundcloud,
-  SiNotion, SiLinear, SiTrello, SiAirtable, SiCoda, SiAsana, SiClickup,
-  SiConfluence, SiJira,
-  SiDiscord, SiZoom, SiGooglemeet, SiCalendly,
-  SiX, SiReddit, SiMedium, SiSubstack, SiProducthunt,
+  SiGoogledrive,
+  SiGoogledocs,
+  SiGooglesheets,
+  SiGoogleslides,
+  SiGoogleforms,
+  SiDropbox,
+  SiBox,
+  SiIcloud,
+  SiWetransfer,
+  SiGithub,
+  SiGitlab,
+  SiBitbucket,
+  SiCodesandbox,
+  SiStackblitz,
+  SiNpm,
+  SiVercel,
+  SiNetlify,
+  SiFigma,
+  SiMiro,
+  SiSketch,
+  SiYoutube,
+  SiVimeo,
+  SiLoom,
+  SiTwitch,
+  SiSpotify,
+  SiSoundcloud,
+  SiNotion,
+  SiLinear,
+  SiTrello,
+  SiAirtable,
+  SiCoda,
+  SiAsana,
+  SiClickup,
+  SiConfluence,
+  SiJira,
+  SiDiscord,
+  SiZoom,
+  SiGooglemeet,
+  SiCalendly,
+  SiX,
+  SiReddit,
+  SiMedium,
+  SiSubstack,
+  SiProducthunt,
   SiTypeform,
 } from "@icons-pack/react-simple-icons";
 
@@ -32,7 +66,9 @@ export interface LinkService {
   /** Tailwind border class for the card */
   cardBorder: string;
   /** Optional Simple Icons brand icon component */
-  icon?: ComponentType<SVGProps<SVGSVGElement> & { size?: number | string; color?: string }>;
+  icon?: ComponentType<
+    SVGProps<SVGSVGElement> & { size?: number | string; color?: string }
+  >;
 }
 
 interface ServicePattern {
@@ -747,7 +783,8 @@ export function detectLinkService(url: string): LinkService | undefined {
       (h) => hostname === h || hostname.endsWith(`.${h}`)
     );
     if (!hostMatch) continue;
-    if (pattern.pathPrefix && !pathname.startsWith(pattern.pathPrefix)) continue;
+    if (pattern.pathPrefix && !pathname.startsWith(pattern.pathPrefix))
+      continue;
     return pattern.service;
   }
 
@@ -763,7 +800,7 @@ export function extractFileNameFromUrl(url: string): string | null {
     const pathname = new URL(url).pathname;
     const segments = pathname.split("/").filter(Boolean);
     for (let i = segments.length - 1; i >= 0; i--) {
-      const seg = decodeURIComponent(segments[i]);
+      const seg = decodeURIComponent(segments[i]!);
       if (/\.\w{1,10}$/.test(seg) && seg.length > 2) {
         return seg;
       }

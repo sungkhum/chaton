@@ -209,7 +209,7 @@ export async function deepSearchConversation(
         Number(a.MessageInfo.TimestampNanos) -
         Number(b.MessageInfo.TimestampNanos)
     );
-    oldestTimestamp = sorted[0].MessageInfo.TimestampNanosString;
+    oldestTimestamp = sorted[0]!.MessageInfo.TimestampNanosString;
   }
 
   // If no messages at all, nothing to paginate from
@@ -295,7 +295,7 @@ export async function deepSearchConversation(
           Number(a.MessageInfo.TimestampNanos) -
           Number(b.MessageInfo.TimestampNanos)
       );
-      const newCursor = sortedBatch[0].MessageInfo.TimestampNanosString;
+      const newCursor = sortedBatch[0]!.MessageInfo.TimestampNanosString;
 
       // Guard against cursor not advancing (would cause infinite loop)
       if (newCursor === previousCursor || newCursor === cursor) break;
@@ -367,7 +367,7 @@ export async function orchestrateDeepSearch(
   for (let i = 0; i < entries.length; i++) {
     if (signal.aborted) break;
 
-    const [key, convo] = entries[i];
+    const [key, convo] = entries[i]!;
 
     onProgress({
       phase: "deep",

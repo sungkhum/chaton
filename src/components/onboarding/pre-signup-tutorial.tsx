@@ -85,8 +85,8 @@ export const PreSignupTutorial = ({ onClose }: PreSignupTutorialProps) => {
           <div className="px-6 pt-5">
             <div className="bg-[#0a1020] rounded-xl border border-white/[0.04] overflow-hidden flex items-center justify-center p-3 sm:p-5">
               <img
-                src={slide.image}
-                alt={slide.alt}
+                src={slide!.image}
+                alt={slide!.alt}
                 className="max-h-[120px] sm:max-h-[180px] w-auto rounded-lg"
               />
             </div>
@@ -98,10 +98,10 @@ export const PreSignupTutorial = ({ onClose }: PreSignupTutorialProps) => {
               Step {currentSlide + 1} of {SLIDES.length}
             </div>
             <h3 className="text-xl font-bold text-white mb-2 leading-tight">
-              {slide.title}
+              {slide!.title}
             </h3>
             <p className="text-sm text-gray-400 leading-relaxed">
-              {slide.description}
+              {slide!.description}
             </p>
           </div>
 

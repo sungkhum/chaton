@@ -15,7 +15,7 @@ export function buildInviteUrl(code: string): string {
 /** Extract the invite code from the current URL path (e.g. /join/k7Xm2p → k7Xm2p). */
 export function extractInviteCode(path: string): string | null {
   const match = path.match(/^\/join\/([A-Za-z0-9]+)$/);
-  return match ? match[1] : null;
+  return match ? match[1]! : null;
 }
 
 /**
@@ -101,7 +101,7 @@ export async function fetchInviteCode(
       }
     }
     if (associations.length < 100) break;
-    lastId = associations[associations.length - 1].AssociationID;
+    lastId = associations[associations.length - 1]!.AssociationID;
   }
   return null;
 }

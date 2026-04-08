@@ -156,12 +156,12 @@ const sortConversations = (
     // DeSo nanosecond timestamps exceed Number.MAX_SAFE_INTEGER — use
     // the lossless string representation with BigInt for correct ordering.
     const aTs = BigInt(
-      convoA.messages[0].MessageInfo.TimestampNanosString ||
-        String(convoA.messages[0].MessageInfo.TimestampNanos)
+      convoA.messages[0]!.MessageInfo.TimestampNanosString ||
+        String(convoA.messages[0]!.MessageInfo.TimestampNanos)
     );
     const bTs = BigInt(
-      convoB.messages[0].MessageInfo.TimestampNanosString ||
-        String(convoB.messages[0].MessageInfo.TimestampNanos)
+      convoB.messages[0]!.MessageInfo.TimestampNanosString ||
+        String(convoB.messages[0]!.MessageInfo.TimestampNanos)
     );
     if (bTs > aTs) return 1;
     if (bTs < aTs) return -1;
@@ -619,9 +619,9 @@ export const MessagingConversationAccount: FC<{
                               const archivedGroupImgUrl = isGroupChat
                                 ? getGroupImageUrl(
                                     allAccessGroups,
-                                    value.messages[0].RecipientInfo
+                                    value.messages[0]!.RecipientInfo
                                       .OwnerPublicKeyBase58Check,
-                                    value.messages[0].RecipientInfo
+                                    value.messages[0]!.RecipientInfo
                                       .AccessGroupKeyName
                                   )
                                 : undefined;
@@ -756,7 +756,8 @@ export const MessagingConversationAccount: FC<{
                         {chatVirtualizer
                           .getVirtualItems()
                           .map((virtualItem) => {
-                            const [key, value] = sortedChats[virtualItem.index];
+                            const [key, value] =
+                              sortedChats[virtualItem.index]!;
                             return (
                               <div
                                 key={key}

@@ -182,11 +182,11 @@ export const TipPills = ({
             if (!acc[t.senderPublicKey])
               acc[t.senderPublicKey] = { desoNanos: 0, usdcBaseUnits: 0n };
             if (t.currency === "USDC" && t.amountUsdcBaseUnits) {
-              acc[t.senderPublicKey].usdcBaseUnits += BigInt(
+              acc[t.senderPublicKey]!.usdcBaseUnits += BigInt(
                 t.amountUsdcBaseUnits
               );
             } else {
-              acc[t.senderPublicKey].desoNanos += t.amountNanos;
+              acc[t.senderPublicKey]!.desoNanos += t.amountNanos;
             }
             return acc;
           }, {});

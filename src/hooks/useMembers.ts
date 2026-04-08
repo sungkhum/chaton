@@ -51,7 +51,7 @@ async function fetchAllGroupMembers(
     if (pageKeys.length < PAGE_SIZE) break;
 
     // Cursor = last key on this page
-    cursor = pageKeys[pageKeys.length - 1];
+    cursor = pageKeys[pageKeys.length - 1]!;
   }
 
   return { memberKeys: allKeys, profiles: allProfiles };
@@ -128,7 +128,7 @@ export function useMembers(
           sorted.map((publicKey) => ({
             id: publicKey,
             profile: profiles[publicKey] ?? null,
-            text: nameOrFormattedKey(profiles[publicKey], publicKey),
+            text: nameOrFormattedKey(profiles[publicKey] ?? null, publicKey),
           }))
         );
       })

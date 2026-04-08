@@ -317,7 +317,7 @@ export const SendMessageButtonAndInput = forwardRef<
           return;
         }
         // @ must be at start of input or preceded by whitespace
-        if (atIdx > 0 && !/\s/.test(textBefore[atIdx - 1])) {
+        if (atIdx > 0 && !/\s/.test(textBefore[atIdx - 1]!)) {
           setMentionQuery(null);
           return;
         }

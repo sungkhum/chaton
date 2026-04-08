@@ -211,13 +211,13 @@ export const MessagingDisplayAvatar: FC<{
         style={{
           height: `${diameter}px`,
           width: `${diameter}px`,
-          backgroundColor: avatarColor.bg,
+          backgroundColor: avatarColor!.bg,
           fontSize: `${fontSize}px`,
           position: "relative",
         }}
         className={`rounded-full overflow-hidden flex items-center justify-center font-semibold select-none ${borderColor}`}
       >
-        <span style={{ color: avatarColor.text, lineHeight: 1 }}>
+        <span style={{ color: avatarColor!.text, lineHeight: 1 }}>
           {initials}
         </span>
         {showImage && (

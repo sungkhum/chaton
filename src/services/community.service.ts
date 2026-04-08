@@ -67,7 +67,7 @@ export async function fetchCommunityListings(): Promise<CommunityListing[]> {
     }
 
     if (associations.length < 100) break;
-    lastId = associations[associations.length - 1].AssociationID;
+    lastId = associations[associations.length - 1]!.AssociationID;
   }
 
   return results;
@@ -258,7 +258,7 @@ export async function enrichCommunityListings(
         }
       }
       if (associations.length < 100) break;
-      lastId = associations[associations.length - 1].AssociationID;
+      lastId = associations[associations.length - 1]!.AssociationID;
     }
   } catch {
     // Non-fatal: groups without matched codes will be filtered out
@@ -276,7 +276,7 @@ export async function enrichCommunityListings(
   );
   const memberCountMap = new Map<string, { count: number; capped: boolean }>();
   deduped.forEach((l, i) => {
-    const result = memberCountResults[i];
+    const result = memberCountResults[i]!;
     if (result.status === "fulfilled" && result.value) {
       const members = result.value.AccessGroupMembersBase58Check ?? [];
       const ownerIncluded = members.includes(l.ownerKey);

@@ -96,7 +96,7 @@ export function useAudioRecorder(): AudioRecorderResult {
       analyserRef.current.getByteTimeDomainData(buf);
       let sum = 0;
       for (let i = 0; i < buf.length; i++) {
-        const v = (buf[i] - 128) / 128;
+        const v = (buf[i]! - 128) / 128;
         sum += v * v;
       }
       setAmplitude(Math.min(1, Math.sqrt(sum / buf.length) * 3));

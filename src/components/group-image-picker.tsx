@@ -79,12 +79,12 @@ export const GroupImagePicker = ({
           style={{
             width: diameter,
             height: diameter,
-            backgroundColor: avatarColor.bg,
+            backgroundColor: avatarColor!.bg,
             fontSize: `${fontSize}px`,
           }}
           className="rounded-full flex items-center justify-center font-semibold select-none"
         >
-          <span style={{ color: avatarColor.text, lineHeight: 1 }}>
+          <span style={{ color: avatarColor!.text, lineHeight: 1 }}>
             {initials}
           </span>
 

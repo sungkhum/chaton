@@ -32,7 +32,7 @@ export const ReactionDetailView = ({
   onClose,
 }: ReactionDetailViewProps) => {
   const { isMobile } = useMobile();
-  const emojis = Object.keys(reactions).filter((e) => reactions[e].length > 0);
+  const emojis = Object.keys(reactions).filter((e) => reactions[e]!.length > 0);
   const showTabs = emojis.length > 1;
   const [activeTab, setActiveTab] = useState<string | null>(
     showTabs ? null : emojis[0] ?? null
@@ -45,7 +45,7 @@ export const ReactionDetailView = ({
   const reactors: ReactorEntry[] = (() => {
     if (activeTab) {
       // Per-emoji tab: just show users who reacted with this emoji
-      const keys = reactions[activeTab] || [];
+      const keys = reactions[activeTab]!;
       return keys.map((pk) => ({ publicKey: pk, emojis: [activeTab] }));
     }
     // "All" tab: show all users, with all their emojis
@@ -57,12 +57,12 @@ export const ReactionDetailView = ({
           userEmojis[pk] = [];
           order.push(pk);
         }
-        if (!userEmojis[pk].includes(emoji)) {
-          userEmojis[pk].push(emoji);
+        if (!userEmojis[pk]!.includes(emoji)) {
+          userEmojis[pk]!.push(emoji);
         }
       }
     }
-    return order.map((pk) => ({ publicKey: pk, emojis: userEmojis[pk] }));
+    return order.map((pk) => ({ publicKey: pk, emojis: userEmojis[pk]! }));
   })();
 
   const totalCount = Object.values(reactions).reduce(
@@ -143,7 +143,7 @@ export const ReactionDetailView = ({
               activeTab === emoji ? "text-[#34F080]" : "text-gray-400"
             }`}
           >
-            {reactions[emoji].length}
+            {reactions[emoji]!.length}
           </span>
         </button>
       ))}
@@ -240,7 +240,7 @@ export const ReactionDetailView = ({
         {showTabs && <div className="h-px bg-white/5 mx-2 mb-1" />}
         {!showTabs && (
           <div className="px-3 pb-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1">
-            Reacted with <AnimatedEmoji emoji={emojis[0]} size={12} />
+            Reacted with <AnimatedEmoji emoji={emojis[0]!} size={12} />
           </div>
         )}
         {reactorList}
@@ -296,7 +296,7 @@ export const ReactionDetailView = ({
           {showTabs && <div className="h-px bg-white/5 mx-3" />}
           {!showTabs && (
             <div className="px-4 pb-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1">
-              Reacted with <AnimatedEmoji emoji={emojis[0]} size={12} />
+              Reacted with <AnimatedEmoji emoji={emojis[0]!} size={12} />
             </div>
           )}
           {reactorList}

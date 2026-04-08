@@ -83,11 +83,11 @@ function ImageLightbox({
       g.moved = false;
       if (e.touches.length === 2) {
         e.preventDefault();
-        g.dist0 = touchDistance(e.touches[0], e.touches[1]);
+        g.dist0 = touchDistance(e.touches[0]!, e.touches[1]!);
         g.scale0 = g.scale;
       } else if (e.touches.length === 1) {
-        g.px0 = e.touches[0].clientX;
-        g.py0 = e.touches[0].clientY;
+        g.px0 = e.touches[0]!.clientX;
+        g.py0 = e.touches[0]!.clientY;
         g.tx0 = g.tx;
         g.ty0 = g.ty;
       }
@@ -97,7 +97,7 @@ function ImageLightbox({
       if (e.touches.length === 2) {
         e.preventDefault();
         g.moved = true;
-        const d = touchDistance(e.touches[0], e.touches[1]);
+        const d = touchDistance(e.touches[0]!, e.touches[1]!);
         g.scale = Math.min(Math.max(g.scale0 * (d / g.dist0), 1), 5);
         if (g.scale <= 1) {
           g.tx = 0;
@@ -106,8 +106,8 @@ function ImageLightbox({
         applyTransform();
       } else if (e.touches.length === 1 && g.scale > 1) {
         e.preventDefault();
-        const dx = e.touches[0].clientX - g.px0;
-        const dy = e.touches[0].clientY - g.py0;
+        const dx = e.touches[0]!.clientX - g.px0;
+        const dy = e.touches[0]!.clientY - g.py0;
         if (Math.abs(dx) > 3 || Math.abs(dy) > 3) g.moved = true;
         g.tx = g.tx0 + dx;
         g.ty = g.ty0 + dy;

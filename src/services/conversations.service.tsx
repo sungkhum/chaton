@@ -326,7 +326,7 @@ export async function decryptConversationPreviews(
               try {
                 const retried = await Promise.race([
                   identity.decryptMessage(
-                    messagesToDecrypt[idx],
+                    messagesToDecrypt[idx]!,
                     currentGroups
                   ),
                   new Promise<DecryptedMessageEntryResponse>((_, reject) =>
@@ -349,8 +349,8 @@ export async function decryptConversationPreviews(
 
       const updates = new Map<string, DecryptedMessageEntryResponse>();
       for (let j = 0; j < uncachedBatch.length; j++) {
-        const result = decrypted[j];
-        updates.set(uncachedBatch[j][0], result);
+        const result = decrypted[j]!;
+        updates.set(uncachedBatch[j]![0], result);
         // Cache successful decryptions for future polls
         if (result.DecryptedMessage && !result.error) {
           cacheDecryptionResult(result.MessageInfo.TimestampNanos, result);
@@ -584,9 +584,9 @@ export const getConversationsDifferential = async (
     // Use the same conversationKey() helper as Step 2 to avoid IsSender divergence
     // between deriveIsSender() and the DeSo SDK's identity.decryptMessage().
     for (let idx = 0; idx < decrypted.length; idx++) {
-      const dmr = decrypted[idx];
+      const dmr = decrypted[idx]!;
       const { key } = conversationKey(
-        changedMessages[idx],
+        changedMessages[idx]!,
         userPublicKeyBase58Check
       );
       const arr = freshDecrypted.get(key) || [];
@@ -833,7 +833,7 @@ export const decryptAccessGroupMessagesWithRetry = async (
       const indicesToRetry: number[] = [];
       const patchedMessages: NewMessageEntryResponse[] = [];
       for (let i = 0; i < decryptedMessageEntries.length; i++) {
-        const msg = decryptedMessageEntries[i];
+        const msg = decryptedMessageEntries[i]!;
         if (
           !msg.error?.includes("incorrect MAC") ||
           msg.DecryptedMessage ||
@@ -853,9 +853,9 @@ export const decryptAccessGroupMessagesWithRetry = async (
 
         indicesToRetry.push(i);
         patchedMessages.push({
-          ...messages[i],
+          ...messages[i]!,
           SenderInfo: {
-            ...messages[i].SenderInfo,
+            ...messages[i]!.SenderInfo,
             AccessGroupPublicKeyBase58Check: realKey,
             AccessGroupKeyName: "default-key",
           },
@@ -868,11 +868,11 @@ export const decryptAccessGroupMessagesWithRetry = async (
           accessGroups
         );
         for (let j = 0; j < indicesToRetry.length; j++) {
-          if (retried[j].DecryptedMessage) {
-            decryptedMessageEntries[indicesToRetry[j]] = retried[j];
+          if (retried[j]!.DecryptedMessage) {
+            decryptedMessageEntries[indicesToRetry[j]!] = retried[j]!;
             // Decryption succeeded with patched key — remove from permanently failed
             permanentlyFailedMessages.delete(
-              retried[j].MessageInfo.TimestampNanos
+              retried[j]!.MessageInfo.TimestampNanos
             );
           }
         }
@@ -1287,7 +1287,7 @@ async function fetchAllFollowsPaginated(
 
     for (const k of entries) keys.add(k);
     if (entries.length < FOLLOWS_PAGE_SIZE) break;
-    lastKey = entries[entries.length - 1];
+    lastKey = entries[entries.length - 1]!;
   }
 
   return keys;
@@ -1324,7 +1324,7 @@ export async function fetchAssociationsByType(
     }
 
     if (associations.length < 100) break;
-    lastId = associations[associations.length - 1].AssociationID;
+    lastId = associations[associations.length - 1]!.AssociationID;
   }
 
   return map;
@@ -1374,7 +1374,7 @@ export function classifyConversation(
 
   // If the current user sent the first message (chronologically), they initiated
   if (conversation.messages.length > 0) {
-    const oldest = conversation.messages[conversation.messages.length - 1];
+    const oldest = conversation.messages[conversation.messages.length - 1]!;
     if (
       oldest.IsSender ||
       oldest.SenderInfo?.OwnerPublicKeyBase58Check === myPublicKey
@@ -1453,7 +1453,7 @@ export async function fetchArchivedGroups(
     }
 
     if (associations.length < 100) break;
-    lastId = associations[associations.length - 1].AssociationID;
+    lastId = associations[associations.length - 1]!.AssociationID;
   }
 
   return map;
@@ -1691,7 +1691,7 @@ export async function fetchJoinRequestCountsForOwner(
     }
 
     if (associations.length < 100) break;
-    lastId = associations[associations.length - 1].AssociationID;
+    lastId = associations[associations.length - 1]!.AssociationID;
   }
 
   if (groupRequesters.size === 0) return new Map();
@@ -1714,7 +1714,7 @@ export async function fetchJoinRequestCountsForOwner(
       groupRejected.get(gkn)!.add(a.TargetUserPublicKeyBase58Check);
     }
     if (associations.length < 100) break;
-    rejLastId = associations[associations.length - 1].AssociationID;
+    rejLastId = associations[associations.length - 1]!.AssociationID;
   }
 
   // Second pass: fetch members for each group and filter out already-members + rejected
@@ -1740,7 +1740,7 @@ export async function fetchJoinRequestCountsForOwner(
             const pageKeys = membersRes?.AccessGroupMembersBase58Check ?? [];
             for (const k of pageKeys) memberSet.add(k);
             if (pageKeys.length < 100) break;
-            cursor = pageKeys[pageKeys.length - 1];
+            cursor = pageKeys[pageKeys.length - 1]!;
           }
           const pendingCount = Array.from(requesterKeys).filter(
             (k) => !memberSet.has(k) && !rejectedSet.has(k)
@@ -1806,7 +1806,7 @@ export async function fetchPendingJoinRequests(
     }
 
     if (associations.length < 100) break;
-    lastId = associations[associations.length - 1].AssociationID;
+    lastId = associations[associations.length - 1]!.AssociationID;
   }
 
   return results;
@@ -1838,7 +1838,7 @@ export async function fetchRejectedJoinRequestKeys(
     }
 
     if (associations.length < 100) break;
-    lastId = associations[associations.length - 1].AssociationID;
+    lastId = associations[associations.length - 1]!.AssociationID;
   }
 
   return rejected;
@@ -1904,7 +1904,7 @@ export async function cleanupOwnJoinRequests(
     }
 
     if (associations.length < 100) break;
-    lastId = associations[associations.length - 1].AssociationID;
+    lastId = associations[associations.length - 1]!.AssociationID;
   }
 
   // Delete resolved join requests (best-effort, fire-and-forget)

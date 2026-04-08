@@ -201,7 +201,7 @@ export function LinkPreview({ url }: { url: string }) {
   if (joinMatch) {
     return (
       <Suspense fallback={null}>
-        <LazyJoinLinkPreview code={joinMatch[1]} />
+        <LazyJoinLinkPreview code={joinMatch[1]!} />
       </Suspense>
     );
   }

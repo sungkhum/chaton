@@ -14,7 +14,7 @@ export function useSwipeBack(onSwipeBack: () => void) {
   const tracking = useRef(false);
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
-    const touch = e.touches[0];
+    const touch = e.touches[0]!;
     // Only track swipes that start near the left edge
     if (touch.clientX <= EDGE_ZONE) {
       startX.current = touch.clientX;
@@ -30,7 +30,7 @@ export function useSwipeBack(onSwipeBack: () => void) {
       if (!tracking.current) return;
       tracking.current = false;
 
-      const touch = e.changedTouches[0];
+      const touch = e.changedTouches[0]!;
       const dx = touch.clientX - startX.current;
       const dy = Math.abs(touch.clientY - startY.current);
 

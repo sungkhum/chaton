@@ -19,9 +19,9 @@ function generateWaveform(seed: string): number[] {
   }
   // Smoothing pass
   return raw.map((_, i) => {
-    const p = raw[Math.max(0, i - 1)];
-    const c = raw[i];
-    const n = raw[Math.min(raw.length - 1, i + 1)];
+    const p = raw[Math.max(0, i - 1)]!;
+    const c = raw[i]!;
+    const n = raw[Math.min(raw.length - 1, i + 1)]!;
     return (p + c * 2 + n) / 4;
   });
 }

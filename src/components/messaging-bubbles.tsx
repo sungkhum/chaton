@@ -60,7 +60,7 @@ import {
 } from "../services/cache.service";
 import { useTranslation } from "../hooks/useTranslation";
 import { getLanguageName } from "./language-selector";
-import { ConversationMap } from "../utils/types";
+import { Conversation, ConversationMap } from "../utils/types";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { MessageStatusIndicator } from "./messages/message-status-indicator";
 import { ImageMessage } from "./messages/image-message";
@@ -411,9 +411,13 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
         setAllAccessGroups: s.setAllAccessGroups,
       }))
     );
-    const conversation = conversations[conversationPublicKey] ?? {
-      messages: [],
-    };
+    const conversation =
+      conversations[conversationPublicKey] ??
+      ({
+        messages: [],
+        ChatType: ChatType.DM,
+        firstMessagePublicKey: "",
+      } as Conversation);
     const [allowScrolling, setAllowScrolling] = useState<boolean>(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [hoveredMessage, setHoveredMessage] = useState<string | null>(null);
@@ -745,7 +749,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       (e: React.TouchEvent, messageKey: string) => {
         // Clear any existing timer (e.g. multi-touch)
         clearLongPressTimer();
-        const touch = e.touches[0];
+        const touch = e.touches[0]!;
         longPressPosRef.current = { x: touch.clientX, y: touch.clientY };
         // Start suppressing iOS text selection immediately on touch
         suppressSelectionRef.current = true;
@@ -771,7 +775,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
     const handleTouchMove = useCallback(
       (e: React.TouchEvent) => {
         if (!longPressPosRef.current) return;
-        const touch = e.touches[0];
+        const touch = e.touches[0]!;
         const dx = touch.clientX - longPressPosRef.current.x;
         const dy = touch.clientY - longPressPosRef.current.y;
         if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
@@ -871,7 +875,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
           (parsed.tipAmountNanos || parsed.tipAmountUsdcBaseUnits)
         ) {
           if (!map[parsed.tipReplyTo]) map[parsed.tipReplyTo] = [];
-          map[parsed.tipReplyTo].push({
+          map[parsed.tipReplyTo]!.push({
             senderPublicKey: msg.SenderInfo.OwnerPublicKeyBase58Check,
             amountNanos: parsed.tipAmountNanos || 0,
             amountUsdcBaseUnits: parsed.tipAmountUsdcBaseUnits,
@@ -892,7 +896,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
         return;
       }
 
-      const newestKey = visibleMessages[0].MessageInfo.TimestampNanosString;
+      const newestKey = visibleMessages[0]!.MessageInfo.TimestampNanosString;
       const hadPrevious = prevNewestRef.current !== null;
       const isNewArrival = hadPrevious && newestKey !== prevNewestRef.current;
       prevNewestRef.current = newestKey;
@@ -901,7 +905,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
 
       // Don't auto-scroll for hidden message types (reactions, tip pills) —
       // they don't appear in the message list so scrolling is disruptive.
-      const newestParsed = parseMessageType(visibleMessages[0]);
+      const newestParsed = parseMessageType(visibleMessages[0]!);
       if (newestParsed.type === "reaction") return;
       if (
         newestParsed.type === "tip" &&
@@ -910,7 +914,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       )
         return;
 
-      const isLastMessageFromMe = visibleMessages[0].IsSender;
+      const isLastMessageFromMe = visibleMessages[0]!.IsSender;
       const scrollableArea = messageAreaRef.current;
       if (!scrollableArea || !isLastMessageFromMe) return;
 
@@ -968,7 +972,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
 
       try {
         const StartTimeStampString =
-          visibleMessages[visibleMessages.length - 1].MessageInfo
+          visibleMessages[visibleMessages.length - 1]!.MessageInfo
             .TimestampNanosString;
 
         const dmOrGroupChatMessages = await (conversation.ChatType ===
@@ -976,9 +980,9 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
           ? getPaginatedDMThread({
               UserGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
               UserGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
-              PartyGroupOwnerPublicKeyBase58Check: (visibleMessages[0].IsSender
-                ? visibleMessages[0].RecipientInfo
-                : visibleMessages[0].SenderInfo
+              PartyGroupOwnerPublicKeyBase58Check: (visibleMessages[0]!.IsSender
+                ? visibleMessages[0]!.RecipientInfo
+                : visibleMessages[0]!.SenderInfo
               ).OwnerPublicKeyBase58Check,
               PartyGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
               StartTimeStampString,
@@ -986,10 +990,10 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
             })
           : getPaginatedGroupChatThread({
               UserPublicKeyBase58Check:
-                visibleMessages[visibleMessages.length - 1].RecipientInfo
+                visibleMessages[visibleMessages.length - 1]!.RecipientInfo
                   .OwnerPublicKeyBase58Check,
               AccessGroupKeyName:
-                visibleMessages[visibleMessages.length - 1].RecipientInfo
+                visibleMessages[visibleMessages.length - 1]!.RecipientInfo
                   .AccessGroupKeyName,
               StartTimeStampString,
               MaxMessagesToFetch: MESSAGES_ONE_REQUEST_LIMIT,
@@ -1043,7 +1047,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       if (!sentinelRef.current || !allowScrolling) return;
       const observer = new IntersectionObserver(
         (entries) => {
-          if (entries[0].isIntersecting) loadMore();
+          if (entries[0]!.isIntersecting) loadMore();
         },
         { root: messageAreaRef.current, threshold: 0.1 }
       );
@@ -1097,7 +1101,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       let dividerIdx = -1;
       let count = 0;
       for (let i = 0; i < displayMessages.length; i++) {
-        const msg = displayMessages[i];
+        const msg = displayMessages[i]!;
         const ts = msg.MessageInfo.TimestampNanos;
         if (ts <= effectiveLastRead) {
           dividerIdx = i;
@@ -1116,7 +1120,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       if (count === 0) return { unreadDividerIndex: -1, unreadCount: 0 };
       // Skip past sender's own messages at the top of the unread block so the
       // divider never appears immediately above a message the user sent.
-      while (dividerIdx > 0 && displayMessages[dividerIdx - 1].IsSender) {
+      while (dividerIdx > 0 && displayMessages[dividerIdx - 1]!.IsSender) {
         dividerIdx--;
       }
       return { unreadDividerIndex: dividerIdx, unreadCount: count };
@@ -1245,7 +1249,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
     const scrollToNextMention = useCallback(() => {
       if (unreadMentionTimestamps.length === 0) return;
       const idx = mentionIdxRef.current % unreadMentionTimestamps.length;
-      const ts = unreadMentionTimestamps[idx];
+      const ts = unreadMentionTimestamps[idx]!;
       scrollToMessage(ts);
       setDismissedMentions((prev) => new Set(prev).add(ts));
     }, [unreadMentionTimestamps, scrollToMessage]);
@@ -1253,7 +1257,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
     const scrollToNextReaction = useCallback(() => {
       if (unreadReactionTargets.length === 0) return;
       const idx = reactionIdxRef.current % unreadReactionTargets.length;
-      const ts = unreadReactionTargets[idx];
+      const ts = unreadReactionTargets[idx]!;
       scrollToMessage(ts);
       setDismissedReactions((prev) => new Set(prev).add(ts));
     }, [unreadReactionTargets, scrollToMessage]);
@@ -1468,15 +1472,15 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
               };
               let prevMessage: (typeof displayMessages)[0] | undefined;
               for (let j = i + 1; j < displayMessages.length; j++) {
-                if (isGroupable(displayMessages[j])) {
-                  prevMessage = displayMessages[j];
+                if (isGroupable(displayMessages[j]!)) {
+                  prevMessage = displayMessages[j]!;
                   break;
                 }
               }
               let nextMessage: (typeof displayMessages)[0] | undefined;
               for (let j = i - 1; j >= 0; j--) {
-                if (isGroupable(displayMessages[j])) {
-                  nextMessage = displayMessages[j];
+                if (isGroupable(displayMessages[j]!)) {
+                  nextMessage = displayMessages[j]!;
                   break;
                 }
               }
