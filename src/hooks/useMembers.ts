@@ -82,10 +82,10 @@ export function useMembers(
     let cancelled = false;
     setLoading(true);
 
-    const ownerKey =
-      conversation.messages[0].RecipientInfo.OwnerPublicKeyBase58Check;
-    const groupKeyName =
-      conversation.messages[0].RecipientInfo.AccessGroupKeyName;
+    const firstMsg = conversation.messages[0];
+    if (!firstMsg) return;
+    const ownerKey = firstMsg.RecipientInfo.OwnerPublicKeyBase58Check;
+    const groupKeyName = firstMsg.RecipientInfo.AccessGroupKeyName;
 
     fetchAllGroupMembers(ownerKey, groupKeyName, () => cancelled)
       .then(async ({ memberKeys, profiles }) => {

@@ -219,9 +219,10 @@ export const ManageMembersDialog = ({
   const [joinRequestBadge, setJoinRequestBadge] = useState(0);
 
   const handleOpen = () => setOpen(!open);
-  const groupName = conversation.messages[0].RecipientInfo.AccessGroupKeyName;
+  const groupName =
+    conversation.messages[0]?.RecipientInfo?.AccessGroupKeyName ?? "";
   const groupOwnerKey =
-    conversation.messages[0].RecipientInfo.OwnerPublicKeyBase58Check;
+    conversation.messages[0]?.RecipientInfo?.OwnerPublicKeyBase58Check ?? "";
 
   const currentGroupImageUrl =
     getGroupImageUrl(allAccessGroups, groupOwnerKey, groupName) || "";
