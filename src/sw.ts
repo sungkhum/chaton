@@ -109,6 +109,18 @@ self.addEventListener("message", (event: ExtendableMessageEvent) => {
       .catch(() => {});
   }
 
+  // Clear ALL notifications when the app becomes visible. On Android 8+,
+  // "notification dots" on the app icon are driven by pending notifications
+  // in the OS tray — independent of the Badging API. Clearing notifications
+  // removes the dot. The client re-sets the badge correctly after fetching
+  // conversations.
+  if (event.data?.type === "clear-all-notifications") {
+    self.registration
+      .getNotifications()
+      .then((notifications) => notifications.forEach((n) => n.close()))
+      .catch(() => {});
+  }
+
   // Allow the client to trigger skipWaiting when the user accepts the update
   if (event.data?.type === "skip-waiting") {
     self.skipWaiting();
@@ -390,6 +402,40 @@ self.addEventListener("notificationclick", (event) => {
         ? `/?conversation=${conversationKey}`
         : url;
       await self.clients.openWindow(openUrl);
+    })()
+  );
+});
+
+// When a notification is swiped away (dismissed without clicking), update the
+// IDB unread list and badge count. Without this, stale entries accumulate in
+// "unreadConversations:active" and inflate the badge on future pushes.
+self.addEventListener("notificationclose", (event) => {
+  const conversationKey = event.notification.data?.conversationKey;
+  if (!conversationKey) return;
+
+  event.waitUntil(
+    (async () => {
+      try {
+        const unread: string[] =
+          (await get<string[]>("unreadConversations:active", idbStore)) || [];
+        const filtered = unread.filter((k) => k !== conversationKey);
+        await set("unreadConversations:active", filtered, idbStore);
+        if (filtered.length > 0) {
+          await (
+            self.navigator as Navigator & {
+              setAppBadge: (n: number) => Promise<void>;
+            }
+          ).setAppBadge(filtered.length);
+        } else {
+          await (
+            self.navigator as Navigator & {
+              clearAppBadge: () => Promise<void>;
+            }
+          ).clearAppBadge();
+        }
+      } catch {
+        // IDB or Badge API unavailable
+      }
     })()
   );
 });

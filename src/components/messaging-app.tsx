@@ -2044,6 +2044,23 @@ export const MessagingApp: FC = () => {
     const publicKey = appUser.PublicKeyBase58Check;
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && !loadingRef.current) {
+        // Clear all OS notifications — the user is now in the app and can see
+        // messages inline. On Android 8+, notification dots on the app icon
+        // persist as long as there are pending notifications in the tray,
+        // independent of the Badging API. This removes the dot.
+        try {
+          const msg = { type: "clear-all-notifications" };
+          if (navigator.serviceWorker?.controller) {
+            navigator.serviceWorker.controller.postMessage(msg);
+          } else {
+            navigator.serviceWorker?.ready.then((reg) =>
+              reg.active?.postMessage(msg)
+            );
+          }
+        } catch {
+          // SW not available
+        }
+
         // Check if a notification click wrote a pending conversation to IndexedDB.
         // postMessage from the SW is unreliable when the app is resuming from a
         // suspended/frozen state, so IndexedDB acts as the durable fallback.
