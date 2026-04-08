@@ -107,8 +107,6 @@ import {
   ASSOCIATION_TYPE_DISMISSED,
   BASE_TITLE,
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
-  MAX_MEMBERS_IN_GROUP_SUMMARY_SHOWN,
-  MAX_MEMBERS_TO_REQUEST_IN_GROUP,
   MESSAGES_ONE_REQUEST_LIMIT,
   PUBLIC_KEY_LENGTH,
   FOREGROUND_RESUME_DEBOUNCE_MS,
@@ -124,7 +122,7 @@ import {
   hasSetupMessaging,
   scrollContainerToElement,
 } from "../utils/helpers";
-import { Conversation, ConversationMap } from "../utils/types";
+import { Conversation, ConversationMap, updateConv } from "../utils/types";
 import {
   buildExtraData,
   getGroupDisplayName,
@@ -570,7 +568,10 @@ export const MessagingApp: FC = () => {
       let hasNewlyConfirmed = false;
 
       setConversations((prev) => {
-        const currentMessages = prev[selectedKey]?.messages || [];
+        const existing = prev[selectedKey];
+        if (!existing) return prev;
+
+        const currentMessages = existing.messages;
 
         const optimisticMessages = currentMessages.filter(
           (m: any) => m._localId
@@ -628,7 +629,7 @@ export const MessagingApp: FC = () => {
         const merged = {
           ...prev,
           [selectedKey]: {
-            ...prev[selectedKey],
+            ...existing,
             messages: [...stillPendingOptimistic, ...taggedMessages],
           },
         };
@@ -966,7 +967,7 @@ export const MessagingApp: FC = () => {
                 const { updatedConversations, pubKeyPlusGroupName: newPubKey } =
                   await getConversation(currentSelectedKey, {
                     ...updated,
-                    [currentSelectedKey]: updated[currentSelectedKey],
+                    [currentSelectedKey]: updated[currentSelectedKey]!,
                   });
 
                 // Guard: user may have switched conversations during the await —
@@ -1461,7 +1462,7 @@ export const MessagingApp: FC = () => {
       setConversations((prev) => {
         const c = prev[key];
         if (!c?.messages.length) return prev;
-        const recipient = c.messages[0].RecipientInfo;
+        const recipient = c.messages[0]!.RecipientInfo;
 
         const mockMessage = {
           DecryptedMessage: fallback,
@@ -1874,6 +1875,7 @@ export const MessagingApp: FC = () => {
                 const next = { ...prev };
                 for (const key of Object.keys(next)) {
                   const c = next[key];
+                  if (!c) continue;
                   const filtered = c.messages.filter(
                     (m: any) => !m._localId || !localIds.has(m._localId)
                   );
@@ -2057,18 +2059,19 @@ export const MessagingApp: FC = () => {
                 const { updatedConversations, pubKeyPlusGroupName } =
                   await getConversation(pendingKey, conversationsRef.current);
                 if (selectedConversationPublicKeyRef.current === pendingKey) {
-                  setConversations((prev) => ({
-                    ...prev,
-                    [pendingKey]: updatedConversations[pendingKey],
-                  }));
-                  setPubKeyPlusGroupName(pubKeyPlusGroupName);
-                  if (updatedConversations[pendingKey]) {
+                  const updatedConvo = updatedConversations[pendingKey];
+                  if (updatedConvo) {
+                    setConversations((prev) => ({
+                      ...prev,
+                      [pendingKey]: updatedConvo,
+                    }));
                     cacheConversationMessages(
                       publicKey,
                       pendingKey,
-                      updatedConversations[pendingKey].messages
+                      updatedConvo.messages
                     );
                   }
+                  setPubKeyPlusGroupName(pubKeyPlusGroupName);
                 }
               } catch {
                 // Fall through to the differential fetch below
@@ -2088,8 +2091,14 @@ export const MessagingApp: FC = () => {
           setPollingDelay(baseDelay);
         }
 
-        // Refresh conversations (existing behavior)
-        visibilityHandlerRef.current("", "");
+        // Refresh conversations — pass the selected conversation key so
+        // handleWsNewMessage fetches its full thread instead of preserving
+        // stale messages (simpleConversationMerge skips messages for the
+        // selected conversation when threadId doesn't match).
+        visibilityHandlerRef.current(
+          selectedConversationPublicKeyRef.current || "",
+          ""
+        );
 
         // Silently re-fetch classification data (associations, follows) so
         // accept/block/dismiss actions from other devices sync without reload.
@@ -2210,7 +2219,7 @@ export const MessagingApp: FC = () => {
         await getConversation(selectedConversationPublicKey, {
           ...conversations,
           [selectedConversationPublicKey]:
-            conversations[selectedConversationPublicKey],
+            conversations[selectedConversationPublicKey]!,
         });
 
       if (
@@ -2279,14 +2288,17 @@ export const MessagingApp: FC = () => {
     const { AccessGroupKeyName, OwnerPublicKeyBase58Check } =
       firstMsg.RecipientInfo;
 
-    // Fetch members and owner profile in parallel — the members API
-    // doesn't include the group owner, so we fetch them separately.
-    const [membersResult, ownerResult] = await Promise.all([
+    // Fetch all members with pagination + owner profile in parallel.
+    // The members API may not include the group owner, so fetch separately.
+    const PAGE_SIZE = 50;
+    const allMemberKeys: string[] = [];
+    const allProfiles: PublicKeyToProfileEntryResponseMap = {};
+
+    const [firstPageResult, ownerResult] = await Promise.all([
       getPaginatedAccessGroupMembers({
         AccessGroupOwnerPublicKeyBase58Check: OwnerPublicKeyBase58Check,
         AccessGroupKeyName,
-        MaxMembersToFetch:
-          MAX_MEMBERS_TO_REQUEST_IN_GROUP + MAX_MEMBERS_IN_GROUP_SUMMARY_SHOWN,
+        MaxMembersToFetch: PAGE_SIZE,
       }),
       getUsersStateless({
         PublicKeysBase58Check: [OwnerPublicKeyBase58Check],
@@ -2294,41 +2306,81 @@ export const MessagingApp: FC = () => {
       }),
     ]);
 
-    const { PublicKeyToProfileEntryResponse } = membersResult;
+    const firstPageKeys = firstPageResult.AccessGroupMembersBase58Check ?? [];
+    allMemberKeys.push(...firstPageKeys);
+    Object.assign(
+      allProfiles,
+      firstPageResult.PublicKeyToProfileEntryResponse ?? {}
+    );
+
+    // Paginate remaining members
+    if (firstPageKeys.length >= PAGE_SIZE) {
+      let cursor = firstPageKeys[firstPageKeys.length - 1]!;
+      for (;;) {
+        const page = await getPaginatedAccessGroupMembers({
+          AccessGroupOwnerPublicKeyBase58Check: OwnerPublicKeyBase58Check,
+          AccessGroupKeyName,
+          MaxMembersToFetch: PAGE_SIZE,
+          StartingAccessGroupMemberPublicKeyBase58Check: cursor,
+        });
+        const pageKeys = page.AccessGroupMembersBase58Check ?? [];
+        allMemberKeys.push(...pageKeys);
+        Object.assign(allProfiles, page.PublicKeyToProfileEntryResponse ?? {});
+        if (pageKeys.length < PAGE_SIZE) break;
+        cursor = pageKeys[pageKeys.length - 1]!;
+      }
+    }
 
     // Merge the owner's profile into the members map
     const ownerProfile = ownerResult.UserList?.[0]?.ProfileEntryResponse;
-    if (
-      ownerProfile &&
-      !PublicKeyToProfileEntryResponse[OwnerPublicKeyBase58Check]
-    ) {
-      PublicKeyToProfileEntryResponse[OwnerPublicKeyBase58Check] = ownerProfile;
+    if (!allMemberKeys.includes(OwnerPublicKeyBase58Check)) {
+      allMemberKeys.push(OwnerPublicKeyBase58Check);
+    }
+    if (ownerProfile && !allProfiles[OwnerPublicKeyBase58Check]) {
+      allProfiles[OwnerPublicKeyBase58Check] = ownerProfile;
+    }
+
+    // Fetch profiles for members missing from PublicKeyToProfileEntryResponse.
+    // The DeSo node may omit profiles for some members; without this, those
+    // members won't appear in the mention picker.
+    const missingProfileKeys = allMemberKeys.filter((pk) => !allProfiles[pk]);
+    if (missingProfileKeys.length > 0) {
+      try {
+        const missingRes = await getUsersStateless({
+          PublicKeysBase58Check: missingProfileKeys,
+          SkipForLeaderboard: true,
+        });
+        for (const u of missingRes.UserList ?? []) {
+          if (u.ProfileEntryResponse) {
+            allProfiles[u.PublicKeyBase58Check] = u.ProfileEntryResponse;
+          }
+        }
+      } catch {
+        // Non-fatal — members without profiles will be excluded from mentions
+      }
     }
 
     setMembersByGroupKey((state) => ({
       ...state,
-      [`${OwnerPublicKeyBase58Check}${AccessGroupKeyName}`]:
-        PublicKeyToProfileEntryResponse,
+      [`${OwnerPublicKeyBase58Check}${AccessGroupKeyName}`]: allProfiles,
     }));
     const usernamesByPublicKeyFromGroup: Record<string, string> = {};
     const groupProfilePics: Record<string, string> = {};
-    Object.entries(PublicKeyToProfileEntryResponse || {}).forEach(
-      ([pk, profile]) => {
-        usernamesByPublicKeyFromGroup[pk] = profile?.Username || "";
-        const ed = profile?.ExtraData;
-        if (ed) {
-          const picUrl = ed.NFTProfilePictureUrl || ed.LargeProfilePicURL;
-          if (picUrl) groupProfilePics[pk] = picUrl;
-        }
+    Object.entries(allProfiles || {}).forEach(([pk, profile]) => {
+      usernamesByPublicKeyFromGroup[pk] = profile?.Username || "";
+      const ed = profile?.ExtraData;
+      if (ed) {
+        const picUrl = ed.NFTProfilePictureUrl || ed.LargeProfilePicURL;
+        if (picUrl) groupProfilePics[pk] = picUrl;
       }
-    );
+    });
     mergeUsernames(usernamesByPublicKeyFromGroup);
     setProfilePicByPublicKey((state) => ({
       ...state,
       ...groupProfilePics,
     }));
 
-    return PublicKeyToProfileEntryResponse;
+    return allProfiles;
   };
 
   const rehydrateConversation = async (
@@ -2426,13 +2478,12 @@ export const MessagingApp: FC = () => {
           cachedKeyToUse
         );
         if (cachedMsgs && cachedMsgs.length > 0) {
-          setConversations((prev) => ({
-            ...prev,
-            [cachedKeyToUse]: {
-              ...prev[cachedKeyToUse],
+          setConversations((prev) =>
+            updateConv(prev, cachedKeyToUse, (c) => ({
+              ...c,
               messages: cachedMsgs as DecryptedMessageEntryResponse[],
-            },
-          }));
+            }))
+          );
           setLoadingConversation(false);
         }
       }
@@ -2445,16 +2496,19 @@ export const MessagingApp: FC = () => {
           .then(({ updatedConversations, pubKeyPlusGroupName }) => {
             if (selectedConversationPublicKeyRef.current !== cachedKeyToUse)
               return;
-            setConversations((prev) => ({
-              ...prev,
-              [cachedKeyToUse]: updatedConversations[cachedKeyToUse],
-            }));
+            const updatedConvo = updatedConversations[cachedKeyToUse];
+            if (updatedConvo) {
+              setConversations((prev) => ({
+                ...prev,
+                [cachedKeyToUse]: updatedConvo,
+              }));
+              cacheConversationMessages(
+                publicKey,
+                cachedKeyToUse,
+                updatedConvo.messages
+              );
+            }
             setPubKeyPlusGroupName(pubKeyPlusGroupName);
-            cacheConversationMessages(
-              publicKey,
-              cachedKeyToUse,
-              updatedConversations[cachedKeyToUse].messages
-            );
           })
           .catch(() => {});
       }
@@ -2828,7 +2882,8 @@ export const MessagingApp: FC = () => {
     const keyToUse =
       selectedKey ||
       (!userChange && selectedConversationPublicKey) ||
-      Object.keys(conversationsResponse)[0];
+      Object.keys(conversationsResponse)[0] ||
+      "";
 
     if (keyToUse && !conversationsResponse[keyToUse]) {
       const groupKeyName = keyToUse.slice(PUBLIC_KEY_LENGTH);
@@ -2980,18 +3035,15 @@ export const MessagingApp: FC = () => {
           cacheLastReadTimestamp(
             publicKey,
             keyToUse,
-            selectedConvo.messages[0].MessageInfo.TimestampNanos
+            selectedConvo.messages[0]!.MessageInfo.TimestampNanos
           );
         }
       }
 
       // Cache messages for the selected conversation
-      if (updatedConversations[keyToUse]) {
-        cacheConversationMessages(
-          publicKey,
-          keyToUse,
-          updatedConversations[keyToUse].messages
-        );
+      const updatedConvo = updatedConversations[keyToUse];
+      if (updatedConvo) {
+        cacheConversationMessages(publicKey, keyToUse, updatedConvo.messages);
       }
 
       // Cache the last selected conversation (use the actual current selection
@@ -3079,9 +3131,9 @@ export const MessagingApp: FC = () => {
         ...{
           [pubKeyPlusGroupName]: {
             firstMessagePublicKey: decrypted.length
-              ? decrypted[0].IsSender
-                ? decrypted[0].RecipientInfo.OwnerPublicKeyBase58Check
-                : decrypted[0].SenderInfo.OwnerPublicKeyBase58Check
+              ? decrypted[0]!.IsSender
+                ? decrypted[0]!.RecipientInfo.OwnerPublicKeyBase58Check
+                : decrypted[0]!.SenderInfo.OwnerPublicKeyBase58Check
               : currentConvo.firstMessagePublicKey,
             messages: decrypted,
             ChatType: ChatType.DM,
@@ -3109,7 +3161,7 @@ export const MessagingApp: FC = () => {
           pubKeyPlusGroupName,
         };
       }
-      const firstMessage = convo[0];
+      const firstMessage = convo[0]!;
       const messages = await getPaginatedGroupChatThread({
         UserPublicKeyBase58Check:
           firstMessage.RecipientInfo.OwnerPublicKeyBase58Check,
@@ -3159,7 +3211,7 @@ export const MessagingApp: FC = () => {
       name ||
       shortenLongWord(
         selectedConversation.messages.length
-          ? selectedConversation.messages[0].RecipientInfo
+          ? selectedConversation.messages[0]!.RecipientInfo
               .OwnerPublicKeyBase58Check
           : selectedConversation.firstMessagePublicKey
       ) ||
@@ -3342,7 +3394,7 @@ export const MessagingApp: FC = () => {
         (acc, curr) => ({
           ...acc,
           [curr]:
-            chatMembers[curr]?.Username ||
+            chatMembers?.[curr]?.Username ||
             usernameByPublicKeyBase58Check[curr] ||
             "",
         }),
@@ -3371,11 +3423,13 @@ export const MessagingApp: FC = () => {
       const groupKeyName = recipientInfo?.AccessGroupKeyName;
       // Resolve human-readable display name for notification title
       const groupName =
-        getGroupDisplayName(
-          allAccessGroups,
-          recipientInfo?.OwnerPublicKeyBase58Check,
-          groupKeyName
-        ) || groupKeyName?.replace(/\0/g, "");
+        (recipientInfo && groupKeyName
+          ? getGroupDisplayName(
+              allAccessGroups,
+              recipientInfo.OwnerPublicKeyBase58Check,
+              groupKeyName
+            )
+          : undefined) || groupKeyName?.replace(/\0/g, "");
       sendNotify(convKey, Object.keys(members), resolvedUsername, groupName);
     } else {
       sendNotify(convKey, [dmRecipient], resolvedUsername);
@@ -3643,20 +3697,23 @@ export const MessagingApp: FC = () => {
                         // Only apply if this conversation is still selected
                         // (prevents stale fetch from overwriting after rapid clicks)
                         if (key === selectedConversationPublicKeyRef.current) {
-                          setConversations((prev) => ({
-                            ...prev,
-                            [key]: updatedConversations[key],
-                          }));
-                          setPubKeyPlusGroupName(pubKeyPlusGroupName);
+                          const updatedConvo = updatedConversations[key];
+                          if (updatedConvo) {
+                            setConversations((prev) => ({
+                              ...prev,
+                              [key]: updatedConvo,
+                            }));
 
-                          // Cache the fetched messages
-                          if (appUser && updatedConversations[key]) {
-                            cacheConversationMessages(
-                              appUser.PublicKeyBase58Check,
-                              key,
-                              updatedConversations[key].messages
-                            );
+                            // Cache the fetched messages
+                            if (appUser) {
+                              cacheConversationMessages(
+                                appUser.PublicKeyBase58Check,
+                                key,
+                                updatedConvo.messages
+                              );
+                            }
                           }
+                          setPubKeyPlusGroupName(pubKeyPlusGroupName);
                         }
                       } finally {
                         // Only unlock if still on this conversation to avoid
@@ -4027,17 +4084,16 @@ export const MessagingApp: FC = () => {
                             onScroll={(
                               e: Array<DecryptedMessageEntryResponse>
                             ) => {
-                              setConversations((prev) => ({
-                                ...prev,
-                                [selectedConversationPublicKey]: {
-                                  ...prev[selectedConversationPublicKey],
-                                  messages: [
-                                    ...prev[selectedConversationPublicKey]
-                                      .messages,
-                                    ...e,
-                                  ],
-                                },
-                              }));
+                              setConversations((prev) =>
+                                updateConv(
+                                  prev,
+                                  selectedConversationPublicKey,
+                                  (c) => ({
+                                    ...c,
+                                    messages: [...c.messages, ...e],
+                                  })
+                                )
+                              );
                             }}
                             onReply={(msg) => {
                               sendInputRef.current?.focus();
@@ -4085,12 +4141,12 @@ export const MessagingApp: FC = () => {
                               const recipientPublicKey =
                                 selectedConversation.ChatType === ChatType.DM
                                   ? selectedConversation.firstMessagePublicKey
-                                  : selectedConversation.messages[0]
+                                  : selectedConversation.messages[0]!
                                       .RecipientInfo.OwnerPublicKeyBase58Check;
                               const recipientKeyName =
                                 selectedConversation.ChatType === ChatType.DM
                                   ? DEFAULT_KEY_MESSAGING_GROUP_NAME
-                                  : selectedConversation.messages[0]
+                                  : selectedConversation.messages[0]!
                                       .RecipientInfo.AccessGroupKeyName;
                               const timestampNanosString =
                                 message.MessageInfo.TimestampNanosString;
@@ -4107,11 +4163,10 @@ export const MessagingApp: FC = () => {
                               };
 
                               // Optimistic: replace message with tombstone
-                              setConversations((prev) => ({
-                                ...prev,
-                                [convKey]: {
-                                  ...prev[convKey],
-                                  messages: prev[convKey].messages.map((m) =>
+                              setConversations((prev) =>
+                                updateConv(prev, convKey, (c) => ({
+                                  ...c,
+                                  messages: c.messages.map((m) =>
                                     m.MessageInfo.TimestampNanosString ===
                                     timestampNanosString
                                       ? {
@@ -4124,8 +4179,8 @@ export const MessagingApp: FC = () => {
                                         }
                                       : m
                                   ),
-                                },
-                              }));
+                                }))
+                              );
                               setLockRefresh(true);
 
                               try {
@@ -4144,18 +4199,17 @@ export const MessagingApp: FC = () => {
                                   "Failed to delete message for everyone"
                                 );
                                 // Rollback
-                                setConversations((prev) => ({
-                                  ...prev,
-                                  [convKey]: {
-                                    ...prev[convKey],
-                                    messages: prev[convKey].messages.map((m) =>
+                                setConversations((prev) =>
+                                  updateConv(prev, convKey, (c) => ({
+                                    ...c,
+                                    messages: c.messages.map((m) =>
                                       m.MessageInfo.TimestampNanosString ===
                                       timestampNanosString
                                         ? originalMessage
                                         : m
                                     ),
-                                  },
-                                }));
+                                  }))
+                                );
                               } finally {
                                 setLockRefresh(false);
                               }
@@ -4176,15 +4230,14 @@ export const MessagingApp: FC = () => {
                               if (!appUser) return;
                               const convKey = selectedConversationPublicKey;
                               // Remove the failed optimistic message from UI
-                              setConversations((prev) => ({
-                                ...prev,
-                                [convKey]: {
-                                  ...prev[convKey],
-                                  messages: prev[convKey].messages.filter(
+                              setConversations((prev) =>
+                                updateConv(prev, convKey, (c) => ({
+                                  ...c,
+                                  messages: c.messages.filter(
                                     (m: any) => m._localId !== localId
                                   ),
-                                },
-                              }));
+                                }))
+                              );
                               // Remove from pending messages storage
                               removePendingMessage(
                                 appUser.PublicKeyBase58Check,
@@ -4248,12 +4301,12 @@ export const MessagingApp: FC = () => {
                               const recipientPublicKey =
                                 selectedConversation.ChatType === ChatType.DM
                                   ? selectedConversation.firstMessagePublicKey
-                                  : selectedConversation.messages[0]
+                                  : selectedConversation.messages[0]!
                                       .RecipientInfo.OwnerPublicKeyBase58Check;
                               const recipientKeyName =
                                 selectedConversation.ChatType === ChatType.DM
                                   ? DEFAULT_KEY_MESSAGING_GROUP_NAME
-                                  : selectedConversation.messages[0]
+                                  : selectedConversation.messages[0]!
                                       .RecipientInfo.AccessGroupKeyName;
 
                               // Build a human-readable fallback for apps without reaction support
@@ -4310,16 +4363,12 @@ export const MessagingApp: FC = () => {
                                 _localId: string;
                               };
 
-                              setConversations((prev) => ({
-                                ...prev,
-                                [convKey]: {
-                                  ...prev[convKey],
-                                  messages: [
-                                    mockReaction,
-                                    ...prev[convKey].messages,
-                                  ],
-                                },
-                              }));
+                              setConversations((prev) =>
+                                updateConv(prev, convKey, (c) => ({
+                                  ...c,
+                                  messages: [mockReaction, ...c.messages],
+                                }))
+                              );
 
                               try {
                                 await encryptAndSendNewMessage(
@@ -4336,29 +4385,26 @@ export const MessagingApp: FC = () => {
                                   })
                                 );
                                 // Mark as sent
-                                setConversations((prev) => ({
-                                  ...prev,
-                                  [convKey]: {
-                                    ...prev[convKey],
-                                    messages: prev[convKey].messages.map(
-                                      (m: any) =>
-                                        m._localId === localId
-                                          ? { ...m, _status: "sent" }
-                                          : m
+                                setConversations((prev) =>
+                                  updateConv(prev, convKey, (c) => ({
+                                    ...c,
+                                    messages: c.messages.map((m: any) =>
+                                      m._localId === localId
+                                        ? { ...m, _status: "sent" }
+                                        : m
                                     ),
-                                  },
-                                }));
+                                  }))
+                                );
                               } catch {
                                 // Remove failed optimistic reaction
-                                setConversations((prev) => ({
-                                  ...prev,
-                                  [convKey]: {
-                                    ...prev[convKey],
-                                    messages: prev[convKey].messages.filter(
+                                setConversations((prev) =>
+                                  updateConv(prev, convKey, (c) => ({
+                                    ...c,
+                                    messages: c.messages.filter(
                                       (m: any) => m._localId !== localId
                                     ),
-                                  },
-                                }));
+                                  }))
+                                );
                                 toast.error(
                                   action === "remove"
                                     ? "Failed to remove reaction"
@@ -4545,13 +4591,13 @@ export const MessagingApp: FC = () => {
                                 const recipientPublicKey =
                                   selectedConversation.ChatType === ChatType.DM
                                     ? selectedConversation.firstMessagePublicKey
-                                    : selectedConversation.messages[0]
+                                    : selectedConversation.messages[0]!
                                         .RecipientInfo
                                         .OwnerPublicKeyBase58Check;
                                 const recipientKeyName =
                                   selectedConversation.ChatType === ChatType.DM
                                     ? DEFAULT_KEY_MESSAGING_GROUP_NAME
-                                    : selectedConversation.messages[0]
+                                    : selectedConversation.messages[0]!
                                         .RecipientInfo.AccessGroupKeyName;
 
                                 const senderUsername =
@@ -4666,13 +4712,13 @@ export const MessagingApp: FC = () => {
                             const recipientPublicKey =
                               selectedConversation.ChatType === ChatType.DM
                                 ? selectedConversation.firstMessagePublicKey
-                                : selectedConversation.messages[0].RecipientInfo
-                                    .OwnerPublicKeyBase58Check;
+                                : selectedConversation.messages[0]!
+                                    .RecipientInfo.OwnerPublicKeyBase58Check;
                             const recipientKeyName =
                               selectedConversation.ChatType === ChatType.DM
                                 ? DEFAULT_KEY_MESSAGING_GROUP_NAME
-                                : selectedConversation.messages[0].RecipientInfo
-                                    .AccessGroupKeyName;
+                                : selectedConversation.messages[0]!
+                                    .RecipientInfo.AccessGroupKeyName;
 
                             // Find original message for rollback
                             const originalMessage =
@@ -4706,11 +4752,10 @@ export const MessagingApp: FC = () => {
                                 updatedMsg
                               );
                             }
-                            setConversations((prev) => ({
-                              ...prev,
-                              [convKey]: {
-                                ...prev[convKey],
-                                messages: prev[convKey].messages.map((m) =>
+                            setConversations((prev) =>
+                              updateConv(prev, convKey, (c) => ({
+                                ...c,
+                                messages: c.messages.map((m) =>
                                   m.MessageInfo.TimestampNanosString ===
                                   timestamp
                                     ? {
@@ -4723,8 +4768,8 @@ export const MessagingApp: FC = () => {
                                       }
                                     : m
                                 ),
-                              },
-                            }));
+                              }))
+                            );
                             setLockRefresh(true);
 
                             try {
@@ -4765,18 +4810,17 @@ export const MessagingApp: FC = () => {
                                   originalMessage.MessageInfo.TimestampNanos,
                                   originalMessage
                                 );
-                                setConversations((prev) => ({
-                                  ...prev,
-                                  [convKey]: {
-                                    ...prev[convKey],
-                                    messages: prev[convKey].messages.map((m) =>
+                                setConversations((prev) =>
+                                  updateConv(prev, convKey, (c) => ({
+                                    ...c,
+                                    messages: c.messages.map((m) =>
                                       m.MessageInfo.TimestampNanosString ===
                                       timestamp
                                         ? originalMessage
                                         : m
                                     ),
-                                  },
-                                }));
+                                  }))
+                                );
                               }
                             } finally {
                               setLockRefresh(false);
@@ -4866,13 +4910,13 @@ export const MessagingApp: FC = () => {
                             const recipientPublicKey =
                               selectedConversation.ChatType === ChatType.DM
                                 ? selectedConversation.firstMessagePublicKey
-                                : selectedConversation.messages[0].RecipientInfo
-                                    .OwnerPublicKeyBase58Check;
+                                : selectedConversation.messages[0]!
+                                    .RecipientInfo.OwnerPublicKeyBase58Check;
                             const recipientAccessGroupKeyName =
                               selectedConversation.ChatType === ChatType.DM
                                 ? DEFAULT_KEY_MESSAGING_GROUP_NAME
-                                : selectedConversation.messages[0].RecipientInfo
-                                    .AccessGroupKeyName;
+                                : selectedConversation.messages[0]!
+                                    .RecipientInfo.AccessGroupKeyName;
                             const localId = `local-${Date.now()}-${Math.random()}`;
                             const hasPrepare = !!options?.prepare;
                             const mockMessage = {
@@ -4908,16 +4952,12 @@ export const MessagingApp: FC = () => {
 
                             // Optimistic: insert immediately
                             const convKey = selectedConversationPublicKey;
-                            setConversations((prev) => ({
-                              ...prev,
-                              [convKey]: {
-                                ...prev[convKey],
-                                messages: [
-                                  mockMessage,
-                                  ...prev[convKey].messages,
-                                ],
-                              },
-                            }));
+                            setConversations((prev) =>
+                              updateConv(prev, convKey, (c) => ({
+                                ...c,
+                                messages: [mockMessage, ...c.messages],
+                              }))
+                            );
                             setLockRefresh(true);
 
                             // If a prepare callback was provided (e.g. audio upload),
@@ -4926,36 +4966,33 @@ export const MessagingApp: FC = () => {
                               try {
                                 extraData = await options!.prepare!();
                                 // Update the bubble with the real data
-                                setConversations((prev) => ({
-                                  ...prev,
-                                  [convKey]: {
-                                    ...prev[convKey],
-                                    messages: prev[convKey].messages.map(
-                                      (m: any) =>
-                                        m._localId === localId
-                                          ? {
-                                              ...m,
-                                              _status: "sending",
-                                              MessageInfo: {
-                                                ...m.MessageInfo,
-                                                ExtraData: extraData,
-                                              },
-                                            }
-                                          : m
+                                setConversations((prev) =>
+                                  updateConv(prev, convKey, (c) => ({
+                                    ...c,
+                                    messages: c.messages.map((m: any) =>
+                                      m._localId === localId
+                                        ? {
+                                            ...m,
+                                            _status: "sending",
+                                            MessageInfo: {
+                                              ...m.MessageInfo,
+                                              ExtraData: extraData,
+                                            },
+                                          }
+                                        : m
                                     ),
-                                  },
-                                }));
+                                  }))
+                                );
                               } catch (e: any) {
                                 // Remove the processing bubble on failure
-                                setConversations((prev) => ({
-                                  ...prev,
-                                  [convKey]: {
-                                    ...prev[convKey],
-                                    messages: prev[convKey].messages.filter(
+                                setConversations((prev) =>
+                                  updateConv(prev, convKey, (c) => ({
+                                    ...c,
+                                    messages: c.messages.filter(
                                       (m: any) => m._localId !== localId
                                     ),
-                                  },
-                                }));
+                                  }))
+                                );
                                 setLockRefresh(false);
                                 toast.error(`Upload failed: ${e.message || e}`);
                                 return;
@@ -4999,18 +5036,16 @@ export const MessagingApp: FC = () => {
                                 ] || appUser.PublicKeyBase58Check
                               );
                               // Update status to "sent" (blockchain accepted)
-                              setConversations((prev) => ({
-                                ...prev,
-                                [convKey]: {
-                                  ...prev[convKey],
-                                  messages: prev[convKey].messages.map(
-                                    (m: any) =>
-                                      m._localId === localId
-                                        ? { ...m, _status: "sent" }
-                                        : m
+                              setConversations((prev) =>
+                                updateConv(prev, convKey, (c) => ({
+                                  ...c,
+                                  messages: c.messages.map((m: any) =>
+                                    m._localId === localId
+                                      ? { ...m, _status: "sent" }
+                                      : m
                                   ),
-                                },
-                              }));
+                                }))
+                              );
                               // Start dedicated confirmation poller for this message.
                               // Checks the single conversation every 3s to confirm
                               // on-chain quickly instead of waiting for the general poll.
@@ -5023,18 +5058,16 @@ export const MessagingApp: FC = () => {
                               );
                             } catch (e: any) {
                               // Update status to "failed" — pending message stays in IndexedDB for retry
-                              setConversations((prev) => ({
-                                ...prev,
-                                [convKey]: {
-                                  ...prev[convKey],
-                                  messages: prev[convKey].messages.map(
-                                    (m: any) =>
-                                      m._localId === localId
-                                        ? { ...m, _status: "failed" }
-                                        : m
+                              setConversations((prev) =>
+                                updateConv(prev, convKey, (c) => ({
+                                  ...c,
+                                  messages: c.messages.map((m: any) =>
+                                    m._localId === localId
+                                      ? { ...m, _status: "failed" }
+                                      : m
                                   ),
-                                },
-                              }));
+                                }))
+                              );
                               toast.error(
                                 `An error occurred while sending your message. Error: ${e.toString()}`
                               );
@@ -5119,11 +5152,11 @@ export const MessagingApp: FC = () => {
                 const recipientPublicKey =
                   conv.ChatType === ChatType.DM
                     ? conv.firstMessagePublicKey
-                    : conv.messages[0].RecipientInfo.OwnerPublicKeyBase58Check;
+                    : conv.messages[0]!.RecipientInfo.OwnerPublicKeyBase58Check;
                 const recipientKeyName =
                   conv.ChatType === ChatType.DM
                     ? DEFAULT_KEY_MESSAGING_GROUP_NAME
-                    : conv.messages[0].RecipientInfo.AccessGroupKeyName;
+                    : conv.messages[0]!.RecipientInfo.AccessGroupKeyName;
 
                 const recipientName = tipData.recipientUsername
                   ? `@${tipData.recipientUsername}`

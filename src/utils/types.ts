@@ -17,6 +17,20 @@ export interface ConversationMap {
   [k: string]: Conversation;
 }
 
+/**
+ * Safely update a single conversation in a ConversationMap.
+ * Returns `prev` unchanged if the key doesn't exist.
+ */
+export function updateConv(
+  prev: ConversationMap,
+  key: string,
+  updater: (conv: Conversation) => Conversation
+): ConversationMap {
+  const conv = prev[key];
+  if (!conv) return prev;
+  return { ...prev, [key]: updater(conv) };
+}
+
 export interface TransactionConstructionResponse {
   TransactionHex: string;
 }
