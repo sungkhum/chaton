@@ -1,4 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { captureError } from "../utils/error-capture";
+import { ERROR_CODES } from "../utils/error-codes";
+import { useStore } from "../store";
 
 interface Props {
   children: ReactNode;
@@ -32,6 +35,26 @@ export class RouteErrorBoundary extends Component<Props, State> {
     window.location.reload();
   };
 
+  handleReport = () => {
+    const error = this.state.error;
+    if (!error) return;
+
+    const isChunkError =
+      error.message?.includes("Loading chunk") ||
+      error.message?.includes("Failed to fetch") ||
+      error.name === "ChunkLoadError";
+
+    const ctx = captureError(
+      isChunkError ? ERROR_CODES.CHUNK_LOAD_FAILED : ERROR_CODES.RENDER_ERROR,
+      error.message || "Unknown render error",
+      {
+        stack: error.stack,
+        component: "RouteErrorBoundary",
+      }
+    );
+    useStore.getState().openBugReport(ctx);
+  };
+
   render() {
     if (this.state.hasError) {
       return (
@@ -46,12 +69,20 @@ export class RouteErrorBoundary extends Component<Props, State> {
             <p className="text-gray-400 text-sm mb-6">
               This page failed to load. This can happen after an update.
             </p>
-            <button
-              onClick={this.handleRetry}
-              className="px-6 py-3 bg-white/10 hover:bg-white/15 border border-white/10 text-white font-semibold rounded-xl text-sm transition-colors cursor-pointer"
-            >
-              Reload Page
-            </button>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={this.handleRetry}
+                className="px-6 py-3 bg-white/10 hover:bg-white/15 border border-white/10 text-white font-semibold rounded-xl text-sm transition-colors cursor-pointer"
+              >
+                Reload Page
+              </button>
+              <button
+                onClick={this.handleReport}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-sm transition-colors cursor-pointer"
+              >
+                Report Bug
+              </button>
+            </div>
             {this.state.error && (
               <details className="mt-6 text-left">
                 <summary className="text-xs text-white/40 cursor-pointer hover:text-white/60">

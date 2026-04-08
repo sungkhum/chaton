@@ -28,6 +28,9 @@ yarn-error.log*
 # build output
 /dist
 
+TICKET.md
+CHATONTICKETSYSTEM.md
+
 # local tool configs
 .claude/
 .agents/

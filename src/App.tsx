@@ -34,6 +34,18 @@ const AboutPage = lazy(() => import("./components/about-page"));
 const ComparePage = lazy(() => import("./components/compare-page"));
 const NotFoundPage = lazy(() => import("./components/not-found-page"));
 const BlogIndex = lazy(() => import("./components/blog/blog-index"));
+
+// bundle-dynamic-imports: Lazy-load modals — only downloaded when triggered
+const LazyBugReportModal = lazy(() =>
+  import("./components/bug-report-modal").then((m) => ({
+    default: m.BugReportModal,
+  }))
+);
+const LazyFeedbackModal = lazy(() =>
+  import("./components/feedback-modal").then((m) => ({
+    default: m.FeedbackModal,
+  }))
+);
 import { lazyPost } from "./components/blog/blog-registry";
 import { AppUser, useStore } from "./store";
 import { useShallow } from "zustand/react/shallow";
@@ -294,7 +306,7 @@ function App() {
           clearDecryptionCaches();
 
           if (alternateUsers && Object.keys(alternateUsers).length > 0) {
-            const fallbackUser = Object.values(alternateUsers)[0];
+            const fallbackUser = Object.values(alternateUsers)[0]!;
             identity.setActiveUser(fallbackUser.publicKey);
           } else {
             setAppUser(null);
@@ -366,9 +378,15 @@ function App() {
       });
   }, []);
 
-  const { appUser, isLoadingUser } = useStore(
-    useShallow((s) => ({ appUser: s.appUser, isLoadingUser: s.isLoadingUser }))
-  );
+  const { appUser, isLoadingUser, bugReportError, feedbackModalOpen } =
+    useStore(
+      useShallow((s) => ({
+        appUser: s.appUser,
+        isLoadingUser: s.isLoadingUser,
+        bugReportError: s.bugReportError,
+        feedbackModalOpen: s.feedbackModalOpen,
+      }))
+    );
   const path = window.location.pathname;
   const splashRemovedRef = useRef(false);
 
@@ -585,6 +603,16 @@ function App() {
         <InstallPrompt />
         <SwUpdatePrompt />
         <Toaster position="top-right" theme="dark" />
+        {bugReportError ? (
+          <Suspense fallback={null}>
+            <LazyBugReportModal />
+          </Suspense>
+        ) : null}
+        {feedbackModalOpen ? (
+          <Suspense fallback={null}>
+            <LazyFeedbackModal />
+          </Suspense>
+        ) : null}
       </div>
     </RouteErrorBoundary>
   );

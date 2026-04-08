@@ -9,6 +9,7 @@
     best-decentralized-messaging-apps-2026
     BlogIndex
     BlogPostLayout
+    BugReportModal
     chaton-vs-signal
     chunk-error-boundary
     community-page
@@ -21,6 +22,7 @@
     emojiToCodepoint
     extractFirstUrl
     FaqPage
+    FeedbackModal
     FileMessage
     FormattedMessage
     FullEmojiPicker

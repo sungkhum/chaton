@@ -8,6 +8,7 @@ import {
   clearActiveServiceWorkerKeys,
 } from "../services/cache.service";
 import type { PrivacyMode } from "../utils/extra-data";
+import type { ErrorContext } from "../utils/error-capture";
 
 export type AppUser = User & {
   messagingPublicKeyBase58Check: string;
@@ -131,6 +132,16 @@ interface ChatOnState {
   // Tipping — session spending awareness (tracks USD cents for both currencies)
   sessionTipTotalUsdCents: number;
   addSessionTipUsd: (usdAmount: number) => void;
+
+  // Bug report (ticket path)
+  bugReportError: ErrorContext | null;
+  openBugReport: (error: ErrorContext) => void;
+  closeBugReport: () => void;
+
+  // Feedback (feedback path)
+  feedbackModalOpen: boolean;
+  openFeedbackModal: () => void;
+  closeFeedbackModal: () => void;
 }
 
 const EMPTY_SET = new Set<string>();
@@ -697,6 +708,16 @@ export const useStore = create<ChatOnState>((set) => ({
       sessionTipTotalUsdCents:
         s.sessionTipTotalUsdCents + Math.round(usdAmount * 100),
     })),
+
+  // Bug report
+  bugReportError: null,
+  openBugReport: (error) => set({ bugReportError: error }),
+  closeBugReport: () => set({ bugReportError: null }),
+
+  // Feedback
+  feedbackModalOpen: false,
+  openFeedbackModal: () => set({ feedbackModalOpen: true }),
+  closeFeedbackModal: () => set({ feedbackModalOpen: false }),
 }));
 
 // Expose store for Playwright tests (dev/test only)

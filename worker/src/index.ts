@@ -17,6 +17,8 @@ import {
 import { sendPushNotification, type PushSubscriptionData } from "./web-push";
 import { validateDesoJwt } from "./jwt";
 import { handleCreateInviteCode, handleRevokeInviteCode } from "./invite-codes";
+import { handleTicketSubmit, handleTicketPoll, handleTicketUpdate } from "./tickets";
+import { handleFeedbackSubmit, handleFeedbackPoll, handleFeedbackUpdate } from "./feedback";
 
 export interface Env {
   CHAT_RELAY: DurableObjectNamespace;
@@ -29,6 +31,7 @@ export interface Env {
   CHATON_SIGNING_SEED_HEX: string;
   DB: D1Database;
   PUSH_QUEUE: Queue<PushJob>;
+  AGENT_API_KEY: string;
 }
 
 // Origins that are always allowed (localhost for dev)
@@ -50,8 +53,8 @@ function isOriginAllowed(origin: string | null, allowed: string[]): boolean {
 function corsHeaders(origin: string): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
     Vary: "Origin",
   };
 }
@@ -169,6 +172,36 @@ export default {
       if (!isOriginAllowed(origin, allowed)) return forbidden();
       const res = await handleRevokeInviteCode(request, env);
       return withCors(res, origin!);
+    }
+
+    // ── Ticket routes (bug reports) ──
+    if (url.pathname === "/tickets/submit" && request.method === "POST") {
+      if (!isOriginAllowed(origin, allowed)) return forbidden();
+      const res = await handleTicketSubmit(request, env);
+      return withCors(res, origin!);
+    }
+    if (url.pathname === "/tickets/poll" && request.method === "GET") {
+      const res = await handleTicketPoll(request, env);
+      return res;
+    }
+    if (url.pathname.startsWith("/tickets/") && request.method === "PATCH") {
+      const res = await handleTicketUpdate(request, env);
+      return res;
+    }
+
+    // ── Feedback routes ──
+    if (url.pathname === "/feedback/submit" && request.method === "POST") {
+      if (!isOriginAllowed(origin, allowed)) return forbidden();
+      const res = await handleFeedbackSubmit(request, env);
+      return withCors(res, origin!);
+    }
+    if (url.pathname === "/feedback/poll" && request.method === "GET") {
+      const res = await handleFeedbackPoll(request, env);
+      return res;
+    }
+    if (url.pathname.startsWith("/feedback/") && request.method === "PATCH") {
+      const res = await handleFeedbackUpdate(request, env);
+      return res;
     }
 
     return new Response("ChatOn Relay", { status: 200 });

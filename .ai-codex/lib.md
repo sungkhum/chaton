@@ -11,6 +11,10 @@ avatar.ts
 detect-language.ts
   fn detectLanguageSync
   fn detectLanguage
+error-capture.ts
+  fn getAppVersion
+  fn getPlatform
+  fn captureError
 exchange-rate.ts
   fn fetchExchangeRate
   fn usdToNanos
@@ -64,3 +68,4 @@ with-auth.ts
   fn requestFullPermissions
 community-cache.ts  fn clearCommunityCache
 profanity-filter.ts  fn containsProfanity
+types.ts  fn updateConv
