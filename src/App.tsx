@@ -594,27 +594,29 @@ function App() {
   }
 
   return (
-    <RouteErrorBoundary>
-      <div className="App">
-        <Header />
-        <section className="h-[calc(100%-56px)] mt-[56px] overflow-hidden">
-          <MessagingApp />
-        </section>
-        <InstallPrompt />
-        <SwUpdatePrompt />
-        <Toaster position="top-right" theme="dark" />
-        {bugReportError ? (
-          <Suspense fallback={null}>
-            <LazyBugReportModal />
-          </Suspense>
-        ) : null}
-        {feedbackModalOpen ? (
-          <Suspense fallback={null}>
-            <LazyFeedbackModal />
-          </Suspense>
-        ) : null}
-      </div>
-    </RouteErrorBoundary>
+    <>
+      <RouteErrorBoundary>
+        <div className="App">
+          <Header />
+          <section className="h-[calc(100%-56px)] mt-[56px] overflow-hidden">
+            <MessagingApp />
+          </section>
+          <InstallPrompt />
+          <SwUpdatePrompt />
+          <Toaster position="top-right" theme="dark" />
+          {feedbackModalOpen ? (
+            <Suspense fallback={null}>
+              <LazyFeedbackModal />
+            </Suspense>
+          ) : null}
+        </div>
+      </RouteErrorBoundary>
+      {bugReportError ? (
+        <Suspense fallback={null}>
+          <LazyBugReportModal />
+        </Suspense>
+      ) : null}
+    </>
   );
 }
 
