@@ -503,12 +503,12 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
     );
     const longPressPosRef = useRef<{ x: number; y: number } | null>(null);
     const suppressSelectionRef = useRef(false);
-    const { isMobile } = useMobile();
+    const { isMobile, isTouchDevice } = useMobile();
 
     // iOS ignores user-select:none during long-press — actively clear any
     // text selection the OS creates while a long-press gesture is in progress.
     useEffect(() => {
-      if (!isMobile) return;
+      if (!isTouchDevice) return;
       const onSelectionChange = () => {
         if (suppressSelectionRef.current) {
           window.getSelection()?.removeAllRanges();
@@ -517,13 +517,13 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       document.addEventListener("selectionchange", onSelectionChange);
       return () =>
         document.removeEventListener("selectionchange", onSelectionChange);
-    }, [isMobile]);
+    }, [isTouchDevice]);
 
     // Position desktop emoji picker (portaled to body) near the reaction bar
     useLayoutEffect(() => {
       const el = pickerRef.current;
       const bubble = activeBubbleRef.current;
-      if (!el || !bubble || isMobile) return;
+      if (!el || !bubble || isTouchDevice) return;
 
       const bubbleRect = bubble.getBoundingClientRect();
       const bar = actionBarRef.current;
@@ -557,7 +557,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       let left = isSender ? bubbleRect.right - elWidth : bubbleRect.left;
       left = Math.max(8, Math.min(left, window.innerWidth - elWidth - 8));
       el.style.left = `${left}px`;
-    }, [reactionPickerFor, isMobile]);
+    }, [reactionPickerFor, isTouchDevice]);
 
     // Close reaction picker / delete menu / desktop action bar on click outside
     useEffect(() => {
@@ -627,8 +627,8 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
     useLayoutEffect(() => {
       const bubble = activeBubbleRef.current;
       if (!bubble) return;
-      if (isMobile && !mobileActionFor) return;
-      if (!isMobile && !hoveredMessage) return;
+      if (isTouchDevice && !mobileActionFor) return;
+      if (!isTouchDevice && !hoveredMessage) return;
 
       const bubbleRect = bubble.getBoundingClientRect();
       if (bubbleRect.width === 0 && bubbleRect.height === 0) return;
@@ -743,7 +743,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
         }
         positionHorizontally(menu);
       }
-    }, [mobileActionFor, hoveredMessage, isMobile, actionBarFlipped]);
+    }, [mobileActionFor, hoveredMessage, isTouchDevice, actionBarFlipped]);
 
     // Clean up timer on unmount
     useEffect(() => {
@@ -1284,14 +1284,14 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       <div className="relative h-full">
         <div
           className={`h-full flex flex-col-reverse custom-scrollbar px-3 md:px-6 pb-2 overflow-y-auto [contain:layout_style] ${
-            isMobile ? "select-none" : ""
+            isTouchDevice ? "select-none" : ""
           }`}
-          style={isMobile ? NO_CALLOUT_STYLE : undefined}
+          style={isTouchDevice ? NO_CALLOUT_STYLE : undefined}
           ref={messageAreaRef}
           id="scrollableArea"
         >
           {/* Mobile long-press backdrop — portaled to body to escape [contain:layout_style] stacking context */}
-          {isMobile &&
+          {isTouchDevice &&
             mobileActionFor &&
             createPortal(
               <div
@@ -1306,7 +1306,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
             )}
 
           {/* Mobile emoji bottom sheet — portaled to body to escape [contain:layout_style] stacking context */}
-          {isMobile &&
+          {isTouchDevice &&
             reactionPickerFor &&
             createPortal(
               <div
@@ -1573,7 +1573,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                 />
               );
 
-              const showActionBar = isMobile
+              const showActionBar = isTouchDevice
                 ? mobileActionFor === messageKey && !reactionPickerFor
                 : hoveredMessage === messageKey ||
                   reactionPickerFor === messageKey;
@@ -1593,15 +1593,15 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                       isLastInGroup ? "mb-4" : "mb-0.5"
                     } transition-[margin-bottom] duration-150 ease-out inline-flex items-end text-left group ${
                       mobileActionFor === messageKey ? "relative z-50" : ""
-                    } ${isMobile ? "mobile-no-select" : ""}`}
-                    style={isMobile ? NO_CALLOUT_STYLE : undefined}
+                    } ${isTouchDevice ? "mobile-no-select" : ""}`}
+                    style={isTouchDevice ? NO_CALLOUT_STYLE : undefined}
                     onTouchStart={
-                      isMobile
+                      isTouchDevice
                         ? (e) => handleTouchStart(e, messageKey)
                         : undefined
                     }
-                    onTouchMove={isMobile ? handleTouchMove : undefined}
-                    onTouchEnd={isMobile ? handleTouchEnd : undefined}
+                    onTouchMove={isTouchDevice ? handleTouchMove : undefined}
+                    onTouchEnd={isTouchDevice ? handleTouchEnd : undefined}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       const bubble = (
@@ -1609,7 +1609,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                       ).querySelector<HTMLElement>(".relative.inline-block");
                       computeFlip(bubble);
                       activeBubbleRef.current = bubble;
-                      if (isMobile) {
+                      if (isTouchDevice) {
                         setReactionPickerFor(null);
                         setMobileActionFor(messageKey);
                       } else {
@@ -2293,7 +2293,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
 
                         {/* Desktop emoji picker — portaled to escape [contain:layout_style] */}
                         {reactionPickerFor === messageKey &&
-                          !isMobile &&
+                          !isTouchDevice &&
                           createPortal(
                             <div ref={pickerRef} className="fixed z-[65]">
                               <ChunkErrorBoundary>
