@@ -84,6 +84,7 @@ import { shortenLongWord } from "../utils/search-helpers";
 // rerender-memo-with-default-value: hoisted constants avoid new refs each render
 const NO_CALLOUT_STYLE = {
   WebkitTouchCallout: "none",
+  touchAction: "pan-y",
 } as React.CSSProperties & { WebkitTouchCallout: string };
 const EMPTY_STRINGS: string[] = [];
 
@@ -705,6 +706,9 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
         if (menu) menuTop = bubbleRect.bottom + gap;
       }
 
+      // Position bar first, then ensure the menu is always below the bar.
+      // Previous approach clamped each independently, which let the menu
+      // get pushed above the bar when it was very tall.
       if (bar && barTop !== undefined) {
         barTop = Math.max(minTop, Math.min(barTop, maxBottom - barHeight));
         bar.style.top = `${barTop}px`;
@@ -713,16 +717,22 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       }
 
       if (menu && menuTop !== undefined) {
-        // Clamp top so the menu stays within the scroll area, leaving
-        // pad pixels of breathing room at the bottom.
+        // Menu must never overlap the bar — enforce minimum top.
+        const minMenuTop =
+          bar && barTop !== undefined ? barTop + barHeight + gap : minTop;
+        menuTop = Math.max(minMenuTop, menuTop);
+
+        // Clamp so the menu doesn't extend past the scroll area bottom
+        // (but never push it above the bar).
         menuTop = Math.max(
-          minTop,
+          minMenuTop,
           Math.min(menuTop, maxBottom - menuHeight - pad)
         );
+
         menu.style.top = `${menuTop}px`;
         menu.style.bottom = "auto";
-        // If the menu is taller than the available space, constrain its
-        // height and make it scrollable.
+
+        // If the menu is taller than the remaining space, make it scrollable.
         const availableHeight = maxBottom - menuTop - pad;
         if (menuHeight > availableHeight && availableHeight > 100) {
           menu.style.maxHeight = `${availableHeight}px`;
