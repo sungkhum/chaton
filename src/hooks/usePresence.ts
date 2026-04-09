@@ -132,15 +132,17 @@ export function usePresence() {
     [onlineUsers, lastSeenByUser, desoActivityByUser]
   );
 
+  const myPublicKey = useStore((s) => s.appUser?.PublicKeyBase58Check ?? "");
+
   const getOnlineCount = useCallback(
     (publicKeys: string[]): number => {
       let count = 0;
       for (const pk of publicKeys) {
-        if (onlineUsers.has(pk)) count++;
+        if (pk !== myPublicKey && onlineUsers.has(pk)) count++;
       }
       return count;
     },
-    [onlineUsers]
+    [onlineUsers, myPublicKey]
   );
 
   const fetchPresenceForKeys = useCallback(

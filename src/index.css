@@ -153,15 +153,21 @@ body,
   text-align: center;
 }
 
-/* Prevent text selection on long-press for touch devices (mobile).
+/* Prevent text selection and native iOS callout on long-press for touch devices.
    Child .select-text classes override the parent select-none, so we need
-   !important here to prevent highlighting when long-pressing message bubbles. */
+   !important here to prevent highlighting when long-pressing message bubbles.
+   iOS ignores -webkit-touch-callout on <img> in some versions —
+   pointer-events:none blocks the native image save/copy callout since touch
+   events pass through to the parent div (which has our custom long-press handler). */
 @media (pointer: coarse) {
   .mobile-no-select,
   .mobile-no-select * {
     -webkit-user-select: none !important;
     user-select: none !important;
     -webkit-touch-callout: none !important;
+  }
+  .mobile-no-select img {
+    pointer-events: none !important;
   }
 }
 

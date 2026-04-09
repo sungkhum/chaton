@@ -219,10 +219,11 @@ export const ImageMessage = ({
           <img
             src={imageUrl}
             alt={alt || "Image"}
-            className={`w-full h-auto object-cover transition-opacity duration-200 ${
+            className={`w-full h-auto object-cover transition-opacity duration-200 pointer-events-none ${
               loaded ? "opacity-100" : "opacity-0"
             }`}
             style={aspectRatio ? { aspectRatio } : undefined}
+            draggable={false}
             loading="lazy"
             onLoad={() => setLoaded(true)}
             onError={() => setLoaded(true)}
