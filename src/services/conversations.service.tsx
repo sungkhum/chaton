@@ -738,10 +738,13 @@ export const decryptAccessGroupMessagesWithRetry = async (
   //
   // Skip messages already known to permanently fail — they failed even with
   // fresh groups on a previous poll, so retrying is wasted work.
+  const looksLikeEncryptedHex = (text: string) =>
+    text.length >= 66 && /^[0-9a-f]+$/i.test(text);
+
   const hasNewDecryptionErrors = decryptedMessageEntries.some(
     (dmr) =>
-      dmr.error &&
-      !dmr.DecryptedMessage &&
+      ((dmr.error && !dmr.DecryptedMessage) ||
+        looksLikeEncryptedHex(dmr.DecryptedMessage || "")) &&
       !permanentlyFailedMessages.has(dmr.MessageInfo.TimestampNanos)
   );
   if (hasNewDecryptionErrors) {
@@ -768,7 +771,10 @@ export const decryptAccessGroupMessagesWithRetry = async (
 
     // Track messages that still fail after fresh groups — they're permanently broken
     for (const dmr of decryptedMessageEntries) {
-      if (dmr.error && !dmr.DecryptedMessage) {
+      if (
+        (dmr.error && !dmr.DecryptedMessage) ||
+        looksLikeEncryptedHex(dmr.DecryptedMessage || "")
+      ) {
         permanentlyFailedMessages.add(dmr.MessageInfo.TimestampNanos);
       }
     }
