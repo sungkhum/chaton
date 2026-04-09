@@ -129,6 +129,7 @@ import {
   getGroupImageUrl,
   getGroupPinnedMessage,
   GROUP_PINNED_MESSAGE,
+  GROUP_PINNED_PREVIEW,
   parseMessageType,
   MSG_REPLY_TO,
   MSG_REPLY_PREVIEW,
@@ -3289,15 +3290,17 @@ export const MessagingApp: FC = () => {
           selectedConversation.messages[0].RecipientInfo.AccessGroupKeyName
         )
       : undefined;
-  const pinnedMessageTimestamp =
+  const pinnedData =
     isGroupChat && selectedConversation?.messages[0]
       ? getGroupPinnedMessage(
           allAccessGroups,
-          selectedConversation.messages[0].RecipientInfo
+          selectedConversation.messages[0]!.RecipientInfo
             .OwnerPublicKeyBase58Check,
-          selectedConversation.messages[0].RecipientInfo.AccessGroupKeyName
+          selectedConversation.messages[0]!.RecipientInfo.AccessGroupKeyName
         )
       : undefined;
+  const pinnedMessageTimestamp = pinnedData?.timestamp;
+  const pinnedPreview = pinnedData?.preview;
   const pinnedMessage = useMemo(() => {
     if (!pinnedMessageTimestamp || !selectedConversation) return undefined;
     return selectedConversation.messages.find(
@@ -3359,7 +3362,7 @@ export const MessagingApp: FC = () => {
     setAllAccessGroups,
   ]);
   const handlePinMessage = useCallback(
-    async (timestampNanosString: string) => {
+    async (timestampNanosString: string, preview?: string) => {
       if (!appUser || !selectedConversation || !isGroupChat) return;
       const recipientInfo = selectedConversation.messages[0]?.RecipientInfo;
       if (!recipientInfo) return;
@@ -3373,8 +3376,10 @@ export const MessagingApp: FC = () => {
       );
       if (!group) return;
 
-      const oldPinned = group.ExtraData?.[GROUP_PINNED_MESSAGE] || "";
+      const oldExtraData = { ...(group.ExtraData || {}) };
       const isPinning = !!timestampNanosString;
+      // Truncate preview to 100 chars to keep ExtraData small
+      const previewText = preview?.slice(0, 100) || "";
 
       // Optimistic: update Zustand store immediately
       const updatedGroups = allAccessGroups.map((g) => {
@@ -3385,8 +3390,10 @@ export const MessagingApp: FC = () => {
           const newExtraData = { ...(g.ExtraData || {}) };
           if (isPinning) {
             newExtraData[GROUP_PINNED_MESSAGE] = timestampNanosString;
+            newExtraData[GROUP_PINNED_PREVIEW] = previewText;
           } else {
             delete newExtraData[GROUP_PINNED_MESSAGE];
+            delete newExtraData[GROUP_PINNED_PREVIEW];
           }
           return { ...g, ExtraData: newExtraData };
         }
@@ -3399,8 +3406,10 @@ export const MessagingApp: FC = () => {
         const mergedExtraData = { ...(group.ExtraData || {}) };
         if (isPinning) {
           mergedExtraData[GROUP_PINNED_MESSAGE] = timestampNanosString;
+          mergedExtraData[GROUP_PINNED_PREVIEW] = previewText;
         } else {
           mergedExtraData[GROUP_PINNED_MESSAGE] = "";
+          mergedExtraData[GROUP_PINNED_PREVIEW] = "";
         }
 
         await withAuth(() =>
@@ -3424,13 +3433,7 @@ export const MessagingApp: FC = () => {
             g.AccessGroupOwnerPublicKeyBase58Check === groupOwnerKey &&
             g.AccessGroupKeyName === groupKeyName
           ) {
-            const newExtraData = { ...(g.ExtraData || {}) };
-            if (oldPinned) {
-              newExtraData[GROUP_PINNED_MESSAGE] = oldPinned;
-            } else {
-              delete newExtraData[GROUP_PINNED_MESSAGE];
-            }
-            return { ...g, ExtraData: newExtraData };
+            return { ...g, ExtraData: oldExtraData };
           }
           return g;
         });
@@ -4113,6 +4116,7 @@ export const MessagingApp: FC = () => {
                             {loadingPinnedMessage
                               ? "Loading…"
                               : pinnedMessage?.DecryptedMessage ||
+                                pinnedPreview ||
                                 "Tap to view"}
                           </span>
                         </div>

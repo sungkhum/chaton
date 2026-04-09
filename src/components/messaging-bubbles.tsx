@@ -111,7 +111,7 @@ export interface MessagingBubblesProps {
   onTip?: (message: DecryptedMessageEntryResponse, amountUsd?: number) => void;
   onMicroTip?: (message: DecryptedMessageEntryResponse) => void;
   onPrivateMessage?: (senderPublicKey: string) => void;
-  onPin?: (timestampNanosString: string) => void;
+  onPin?: (timestampNanosString: string, preview?: string) => void;
   pinnedMessageTimestamp?: string;
   pendingTipTimestamps?: Set<string>;
   hiddenMessageIds?: Set<string>;
@@ -2089,7 +2089,10 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                             isPinned
                                               ? ""
                                               : message.MessageInfo
-                                                  .TimestampNanosString
+                                                  .TimestampNanosString,
+                                            isPinned
+                                              ? undefined
+                                              : message.DecryptedMessage
                                           );
                                           closeMobileAction();
                                         }}

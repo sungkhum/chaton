@@ -101,6 +101,7 @@ export function getEncryptedExtraDataKeys(
 export const GROUP_IMAGE_URL = "group:imageUrl";
 export const GROUP_DISPLAY_NAME = "group:displayName";
 export const GROUP_PINNED_MESSAGE = "group:pinnedMessage";
+export const GROUP_PINNED_PREVIEW = "group:pinnedPreview";
 
 export type TipCurrency = "DESO" | "USDC";
 
@@ -370,13 +371,18 @@ export function getGroupPinnedMessage(
   allAccessGroups: AccessGroupEntryResponse[],
   ownerPublicKey: string,
   groupKeyName: string
-): string | undefined {
+): { timestamp: string; preview?: string } | undefined {
   const group = allAccessGroups.find(
     (g) =>
       g.AccessGroupOwnerPublicKeyBase58Check === ownerPublicKey &&
       g.AccessGroupKeyName === groupKeyName
   );
-  return group?.ExtraData?.[GROUP_PINNED_MESSAGE] || undefined;
+  const ts = group?.ExtraData?.[GROUP_PINNED_MESSAGE];
+  if (!ts) return undefined;
+  return {
+    timestamp: ts,
+    preview: group?.ExtraData?.[GROUP_PINNED_PREVIEW] || undefined,
+  };
 }
 
 export function buildExtraData(
