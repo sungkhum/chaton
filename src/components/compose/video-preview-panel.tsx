@@ -16,7 +16,7 @@ export const VideoPreviewPanel = ({
       <div className="relative inline-block">
         <video
           src={previewUrl}
-          className="max-h-[160px] w-auto rounded-lg object-contain"
+          className="max-h-[140px] w-auto rounded-lg object-contain"
           controls
           playsInline
         />
@@ -27,7 +27,9 @@ export const VideoPreviewPanel = ({
           <X className="w-3 h-3" />
         </button>
       </div>
-      <p className="text-[11px] text-gray-500 mt-1 truncate max-w-[200px]">{file.name}</p>
+      <p className="text-[11px] text-gray-500 mt-1 truncate max-w-[200px]">
+        {file.name}
+      </p>
     </div>
   );
 };
