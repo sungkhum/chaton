@@ -89,7 +89,7 @@ export function BugReportModal() {
       className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60 sm:items-center"
       onClick={handleBackdropClick}
     >
-      <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-[#0a1628] shadow-2xl shadow-black/50 sm:max-h-[90vh] sm:rounded-2xl">
+      <div className="flex max-h-[100dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-[#0a1628] shadow-2xl shadow-black/50 sm:max-h-[90vh] sm:rounded-2xl">
         {/* Amber accent bar for error-triggered reports */}
         <div className="h-[2px] bg-gradient-to-r from-amber-500 via-amber-400 to-orange-400" />
 
