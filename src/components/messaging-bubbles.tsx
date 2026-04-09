@@ -713,13 +713,19 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       }
 
       if (menu && menuTop !== undefined) {
-        menuTop = Math.max(minTop, Math.min(menuTop, maxBottom - menuHeight));
+        // Clamp top so the menu stays within the scroll area, leaving
+        // pad pixels of breathing room at the bottom.
+        menuTop = Math.max(
+          minTop,
+          Math.min(menuTop, maxBottom - menuHeight - pad)
+        );
         menu.style.top = `${menuTop}px`;
         menu.style.bottom = "auto";
-        // Constrain menu height so it doesn't overflow the scroll area on short screens
-        const maxMenuHeight = maxBottom - menuTop - pad;
-        if (menuHeight > maxMenuHeight && maxMenuHeight > 100) {
-          menu.style.maxHeight = `${maxMenuHeight}px`;
+        // If the menu is taller than the available space, constrain its
+        // height and make it scrollable.
+        const availableHeight = maxBottom - menuTop - pad;
+        if (menuHeight > availableHeight && availableHeight > 100) {
+          menu.style.maxHeight = `${availableHeight}px`;
           menu.style.overflowY = "auto";
         } else {
           menu.style.maxHeight = "";
