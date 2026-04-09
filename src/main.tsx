@@ -25,6 +25,15 @@ registerSW();
  *
  * Falls back to `window.innerHeight` on browsers without `visualViewport`.
  */
+const isInputFocused = () => {
+  const a = document.activeElement;
+  return (
+    a instanceof HTMLTextAreaElement ||
+    a instanceof HTMLInputElement ||
+    (a instanceof HTMLElement && a.isContentEditable)
+  );
+};
+
 let _vpRaf = 0;
 const updateViewport = () => {
   cancelAnimationFrame(_vpRaf);
@@ -36,10 +45,11 @@ const updateViewport = () => {
       const h =
         vv.height > 0 ? vv.height : window.innerHeight || window.screen.height;
       document.documentElement.style.setProperty("--app-height", `${h}px`);
-      document.documentElement.style.setProperty(
-        "--app-offset",
-        `${vv.offsetTop}px`
-      );
+      // Only trust offsetTop when a text input is focused (keyboard is open).
+      // iOS Safari can report stale non-zero offsetTop after keyboard dismiss,
+      // especially when DOM mutations trigger visualViewport scroll events.
+      const offset = isInputFocused() ? vv.offsetTop : 0;
+      document.documentElement.style.setProperty("--app-offset", `${offset}px`);
     } else {
       const h = window.innerHeight || window.screen.height;
       document.documentElement.style.setProperty("--app-height", `${h}px`);
@@ -68,6 +78,28 @@ if (window.visualViewport) {
   window.addEventListener("resize", updateViewport);
 }
 updateViewport();
+
+/*
+ * Force a clean viewport reset when the keyboard dismisses.
+ *
+ * iOS Safari can leave visualViewport.offsetTop and height in a stale state
+ * after keyboard dismiss. When focus leaves a text input, wait for the
+ * keyboard animation to finish, then force --app-offset to 0 and re-read
+ * the height. The 400ms delay covers the iOS keyboard close animation.
+ */
+document.addEventListener("focusout", (e) => {
+  if (
+    e.target instanceof HTMLTextAreaElement ||
+    e.target instanceof HTMLInputElement
+  ) {
+    setTimeout(() => {
+      if (!isInputFocused()) {
+        document.documentElement.style.setProperty("--app-offset", "0px");
+        updateViewport();
+      }
+    }, 400);
+  }
+});
 
 /*
  * Fix stale keyboard height on app resume.

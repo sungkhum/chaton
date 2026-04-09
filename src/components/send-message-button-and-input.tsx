@@ -130,7 +130,6 @@ export const SendMessageButtonAndInput = forwardRef<
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const inputBarRef = useRef<HTMLDivElement>(null);
     const linkPanelRef = useRef<LinkAttachmentPanelHandle>(null);
-    const isTouchDevice = navigator.maxTouchPoints > 0;
     useImperativeHandle(
       ref,
       () => ({ focus: () => textareaRef.current?.focus() }),
