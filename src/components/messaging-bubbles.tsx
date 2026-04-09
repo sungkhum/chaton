@@ -503,6 +503,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
     );
     const longPressPosRef = useRef<{ x: number; y: number } | null>(null);
     const suppressSelectionRef = useRef(false);
+    const suppressResizeDismissRef = useRef(false);
     const { isMobile, isTouchDevice } = useMobile();
 
     // iOS ignores user-select:none during long-press — actively clear any
@@ -606,10 +607,13 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       scrollArea.addEventListener("scroll", dismiss, { passive: true });
       // iOS: keyboard open/close changes visualViewport but not scroll events
       const vv = window.visualViewport;
-      if (vv) vv.addEventListener("resize", dismiss);
+      const onResize = () => {
+        if (!suppressResizeDismissRef.current) dismiss();
+      };
+      if (vv) vv.addEventListener("resize", onResize);
       return () => {
         scrollArea.removeEventListener("scroll", dismiss);
-        if (vv) vv.removeEventListener("resize", dismiss);
+        if (vv) vv.removeEventListener("resize", onResize);
       };
     }, [mobileActionFor]);
 
@@ -651,8 +655,14 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       const scrollArea = messageAreaRef.current;
       const scrollRect = scrollArea?.getBoundingClientRect();
       const pad = 12;
-      const minTop = scrollRect ? scrollRect.top : 0;
-      const maxBottom = scrollRect ? scrollRect.bottom : window.innerHeight;
+      const vv = window.visualViewport;
+      const vvTop = vv ? vv.offsetTop : 0;
+      const vvBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+      const minTop = Math.max(scrollRect ? scrollRect.top : 0, vvTop);
+      const maxBottom = Math.min(
+        scrollRect ? scrollRect.bottom : window.innerHeight,
+        vvBottom
+      );
       const isSenderMsg =
         bubbleRect.left + bubbleRect.width / 2 > window.innerWidth / 2;
 
@@ -788,6 +798,14 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
         const target = e.currentTarget as HTMLElement;
         longPressTimerRef.current = setTimeout(() => {
           longPressTimerRef.current = null;
+          // Dismiss keyboard so the menu positions within the visible viewport
+          if (document.activeElement instanceof HTMLElement) {
+            suppressResizeDismissRef.current = true;
+            document.activeElement.blur();
+            requestAnimationFrame(() => {
+              suppressResizeDismissRef.current = false;
+            });
+          }
           // Clear any iOS text selection that started during the hold
           window.getSelection()?.removeAllRanges();
           if (navigator.vibrate) navigator.vibrate(20);
