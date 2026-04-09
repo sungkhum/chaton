@@ -42,13 +42,22 @@ const updateViewport = () => {
     if (vv) {
       // Guard against 0 height — can happen on PWA resume from suspension
       // on some iOS/Android versions, causing content to be invisible.
+      const screenH = window.innerHeight || window.screen.height;
+      const inputActive = isInputFocused();
+      // When no input is focused the keyboard can't be open. If
+      // visualViewport.height is significantly smaller than window.innerHeight,
+      // it's stale (common on iOS PWA resume). Use window.innerHeight instead.
+      const heightLooksStale =
+        !inputActive && screenH > 0 && screenH - vv.height > 100;
       const h =
-        vv.height > 0 ? vv.height : window.innerHeight || window.screen.height;
+        vv.height > 0 && !heightLooksStale
+          ? vv.height
+          : screenH || window.screen.height;
       document.documentElement.style.setProperty("--app-height", `${h}px`);
       // Only trust offsetTop when a text input is focused (keyboard is open).
       // iOS Safari can report stale non-zero offsetTop after keyboard dismiss,
       // especially when DOM mutations trigger visualViewport scroll events.
-      const offset = isInputFocused() ? vv.offsetTop : 0;
+      const offset = inputActive ? vv.offsetTop : 0;
       document.documentElement.style.setProperty("--app-offset", `${offset}px`);
     } else {
       const h = window.innerHeight || window.screen.height;
