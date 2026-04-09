@@ -130,6 +130,7 @@ export const SendMessageButtonAndInput = forwardRef<
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const inputBarRef = useRef<HTMLDivElement>(null);
     const linkPanelRef = useRef<LinkAttachmentPanelHandle>(null);
+    const isTouchDevice = navigator.maxTouchPoints > 0;
     useImperativeHandle(
       ref,
       () => ({ focus: () => textareaRef.current?.focus() }),
@@ -222,7 +223,7 @@ export const SendMessageButtonAndInput = forwardRef<
         onSubmitEdit(msg, editingMessage.timestamp, extraData);
         setMessageToSend("");
         if (conversationKey) setDraft(conversationKey, "");
-        textareaRef.current?.focus();
+        if (!isTouchDevice) textareaRef.current?.focus();
         return;
       }
 
@@ -255,6 +256,9 @@ export const SendMessageButtonAndInput = forwardRef<
         setMessageToSend(msg);
       }
       setIsSending(false);
+      // On touch devices, the keyboard has already dismissed when the user
+      // tapped Send. Re-focusing would briefly reopen the keyboard and leave
+      // the visual viewport in a stale state (iOS layout gap bug).
       if (!isTouchDevice) textareaRef.current?.focus();
     };
 
