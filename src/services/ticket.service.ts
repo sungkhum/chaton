@@ -16,6 +16,7 @@ interface ManualBugReportInput {
   whatWentWrong: string;
   whatWereDoing: string;
   frequency: "first-time" | "sometimes" | "every-time";
+  screenshotUrl?: string;
 }
 
 export async function submitBugReport(
@@ -85,6 +86,7 @@ export async function submitManualBugReport(
       userDescription: input.whatWereDoing,
       frequency: input.frequency,
       additionalContext: input.whatWentWrong,
+      screenshotUrl: input.screenshotUrl || null,
       submitterPublicKey: publicKey,
       signature: jwt,
       nonce,

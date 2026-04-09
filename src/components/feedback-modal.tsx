@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
   X,
@@ -8,11 +8,13 @@ import {
   HelpCircle,
   Heart,
   MessageCircle,
+  ImagePlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "../store";
 import { submitFeedback } from "../services/feedback.service";
 import { submitManualBugReport } from "../services/ticket.service";
+import { uploadImage } from "../services/media.service";
 
 const CATEGORIES = [
   {
@@ -83,26 +85,65 @@ export function FeedbackModal() {
   const [whatWereDoing, setWhatWereDoing] = useState("");
   const [frequency, setFrequency] = useState("");
 
+  // Screenshot attachment
+  const [screenshot, setScreenshot] = useState<{
+    file: File;
+    previewUrl: string;
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [submitting, setSubmitting] = useState(false);
   const inflight = useRef(false);
+
+  const stageScreenshot = useCallback(
+    (file: File) => {
+      if (!file.type.startsWith("image/")) {
+        toast.error("Only images are supported");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("Image must be under 10 MB");
+        return;
+      }
+      // Revoke previous preview URL
+      if (screenshot) URL.revokeObjectURL(screenshot.previewUrl);
+      setScreenshot({ file, previewUrl: URL.createObjectURL(file) });
+    },
+    [screenshot]
+  );
+
+  const clearScreenshot = useCallback(() => {
+    if (screenshot) URL.revokeObjectURL(screenshot.previewUrl);
+    setScreenshot(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, [screenshot]);
 
   if (!feedbackModalOpen) return null;
 
   const isBugPath = category === "bug";
   const selectedCategory = CATEGORIES.find((c) => c.value === category);
   const hasContent =
-    description.trim() || whatWentWrong.trim() || whatWereDoing.trim();
+    description.trim() ||
+    whatWentWrong.trim() ||
+    whatWereDoing.trim() ||
+    screenshot;
 
   const handleSubmit = async () => {
     if (inflight.current) return;
     inflight.current = true;
     setSubmitting(true);
     try {
+      let screenshotUrl: string | undefined;
+      if (isBugPath && screenshot) {
+        const result = await uploadImage(screenshot.file);
+        screenshotUrl = result.ImageURL;
+      }
       if (isBugPath) {
         await submitManualBugReport({
           whatWentWrong,
           whatWereDoing,
           frequency: frequency as "first-time" | "sometimes" | "every-time",
+          screenshotUrl,
         });
       } else {
         await submitFeedback({ category, description });
@@ -123,6 +164,7 @@ export function FeedbackModal() {
     setWhatWentWrong("");
     setWhatWereDoing("");
     setFrequency("");
+    clearScreenshot();
     inflight.current = false;
   };
 
@@ -281,7 +323,30 @@ export function FeedbackModal() {
 
           {/* ── Bug path: Combined describe screen ── */}
           {step === "bug-describe" ? (
-            <div>
+            <div
+              onPaste={(e) => {
+                const items = e.clipboardData?.items;
+                if (!items) return;
+                for (const item of items) {
+                  if (item.type.startsWith("image/")) {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    if (file) stageScreenshot(file);
+                    return;
+                  }
+                }
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const file = e.dataTransfer.files?.[0];
+                if (file?.type.startsWith("image/")) stageScreenshot(file);
+              }}
+            >
               <div className="space-y-4">
                 <div>
                   <label
@@ -319,6 +384,51 @@ export function FeedbackModal() {
                     maxLength={500}
                     rows={2}
                     className="w-full rounded-xl border border-white/10 bg-white/[0.03] p-3.5 text-sm text-white placeholder-white/35 transition-colors focus:border-white/20 focus:bg-white/[0.04] focus:outline-none"
+                  />
+                </div>
+
+                {/* Screenshot attachment */}
+                <div>
+                  <p className="mb-1.5 text-sm font-medium text-white/80">
+                    Screenshot{" "}
+                    <span className="font-normal text-white/30">
+                      (optional)
+                    </span>
+                  </p>
+                  {screenshot ? (
+                    <div className="relative inline-block">
+                      <img
+                        src={screenshot.previewUrl}
+                        alt="Screenshot preview"
+                        className="max-h-[120px] w-auto rounded-lg object-contain border border-white/[0.06]"
+                      />
+                      <button
+                        onClick={clearScreenshot}
+                        className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-white/20 bg-black/70 text-gray-300 transition-colors hover:bg-black/90 hover:text-white"
+                        aria-label="Remove screenshot"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-3 text-left text-sm text-white/40 transition-colors hover:border-white/20 hover:bg-white/[0.04] hover:text-white/60"
+                    >
+                      <ImagePlus size={16} />
+                      <span>Add a screenshot or paste one</span>
+                    </button>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) stageScreenshot(file);
+                    }}
                   />
                 </div>
               </div>
@@ -407,6 +517,21 @@ export function FeedbackModal() {
                     }
                   </p>
                 </div>
+                {screenshot ? (
+                  <>
+                    <div className="border-t border-white/[0.04]" />
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-white/40">
+                        Screenshot
+                      </p>
+                      <img
+                        src={screenshot.previewUrl}
+                        alt="Attached screenshot"
+                        className="mt-1.5 max-h-[80px] w-auto rounded-lg object-contain"
+                      />
+                    </div>
+                  </>
+                ) : null}
               </div>
               <div className="mt-4 flex gap-2">
                 <button
