@@ -71,6 +71,9 @@ export async function handleTicketSubmit(
     const stackTrace = body.stackTrace
       ? sanitize(body.stackTrace as string, 2000)
       : null;
+    const screenshotUrl = body.screenshotUrl
+      ? sanitize(body.screenshotUrl as string, 2000)
+      : null;
 
     if (!userDescription) return json({ error: "Description required" }, 400);
 
@@ -92,20 +95,21 @@ export async function handleTicketSubmit(
       INSERT INTO tickets (
         error_code, error_message, stack_trace, component, route,
         app_version, user_agent, platform, user_description, frequency,
-        additional_context, submitter_public_key, signature, nonce
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        additional_context, screenshot_url, submitter_public_key, signature, nonce
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
       : `
       INSERT INTO tickets (
         error_code, error_message, stack_trace, component, route,
         app_version, user_agent, platform, user_description, frequency,
-        additional_context, submitter_public_key, signature, nonce
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        additional_context, screenshot_url, submitter_public_key, signature, nonce
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (submitter_public_key, error_code, component)
       DO UPDATE SET
         user_description = excluded.user_description,
         frequency = excluded.frequency,
         additional_context = excluded.additional_context,
+        screenshot_url = excluded.screenshot_url,
         error_message = excluded.error_message,
         stack_trace = excluded.stack_trace,
         signature = excluded.signature,
@@ -126,6 +130,7 @@ export async function handleTicketSubmit(
         userDescription,
         body.frequency as string,
         additionalContext,
+        screenshotUrl,
         publicKey,
         jwt,
         body.nonce as string
