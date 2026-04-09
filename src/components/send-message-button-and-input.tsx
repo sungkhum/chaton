@@ -11,6 +11,7 @@ import {
   startTransition,
   ViewTransition,
 } from "react";
+import { useMobile } from "../hooks/useMobile";
 import {
   Send,
   Image,
@@ -102,6 +103,7 @@ export const SendMessageButtonAndInput = forwardRef<
     },
     ref
   ) => {
+    const { isTouchDevice } = useMobile();
     const [isSending, setIsSending] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [showGifPicker, setShowGifPicker] = useState(false);
@@ -253,7 +255,7 @@ export const SendMessageButtonAndInput = forwardRef<
         setMessageToSend(msg);
       }
       setIsSending(false);
-      textareaRef.current?.focus();
+      if (!isTouchDevice) textareaRef.current?.focus();
     };
 
     const canSend = (e: KeyboardEvent<HTMLTextAreaElement>) => {
