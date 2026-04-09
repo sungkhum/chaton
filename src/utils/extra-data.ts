@@ -258,6 +258,14 @@ function parseDeSoAppMedia(extra: Record<string, string>): {
   return {};
 }
 
+function safeParseMentions(raw: string): MentionEntry[] | undefined {
+  try {
+    return JSON.parse(raw) as MentionEntry[];
+  } catch {
+    return undefined;
+  }
+}
+
 export function parseMessageType(
   message: DecryptedMessageEntryResponse
 ): ParsedMessage {
@@ -306,7 +314,7 @@ export function parseMessageType(
     edited: extra[MSG_EDITED] === "true",
     deleted: extra[MSG_DELETED] === "true",
     mentions: extra[MSG_MENTIONS]
-      ? (JSON.parse(extra[MSG_MENTIONS]) as MentionEntry[])
+      ? safeParseMentions(extra[MSG_MENTIONS])
       : undefined,
     tipAmountNanos: extra[MSG_TIP_AMOUNT_NANOS]
       ? Number.isFinite(parseInt(extra[MSG_TIP_AMOUNT_NANOS], 10))
@@ -323,7 +331,7 @@ export function parseMessageType(
     tipHasCustomMessage: extra[MSG_TIP_CUSTOM_MESSAGE] === "true",
     systemAction: extra[MSG_SYSTEM_ACTION] as SystemAction | undefined,
     systemMembers: extra[MSG_SYSTEM_MEMBERS]
-      ? (JSON.parse(extra[MSG_SYSTEM_MEMBERS]) as MentionEntry[])
+      ? safeParseMentions(extra[MSG_SYSTEM_MEMBERS])
       : undefined,
     lang: extra[MSG_LANG] || undefined,
   };
