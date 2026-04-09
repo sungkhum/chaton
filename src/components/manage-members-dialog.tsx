@@ -49,8 +49,10 @@ import { DEFAULT_KEY_MESSAGING_GROUP_NAME } from "../utils/constants";
 import {
   GROUP_DISPLAY_NAME,
   GROUP_IMAGE_URL,
+  GROUP_MEMBERS_CAN_SHARE,
   getGroupDisplayName,
   getGroupImageUrl,
+  getGroupMembersCanShare,
 } from "../utils/extra-data";
 import {
   createRejectAssociation,
@@ -205,6 +207,10 @@ export const ManageMembersDialog = ({
   const [communitySaving, setCommunitySaving] = useState(false);
   const [savedDescription, setSavedDescription] = useState("");
 
+  // Members-can-share invite link state
+  const [membersCanShare, setMembersCanShare] = useState(false);
+  const [membersCanShareToggling, setMembersCanShareToggling] = useState(false);
+
   // Join requests state
   const [joinRequests, setJoinRequests] = useState<JoinRequestEntry[]>([]);
   const [joinRequestsLoading, setJoinRequestsLoading] = useState(false);
@@ -237,14 +243,21 @@ export const ManageMembersDialog = ({
   const nameInputRef = useRef<HTMLInputElement>(null);
   const nameSaveInFlightRef = useRef(false);
 
+  const currentMembersCanShare = getGroupMembersCanShare(
+    allAccessGroups,
+    groupOwnerKey,
+    groupName
+  );
+
   // Sync local state when the dialog opens or the store value changes
   useEffect(() => {
     if (open) {
       setGroupImageUrl(currentGroupImageUrl);
       setEditNameValue(currentDisplayName);
       setEditingName(false);
+      setMembersCanShare(currentMembersCanShare);
     }
-  }, [open, currentGroupImageUrl, currentDisplayName]);
+  }, [open, currentGroupImageUrl, currentDisplayName, currentMembersCanShare]);
 
   // Badge: fetch join requests AND current members independently, then filter.
   // currentMemberKeys is empty when the dialog is closed, so we fetch members
@@ -305,13 +318,13 @@ export const ManageMembersDialog = ({
       document.removeEventListener("visibilitychange", handleVisibility);
   }, [isGroupOwner]);
 
-  // Fetch invite code and join requests when dialog opens (owner only)
+  // Fetch invite code when dialog opens (owner always, members when sharing enabled)
   useEffect(() => {
-    if (!open || !isGroupOwner || !appUser) return;
+    if (!open || !appUser) return;
+    if (!isGroupOwner && !currentMembersCanShare) return;
     let cancelled = false;
 
-    // Fetch existing invite code
-    fetchInviteCode(appUser.PublicKeyBase58Check, groupName)
+    fetchInviteCode(groupOwnerKey, groupName)
       .then((result) => {
         if (cancelled) return;
         if (result) {
@@ -320,6 +333,23 @@ export const ManageMembersDialog = ({
         }
       })
       .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    open,
+    appUser,
+    isGroupOwner,
+    currentMembersCanShare,
+    groupOwnerKey,
+    groupName,
+  ]);
+
+  // Fetch community listing and join requests when dialog opens (owner only)
+  useEffect(() => {
+    if (!open || !isGroupOwner || !appUser) return;
+    let cancelled = false;
 
     // Fetch community listing status
     fetchCommunityListing(appUser.PublicKeyBase58Check, groupName)
@@ -825,6 +855,72 @@ export const ManageMembersDialog = ({
     }
   };
 
+  // ── Members Can Share Toggle ──
+
+  const handleMembersCanShareToggle = async () => {
+    if (!appUser || !isGroupOwner || membersCanShareToggling) return;
+
+    const group = allAccessGroups.find(
+      (g) =>
+        g.AccessGroupOwnerPublicKeyBase58Check === groupOwnerKey &&
+        g.AccessGroupKeyName === groupName
+    );
+    if (!group) {
+      toast.error("Could not find access group info");
+      return;
+    }
+
+    const newValue = !membersCanShare;
+    setMembersCanShareToggling(true);
+
+    // Optimistic update
+    setMembersCanShare(newValue);
+    const updatedGroups = allAccessGroups.map((g) => {
+      if (
+        g.AccessGroupOwnerPublicKeyBase58Check === groupOwnerKey &&
+        g.AccessGroupKeyName === groupName
+      ) {
+        const ed = { ...(g.ExtraData || {}) };
+        if (newValue) {
+          ed[GROUP_MEMBERS_CAN_SHARE] = "true";
+        } else {
+          delete ed[GROUP_MEMBERS_CAN_SHARE];
+        }
+        return { ...g, ExtraData: ed };
+      }
+      return g;
+    });
+    useStore.setState({ allAccessGroups: updatedGroups });
+
+    try {
+      const mergedExtraData = { ...(group.ExtraData || {}) };
+      if (newValue) {
+        mergedExtraData[GROUP_MEMBERS_CAN_SHARE] = "true";
+      } else {
+        delete mergedExtraData[GROUP_MEMBERS_CAN_SHARE];
+      }
+
+      await withAuth(() =>
+        updateAccessGroup({
+          AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+          AccessGroupKeyName: groupName,
+          AccessGroupPublicKeyBase58Check:
+            group.AccessGroupPublicKeyBase58Check,
+          MinFeeRateNanosPerKB: 1000,
+          ExtraData: mergedExtraData,
+        })
+      );
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update setting");
+      // Rollback
+      setMembersCanShare(!newValue);
+      useStore.setState({ allAccessGroups });
+    } finally {
+      setMembersCanShareToggling(false);
+    }
+  };
+
   // ── Join Request Handlers ──
 
   const handleApproveRequests = (keysToApprove: string[]) => {
@@ -1141,7 +1237,7 @@ export const ManageMembersDialog = ({
                 </div>
               </div>
 
-              {/* Invite Link Section (owner only) */}
+              {/* Invite Link Section — owner always, members when sharing enabled */}
               {isGroupOwner && (
                 <div className="px-3 py-2 sm:px-4 sm:py-2.5 border-b border-white/8 flex-shrink-0">
                   {inviteCode ? (
@@ -1203,9 +1299,85 @@ export const ManageMembersDialog = ({
                 </div>
               )}
 
-              {/* Community Listing Toggle (owner only, when invite link exists) */}
-              {isGroupOwner && inviteCode && (
+              {/* Member invite link (read-only, when owner enabled sharing) */}
+              {!isGroupOwner && currentMembersCanShare && inviteCode && (
                 <div className="px-3 py-2 sm:px-4 sm:py-2.5 border-b border-white/8 flex-shrink-0">
+                  <div className="flex items-center gap-1.5">
+                    <div className="glass-pill rounded-lg px-3 py-1.5 text-xs text-white/70 truncate font-mono min-w-0 flex-1">
+                      {buildInviteUrl(inviteCode)}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCopyInviteLink}
+                      className="p-1.5 flex items-center justify-center rounded-lg glass-btn-secondary text-gray-300 cursor-pointer shrink-0"
+                      title="Copy link"
+                    >
+                      {inviteCopied ? (
+                        <Check className="w-4 h-4 text-green-400" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </button>
+                    {typeof navigator.share === "function" && (
+                      <button
+                        type="button"
+                        onClick={handleShareInviteLink}
+                        className="p-1.5 flex items-center justify-center rounded-lg glass-btn-secondary text-gray-300 cursor-pointer shrink-0"
+                        title="Share link"
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Owner toggles (when invite link exists) */}
+              {isGroupOwner && inviteCode && (
+                <div className="px-3 py-2 sm:px-4 sm:py-2.5 border-b border-white/8 flex-shrink-0 space-y-2.5">
+                  {/* Members Can Share Toggle */}
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0">
+                      <span className="text-sm text-white/80 font-medium flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                        Members can share link
+                      </span>
+                      <p className="text-[11px] text-white/25">
+                        Let members copy and share the invite link
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleMembersCanShareToggle}
+                      disabled={membersCanShareToggling}
+                      className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-[#34F080]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050e1d] ${
+                        membersCanShare ? "bg-[#34F080]" : "bg-white/10"
+                      }`}
+                      aria-label={
+                        membersCanShare
+                          ? "Disable members sharing invite link"
+                          : "Allow members to share invite link"
+                      }
+                    >
+                      {membersCanShareToggling ? (
+                        <Loader2
+                          className={`w-3.5 h-3.5 animate-spin absolute top-[5px] text-white ${
+                            membersCanShare ? "right-[5px]" : "left-[5px]"
+                          }`}
+                        />
+                      ) : (
+                        <div
+                          className={`w-[18px] h-[18px] rounded-full bg-white absolute top-[3px] transition-transform ${
+                            membersCanShare
+                              ? "translate-x-[21px]"
+                              : "translate-x-[3px]"
+                          }`}
+                        />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Community Listing Toggle */}
                   <div className="flex items-center justify-between">
                     <div className="min-w-0">
                       <span className="text-sm text-white/80 font-medium flex items-center gap-1.5">
@@ -1249,7 +1421,7 @@ export const ManageMembersDialog = ({
 
                   {/* Description field with guideline (shown when listed) */}
                   {isCommunityListed && (
-                    <div className="mt-1.5 space-y-1">
+                    <div className="space-y-1">
                       <textarea
                         value={communityDescription}
                         onChange={(e) =>

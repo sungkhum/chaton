@@ -102,6 +102,7 @@ export const GROUP_IMAGE_URL = "group:imageUrl";
 export const GROUP_DISPLAY_NAME = "group:displayName";
 export const GROUP_PINNED_MESSAGE = "group:pinnedMessage";
 export const GROUP_PINNED_PREVIEW = "group:pinnedPreview";
+export const GROUP_MEMBERS_CAN_SHARE = "group:membersCanShare";
 
 export type TipCurrency = "DESO" | "USDC";
 
@@ -391,6 +392,22 @@ export function getGroupPinnedMessage(
     timestamp: ts,
     preview: group?.ExtraData?.[GROUP_PINNED_PREVIEW] || undefined,
   };
+}
+
+/**
+ * Check whether group members are allowed to share the invite link.
+ */
+export function getGroupMembersCanShare(
+  allAccessGroups: AccessGroupEntryResponse[],
+  ownerPublicKey: string,
+  groupKeyName: string
+): boolean {
+  const group = allAccessGroups.find(
+    (g) =>
+      g.AccessGroupOwnerPublicKeyBase58Check === ownerPublicKey &&
+      g.AccessGroupKeyName === groupKeyName
+  );
+  return group?.ExtraData?.[GROUP_MEMBERS_CAN_SHARE] === "true";
 }
 
 export function buildExtraData(

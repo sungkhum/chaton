@@ -134,6 +134,8 @@ Stored via `createAccessGroup` / `updateAccessGroup`. Any DeSo messaging app can
 - `group:displayName` — human-readable display name for the group (owner can rename;
   `AccessGroupKeyName` remains the immutable on-chain identifier)
 - `group:imageUrl` — URL of the group's profile image (uploaded via DeSo image upload)
+- `group:membersCanShare` — `"true"` when the owner allows group members to see and
+  share the invite link. Absent or any other value = disabled (owner-only sharing).
 
 ## Tech stack
 
