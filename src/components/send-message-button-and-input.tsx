@@ -839,60 +839,72 @@ export const SendMessageButtonAndInput = forwardRef<
             </ViewTransition>
           )}
 
-          {/* Inline attachments — inside the compose box */}
-          {showLinkPanel && (
-            <ViewTransition enter="fade-in" exit="fade-out" default="none">
-              <LinkAttachmentPanel
-                ref={linkPanelRef}
-                onSend={handleLinkSend}
-                onCancel={() => startTransition(() => setShowLinkPanel(false))}
-                isSending={isSending}
-              />
-            </ViewTransition>
-          )}
-          {pendingGif &&
-            (() => {
-              const preview = getDisplayUrl(pendingGif, "md");
-              return (
-                <div className="w-full pb-2 mb-1 border-b border-white/[0.06]">
-                  <div className="relative inline-block">
-                    {preview && (
-                      <img
-                        src={preview.url}
-                        alt={pendingGif.title}
-                        className="max-h-[160px] w-auto rounded-lg object-contain"
-                      />
-                    )}
-                    <button
-                      onClick={cancelGif}
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-black/70 border border-white/20 text-gray-300 hover:text-white hover:bg-black/90 cursor-pointer transition-colors"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-gray-500 mt-1">
-                    {pendingGif.title || "GIF"}
-                  </p>
-                </div>
-              );
-            })()}
-          {pendingImage && (
-            <ViewTransition enter="fade-in" exit="fade-out" default="none">
-              <ImagePreviewPanel
-                file={pendingImage.file}
-                previewUrl={pendingImage.previewUrl}
-                onCancel={cancelImage}
-              />
-            </ViewTransition>
-          )}
-          {pendingVideo && (
-            <ViewTransition enter="fade-in" exit="fade-out" default="none">
-              <VideoPreviewPanel
-                file={pendingVideo.file}
-                previewUrl={pendingVideo.previewUrl}
-                onCancel={cancelVideo}
-              />
-            </ViewTransition>
+          {/* Inline attachments — scrollable area so toolbar + send stay visible
+               when keyboard is open with a pinned message bar */}
+          {(showLinkPanel || pendingGif || pendingImage || pendingVideo) && (
+            <div
+              className="overflow-y-auto overscroll-contain"
+              style={{
+                maxHeight: "clamp(100px, 25dvh, 200px)",
+              }}
+            >
+              {showLinkPanel && (
+                <ViewTransition enter="fade-in" exit="fade-out" default="none">
+                  <LinkAttachmentPanel
+                    ref={linkPanelRef}
+                    onSend={handleLinkSend}
+                    onCancel={() =>
+                      startTransition(() => setShowLinkPanel(false))
+                    }
+                    isSending={isSending}
+                  />
+                </ViewTransition>
+              )}
+              {pendingGif &&
+                (() => {
+                  const preview = getDisplayUrl(pendingGif, "md");
+                  return (
+                    <div className="w-full pb-2 mb-1 border-b border-white/[0.06]">
+                      <div className="relative inline-block">
+                        {preview && (
+                          <img
+                            src={preview.url}
+                            alt={pendingGif.title}
+                            className="max-h-[160px] w-auto rounded-lg object-contain"
+                          />
+                        )}
+                        <button
+                          onClick={cancelGif}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-black/70 border border-white/20 text-gray-300 hover:text-white hover:bg-black/90 cursor-pointer transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-gray-500 mt-1">
+                        {pendingGif.title || "GIF"}
+                      </p>
+                    </div>
+                  );
+                })()}
+              {pendingImage && (
+                <ViewTransition enter="fade-in" exit="fade-out" default="none">
+                  <ImagePreviewPanel
+                    file={pendingImage.file}
+                    previewUrl={pendingImage.previewUrl}
+                    onCancel={cancelImage}
+                  />
+                </ViewTransition>
+              )}
+              {pendingVideo && (
+                <ViewTransition enter="fade-in" exit="fade-out" default="none">
+                  <VideoPreviewPanel
+                    file={pendingVideo.file}
+                    previewUrl={pendingVideo.previewUrl}
+                    onCancel={cancelVideo}
+                  />
+                </ViewTransition>
+              )}
+            </div>
           )}
 
           {isRecordingAudio ? (

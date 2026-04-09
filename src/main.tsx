@@ -48,9 +48,22 @@ const updateViewport = () => {
   });
 };
 
+/*
+ * On iOS, keyboard show/hide animates the visual viewport. The resize/scroll
+ * events fire during the animation, but the rAF-debounced handler may capture
+ * an intermediate state. A single debounced 300ms retry after the last event
+ * ensures we read the final settled values (height + offsetTop).
+ */
+let _vpRetryTimer = 0;
+const updateViewportAndRetry = () => {
+  updateViewport();
+  clearTimeout(_vpRetryTimer);
+  _vpRetryTimer = window.setTimeout(updateViewport, 300);
+};
+
 if (window.visualViewport) {
-  window.visualViewport.addEventListener("resize", updateViewport);
-  window.visualViewport.addEventListener("scroll", updateViewport);
+  window.visualViewport.addEventListener("resize", updateViewportAndRetry);
+  window.visualViewport.addEventListener("scroll", updateViewportAndRetry);
 } else {
   window.addEventListener("resize", updateViewport);
 }
