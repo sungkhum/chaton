@@ -72,7 +72,7 @@ const PreviewText = memo(function PreviewText({
   }
   if (
     (!msg.DecryptedMessage && (msg as any).error) ||
-    (msg.DecryptedMessage.length >= 64 &&
+    (msg.DecryptedMessage.length >= 20 &&
       /^[0-9a-f]+$/i.test(msg.DecryptedMessage))
   ) {
     return <span className="text-gray-600 italic">Unable to load</span>;

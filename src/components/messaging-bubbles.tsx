@@ -139,7 +139,7 @@ function convertTstampToDateTime(tstampNanos: number) {
 
 /** Detect raw encrypted hex that slipped through decryption without throwing */
 function looksLikeEncryptedHex(text: string): boolean {
-  return text.length >= 64 && /^[0-9a-f]+$/i.test(text);
+  return text.length >= 20 && /^[0-9a-f]+$/i.test(text);
 }
 
 function MessageContent({
