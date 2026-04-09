@@ -17,7 +17,7 @@ export const ImagePreviewPanel = ({
         <img
           src={previewUrl}
           alt={file.name}
-          className="max-h-[160px] w-auto rounded-lg object-contain"
+          className="max-h-[140px] w-auto rounded-lg object-contain"
         />
         <button
           onClick={onCancel}
@@ -26,7 +26,9 @@ export const ImagePreviewPanel = ({
           <X className="w-3 h-3" />
         </button>
       </div>
-      <p className="text-[11px] text-gray-500 mt-1 truncate max-w-[200px]">{file.name}</p>
+      <p className="text-[11px] text-gray-500 mt-1 truncate max-w-[200px]">
+        {file.name}
+      </p>
     </div>
   );
 };

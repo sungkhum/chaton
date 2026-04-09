@@ -850,7 +850,9 @@ export const SendMessageButtonAndInput = forwardRef<
             <div
               className="overflow-y-auto overscroll-contain"
               style={{
-                maxHeight: "clamp(100px, 25dvh, 200px)",
+                maxHeight: replyTo
+                  ? "clamp(80px, 18dvh, 150px)"
+                  : "clamp(100px, 25dvh, 200px)",
               }}
             >
               {showLinkPanel && (
@@ -875,7 +877,7 @@ export const SendMessageButtonAndInput = forwardRef<
                           <img
                             src={preview.url}
                             alt={pendingGif.title}
-                            className="max-h-[160px] w-auto rounded-lg object-contain"
+                            className="max-h-[140px] w-auto rounded-lg object-contain"
                           />
                         )}
                         <button
