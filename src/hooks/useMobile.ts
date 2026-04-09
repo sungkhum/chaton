@@ -17,5 +17,6 @@ export function useMobile() {
 
   return {
     isMobile: width <= MOBILE_WIDTH_BREAKPOINT,
+    isTouchDevice: navigator.maxTouchPoints > 0,
   };
 }

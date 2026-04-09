@@ -169,6 +169,11 @@ body,
   .mobile-no-select img {
     pointer-events: none !important;
   }
+  .mobile-no-select::selection,
+  .mobile-no-select *::selection {
+    background: transparent !important;
+    color: inherit !important;
+  }
 }
 
 /* Hide scrollbar for horizontal chip rows */
