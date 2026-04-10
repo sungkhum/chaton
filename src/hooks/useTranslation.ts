@@ -79,10 +79,11 @@ export function useTranslation(
         }
 
         // Also translate the reply preview if present
+        // Use "auto" for source lang — the quoted message may be in a different language
         if (parsed.replyPreview && parsed.replyPreview.length >= 5) {
           const replyResult = await translateText(
             parsed.replyPreview,
-            sourceLang,
+            "auto",
             preferredLang
           );
           if (replyResult) {
@@ -202,21 +203,22 @@ export function useTranslation(
             }
 
             // Also translate reply preview if present
+            // Use "auto" — the quoted message may be in a different language
             if (replyPreview) {
-              return translateText(
-                replyPreview,
-                sourceLang,
-                preferredLang
-              ).then((replyResult: TranslationResult | null) => {
-                if (replyResult) {
-                  setTranslations((prev) =>
-                    new Map(prev).set(`reply:${key}`, {
-                      text: replyResult.translatedText,
-                      sourceLang: replyResult.detectedLang,
-                    })
-                  );
-                }
-              });
+              return translateText(replyPreview, "auto", preferredLang)
+                .then((replyResult: TranslationResult | null) => {
+                  if (replyResult) {
+                    setTranslations((prev) =>
+                      new Map(prev).set(`reply:${key}`, {
+                        text: replyResult.translatedText,
+                        sourceLang: replyResult.detectedLang,
+                      })
+                    );
+                  }
+                })
+                .catch(() => {
+                  // Reply preview translation failed — not critical, ignore
+                });
             }
           })
           .finally(() => {
