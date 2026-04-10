@@ -55,18 +55,22 @@ export async function handleFeedbackSubmit(
     const userAgent = sanitize((body.userAgent as string) || "", 500);
     const platform = sanitize((body.platform as string) || "web", 20);
     const route = sanitize((body.route as string) || "/", 200);
+    const reporterUsername = body.reporterUsername
+      ? sanitize(body.reporterUsername as string, 100)
+      : null;
 
     const result = await env.DB.prepare(
       `
       INSERT INTO feedback (
         category, description, submitter_public_key, signature, nonce,
-        app_version, user_agent, platform, route
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        app_version, user_agent, platform, route, reporter_username
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (submitter_public_key, category)
       DO UPDATE SET
         description = excluded.description,
         signature = excluded.signature,
         nonce = excluded.nonce,
+        reporter_username = excluded.reporter_username,
         updated_at = datetime('now')
     `
     )
@@ -79,7 +83,8 @@ export async function handleFeedbackSubmit(
         appVersion,
         userAgent,
         platform,
-        route
+        route,
+        reporterUsername
       )
       .run();
 

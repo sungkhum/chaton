@@ -23,7 +23,8 @@ export async function submitBugReport(
   errorCtx: ErrorContext,
   input: BugReportInput
 ): Promise<void> {
-  const publicKey = useStore.getState().appUser?.PublicKeyBase58Check;
+  const appUser = useStore.getState().appUser;
+  const publicKey = appUser?.PublicKeyBase58Check;
   if (!publicKey) throw new Error("Not logged in");
   if (!RELAY_URL) throw new Error("Relay not configured");
 
@@ -48,6 +49,7 @@ export async function submitBugReport(
       frequency: input.frequency,
       additionalContext: input.extra || null,
       submitterPublicKey: publicKey,
+      reporterUsername: appUser.ProfileEntryResponse?.Username || null,
       signature: jwt,
       nonce,
     }),
@@ -63,7 +65,8 @@ export async function submitBugReport(
 export async function submitManualBugReport(
   input: ManualBugReportInput
 ): Promise<void> {
-  const publicKey = useStore.getState().appUser?.PublicKeyBase58Check;
+  const appUser = useStore.getState().appUser;
+  const publicKey = appUser?.PublicKeyBase58Check;
   if (!publicKey) throw new Error("Not logged in");
   if (!RELAY_URL) throw new Error("Relay not configured");
 
@@ -88,6 +91,7 @@ export async function submitManualBugReport(
       additionalContext: input.whatWentWrong,
       screenshotUrl: input.screenshotUrl || null,
       submitterPublicKey: publicKey,
+      reporterUsername: appUser.ProfileEntryResponse?.Username || null,
       signature: jwt,
       nonce,
     }),

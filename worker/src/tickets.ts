@@ -74,6 +74,9 @@ export async function handleTicketSubmit(
     const screenshotUrl = body.screenshotUrl
       ? sanitize(body.screenshotUrl as string, 2000)
       : null;
+    const reporterUsername = body.reporterUsername
+      ? sanitize(body.reporterUsername as string, 100)
+      : null;
 
     if (!userDescription) return json({ error: "Description required" }, 400);
 
@@ -95,15 +98,17 @@ export async function handleTicketSubmit(
       INSERT INTO tickets (
         error_code, error_message, stack_trace, component, route,
         app_version, user_agent, platform, user_description, frequency,
-        additional_context, screenshot_url, submitter_public_key, signature, nonce
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        additional_context, screenshot_url, submitter_public_key, signature, nonce,
+        reporter_username
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
       : `
       INSERT INTO tickets (
         error_code, error_message, stack_trace, component, route,
         app_version, user_agent, platform, user_description, frequency,
-        additional_context, screenshot_url, submitter_public_key, signature, nonce
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        additional_context, screenshot_url, submitter_public_key, signature, nonce,
+        reporter_username
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (submitter_public_key, error_code, component)
       DO UPDATE SET
         user_description = excluded.user_description,
@@ -114,6 +119,7 @@ export async function handleTicketSubmit(
         stack_trace = excluded.stack_trace,
         signature = excluded.signature,
         nonce = excluded.nonce,
+        reporter_username = excluded.reporter_username,
         updated_at = datetime('now')
     `;
 
@@ -133,7 +139,8 @@ export async function handleTicketSubmit(
         screenshotUrl,
         publicKey,
         jwt,
-        body.nonce as string
+        body.nonce as string,
+        reporterUsername
       )
       .run();
 

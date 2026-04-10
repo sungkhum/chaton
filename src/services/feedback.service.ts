@@ -10,7 +10,8 @@ interface FeedbackInput {
 }
 
 export async function submitFeedback(input: FeedbackInput): Promise<void> {
-  const publicKey = useStore.getState().appUser?.PublicKeyBase58Check;
+  const appUser = useStore.getState().appUser;
+  const publicKey = appUser?.PublicKeyBase58Check;
   if (!publicKey) throw new Error("Not logged in");
   if (!RELAY_URL) throw new Error("Relay not configured");
 
@@ -24,6 +25,7 @@ export async function submitFeedback(input: FeedbackInput): Promise<void> {
       category: input.category,
       description: input.description,
       submitterPublicKey: publicKey,
+      reporterUsername: appUser.ProfileEntryResponse?.Username || null,
       signature: jwt,
       nonce,
       appVersion: getAppVersion(),
