@@ -141,7 +141,7 @@ src/components/user-account-list.tsx
 
 ## Services
 src/services/cache.service.ts  fn checkCacheVersion, fn cacheUserProfile, fn getCachedUserProfile, fn cacheClassificationData, fn getCachedClassificationData, fn cachePrivacyMode, ... (39 exports)
-src/services/community.service.ts  fn fetchCommunityListings, listGroupInCommunity, unlistGroupFromCommunity, fetchCommunityListing, updateCommunityListing, enrichCommunityListings
+src/services/community.service.ts  fn fetchGroupMemberCount, fn fetchGroupMemberCountQuick, fn fetchCommunityListings, fn listGroupInCommunity, fn unlistGroupFromCommunity, fn fetchCommunityListing, ... (8 exports)
 src/services/conversations.service.tsx  fn fetchMessageThreadsRaw, fn buildShellConversations, fn decryptConversationPreviews, fn cacheDecryptionResult, fn invalidateMessageCache, fn fetchFollowedUsers, ... (36 exports)
 src/services/deso-activity.service.ts  fn fetchDesoActivity
 src/services/feedback.service.ts  fn submitFeedback
