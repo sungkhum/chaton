@@ -1,10 +1,10 @@
 import {
   getBulkAccessGroups,
-  getPaginatedAccessGroupMembers,
   getUsersStateless,
   identity,
   ProfileEntryResponse,
 } from "deso-protocol";
+import { fetchGroupMemberCount } from "../services/community.service";
 import { usePageMeta } from "../hooks/usePageMeta";
 import {
   Loader2,
@@ -45,7 +45,6 @@ interface GroupInfo {
   groupImageUrl?: string;
   ownerProfile: ProfileEntryResponse | null;
   memberCount: number;
-  memberCountCapped: boolean;
 }
 
 export const JoinGroupPage = () => {
@@ -108,7 +107,7 @@ export const JoinGroupPage = () => {
         const { ownerKey, groupKeyName } = resolved;
 
         // 2. Validate group exists + fetch image, owner profile, and member count in parallel
-        const [groupRes, profileRes, membersRes] = await Promise.all([
+        const [groupRes, profileRes, memberCount] = await Promise.all([
           getBulkAccessGroups({
             GroupOwnerAndGroupKeyNamePairs: [
               {
@@ -120,11 +119,7 @@ export const JoinGroupPage = () => {
           getUsersStateless({
             PublicKeysBase58Check: [ownerKey],
           }),
-          getPaginatedAccessGroupMembers({
-            AccessGroupOwnerPublicKeyBase58Check: ownerKey,
-            AccessGroupKeyName: groupKeyName,
-            MaxMembersToFetch: 50,
-          }).catch(() => null),
+          fetchGroupMemberCount(ownerKey, groupKeyName).catch(() => 1),
         ]);
         if (cancelled) return;
 
@@ -136,11 +131,6 @@ export const JoinGroupPage = () => {
 
         const ownerProfile =
           profileRes.UserList?.[0]?.ProfileEntryResponse ?? null;
-        // Add 1 for the owner only if the API didn't already include them.
-        const membersList = membersRes?.AccessGroupMembersBase58Check ?? [];
-        const rawMemberCount = membersList.length;
-        const ownerIncluded = membersList.includes(ownerKey);
-        const memberCount = rawMemberCount + (ownerIncluded ? 0 : 1);
         const groupEntry = groupRes.AccessGroupEntries?.[0];
         const groupImageUrl =
           groupEntry?.ExtraData?.[GROUP_IMAGE_URL] || undefined;
@@ -165,7 +155,6 @@ export const JoinGroupPage = () => {
           groupImageUrl,
           ownerProfile,
           memberCount,
-          memberCountCapped: rawMemberCount >= 50,
         };
         setGroupInfo(info);
 
@@ -398,10 +387,7 @@ export const JoinGroupPage = () => {
                     Created by{" "}
                     <span className="text-[#34F080]">@{ownerUsername}</span>
                     {" \u00b7 "}
-                    {groupInfo.memberCountCapped
-                      ? "50+"
-                      : groupInfo.memberCount}{" "}
-                    members
+                    {groupInfo.memberCount} members
                   </p>
                 </div>
 

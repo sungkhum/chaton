@@ -28,7 +28,49 @@ export interface EnrichedCommunityListing extends CommunityListing {
   groupImageUrl?: string;
   inviteCode: string | null;
   memberCount: number;
-  memberCountCapped: boolean;
+}
+
+const MEMBER_PAGE_SIZE = 50;
+
+/**
+ * Fetch the total member count for a group by paginating through all pages.
+ * Only counts keys — does not fetch profiles. Adds 1 for the owner if not
+ * already included in the member list.
+ */
+export async function fetchGroupMemberCount(
+  ownerKey: string,
+  groupKeyName: string
+): Promise<number> {
+  let total = 0;
+  let cursor = "";
+
+  for (;;) {
+    const res = await getPaginatedAccessGroupMembers({
+      AccessGroupOwnerPublicKeyBase58Check: ownerKey,
+      AccessGroupKeyName: groupKeyName,
+      MaxMembersToFetch: MEMBER_PAGE_SIZE,
+      ...(cursor
+        ? { StartingAccessGroupMemberPublicKeyBase58Check: cursor }
+        : {}),
+    });
+
+    const pageKeys = res.AccessGroupMembersBase58Check ?? [];
+    total += pageKeys.length;
+
+    // On the first page, check if owner is included so we can add 1 if not
+    if (!cursor && pageKeys.length > 0 && !pageKeys.includes(ownerKey)) {
+      total += 1;
+    }
+    // If this is the only page and it's empty, count at least the owner
+    if (!cursor && pageKeys.length === 0) {
+      return 1;
+    }
+
+    if (pageKeys.length < MEMBER_PAGE_SIZE) break;
+    cursor = pageKeys[pageKeys.length - 1]!;
+  }
+
+  return total;
 }
 
 /**
@@ -264,46 +306,29 @@ export async function enrichCommunityListings(
     // Non-fatal: groups without matched codes will be filtered out
   }
 
-  // 3. Fetch member counts in parallel (capped at 50 per group)
+  // 3. Fetch real member counts in parallel (paginated to get exact totals)
   const memberCountResults = await Promise.allSettled(
-    deduped.map((l) =>
-      getPaginatedAccessGroupMembers({
-        AccessGroupOwnerPublicKeyBase58Check: l.ownerKey,
-        AccessGroupKeyName: l.groupKeyName,
-        MaxMembersToFetch: 50,
-      })
-    )
+    deduped.map((l) => fetchGroupMemberCount(l.ownerKey, l.groupKeyName))
   );
-  const memberCountMap = new Map<string, { count: number; capped: boolean }>();
+  const memberCountMap = new Map<string, number>();
   deduped.forEach((l, i) => {
     const result = memberCountResults[i]!;
-    if (result.status === "fulfilled" && result.value) {
-      const members = result.value.AccessGroupMembersBase58Check ?? [];
-      const ownerIncluded = members.includes(l.ownerKey);
-      memberCountMap.set(uniqueKey(l), {
-        count: members.length + (ownerIncluded ? 0 : 1),
-        capped: members.length >= 50,
-      });
-    } else {
-      memberCountMap.set(uniqueKey(l), { count: 1, capped: false });
-    }
+    memberCountMap.set(
+      uniqueKey(l),
+      result.status === "fulfilled" ? result.value : 1
+    );
   });
 
   // 4. Assemble enriched listings, filter out those without invite codes
   return deduped
     .map((l) => {
       const key = uniqueKey(l);
-      const memberInfo = memberCountMap.get(key) ?? {
-        count: 1,
-        capped: false,
-      };
       return {
         ...l,
         groupDisplayName: groupDisplayNameMap.get(key),
         groupImageUrl: groupImageMap.get(key),
         inviteCode: inviteCodeMap.get(key) ?? null,
-        memberCount: memberInfo.count,
-        memberCountCapped: memberInfo.capped,
+        memberCount: memberCountMap.get(key) ?? 1,
       };
     })
     .filter(

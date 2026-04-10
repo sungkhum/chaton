@@ -298,9 +298,7 @@ export const CommunityTab: FC<{
                       <p className="text-xs text-gray-500 mt-0.5">
                         {ownerUsername ? `@${ownerUsername}` : ""}
                         {ownerUsername && " · "}
-                        {listing.memberCountCapped
-                          ? "50+"
-                          : listing.memberCount}{" "}
+                        {listing.memberCount}{" "}
                         {listing.memberCount === 1 ? "member" : "members"}
                       </p>
                     </div>

@@ -8,10 +8,10 @@ import {
 import { useEffect, useState } from "react";
 import {
   getBulkAccessGroups,
-  getPaginatedAccessGroupMembers,
   getUsersStateless,
   ProfileEntryResponse,
 } from "deso-protocol";
+import { fetchGroupMemberCount } from "../../services/community.service";
 import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../../store";
 import { resolveInviteCode } from "../../utils/invite-link";
@@ -26,7 +26,6 @@ interface GroupInfo {
   groupImageUrl?: string;
   ownerProfile: ProfileEntryResponse | null;
   memberCount: number;
-  memberCountCapped: boolean;
 }
 
 export function JoinLinkPreview({ code }: { code: string }) {
@@ -64,7 +63,7 @@ export function JoinLinkPreview({ code }: { code: string }) {
 
         const { ownerKey, groupKeyName } = resolved;
 
-        const [groupRes, profileRes, membersRes] = await Promise.all([
+        const [groupRes, profileRes, memberCount] = await Promise.all([
           getBulkAccessGroups({
             GroupOwnerAndGroupKeyNamePairs: [
               {
@@ -76,11 +75,7 @@ export function JoinLinkPreview({ code }: { code: string }) {
           getUsersStateless({ PublicKeysBase58Check: [ownerKey] }).catch(
             () => null
           ),
-          getPaginatedAccessGroupMembers({
-            AccessGroupOwnerPublicKeyBase58Check: ownerKey,
-            AccessGroupKeyName: groupKeyName,
-            MaxMembersToFetch: 50,
-          }).catch(() => null),
+          fetchGroupMemberCount(ownerKey, groupKeyName).catch(() => 1),
         ]);
         if (cancelled) return;
 
@@ -92,10 +87,6 @@ export function JoinLinkPreview({ code }: { code: string }) {
 
         const ownerProfile =
           profileRes?.UserList?.[0]?.ProfileEntryResponse ?? null;
-        const membersList = membersRes?.AccessGroupMembersBase58Check ?? [];
-        const rawMemberCount = membersList.length;
-        const ownerIncluded = membersList.includes(ownerKey);
-        const memberCount = rawMemberCount + (ownerIncluded ? 0 : 1);
         const groupImageUrl =
           groupEntry.ExtraData?.[GROUP_IMAGE_URL] || undefined;
         const groupDisplayName =
@@ -108,7 +99,6 @@ export function JoinLinkPreview({ code }: { code: string }) {
           groupImageUrl,
           ownerProfile,
           memberCount,
-          memberCountCapped: rawMemberCount >= 50,
         });
         setState("resolved");
       } catch {
@@ -195,8 +185,7 @@ export function JoinLinkPreview({ code }: { code: string }) {
             <div className="text-[11px] text-gray-500 leading-snug truncate">
               @{ownerUsername}
               {" \u00b7 "}
-              {groupInfo.memberCountCapped ? "50+" : groupInfo.memberCount}{" "}
-              members
+              {groupInfo.memberCount} members
             </div>
           </div>
 

@@ -315,9 +315,7 @@ const CommunityPage = () => {
                       <div className="flex items-center gap-1.5 text-xs text-gray-500">
                         <Users className="w-3.5 h-3.5" />
                         <span>
-                          {listing.memberCountCapped
-                            ? "50+"
-                            : listing.memberCount}{" "}
+                          {listing.memberCount}{" "}
                           {listing.memberCount === 1 ? "member" : "members"}
                         </span>
                       </div>
