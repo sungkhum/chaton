@@ -1735,6 +1735,12 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                               <ReplyPreview
                                 replyPreview={parsed.replyPreview}
                                 replySender={parsed.replySender}
+                                translatedReplyPreview={
+                                  !showingOriginalKeys.has(messageKey)
+                                    ? translations.get(`reply:${messageKey}`)
+                                        ?.text
+                                    : undefined
+                                }
                                 onClick={() => scrollToMessage(parsed.replyTo!)}
                               />
                             </div>

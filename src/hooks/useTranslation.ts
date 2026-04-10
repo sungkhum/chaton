@@ -49,11 +49,14 @@ export function useTranslation(
       const text = message.DecryptedMessage;
       if (!text || text.length < 5) return;
 
+      const replyKey = `reply:${key}`;
+
       // Already translated? Toggle off
       if (translationsRef.current.has(key)) {
         setTranslations((prev) => {
           const next = new Map(prev);
           next.delete(key);
+          next.delete(replyKey);
           return next;
         });
         return;
@@ -73,6 +76,23 @@ export function useTranslation(
               sourceLang: result.detectedLang,
             })
           );
+        }
+
+        // Also translate the reply preview if present
+        if (parsed.replyPreview && parsed.replyPreview.length >= 5) {
+          const replyResult = await translateText(
+            parsed.replyPreview,
+            sourceLang,
+            preferredLang
+          );
+          if (replyResult) {
+            setTranslations((prev) =>
+              new Map(prev).set(replyKey, {
+                text: replyResult.translatedText,
+                sourceLang: replyResult.detectedLang,
+              })
+            );
+          }
         }
       } finally {
         setTranslatingKeys((prev) => {
@@ -101,6 +121,7 @@ export function useTranslation(
         key: string;
         text: string;
         sourceLang: string;
+        replyPreview?: string;
       }> = [];
 
       for (const msg of messages) {
@@ -128,20 +149,45 @@ export function useTranslation(
         const cached = getCachedTranslation(text, preferredLang);
         if (cached === "same") continue;
         if (cached) {
-          setTranslations((prev) =>
-            new Map(prev).set(key, {
-              text: cached.translatedText,
-              sourceLang: cached.detectedLang,
-            })
-          );
+          const updates = new Map<string, MessageTranslation>();
+          updates.set(key, {
+            text: cached.translatedText,
+            sourceLang: cached.detectedLang,
+          });
+          // Also translate reply preview from cache if available
+          if (parsed.replyPreview && parsed.replyPreview.length >= 5) {
+            const cachedReply = getCachedTranslation(
+              parsed.replyPreview,
+              preferredLang
+            );
+            if (cachedReply && cachedReply !== "same") {
+              updates.set(`reply:${key}`, {
+                text: cachedReply.translatedText,
+                sourceLang: cachedReply.detectedLang,
+              });
+            }
+          }
+          setTranslations((prev) => {
+            const next = new Map(prev);
+            for (const [k, v] of updates) next.set(k, v);
+            return next;
+          });
           continue;
         }
 
-        toTranslate.push({ key, text, sourceLang });
+        toTranslate.push({
+          key,
+          text,
+          sourceLang,
+          replyPreview:
+            parsed.replyPreview && parsed.replyPreview.length >= 5
+              ? parsed.replyPreview
+              : undefined,
+        });
       }
 
       // Translate queued messages (the service handles throttling)
-      for (const { key, text, sourceLang } of toTranslate) {
+      for (const { key, text, sourceLang, replyPreview } of toTranslate) {
         setTranslatingKeys((prev) => new Set(prev).add(key));
 
         translateText(text, sourceLang, preferredLang)
@@ -153,6 +199,24 @@ export function useTranslation(
                   sourceLang: result.detectedLang,
                 })
               );
+            }
+
+            // Also translate reply preview if present
+            if (replyPreview) {
+              return translateText(
+                replyPreview,
+                sourceLang,
+                preferredLang
+              ).then((replyResult: TranslationResult | null) => {
+                if (replyResult) {
+                  setTranslations((prev) =>
+                    new Map(prev).set(`reply:${key}`, {
+                      text: replyResult.translatedText,
+                      sourceLang: replyResult.detectedLang,
+                    })
+                  );
+                }
+              });
             }
           })
           .finally(() => {

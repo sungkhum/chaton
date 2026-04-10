@@ -8,15 +8,18 @@ function looksLikeEncryptedHex(text: string): boolean {
 interface ReplyPreviewProps {
   replyPreview: string;
   replySender?: string;
+  translatedReplyPreview?: string;
   onClick?: () => void;
 }
 
 export const ReplyPreview = ({
   replyPreview,
   replySender,
+  translatedReplyPreview,
   onClick,
 }: ReplyPreviewProps) => {
   const isEncrypted = looksLikeEncryptedHex(replyPreview);
+  const displayText = translatedReplyPreview || replyPreview;
 
   return (
     <div
@@ -33,8 +36,8 @@ export const ReplyPreview = ({
         </div>
       ) : (
         <div className="line-clamp-2 break-words">
-          {replyPreview}
-          {replyPreview.length >= 100 && !/[.!?…]$/.test(replyPreview) && "…"}
+          {displayText}
+          {displayText.length >= 100 && !/[.!?…]$/.test(displayText) && "…"}
         </div>
       )}
     </div>
