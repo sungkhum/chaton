@@ -179,6 +179,7 @@ src/store/index.ts  fn useStore
 ## Utils
 src/utils/atomic-tip.ts  fn sendAtomicDesoTip, sendAtomicUsdcTip
 src/utils/avatar.ts  AVATAR_COLORS | fn hashToColorIndex, getInitials
+src/utils/batch-members.ts  MEMBER_BATCH_SIZE | fn batchedGetBulkAccessGroups, batchedAddMembers, batchedRemoveMembers
 src/utils/community-cache.ts  fn clearCommunityCache
 src/utils/constants.ts  ASSOCIATION_TYPE_APPROVED, ASSOCIATION_TYPE_BLOCKED, ASSOCIATION_VALUE_APPROVED, ASSOCIATION_VALUE_BLOCKED, ASSOCIATION_TYPE_GROUP_ARCHIVED, ASSOCIATION_TYPE_CHAT_ARCHIVED, ... (33 exports)
 src/utils/detect-language.ts  fn detectLanguageSync, detectLanguage

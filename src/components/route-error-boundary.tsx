@@ -13,10 +13,25 @@ interface State {
   errorInfo: ErrorInfo | null;
 }
 
+const RELOAD_KEY = "chaton:chunk-reload";
+
+/** True if the error looks like a stale/missing chunk after a deployment. */
+function isChunkLoadError(error: Error): boolean {
+  const msg = error.message || "";
+  return (
+    msg.includes("Loading chunk") ||
+    msg.includes("Failed to fetch dynamically imported module") ||
+    msg.includes("Failed to fetch") ||
+    msg.includes("MIME type") ||
+    error.name === "ChunkLoadError"
+  );
+}
+
 /**
  * Error boundary for lazy-loaded route pages.
  * Catches chunk-load failures (e.g. after a deploy with new hashes)
- * and offers a retry instead of showing a white screen.
+ * and auto-reloads once to pick up new assets. Falls back to a retry
+ * screen if the reload doesn't fix it.
  */
 export class RouteErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false, error: null, errorInfo: null };
@@ -28,6 +43,20 @@ export class RouteErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("Route load failed:", error, info);
     this.setState({ errorInfo: info });
+
+    // Auto-reload once for stale chunk errors (e.g. after a deploy).
+    // The sessionStorage flag prevents an infinite reload loop.
+    if (isChunkLoadError(error)) {
+      const lastReload = sessionStorage.getItem(RELOAD_KEY);
+      const now = Date.now();
+      // Allow another auto-reload if the last one was more than 30s ago
+      // (covers the case where a user hits a second stale chunk later).
+      if (!lastReload || now - Number(lastReload) > 30_000) {
+        sessionStorage.setItem(RELOAD_KEY, String(now));
+        window.location.reload();
+        return;
+      }
+    }
   }
 
   handleRetry = () => {
@@ -39,13 +68,10 @@ export class RouteErrorBoundary extends Component<Props, State> {
     const error = this.state.error;
     if (!error) return;
 
-    const isChunkError =
-      error.message?.includes("Loading chunk") ||
-      error.message?.includes("Failed to fetch") ||
-      error.name === "ChunkLoadError";
-
     const ctx = captureError(
-      isChunkError ? ERROR_CODES.CHUNK_LOAD_FAILED : ERROR_CODES.RENDER_ERROR,
+      isChunkLoadError(error)
+        ? ERROR_CODES.CHUNK_LOAD_FAILED
+        : ERROR_CODES.RENDER_ERROR,
       error.message || "Unknown render error",
       {
         stack: error.stack,
