@@ -1683,18 +1683,18 @@ export const ManageMembersDialog = ({
                                 <div className="font-medium truncate">
                                   {member.text}
                                 </div>
-                                {isGroupOwner &&
-                                currentMemberKeys.includes(member.id) ? (
-                                  <div className="text-xs md:text-sm text-white/40 mt-1">
-                                    Already in the chat
-                                  </div>
-                                ) : memberPresence.status === "online" ? (
+                                {memberPresence.status === "online" ? (
                                   <div className="text-xs text-[#34F080] mt-0.5">
                                     Online
                                   </div>
                                 ) : memberPresence.status === "last-seen" ? (
                                   <div className="text-xs text-gray-500 mt-0.5">
                                     {formatLastSeen(memberPresence.timestamp)}
+                                  </div>
+                                ) : isGroupOwner &&
+                                  currentMemberKeys.includes(member.id) ? (
+                                  <div className="text-xs md:text-sm text-white/40 mt-1">
+                                    Already in the chat
                                   </div>
                                 ) : null}
                               </div>

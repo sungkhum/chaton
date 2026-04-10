@@ -206,39 +206,47 @@ export const MessagingDisplayAvatar: FC<{
       target="_blank"
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Always render initials as the base layer — zero layout shift */}
       <div
         style={{
-          height: `${diameter}px`,
-          width: `${diameter}px`,
-          backgroundColor: avatarColor!.bg,
-          fontSize: `${fontSize}px`,
           position: "relative",
+          width: `${diameter}px`,
+          height: `${diameter}px`,
         }}
-        className={`rounded-full overflow-hidden flex items-center justify-center font-semibold select-none ${borderColor}`}
       >
-        <span style={{ color: avatarColor!.text, lineHeight: 1 }}>
-          {initials}
-        </span>
-        {showImage && (
-          <img
-            src={profilePicUrl}
-            style={{
-              height: `${diameter}px`,
-              width: `${diameter}px`,
-              opacity: imgLoaded ? 1 : 0,
-              transition: "opacity 0.2s ease-in",
-              position: "absolute",
-              inset: 0,
-              objectFit: "cover",
-            }}
-            className={`rounded-full ${borderColor}`}
-            alt={username || ""}
-            title={username || undefined}
-            onLoad={handleImgLoad}
-            onError={handleImgError}
-          />
-        )}
+        {/* Always render initials as the base layer — zero layout shift */}
+        <div
+          style={{
+            position: "relative",
+            height: `${diameter}px`,
+            width: `${diameter}px`,
+            backgroundColor: avatarColor!.bg,
+            fontSize: `${fontSize}px`,
+          }}
+          className={`rounded-full overflow-hidden flex items-center justify-center font-semibold select-none ${borderColor}`}
+        >
+          <span style={{ color: avatarColor!.text, lineHeight: 1 }}>
+            {initials}
+          </span>
+          {showImage && (
+            <img
+              src={profilePicUrl}
+              style={{
+                height: `${diameter}px`,
+                width: `${diameter}px`,
+                opacity: imgLoaded ? 1 : 0,
+                transition: "opacity 0.2s ease-in",
+                position: "absolute",
+                inset: 0,
+                objectFit: "cover",
+              }}
+              className={`rounded-full ${borderColor}`}
+              alt={username || ""}
+              title={username || undefined}
+              onLoad={handleImgLoad}
+              onError={handleImgError}
+            />
+          )}
+        </div>
         {showOnlineDot && (
           <span
             style={{
