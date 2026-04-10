@@ -108,7 +108,7 @@ const ChatonVsTelegram = () => (
               <strong>Group size</strong>
             </td>
             <td>Up to 200,000</td>
-            <td>A few hundred</td>
+            <td>Up to ~5,000 (blockchain tx limits)</td>
           </tr>
           <tr>
             <td>
