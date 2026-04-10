@@ -191,7 +191,10 @@ export function JoinLinkPreview({ code }: { code: string }) {
               @{ownerUsername}
               {" \u00b7 "}
               {groupInfo.memberCount}
-              {groupInfo.memberCountCapped ? "+" : ""} members
+              {groupInfo.memberCountCapped ? "+" : ""}{" "}
+              {groupInfo.memberCount === 1 && !groupInfo.memberCountCapped
+                ? "member"
+                : "members"}
             </div>
           </div>
 
