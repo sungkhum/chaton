@@ -18,7 +18,7 @@ import { sendPushNotification, type PushSubscriptionData } from "./web-push";
 import { validateDesoJwt } from "./jwt";
 import { handleCreateInviteCode, handleRevokeInviteCode } from "./invite-codes";
 import { handleTicketSubmit, handleTicketPoll, handleTicketUpdate } from "./tickets";
-import { handleFeedbackSubmit, handleFeedbackPoll, handleFeedbackUpdate } from "./feedback";
+import { handleFeedbackSubmit, handleFeedbackCreate, handleFeedbackPoll, handleFeedbackUpdate } from "./feedback";
 
 export interface Env {
   CHAT_RELAY: DurableObjectNamespace;
@@ -194,6 +194,10 @@ export default {
       if (!isOriginAllowed(origin, allowed)) return forbidden();
       const res = await handleFeedbackSubmit(request, env);
       return withCors(res, origin!);
+    }
+    if (url.pathname === "/feedback/create" && request.method === "POST") {
+      const res = await handleFeedbackCreate(request, env);
+      return res;
     }
     if (url.pathname === "/feedback/poll" && request.method === "GET") {
       const res = await handleFeedbackPoll(request, env);

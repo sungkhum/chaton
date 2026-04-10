@@ -202,7 +202,7 @@ src/utils/with-auth.ts  fn withAuth, needsPermissionUpgrade, requestFullPermissi
 worker/src/chat-relay.ts  ChatRelay
 worker/src/db.ts  fn upsertUser, fn upsertSubscription, fn removeSubscription, fn getOptedInUsers, fn getCronOffset, fn setCronOffset, ... (24 exports)
 worker/src/deso-tx.ts  fn signTransaction, fn constructCreateAssociation, fn constructDeleteAssociation, fn submitTransaction, fn queryAssociations, fn verifyGroupOwnership
-worker/src/feedback.ts  fn handleFeedbackSubmit, fn handleFeedbackPoll, fn handleFeedbackUpdate
+worker/src/feedback.ts  fn handleFeedbackSubmit, fn handleFeedbackCreate, fn handleFeedbackPoll, fn handleFeedbackUpdate
 worker/src/index.ts
 worker/src/invite-codes.ts  fn handleCreateInviteCode, fn handleRevokeInviteCode
 worker/src/jwt.ts  fn validateDesoJwt

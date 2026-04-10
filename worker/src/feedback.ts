@@ -95,6 +95,60 @@ export async function handleFeedbackSubmit(
   }
 }
 
+// ── Create (internal, API key auth — used by agent to reclassify bug tickets as features) ──
+export async function handleFeedbackCreate(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  if (!verifyApiKey(request, env))
+    return json({ error: "Unauthorized" }, 401);
+
+  try {
+    const body = (await request.json()) as Record<string, unknown>;
+
+    const category = (body.category as string) || "feature-request";
+    const description = sanitize((body.description as string) || "", 1000);
+    if (!description) return json({ error: "Description required" }, 400);
+
+    const publicKey = sanitize((body.submitter_public_key as string) || "", 100);
+    const reporterUsername = body.reporter_username
+      ? sanitize(body.reporter_username as string, 100)
+      : null;
+    const appVersion = sanitize((body.app_version as string) || "unknown", 50);
+    const userAgent = sanitize((body.user_agent as string) || "", 500);
+    const platform = sanitize((body.platform as string) || "web", 20);
+    const route = sanitize((body.route as string) || "/", 200);
+    const notes = body.notes ? sanitize(body.notes as string, 2000) : null;
+
+    const result = await env.DB.prepare(
+      `INSERT INTO feedback (
+        category, description, submitter_public_key, signature, nonce,
+        app_version, user_agent, platform, route, reporter_username, notes, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(
+        category,
+        description,
+        publicKey,
+        "agent-reclassified",
+        "agent-" + Date.now(),
+        appVersion,
+        userAgent,
+        platform,
+        route,
+        reporterUsername,
+        notes,
+        "new"
+      )
+      .run();
+
+    return json({ success: true, id: result.meta.last_row_id }, 201);
+  } catch (err) {
+    console.error("Feedback create error:", err);
+    return json({ error: "Internal server error" }, 500);
+  }
+}
+
 // ── Poll (internal, API key auth) ──
 export async function handleFeedbackPoll(
   request: Request,
