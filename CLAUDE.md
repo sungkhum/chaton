@@ -2,11 +2,13 @@
 
 ## Codebase Index
 
-Pre-built index files in `.ai-codex/` — read these FIRST before exploring the codebase:
-- `.ai-codex/components.md` — all components
-- `.ai-codex/lib.md` — utility/library function exports
+Read `.ai/repo-map.md` FIRST before exploring the codebase. It contains:
+- Route → Component → File mapping (find code from user-reported routes)
+- Error code → source file mapping (find code from error codes)
+- Compact symbol index of all exports (components, services, hooks, utils, worker)
 
 Auto-updated on every commit via husky pre-commit hook.
+Run manually: `node scripts/generate-repo-map.mjs`
 
 ## Architecture
 

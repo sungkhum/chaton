@@ -2,4 +2,4 @@
 . "$(dirname -- "$0")/_/husky.sh"
 
 npx lint-staged
-npx ai-codex >/dev/null 2>&1 && git add .ai-codex/ 2>/dev/null || true
+node scripts/generate-repo-map.mjs >/dev/null 2>&1 && git add .ai/ 2>/dev/null || true
