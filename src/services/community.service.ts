@@ -43,8 +43,10 @@ export async function fetchGroupMemberCount(
 ): Promise<number> {
   let total = 0;
   let cursor = "";
+  let ownerSeen = false;
+  const MAX_PAGES = 200; // safety cap: 200 × 50 = 10 000 members
 
-  for (;;) {
+  for (let page = 0; page < MAX_PAGES; page++) {
     const res = await getPaginatedAccessGroupMembers({
       AccessGroupOwnerPublicKeyBase58Check: ownerKey,
       AccessGroupKeyName: groupKeyName,
@@ -57,18 +59,18 @@ export async function fetchGroupMemberCount(
     const pageKeys = res.AccessGroupMembersBase58Check ?? [];
     total += pageKeys.length;
 
-    // On the first page, check if owner is included so we can add 1 if not
-    if (!cursor && pageKeys.length > 0 && !pageKeys.includes(ownerKey)) {
-      total += 1;
-    }
-    // If this is the only page and it's empty, count at least the owner
-    if (!cursor && pageKeys.length === 0) {
-      return 1;
+    if (!ownerSeen && pageKeys.includes(ownerKey)) {
+      ownerSeen = true;
     }
 
     if (pageKeys.length < MEMBER_PAGE_SIZE) break;
     cursor = pageKeys[pageKeys.length - 1]!;
   }
+
+  // If no members were returned at all, count at least the owner
+  if (total === 0) return 1;
+  // Add 1 for the owner if they weren't in any page of the member list
+  if (!ownerSeen) total += 1;
 
   return total;
 }

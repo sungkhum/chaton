@@ -317,7 +317,8 @@ export function JoinGroupModal({
                       Created by{" "}
                       <span className="text-[#34F080]">@{ownerUsername}</span>
                       {" \u00b7 "}
-                      {groupInfo.memberCount} members
+                      {groupInfo.memberCount}{" "}
+                      {groupInfo.memberCount === 1 ? "member" : "members"}
                     </p>
                   </div>
 
