@@ -49,11 +49,14 @@ export function useTranslation(
       const text = message.DecryptedMessage;
       if (!text || text.length < 5) return;
 
+      const replyKey = `reply:${key}`;
+
       // Already translated? Toggle off
       if (translationsRef.current.has(key)) {
         setTranslations((prev) => {
           const next = new Map(prev);
           next.delete(key);
+          next.delete(replyKey);
           return next;
         });
         return;
@@ -73,6 +76,28 @@ export function useTranslation(
               sourceLang: result.detectedLang,
             })
           );
+        }
+
+        // Also translate the reply preview if present
+        // Use "auto" for source lang — the quoted message may be in a different language
+        if (parsed.replyPreview && parsed.replyPreview.length >= 5) {
+          try {
+            const replyResult = await translateText(
+              parsed.replyPreview,
+              "auto",
+              preferredLang
+            );
+            if (replyResult && translationsRef.current.has(key)) {
+              setTranslations((prev) =>
+                new Map(prev).set(replyKey, {
+                  text: replyResult.translatedText,
+                  sourceLang: replyResult.detectedLang,
+                })
+              );
+            }
+          } catch {
+            // Reply preview translation failed — not critical, ignore
+          }
         }
       } finally {
         setTranslatingKeys((prev) => {
@@ -101,6 +126,7 @@ export function useTranslation(
         key: string;
         text: string;
         sourceLang: string;
+        replyPreview?: string;
       }> = [];
 
       for (const msg of messages) {
@@ -128,31 +154,94 @@ export function useTranslation(
         const cached = getCachedTranslation(text, preferredLang);
         if (cached === "same") continue;
         if (cached) {
-          setTranslations((prev) =>
-            new Map(prev).set(key, {
-              text: cached.translatedText,
-              sourceLang: cached.detectedLang,
-            })
-          );
+          const updates = new Map<string, MessageTranslation>();
+          updates.set(key, {
+            text: cached.translatedText,
+            sourceLang: cached.detectedLang,
+          });
+          // Also translate reply preview from cache if available
+          let replyNeedsApi = false;
+          if (parsed.replyPreview && parsed.replyPreview.length >= 5) {
+            const cachedReply = getCachedTranslation(
+              parsed.replyPreview,
+              preferredLang
+            );
+            if (cachedReply && cachedReply !== "same") {
+              updates.set(`reply:${key}`, {
+                text: cachedReply.translatedText,
+                sourceLang: cachedReply.detectedLang,
+              });
+            } else if (cachedReply !== "same") {
+              replyNeedsApi = true;
+            }
+          }
+          setTranslations((prev) => {
+            const next = new Map(prev);
+            for (const [k, v] of updates) next.set(k, v);
+            return next;
+          });
+          // Main text was cached but reply preview was not — queue reply for API
+          if (replyNeedsApi) {
+            toTranslate.push({
+              key,
+              text: "",
+              sourceLang,
+              replyPreview: parsed.replyPreview,
+            });
+          }
           continue;
         }
 
-        toTranslate.push({ key, text, sourceLang });
+        toTranslate.push({
+          key,
+          text,
+          sourceLang,
+          replyPreview:
+            parsed.replyPreview && parsed.replyPreview.length >= 5
+              ? parsed.replyPreview
+              : undefined,
+        });
       }
 
       // Translate queued messages (the service handles throttling)
-      for (const { key, text, sourceLang } of toTranslate) {
+      for (const { key, text, sourceLang, replyPreview } of toTranslate) {
         setTranslatingKeys((prev) => new Set(prev).add(key));
 
-        translateText(text, sourceLang, preferredLang)
-          .then((result: TranslationResult | null) => {
-            if (result) {
-              setTranslations((prev) =>
-                new Map(prev).set(key, {
-                  text: result.translatedText,
-                  sourceLang: result.detectedLang,
+        // Reply-only entry (main text was served from cache)
+        const mainPromise = text
+          ? translateText(text, sourceLang, preferredLang).then(
+              (result: TranslationResult | null) => {
+                if (result) {
+                  setTranslations((prev) =>
+                    new Map(prev).set(key, {
+                      text: result.translatedText,
+                      sourceLang: result.detectedLang,
+                    })
+                  );
+                }
+              }
+            )
+          : Promise.resolve();
+
+        mainPromise
+          .then(() => {
+            // Also translate reply preview if present
+            // Use "auto" — the quoted message may be in a different language
+            if (replyPreview) {
+              return translateText(replyPreview, "auto", preferredLang)
+                .then((replyResult: TranslationResult | null) => {
+                  if (replyResult) {
+                    setTranslations((prev) =>
+                      new Map(prev).set(`reply:${key}`, {
+                        text: replyResult.translatedText,
+                        sourceLang: replyResult.detectedLang,
+                      })
+                    );
+                  }
                 })
-              );
+                .catch(() => {
+                  // Reply preview translation failed — not critical, ignore
+                });
             }
           })
           .finally(() => {
