@@ -65,13 +65,6 @@ export async function handleFeedbackSubmit(
         category, description, submitter_public_key, signature, nonce,
         app_version, user_agent, platform, route, reporter_username
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT (submitter_public_key, category)
-      DO UPDATE SET
-        description = excluded.description,
-        signature = excluded.signature,
-        nonce = excluded.nonce,
-        reporter_username = excluded.reporter_username,
-        updated_at = datetime('now')
     `
     )
       .bind(
