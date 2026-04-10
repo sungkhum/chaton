@@ -149,8 +149,9 @@ export function FeedbackModal() {
         await submitFeedback({ category, description });
       }
       setStep("done");
-    } catch {
-      toast.error("Couldn't submit. Try again later.");
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : "Unknown error";
+      toast.error(`Couldn't submit feedback: ${reason}`);
     } finally {
       setSubmitting(false);
       inflight.current = false;

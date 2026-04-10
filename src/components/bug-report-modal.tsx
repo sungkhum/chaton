@@ -49,8 +49,9 @@ export function BugReportModal() {
         extra: extra || undefined,
       });
       setStep("done");
-    } catch {
-      toast.error("Couldn't submit report. Try again later.");
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : "Unknown error";
+      toast.error(`Couldn't submit report: ${reason}`);
     } finally {
       setSubmitting(false);
       inflight.current = false;
