@@ -58,13 +58,16 @@ export async function handleFeedbackSubmit(
     const reporterUsername = body.reporterUsername
       ? sanitize(body.reporterUsername as string, 100)
       : null;
+    const screenshotUrl = body.screenshotUrl
+      ? sanitize(body.screenshotUrl as string, 2000)
+      : null;
 
     const result = await env.DB.prepare(
       `
       INSERT INTO feedback (
         category, description, submitter_public_key, signature, nonce,
-        app_version, user_agent, platform, route, reporter_username
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        app_version, user_agent, platform, route, reporter_username, screenshot_url
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
     )
       .bind(
@@ -77,7 +80,8 @@ export async function handleFeedbackSubmit(
         userAgent,
         platform,
         route,
-        reporterUsername
+        reporterUsername,
+        screenshotUrl
       )
       .run();
 
