@@ -10,11 +10,8 @@
 /faq → FaqPage → src/components/faq-page.tsx
 /about → AboutPage → src/components/about-page.tsx
 /compare → ComparePage → src/components/compare-page.tsx
-/blog → BlogIndex → src/components/blog/blog-index.tsx
+/blog → BlogIndex → ?
 /blog/* → PostComponent → ?
-/join/:code → JoinGroupPage → src/components/join-group-page.tsx
-/ (logged-out) → LandingPage → src/components/landing-page.tsx
-* (404) → NotFoundPage → src/components/not-found-page.tsx
 (authenticated) → MessagingApp → src/components/messaging-app.tsx
 
 ## Error Codes
@@ -91,7 +88,7 @@ src/components/landing-page.tsx  LandingPage
 src/components/language-selector.tsx  fn LanguageSelector
 src/components/legal-page.tsx
 src/components/manage-members-dialog.tsx  ManageMembersDialog
-src/components/messages/animated-emoji.tsx  fn emojiToCodepoint, parseEmojiOnlyMessage, AnimatedEmoji
+src/components/messages/animated-emoji.tsx  fn markEmojiCodepointFailed, emojiToCodepoint, parseEmojiOnlyMessage, replaceEmojisInHtml, AnimatedEmoji
 src/components/messages/audio-message.tsx  AudioMessage
 src/components/messages/file-message.tsx  FileMessage
 src/components/messages/formatted-message.tsx  fn FormattedMessage
@@ -189,6 +186,7 @@ src/utils/exchange-rate.ts  fn fetchExchangeRate, usdToNanos, nanosToUsd, format
 src/utils/extra-data.ts  fn getEncryptedExtraDataKeys, fn parseMessageType, fn getGroupImageUrl, fn getGroupDisplayName, fn getGroupPinnedMessage, fn getGroupMembersCanShare, ... (51 exports)
 src/utils/helpers.ts  fn copyTextToClipboard, fn getProfileURL, fn desoNanosToDeso, fn formatDesoAmount, fn scrollContainerToElement, fn getChatNameFromConversation, ... (13 exports)
 src/utils/invite-link.ts  fn buildInviteUrl, extractInviteCode, resolveInviteCode, registerInviteCode, fetchInviteCode, revokeInviteCode
+src/utils/lazy-with-reload.ts  fn lazyWithReload
 src/utils/link-services.ts  fn detectLinkService, extractFileNameFromUrl
 src/utils/onboarding.ts  fn isOnboardingComplete, markOnboardingComplete
 src/utils/profanity-filter.ts  fn containsProfanity

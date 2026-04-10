@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
@@ -7,7 +7,7 @@ interface ImageMessageProps {
   alt?: string;
   width?: number;
   height?: number;
-  caption?: string;
+  caption?: ReactNode;
 }
 
 function touchDistance(a: Touch, b: Touch): number {
@@ -230,9 +230,9 @@ export const ImageMessage = ({
           />
         </div>
         {caption && (
-          <p className="text-sm text-white mt-1.5 px-3 pb-1 whitespace-pre-wrap break-words select-text">
+          <div className="text-sm text-white mt-1.5 px-3 pb-1 whitespace-pre-wrap break-words select-text">
             {caption}
-          </p>
+          </div>
         )}
       </div>
 

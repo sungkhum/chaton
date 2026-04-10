@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, ReactNode } from "react";
 
 interface GifMessageProps {
   gifUrl: string;
   title?: string;
   width?: number;
   height?: number;
-  caption?: string;
+  caption?: ReactNode;
 }
 
 export const GifMessage = ({
@@ -49,9 +49,9 @@ export const GifMessage = ({
         />
       </div>
       {caption && (
-        <p className="text-sm text-white mt-1.5 px-3 pb-1 whitespace-pre-wrap break-words select-text">
+        <div className="text-sm text-white mt-1.5 px-3 pb-1 whitespace-pre-wrap break-words select-text">
           {caption}
-        </p>
+        </div>
       )}
     </div>
   );

@@ -201,10 +201,18 @@ function MessageContent({
           imageUrl={parsed.imageUrl}
           width={parsed.mediaWidth}
           height={parsed.mediaHeight}
-          caption={imageCaption}
+          caption={
+            imageCaption ? (
+              <FormattedMessage mentions={parsed.mentions} className="text-sm">
+                {imageCaption}
+              </FormattedMessage>
+            ) : undefined
+          }
         />
       ) : (
-        <FormattedMessage>{messageToShow}</FormattedMessage>
+        <FormattedMessage mentions={parsed.mentions}>
+          {messageToShow}
+        </FormattedMessage>
       );
     }
 
@@ -222,10 +230,18 @@ function MessageContent({
           title={parsed.gifTitle}
           width={parsed.mediaWidth}
           height={parsed.mediaHeight}
-          caption={gifCaption}
+          caption={
+            gifCaption ? (
+              <FormattedMessage mentions={parsed.mentions} className="text-sm">
+                {gifCaption}
+              </FormattedMessage>
+            ) : undefined
+          }
         />
       ) : (
-        <FormattedMessage>{messageToShow}</FormattedMessage>
+        <FormattedMessage mentions={parsed.mentions}>
+          {messageToShow}
+        </FormattedMessage>
       );
     }
 
@@ -238,7 +254,9 @@ function MessageContent({
           height={parsed.mediaHeight}
         />
       ) : (
-        <FormattedMessage>{messageToShow}</FormattedMessage>
+        <FormattedMessage mentions={parsed.mentions}>
+          {messageToShow}
+        </FormattedMessage>
       );
 
     case "video": {
@@ -254,13 +272,17 @@ function MessageContent({
             localThumbnail={parsed.localThumbnail}
           />
           {videoCaption && (
-            <div className="text-sm mt-1.5 px-3 pb-1 select-text">
-              <FormattedMessage>{videoCaption}</FormattedMessage>
+            <div className="mt-1.5 px-3 pb-1 select-text">
+              <FormattedMessage mentions={parsed.mentions} className="text-sm">
+                {videoCaption}
+              </FormattedMessage>
             </div>
           )}
         </div>
       ) : (
-        <FormattedMessage>{messageToShow}</FormattedMessage>
+        <FormattedMessage mentions={parsed.mentions}>
+          {messageToShow}
+        </FormattedMessage>
       );
     }
 
@@ -293,7 +315,9 @@ function MessageContent({
       if (tipHasCustomMessage(parsed)) {
         return (
           <div className="select-text">
-            <FormattedMessage>{messageToShow}</FormattedMessage>
+            <FormattedMessage mentions={parsed.mentions}>
+              {messageToShow}
+            </FormattedMessage>
             <TipFooter
               amountNanos={parsed.tipAmountNanos || 0}
               amountUsdcBaseUnits={parsed.tipAmountUsdcBaseUnits}
@@ -311,6 +335,7 @@ function MessageContent({
           amountUsdcBaseUnits={parsed.tipAmountUsdcBaseUnits}
           currency={parsed.tipCurrency}
           message={messageToShow}
+          mentions={parsed.mentions}
           replyPreview={parsed.replyPreview}
           replySender={parsed.replySender}
         />

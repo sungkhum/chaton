@@ -1,11 +1,15 @@
 import { useState, useCallback } from "react";
 
-const CDN_BASE =
-  "https://fonts.gstatic.com/s/e/notoemoji/latest";
+const CDN_BASE = "https://fonts.gstatic.com/s/e/notoemoji/latest";
 
 // Emoji codepoints known to NOT have animated versions — populated on 404.
 // Persists for the session so we don't retry broken URLs.
 const failedCodepoints = new Set<string>();
+
+/** Mark a codepoint as failed (called from delegated error handlers). */
+export function markEmojiCodepointFailed(cp: string) {
+  failedCodepoints.add(cp);
+}
 
 /**
  * Convert a native emoji string to the underscore-separated hex codepoint
@@ -16,13 +20,14 @@ const failedCodepoints = new Set<string>();
  *   "👍🏻" → "1f44d_1f3fb"
  */
 export function emojiToCodepoint(emoji: string): string {
-  return [...emoji]
-    .map((char) => char.codePointAt(0)!.toString(16))
-    .join("_");
+  return [...emoji].map((char) => char.codePointAt(0)!.toString(16)).join("_");
 }
 
-/** Quick check that a single grapheme is an emoji (not a letter/digit/punct). */
-const EMOJI_CHAR_RE = /\p{Extended_Pictographic}/u;
+/** Quick check that a string contains at least one emoji character. */
+const EMOJI_RE = /\p{Extended_Pictographic}/u;
+
+/** Reusable grapheme segmenter — stateless, safe to share. */
+const graphemeSegmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
 
 /**
  * Detect messages that are purely 1-3 emojis with no other text, and split
@@ -35,13 +40,58 @@ export function parseEmojiOnlyMessage(text: string): string[] | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
 
-  const segmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
-  const segments = [...segmenter.segment(trimmed)].map((s) => s.segment);
+  const segments = [...graphemeSegmenter.segment(trimmed)].map(
+    (s) => s.segment
+  );
 
   if (segments.length < 1 || segments.length > 3) return null;
-  if (!segments.every((s) => EMOJI_CHAR_RE.test(s))) return null;
+  if (!segments.every((s) => EMOJI_RE.test(s))) return null;
 
   return segments;
+}
+
+/**
+ * Replace emoji characters in an HTML string with animated Noto Emoji `<img>` tags.
+ * Skips emojis inside <code> and <pre> blocks. Uses Intl.Segmenter so compound
+ * emojis (ZWJ sequences, flags, skin tones) are handled as single units.
+ *
+ * Runs AFTER DOMPurify — the injected `<img>` tags use a hardcoded CDN domain
+ * and emoji-only alt text, so no user-controlled content enters attributes.
+ */
+export function replaceEmojisInHtml(html: string): string {
+  if (!EMOJI_RE.test(html)) return html;
+
+  // Split on HTML tags. DOMPurify's output is well-formed (no raw `>` in attrs).
+  const parts = html.split(/(<[^>]*>)/);
+  let codeDepth = 0;
+
+  return parts
+    .map((part, i) => {
+      // Odd indices are HTML tags
+      if (i % 2 === 1) {
+        if (/^<code/i.test(part) || /^<pre/i.test(part)) codeDepth++;
+        if (/^<\/code/i.test(part) || /^<\/pre/i.test(part))
+          codeDepth = Math.max(0, codeDepth - 1);
+        return part;
+      }
+      // Text content — skip if inside code or no emoji present
+      if (codeDepth > 0 || !EMOJI_RE.test(part)) return part;
+
+      return [...graphemeSegmenter.segment(part)]
+        .map(({ segment }) => {
+          if (!EMOJI_RE.test(segment)) return segment;
+          const cp = emojiToCodepoint(segment);
+          if (failedCodepoints.has(cp)) return segment;
+          return (
+            `<img src="${CDN_BASE}/${cp}/512.webp" alt="${segment}"` +
+            ' width="20" height="20" loading="lazy" draggable="false"' +
+            ' class="inline-block shrink-0" style="width:20px;height:20px;vertical-align:-3px"' +
+            ` data-cp="${cp}">`
+          );
+        })
+        .join("");
+    })
+    .join("");
 }
 
 interface AnimatedEmojiProps {

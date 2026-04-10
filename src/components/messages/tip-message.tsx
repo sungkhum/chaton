@@ -10,7 +10,7 @@ import { usdcBaseUnitsToUsd } from "../../utils/usdc-balance";
 import { ReplyPreview } from "./reply-preview";
 import { FormattedMessage } from "./formatted-message";
 import { MessagingDisplayAvatar } from "../messaging-display-avatar";
-import type { TipCurrency } from "../../utils/extra-data";
+import type { TipCurrency, MentionEntry } from "../../utils/extra-data";
 
 /** Shared hook for converting tip amount to USD display string */
 function useTipUsd(
@@ -50,6 +50,7 @@ interface TipMessageProps {
   amountUsdcBaseUnits?: string;
   currency?: TipCurrency;
   message?: string;
+  mentions?: MentionEntry[];
   replyPreview?: string;
   replySender?: string;
   onReplyClick?: () => void;
@@ -61,6 +62,7 @@ export const TipMessage = ({
   amountUsdcBaseUnits,
   currency = "DESO",
   message,
+  mentions,
   replyPreview,
   replySender,
   onReplyClick,
@@ -90,7 +92,7 @@ export const TipMessage = ({
       <div className="text-gray-400 text-[10px] mb-0.5">{subLabel}</div>
       {message && (
         <div className="mt-1">
-          <FormattedMessage>{message}</FormattedMessage>
+          <FormattedMessage mentions={mentions}>{message}</FormattedMessage>
         </div>
       )}
     </div>
