@@ -1012,8 +1012,11 @@ export const MessagingApp: FC = () => {
 
               const isDmConvo =
                 updated[localThreadId]?.ChatType === ChatType.DM;
+              const isSelfMessage =
+                _from && _from === appUser.PublicKeyBase58Check;
               if (
                 localThreadId &&
+                !isSelfMessage &&
                 !useStore.getState().mutedConversations.has(localThreadId) &&
                 !useStore.getState().archivedGroups.has(localThreadId) &&
                 !(
