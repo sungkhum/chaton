@@ -81,18 +81,22 @@ export function useTranslation(
         // Also translate the reply preview if present
         // Use "auto" for source lang — the quoted message may be in a different language
         if (parsed.replyPreview && parsed.replyPreview.length >= 5) {
-          const replyResult = await translateText(
-            parsed.replyPreview,
-            "auto",
-            preferredLang
-          );
-          if (replyResult) {
-            setTranslations((prev) =>
-              new Map(prev).set(replyKey, {
-                text: replyResult.translatedText,
-                sourceLang: replyResult.detectedLang,
-              })
+          try {
+            const replyResult = await translateText(
+              parsed.replyPreview,
+              "auto",
+              preferredLang
             );
+            if (replyResult && translationsRef.current.has(key)) {
+              setTranslations((prev) =>
+                new Map(prev).set(replyKey, {
+                  text: replyResult.translatedText,
+                  sourceLang: replyResult.detectedLang,
+                })
+              );
+            }
+          } catch {
+            // Reply preview translation failed — not critical, ignore
           }
         }
       } finally {
@@ -156,6 +160,7 @@ export function useTranslation(
             sourceLang: cached.detectedLang,
           });
           // Also translate reply preview from cache if available
+          let replyNeedsApi = false;
           if (parsed.replyPreview && parsed.replyPreview.length >= 5) {
             const cachedReply = getCachedTranslation(
               parsed.replyPreview,
@@ -166,6 +171,8 @@ export function useTranslation(
                 text: cachedReply.translatedText,
                 sourceLang: cachedReply.detectedLang,
               });
+            } else if (cachedReply !== "same") {
+              replyNeedsApi = true;
             }
           }
           setTranslations((prev) => {
@@ -173,6 +180,15 @@ export function useTranslation(
             for (const [k, v] of updates) next.set(k, v);
             return next;
           });
+          // Main text was cached but reply preview was not — queue reply for API
+          if (replyNeedsApi) {
+            toTranslate.push({
+              key,
+              text: "",
+              sourceLang,
+              replyPreview: parsed.replyPreview,
+            });
+          }
           continue;
         }
 
@@ -191,17 +207,24 @@ export function useTranslation(
       for (const { key, text, sourceLang, replyPreview } of toTranslate) {
         setTranslatingKeys((prev) => new Set(prev).add(key));
 
-        translateText(text, sourceLang, preferredLang)
-          .then((result: TranslationResult | null) => {
-            if (result) {
-              setTranslations((prev) =>
-                new Map(prev).set(key, {
-                  text: result.translatedText,
-                  sourceLang: result.detectedLang,
-                })
-              );
-            }
+        // Reply-only entry (main text was served from cache)
+        const mainPromise = text
+          ? translateText(text, sourceLang, preferredLang).then(
+              (result: TranslationResult | null) => {
+                if (result) {
+                  setTranslations((prev) =>
+                    new Map(prev).set(key, {
+                      text: result.translatedText,
+                      sourceLang: result.detectedLang,
+                    })
+                  );
+                }
+              }
+            )
+          : Promise.resolve();
 
+        mainPromise
+          .then(() => {
             // Also translate reply preview if present
             // Use "auto" — the quoted message may be in a different language
             if (replyPreview) {
