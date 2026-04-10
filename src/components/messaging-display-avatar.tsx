@@ -216,6 +216,7 @@ export const MessagingDisplayAvatar: FC<{
         {/* Always render initials as the base layer — zero layout shift */}
         <div
           style={{
+            position: "relative",
             height: `${diameter}px`,
             width: `${diameter}px`,
             backgroundColor: avatarColor!.bg,
