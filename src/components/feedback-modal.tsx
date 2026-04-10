@@ -134,7 +134,7 @@ export function FeedbackModal() {
     setSubmitting(true);
     try {
       let screenshotUrl: string | undefined;
-      if (isBugPath && screenshot) {
+      if (screenshot) {
         const result = await uploadImage(screenshot.file);
         screenshotUrl = result.ImageURL;
       }
@@ -146,7 +146,7 @@ export function FeedbackModal() {
           screenshotUrl,
         });
       } else {
-        await submitFeedback({ category, description });
+        await submitFeedback({ category, description, screenshotUrl });
       }
       setStep("done");
     } catch (err) {
@@ -560,7 +560,30 @@ export function FeedbackModal() {
 
           {/* ── Feedback path: Describe (submits directly) ── */}
           {step === "describe" ? (
-            <div>
+            <div
+              onPaste={(e) => {
+                const items = e.clipboardData?.items;
+                if (!items) return;
+                for (const item of items) {
+                  if (item.type.startsWith("image/")) {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    if (file) stageScreenshot(file);
+                    return;
+                  }
+                }
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const file = e.dataTransfer.files?.[0];
+                if (file?.type.startsWith("image/")) stageScreenshot(file);
+              }}
+            >
               {selectedCategory ? (
                 <div className="mb-3 flex items-center gap-2">
                   <selectedCategory.icon size={14} className="text-white/40" />
@@ -596,7 +619,51 @@ export function FeedbackModal() {
               <div className="mt-1.5 text-right text-[11px] text-white/30">
                 {description.length}/1000
               </div>
-              <div className="mt-2 flex gap-2">
+
+              {/* Screenshot attachment */}
+              <div className="mt-3">
+                <p className="mb-1.5 text-sm font-medium text-white/80">
+                  Screenshot{" "}
+                  <span className="font-normal text-white/30">(optional)</span>
+                </p>
+                {screenshot ? (
+                  <div className="relative inline-block">
+                    <img
+                      src={screenshot.previewUrl}
+                      alt="Screenshot preview"
+                      className="max-h-[120px] w-auto rounded-lg object-contain border border-white/[0.06]"
+                    />
+                    <button
+                      onClick={clearScreenshot}
+                      className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-white/20 bg-black/70 text-gray-300 transition-colors hover:bg-black/90 hover:text-white"
+                      aria-label="Remove screenshot"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-3 text-left text-sm text-white/40 transition-colors hover:border-white/20 hover:bg-white/[0.04] hover:text-white/60"
+                  >
+                    <ImagePlus size={16} />
+                    <span>Add a screenshot or paste one</span>
+                  </button>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) stageScreenshot(file);
+                  }}
+                />
+              </div>
+
+              <div className="mt-3 flex gap-2">
                 <button
                   onClick={goBack}
                   className="flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/50 transition-colors hover:bg-white/[0.06]"

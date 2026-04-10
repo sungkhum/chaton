@@ -7,6 +7,7 @@ const RELAY_URL = import.meta.env.VITE_RELAY_URL || "";
 interface FeedbackInput {
   category: string;
   description: string;
+  screenshotUrl?: string;
 }
 
 export async function submitFeedback(input: FeedbackInput): Promise<void> {
@@ -24,6 +25,7 @@ export async function submitFeedback(input: FeedbackInput): Promise<void> {
     body: JSON.stringify({
       category: input.category,
       description: input.description,
+      screenshotUrl: input.screenshotUrl || null,
       submitterPublicKey: publicKey,
       reporterUsername: appUser.ProfileEntryResponse?.Username || null,
       signature: jwt,
