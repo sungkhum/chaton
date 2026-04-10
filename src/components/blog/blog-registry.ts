@@ -18,6 +18,16 @@ export interface BlogPostMeta {
  */
 export const BLOG_POSTS: BlogPostMeta[] = [
   {
+    slug: "chaton-vs-telegram",
+    title: "ChatOn vs Telegram: An Honest Comparison",
+    description:
+      "Telegram has a billion users and unmatched features. But regular chats aren't end-to-end encrypted, and your privacy depends on one company's policies. Here's how ChatOn's architecture puts you in control.",
+    date: "2026-04-09",
+    readTime: "11 min read",
+    tags: ["privacy", "comparison", "telegram"],
+    component: () => import("./posts/chaton-vs-telegram"),
+  },
+  {
     slug: "chaton-vs-signal",
     title: "ChatOn vs Signal: An Honest Comparison",
     description:

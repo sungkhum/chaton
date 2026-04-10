@@ -25,12 +25,20 @@ const ROUTES = [
   "/blog", "/blog/near-zero-infrastructure",
   "/blog/best-decentralized-messaging-apps-2026",
   "/blog/chaton-vs-signal",
+  "/blog/chaton-vs-telegram",
 ];
 
 const BASE_URL = "https://getchaton.com";
 
 /** Blog posts that need OG images. */
 const OG_POSTS = [
+  {
+    slug: "chaton-vs-telegram",
+    title: "ChatOn vs Telegram: An Honest Comparison",
+    description:
+      "Telegram has a billion users and unmatched features. But regular chats aren't end-to-end encrypted, and recent events show what happens when a centralized platform faces government pressure.",
+    date: "April 9, 2026",
+  },
   {
     slug: "chaton-vs-signal",
     title: "ChatOn vs Signal: An Honest Comparison",

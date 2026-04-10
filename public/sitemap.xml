@@ -32,7 +32,7 @@
   </url>
   <url>
     <loc>https://getchaton.com/blog</loc>
-    <lastmod>2026-04-07</lastmod>
+    <lastmod>2026-04-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -51,6 +51,12 @@
   <url>
     <loc>https://getchaton.com/blog/chaton-vs-signal</loc>
     <lastmod>2026-04-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://getchaton.com/blog/chaton-vs-telegram</loc>
+    <lastmod>2026-04-09</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
