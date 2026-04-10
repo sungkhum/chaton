@@ -32,47 +32,93 @@ export interface EnrichedCommunityListing extends CommunityListing {
 
 const MEMBER_PAGE_SIZE = 50;
 
+// In-memory TTL cache for member counts to avoid repeated paginated fetches
+const memberCountCache = new Map<
+  string,
+  { count: number; ts: number; pending?: Promise<number> }
+>();
+const MEMBER_COUNT_TTL_MS = 60_000; // 60 seconds
+
 /**
  * Fetch the total member count for a group by paginating through all pages.
  * Only counts keys — does not fetch profiles. Adds 1 for the owner if not
  * already included in the member list.
+ *
+ * Results are cached in memory for 60 seconds. Concurrent calls for the same
+ * group share a single in-flight request.
  */
 export async function fetchGroupMemberCount(
   ownerKey: string,
   groupKeyName: string
 ): Promise<number> {
-  let total = 0;
-  let cursor = "";
-  let ownerSeen = false;
-  const MAX_PAGES = 200; // safety cap: 200 × 50 = 10 000 members
+  const cacheKey = `${ownerKey}:${groupKeyName}`;
+  const cached = memberCountCache.get(cacheKey);
 
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const res = await getPaginatedAccessGroupMembers({
-      AccessGroupOwnerPublicKeyBase58Check: ownerKey,
-      AccessGroupKeyName: groupKeyName,
-      MaxMembersToFetch: MEMBER_PAGE_SIZE,
-      ...(cursor
-        ? { StartingAccessGroupMemberPublicKeyBase58Check: cursor }
-        : {}),
-    });
-
-    const pageKeys = res.AccessGroupMembersBase58Check ?? [];
-    total += pageKeys.length;
-
-    if (!ownerSeen && pageKeys.includes(ownerKey)) {
-      ownerSeen = true;
-    }
-
-    if (pageKeys.length < MEMBER_PAGE_SIZE) break;
-    cursor = pageKeys[pageKeys.length - 1]!;
+  if (cached) {
+    if (Date.now() - cached.ts < MEMBER_COUNT_TTL_MS) return cached.count;
+    if (cached.pending) return cached.pending;
   }
 
-  // If no members were returned at all, count at least the owner
-  if (total === 0) return 1;
-  // Add 1 for the owner if they weren't in any page of the member list
-  if (!ownerSeen) total += 1;
+  const pending = fetchGroupMemberCountUncached(ownerKey, groupKeyName).then(
+    (count) => {
+      memberCountCache.set(cacheKey, { count, ts: Date.now() });
+      return count;
+    },
+    (err) => {
+      // On failure, clear the pending promise so the next call retries
+      const entry = memberCountCache.get(cacheKey);
+      if (entry?.pending === pending) memberCountCache.delete(cacheKey);
+      throw err;
+    }
+  );
 
-  return total;
+  memberCountCache.set(cacheKey, {
+    count: cached?.count ?? 0,
+    ts: cached?.ts ?? 0,
+    pending,
+  });
+
+  return pending;
+}
+
+function fetchGroupMemberCountUncached(
+  ownerKey: string,
+  groupKeyName: string
+): Promise<number> {
+  return (async () => {
+    let total = 0;
+    let cursor = "";
+    let ownerSeen = false;
+    const MAX_PAGES = 200; // safety cap: 200 × 50 = 10 000 members
+
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const res = await getPaginatedAccessGroupMembers({
+        AccessGroupOwnerPublicKeyBase58Check: ownerKey,
+        AccessGroupKeyName: groupKeyName,
+        MaxMembersToFetch: MEMBER_PAGE_SIZE,
+        ...(cursor
+          ? { StartingAccessGroupMemberPublicKeyBase58Check: cursor }
+          : {}),
+      });
+
+      const pageKeys = res.AccessGroupMembersBase58Check ?? [];
+      total += pageKeys.length;
+
+      if (!ownerSeen && pageKeys.includes(ownerKey)) {
+        ownerSeen = true;
+      }
+
+      if (pageKeys.length < MEMBER_PAGE_SIZE) break;
+      cursor = pageKeys[pageKeys.length - 1]!;
+    }
+
+    // If no members were returned at all, count at least the owner
+    if (total === 0) return 1;
+    // Add 1 for the owner if they weren't in any page of the member list
+    if (!ownerSeen) total += 1;
+
+    return total;
+  })();
 }
 
 /**
