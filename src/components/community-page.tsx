@@ -315,8 +315,12 @@ const CommunityPage = () => {
                       <div className="flex items-center gap-1.5 text-xs text-gray-500">
                         <Users className="w-3.5 h-3.5" />
                         <span>
-                          {listing.memberCount}{" "}
-                          {listing.memberCount === 1 ? "member" : "members"}
+                          {listing.memberCount}
+                          {listing.memberCountCapped ? "+" : ""}{" "}
+                          {listing.memberCount === 1 &&
+                          !listing.memberCountCapped
+                            ? "member"
+                            : "members"}
                         </span>
                       </div>
                       <span className="px-4 py-1.5 bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black text-xs font-black rounded-full opacity-80 group-hover:opacity-100 transition-opacity">

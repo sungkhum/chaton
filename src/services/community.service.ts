@@ -28,14 +28,24 @@ export interface EnrichedCommunityListing extends CommunityListing {
   groupImageUrl?: string;
   inviteCode: string | null;
   memberCount: number;
+  memberCountCapped?: boolean;
 }
 
 const MEMBER_PAGE_SIZE = 50;
 
+interface MemberCountResult {
+  count: number;
+  capped: boolean;
+}
+
 // In-memory TTL cache for member counts to avoid repeated paginated fetches
 const memberCountCache = new Map<
   string,
-  { count: number; ts: number; pending?: Promise<number> }
+  {
+    result: MemberCountResult;
+    ts: number;
+    pending?: Promise<MemberCountResult>;
+  }
 >();
 const MEMBER_COUNT_TTL_MS = 60_000; // 60 seconds
 
@@ -51,18 +61,50 @@ export async function fetchGroupMemberCount(
   ownerKey: string,
   groupKeyName: string
 ): Promise<number> {
-  const cacheKey = `${ownerKey}:${groupKeyName}`;
+  const r = await fetchGroupMemberCountCached(ownerKey, groupKeyName);
+  return r.count;
+}
+
+/**
+ * Quick member count with a low page cap — makes at most `maxPages` API calls
+ * (default 3 = up to 150 members). Returns `{ count, capped }` so callers can
+ * display "150+" when the real total exceeds the cap.
+ *
+ * Uses a separate cache key suffix so capped and exact counts don't collide.
+ */
+export async function fetchGroupMemberCountQuick(
+  ownerKey: string,
+  groupKeyName: string,
+  maxPages = 3
+): Promise<{ count: number; capped: boolean }> {
+  return fetchGroupMemberCountCached(ownerKey, groupKeyName, maxPages);
+}
+
+function fetchGroupMemberCountCached(
+  ownerKey: string,
+  groupKeyName: string,
+  maxPages = 200
+): Promise<MemberCountResult> {
+  const cacheKey =
+    maxPages < 200
+      ? `${ownerKey}:${groupKeyName}:cap${maxPages}`
+      : `${ownerKey}:${groupKeyName}`;
   const cached = memberCountCache.get(cacheKey);
 
   if (cached) {
-    if (Date.now() - cached.ts < MEMBER_COUNT_TTL_MS) return cached.count;
+    if (Date.now() - cached.ts < MEMBER_COUNT_TTL_MS)
+      return Promise.resolve(cached.result);
     if (cached.pending) return cached.pending;
   }
 
-  const pending = fetchGroupMemberCountUncached(ownerKey, groupKeyName).then(
-    (count) => {
-      memberCountCache.set(cacheKey, { count, ts: Date.now() });
-      return count;
+  const pending = fetchGroupMemberCountUncached(
+    ownerKey,
+    groupKeyName,
+    maxPages
+  ).then(
+    (result) => {
+      memberCountCache.set(cacheKey, { result, ts: Date.now() });
+      return result;
     },
     (err) => {
       // On failure, clear the pending promise so the next call retries
@@ -73,7 +115,7 @@ export async function fetchGroupMemberCount(
   );
 
   memberCountCache.set(cacheKey, {
-    count: cached?.count ?? 0,
+    result: cached?.result ?? { count: 0, capped: false },
     ts: cached?.ts ?? 0,
     pending,
   });
@@ -83,14 +125,15 @@ export async function fetchGroupMemberCount(
 
 function fetchGroupMemberCountUncached(
   ownerKey: string,
-  groupKeyName: string
-): Promise<number> {
+  groupKeyName: string,
+  maxPages: number
+): Promise<MemberCountResult> {
   return (async () => {
     const seen = new Set<string>();
     let cursor = "";
-    const MAX_PAGES = 200; // safety cap: 200 × 50 = 10 000 members
+    let hitPageLimit = false;
 
-    for (let page = 0; page < MAX_PAGES; page++) {
+    for (let page = 0; page < maxPages; page++) {
       const res = await getPaginatedAccessGroupMembers({
         AccessGroupOwnerPublicKeyBase58Check: ownerKey,
         AccessGroupKeyName: groupKeyName,
@@ -105,14 +148,21 @@ function fetchGroupMemberCountUncached(
 
       if (pageKeys.length < MEMBER_PAGE_SIZE) break;
       cursor = pageKeys[pageKeys.length - 1]!;
+
+      // If this was the last allowed page and it was full, we hit the cap
+      if (page === maxPages - 1) hitPageLimit = true;
     }
 
-    // If no members were returned at all, count at least the owner
-    if (seen.size === 0) return 1;
-    // Add 1 for the owner if they weren't in any page of the member list
-    if (!seen.has(ownerKey)) return seen.size + 1;
+    let count: number;
+    if (seen.size === 0) {
+      count = 1;
+    } else if (!seen.has(ownerKey)) {
+      count = seen.size + 1;
+    } else {
+      count = seen.size;
+    }
 
-    return seen.size;
+    return { count, capped: hitPageLimit };
   })();
 }
 
@@ -349,16 +399,17 @@ export async function enrichCommunityListings(
     // Non-fatal: groups without matched codes will be filtered out
   }
 
-  // 3. Fetch real member counts in parallel (paginated to get exact totals)
+  // 3. Fetch member counts in parallel with a low page cap (3 pages = 150 max)
+  //    to avoid hundreds of API calls on first load. Shows "150+" for large groups.
   const memberCountResults = await Promise.allSettled(
-    deduped.map((l) => fetchGroupMemberCount(l.ownerKey, l.groupKeyName))
+    deduped.map((l) => fetchGroupMemberCountQuick(l.ownerKey, l.groupKeyName))
   );
-  const memberCountMap = new Map<string, number>();
+  const memberCountMap = new Map<string, { count: number; capped: boolean }>();
   deduped.forEach((l, i) => {
     const result = memberCountResults[i]!;
     memberCountMap.set(
       uniqueKey(l),
-      result.status === "fulfilled" ? result.value : 1
+      result.status === "fulfilled" ? result.value : { count: 1, capped: false }
     );
   });
 
@@ -371,7 +422,8 @@ export async function enrichCommunityListings(
         groupDisplayName: groupDisplayNameMap.get(key),
         groupImageUrl: groupImageMap.get(key),
         inviteCode: inviteCodeMap.get(key) ?? null,
-        memberCount: memberCountMap.get(key) ?? 1,
+        memberCount: memberCountMap.get(key)?.count ?? 1,
+        memberCountCapped: memberCountMap.get(key)?.capped,
       };
     })
     .filter(

@@ -11,7 +11,7 @@ import {
   getUsersStateless,
   ProfileEntryResponse,
 } from "deso-protocol";
-import { fetchGroupMemberCount } from "../../services/community.service";
+import { fetchGroupMemberCountQuick } from "../../services/community.service";
 import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../../store";
 import { resolveInviteCode } from "../../utils/invite-link";
@@ -26,6 +26,7 @@ interface GroupInfo {
   groupImageUrl?: string;
   ownerProfile: ProfileEntryResponse | null;
   memberCount: number;
+  memberCountCapped?: boolean;
 }
 
 export function JoinLinkPreview({ code }: { code: string }) {
@@ -63,7 +64,7 @@ export function JoinLinkPreview({ code }: { code: string }) {
 
         const { ownerKey, groupKeyName } = resolved;
 
-        const [groupRes, profileRes, memberCount] = await Promise.all([
+        const [groupRes, profileRes, memberCountResult] = await Promise.all([
           getBulkAccessGroups({
             GroupOwnerAndGroupKeyNamePairs: [
               {
@@ -75,7 +76,10 @@ export function JoinLinkPreview({ code }: { code: string }) {
           getUsersStateless({ PublicKeysBase58Check: [ownerKey] }).catch(
             () => null
           ),
-          fetchGroupMemberCount(ownerKey, groupKeyName).catch(() => 1),
+          fetchGroupMemberCountQuick(ownerKey, groupKeyName, 1).catch(() => ({
+            count: 1,
+            capped: false,
+          })),
         ]);
         if (cancelled) return;
 
@@ -98,7 +102,8 @@ export function JoinLinkPreview({ code }: { code: string }) {
           groupDisplayName,
           groupImageUrl,
           ownerProfile,
-          memberCount,
+          memberCount: memberCountResult.count,
+          memberCountCapped: memberCountResult.capped,
         });
         setState("resolved");
       } catch {
@@ -185,7 +190,8 @@ export function JoinLinkPreview({ code }: { code: string }) {
             <div className="text-[11px] text-gray-500 leading-snug truncate">
               @{ownerUsername}
               {" \u00b7 "}
-              {groupInfo.memberCount} members
+              {groupInfo.memberCount}
+              {groupInfo.memberCountCapped ? "+" : ""} members
             </div>
           </div>
 
