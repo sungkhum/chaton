@@ -86,9 +86,8 @@ function fetchGroupMemberCountUncached(
   groupKeyName: string
 ): Promise<number> {
   return (async () => {
-    let total = 0;
+    const seen = new Set<string>();
     let cursor = "";
-    let ownerSeen = false;
     const MAX_PAGES = 200; // safety cap: 200 × 50 = 10 000 members
 
     for (let page = 0; page < MAX_PAGES; page++) {
@@ -102,22 +101,18 @@ function fetchGroupMemberCountUncached(
       });
 
       const pageKeys = res.AccessGroupMembersBase58Check ?? [];
-      total += pageKeys.length;
-
-      if (!ownerSeen && pageKeys.includes(ownerKey)) {
-        ownerSeen = true;
-      }
+      for (const k of pageKeys) seen.add(k);
 
       if (pageKeys.length < MEMBER_PAGE_SIZE) break;
       cursor = pageKeys[pageKeys.length - 1]!;
     }
 
     // If no members were returned at all, count at least the owner
-    if (total === 0) return 1;
+    if (seen.size === 0) return 1;
     // Add 1 for the owner if they weren't in any page of the member list
-    if (!ownerSeen) total += 1;
+    if (!seen.has(ownerKey)) return seen.size + 1;
 
-    return total;
+    return seen.size;
   })();
 }
 
