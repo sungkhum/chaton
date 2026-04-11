@@ -139,7 +139,7 @@ function convertTstampToDateTime(tstampNanos: number) {
 
 /** Detect raw encrypted hex that slipped through decryption without throwing */
 function looksLikeEncryptedHex(text: string): boolean {
-  return text.length >= 66 && /^[0-9a-f]+$/i.test(text);
+  return text.length >= 64 && /^[0-9a-f]+$/i.test(text);
 }
 
 function MessageContent({
@@ -2108,20 +2108,26 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                 onTouchStart={(e) => e.stopPropagation()}
                                 onTouchEnd={(e) => e.stopPropagation()}
                               >
-                                {onReply && (
-                                  <button
-                                    onClick={() => {
-                                      onReply(message);
-                                      closeMobileAction();
-                                    }}
-                                    className={`w-full flex items-center gap-3 ${
-                                      isMobile ? "px-4 py-3" : "px-3 py-2"
-                                    } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
-                                  >
-                                    <Reply className="w-4 h-4 text-gray-400 shrink-0" />
-                                    Reply
-                                  </button>
-                                )}
+                                {onReply &&
+                                  !(
+                                    message.DecryptedMessage &&
+                                    looksLikeEncryptedHex(
+                                      message.DecryptedMessage
+                                    )
+                                  ) && (
+                                    <button
+                                      onClick={() => {
+                                        onReply(message);
+                                        closeMobileAction();
+                                      }}
+                                      className={`w-full flex items-center gap-3 ${
+                                        isMobile ? "px-4 py-3" : "px-3 py-2"
+                                      } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
+                                    >
+                                      <Reply className="w-4 h-4 text-gray-400 shrink-0" />
+                                      Reply
+                                    </button>
+                                  )}
                                 {message.DecryptedMessage &&
                                   parsed.type !== "reaction" && (
                                     <button
