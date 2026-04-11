@@ -2868,6 +2868,7 @@ export const MessagingApp: FC = () => {
         if (flushTimer) clearTimeout(flushTimer);
         console.error("[ChatOn] Failed to fetch conversations:", e);
         setConversationsLoading(false);
+        setLoadingConversation(false);
 
         setConversationsError(
           e instanceof Error && e.message.includes("timed out")
@@ -2888,6 +2889,7 @@ export const MessagingApp: FC = () => {
       } catch (e) {
         console.error("[ChatOn] Failed to fetch conversations:", e);
         setConversationsLoading(false);
+        setLoadingConversation(false);
 
         return;
       }
