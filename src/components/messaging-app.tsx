@@ -203,6 +203,10 @@ import {
  * while there are still unread messages from others above it.
  * Returns 0 if no incoming message is found.
  */
+function looksLikeEncryptedHex(text: string): boolean {
+  return text.length >= 64 && /^[0-9a-f]+$/i.test(text);
+}
+
 function latestIncomingTimestamp(convo: Conversation): number {
   for (const m of convo.messages) {
     if (!m.IsSender) return m.MessageInfo.TimestampNanos;
@@ -4177,7 +4181,11 @@ export const MessagingApp: FC = () => {
                               startTransition(() => {
                                 setEditingMessage(null);
                                 setReplyToMessage({
-                                  text: msg.DecryptedMessage || "",
+                                  text:
+                                    msg.DecryptedMessage &&
+                                    !looksLikeEncryptedHex(msg.DecryptedMessage)
+                                      ? msg.DecryptedMessage
+                                      : "",
                                   timestamp:
                                     msg.MessageInfo.TimestampNanosString,
                                   sender:
@@ -4960,10 +4968,11 @@ export const MessagingApp: FC = () => {
                               extraData = {
                                 ...extraData,
                                 [MSG_REPLY_TO]: replyToMessage.timestamp,
-                                [MSG_REPLY_PREVIEW]: replyToMessage.text.slice(
-                                  0,
-                                  200
-                                ),
+                                [MSG_REPLY_PREVIEW]: looksLikeEncryptedHex(
+                                  replyToMessage.text
+                                )
+                                  ? ""
+                                  : replyToMessage.text.slice(0, 200),
                                 [MSG_REPLY_SENDER]: replyToMessage.sender,
                               };
                               setReplyToMessage(null);
