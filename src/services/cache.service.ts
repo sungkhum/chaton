@@ -258,6 +258,30 @@ export function getCachedDmPrice(publicKey: string): CachedDmPrice | null {
 }
 
 // ---------------------------------------------------------------------------
+// Spam filter settings (localStorage — sync)
+// ---------------------------------------------------------------------------
+
+import type { SpamFilterConfig } from "../utils/spam-filter";
+
+interface CachedSpamFilter {
+  config: SpamFilterConfig;
+  associationId: string | null;
+}
+
+export function cacheSpamFilter(
+  publicKey: string,
+  data: { config: SpamFilterConfig; associationId: string | null }
+): void {
+  lsSet(publicKey, "spamFilter", data);
+}
+
+export function getCachedSpamFilter(
+  publicKey: string
+): CachedSpamFilter | null {
+  return lsGet<CachedSpamFilter>(publicKey, "spamFilter");
+}
+
+// ---------------------------------------------------------------------------
 // Tip currency preference (localStorage — sync)
 // ---------------------------------------------------------------------------
 

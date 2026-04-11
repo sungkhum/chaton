@@ -51,6 +51,11 @@ export const ASSOCIATION_TYPE_PRIVACY_MODE = "chaton:privacy-mode";
 export const PRIVACY_MODE_FULL = "full";
 export const PRIVACY_MODE_STANDARD = "standard";
 
+// Spam filter — self-association storing user-configured thresholds for auto-filtering
+// unknown senders based on on-chain metrics. Thresholds stored in ExtraData.
+export const ASSOCIATION_TYPE_SPAM_FILTER = "chaton:spam-filter";
+export const ASSOCIATION_VALUE_SPAM_FILTER = "enabled";
+
 // Paid messaging settings — uses Focus's association type for cross-app compatibility.
 // Any DeSo messaging app can query this to check if a user charges for DMs.
 // Self-association: Transactor = Target = user's own public key.

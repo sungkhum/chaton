@@ -14,6 +14,7 @@ import {
   getUserAssociations,
   identity,
   NewMessageEntryResponse,
+  ProfileEntryResponse,
   PublicKeyToProfileEntryResponseMap,
   sendDMMessage,
   sendGroupChatMessage,
@@ -34,6 +35,8 @@ import {
   ASSOCIATION_TYPE_PAID_MESSAGING,
   ASSOCIATION_TYPE_CHAT_PAID,
   ASSOCIATION_TYPE_PRIVACY_MODE,
+  ASSOCIATION_TYPE_SPAM_FILTER,
+  ASSOCIATION_VALUE_SPAM_FILTER,
   ASSOCIATION_VALUE_APPROVED,
   ASSOCIATION_VALUE_ARCHIVED,
   ASSOCIATION_VALUE_BLOCKED,
@@ -61,6 +64,10 @@ import {
 } from "../utils/types";
 import { useStore } from "../store";
 import { bytesToHex } from "@noble/hashes/utils";
+import {
+  passesSenderFilter,
+  type SpamFilterConfig,
+} from "../utils/spam-filter";
 
 // ── Progressive loading helpers ──────────────────────────────────────────────
 
@@ -1413,7 +1420,9 @@ export function classifyConversation(
   archivedGroups: Set<string>,
   archivedChats: Set<string>,
   dismissedUsers: Set<string>,
-  paidUsers: Set<string> = new Set()
+  paidUsers: Set<string> = new Set(),
+  spamFilter?: SpamFilterConfig,
+  senderProfiles?: Map<string, ProfileEntryResponse>
 ): "chat" | "request" | "blocked" | "archived" | "dismissed" {
   if (conversation.ChatType === ChatType.GROUPCHAT) {
     if (archivedGroups.has(conversationKey)) return "archived";
@@ -1439,6 +1448,14 @@ export function classifyConversation(
     ) {
       return "chat";
     }
+  }
+
+  // If spam filter is enabled, check sender's on-chain metrics.
+  // Senders who pass the filter are promoted to "chat"; others stay "request".
+  if (spamFilter?.enabled && senderProfiles) {
+    const profile = senderProfiles.get(otherKey);
+    const passed = passesSenderFilter(spamFilter, profile);
+    if (passed === true) return "chat";
   }
 
   return "request";
@@ -1667,6 +1684,95 @@ export async function setPrivacyModeOnChain(
   const res = await getUserAssociations({
     TransactorPublicKeyBase58Check: myPublicKey,
     AssociationType: ASSOCIATION_TYPE_PRIVACY_MODE,
+    Limit: 1,
+  });
+
+  return res.Associations?.[0]?.AssociationID || "";
+}
+
+// ─── Spam Filter Settings ─────────────────────────────────────────
+
+import { DEFAULT_SPAM_FILTER } from "../utils/spam-filter";
+
+/**
+ * Fetch the user's spam filter settings from on-chain self-association.
+ */
+export async function fetchSpamFilterSettings(
+  publicKey: string
+): Promise<{ config: SpamFilterConfig; associationId: string | null }> {
+  try {
+    const res = await getUserAssociations({
+      TransactorPublicKeyBase58Check: publicKey,
+      AssociationType: ASSOCIATION_TYPE_SPAM_FILTER,
+      Limit: 1,
+    });
+
+    const assoc = res.Associations?.[0];
+    if (assoc?.ExtraData) {
+      const config: SpamFilterConfig = {
+        enabled: true,
+        minBalanceNanos: parseInt(assoc.ExtraData.minBalanceNanos || "0", 10),
+        minCoinPriceNanos: parseInt(
+          assoc.ExtraData.minCoinPriceNanos || "0",
+          10
+        ),
+        requireProfile: assoc.ExtraData.requireProfile === "true",
+        minCoinHolders: parseInt(assoc.ExtraData.minCoinHolders || "0", 10),
+      };
+      return { config, associationId: assoc.AssociationID };
+    }
+  } catch (e) {
+    console.error("Failed to fetch spam filter settings:", e);
+  }
+  return { config: DEFAULT_SPAM_FILTER, associationId: null };
+}
+
+/**
+ * Set or update the user's spam filter on-chain.
+ * Pass config.enabled = false to disable (deletes association).
+ */
+export async function setSpamFilterOnChain(
+  myPublicKey: string,
+  config: SpamFilterConfig,
+  existingAssociationId: string | null
+): Promise<string> {
+  // Delete old association if it exists
+  if (existingAssociationId) {
+    await withAuth(() =>
+      deleteUserAssociation({
+        TransactorPublicKeyBase58Check: myPublicKey,
+        AssociationID: existingAssociationId,
+      })
+    );
+  }
+
+  // If disabling, just delete
+  if (!config.enabled) {
+    return "";
+  }
+
+  await withAuth(() =>
+    createUserAssociation(
+      {
+        TransactorPublicKeyBase58Check: myPublicKey,
+        TargetUserPublicKeyBase58Check: myPublicKey, // self-association
+        AssociationType: ASSOCIATION_TYPE_SPAM_FILTER,
+        AssociationValue: ASSOCIATION_VALUE_SPAM_FILTER,
+        ExtraData: {
+          minBalanceNanos: String(config.minBalanceNanos),
+          minCoinPriceNanos: String(config.minCoinPriceNanos),
+          requireProfile: config.requireProfile ? "true" : "false",
+          minCoinHolders: String(config.minCoinHolders),
+        },
+      },
+      { checkPermissions: false }
+    )
+  );
+
+  // Fetch the new association ID
+  const res = await getUserAssociations({
+    TransactorPublicKeyBase58Check: myPublicKey,
+    AssociationType: ASSOCIATION_TYPE_SPAM_FILTER,
     Limit: 1,
   });
 

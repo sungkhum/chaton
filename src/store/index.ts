@@ -5,12 +5,17 @@ import {
   cacheDmPrice,
   cacheMutedConversations,
   cachePrivacyMode,
+  cacheSpamFilter,
   cacheUserProfile,
   clearActiveServiceWorkerKeys,
 } from "../services/cache.service";
 import { clearDmPriceLookupCache } from "../services/conversations.service";
 import type { PrivacyMode } from "../utils/extra-data";
 import type { ErrorContext } from "../utils/error-capture";
+import {
+  DEFAULT_SPAM_FILTER,
+  type SpamFilterConfig,
+} from "../utils/spam-filter";
 
 export type AppUser = User & {
   messagingPublicKeyBase58Check: string;
@@ -85,6 +90,14 @@ interface ChatOnState {
   privacyMode: PrivacyMode;
   privacyModeAssociationId: string | null;
   setPrivacyMode: (mode: PrivacyMode, associationId?: string | null) => void;
+
+  // Spam filter — user-configurable thresholds for auto-filtering unknown senders
+  spamFilter: SpamFilterConfig;
+  spamFilterAssociationId: string | null;
+  setSpamFilter: (
+    config: SpamFilterConfig,
+    associationId?: string | null
+  ) => void;
 
   // Paid messaging — per-message price for DMs from strangers (Focus-compatible)
   dmPriceUsdCents: number | null;
@@ -397,6 +410,25 @@ export const useStore = create<ChatOnState>((set) => ({
         privacyMode: mode,
         ...(associationId !== undefined
           ? { privacyModeAssociationId: associationId }
+          : {}),
+      };
+    }),
+
+  // Spam filter
+  spamFilter: DEFAULT_SPAM_FILTER,
+  spamFilterAssociationId: null,
+  setSpamFilter: (config, associationId) =>
+    set((state) => {
+      const publicKey = state.appUser?.PublicKeyBase58Check;
+      if (publicKey)
+        cacheSpamFilter(publicKey, {
+          config,
+          associationId: associationId ?? state.spamFilterAssociationId,
+        });
+      return {
+        spamFilter: config,
+        ...(associationId !== undefined
+          ? { spamFilterAssociationId: associationId }
           : {}),
       };
     }),
@@ -752,6 +784,8 @@ export const useStore = create<ChatOnState>((set) => ({
       joinRequestCounts: new Map(),
       privacyMode: "full" as PrivacyMode,
       privacyModeAssociationId: null,
+      spamFilter: DEFAULT_SPAM_FILTER,
+      spamFilterAssociationId: null,
       dmPriceUsdCents: null,
       dmFollowingPriceUsdCents: 0,
       dmPriceAssociationId: null,
