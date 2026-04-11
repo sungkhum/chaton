@@ -221,31 +221,33 @@ export function FormattedMessage({
   const collapsed = isOverflowing && !expanded;
 
   return (
-    <div className={isOverflowing ? "relative" : undefined}>
-      <div
-        ref={containerRef}
-        className={baseClass}
-        style={
-          collapsed
-            ? {
-                maxHeight: COLLAPSE_HEIGHT,
-                overflow: "hidden",
-                display: "block",
-              }
-            : undefined
-        }
-        dangerouslySetInnerHTML={{ __html: html }}
-        onClick={handleClick}
-      />
-      {collapsed && (
+    <div>
+      <div className={collapsed ? "relative" : undefined}>
         <div
-          className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
-          style={{
-            background:
-              "linear-gradient(to bottom, transparent, rgba(0,0,0,0.6))",
-          }}
+          ref={containerRef}
+          className={baseClass}
+          style={
+            collapsed
+              ? {
+                  maxHeight: COLLAPSE_HEIGHT,
+                  overflow: "hidden",
+                  display: "block",
+                }
+              : undefined
+          }
+          dangerouslySetInnerHTML={{ __html: html }}
+          onClick={handleClick}
         />
-      )}
+        {collapsed && (
+          <div
+            className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(to bottom, transparent, rgba(0,0,0,0.6))",
+            }}
+          />
+        )}
+      </div>
       {isOverflowing && (
         <button
           onClick={(e) => {
