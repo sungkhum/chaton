@@ -8,9 +8,8 @@ import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { SaveToClipboard } from "./shared/save-to-clipboard";
 import { PrivacyToggle } from "./privacy-toggle";
 import { TipCurrencyToggle } from "./tip-currency-toggle";
-import { DmPriceToggle } from "./dm-price-toggle";
 import { LanguageSelector } from "./language-selector";
-import { SpamFilterSettings } from "./spam-filter-settings";
+import { InboxRules } from "./inbox-rules";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 
 interface SettingsModalProps {
@@ -134,9 +133,7 @@ export const SettingsModal = ({ onClose }: SettingsModalProps) => {
             <div className="border-t border-white/[0.06]" />
             <TipCurrencyToggle />
             <div className="border-t border-white/[0.06]" />
-            <DmPriceToggle />
-            <div className="border-t border-white/[0.06]" />
-            <SpamFilterSettings />
+            <InboxRules />
           </div>
 
           {/* ── Language ── */}

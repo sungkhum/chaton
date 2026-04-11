@@ -74,7 +74,6 @@ src/components/compose/mention-picker.tsx  MentionPicker
 src/components/compose/reply-banner.tsx  ReplyBanner
 src/components/compose/video-preview-panel.tsx  VideoPreviewPanel
 src/components/currency-toggle.tsx  CurrencyToggle
-src/components/dm-price-toggle.tsx  fn DmPriceToggle
 src/components/edit-profile-dialog.tsx  EditProfileDialog
 src/components/faq-page.tsx  FaqPage
 src/components/feedback-modal.tsx  fn FeedbackModal
@@ -82,6 +81,7 @@ src/components/form/my-error-label.tsx  MyErrorLabel
 src/components/form/my-input.tsx  MyInput
 src/components/group-image-picker.tsx  GroupImagePicker
 src/components/header.tsx  Header
+src/components/inbox-rules.tsx  fn InboxRules
 src/components/install-prompt.tsx  fn InstallPrompt
 src/components/join-confirmation-modal.tsx  fn JoinConfirmationModal
 src/components/join-group-modal.tsx  fn JoinGroupModal
@@ -129,8 +129,8 @@ src/components/seo-structured-data.tsx  SeoStructuredData
 src/components/settings-modal.tsx  SettingsModal
 src/components/shared/alert-notification.tsx  AlertNotification
 src/components/shared/chunk-error-boundary.tsx  class ChunkErrorBoundary
+src/components/shared/discrete-slider.tsx  fn findClosestStopIndex, DiscreteSlider
 src/components/shared/save-to-clipboard.tsx  SaveToClipboard
-src/components/spam-filter-settings.tsx  fn SpamFilterSettings
 src/components/speed-dial-fab.tsx
 src/components/start-group-chat.tsx  StartGroupChat
 src/components/support-chaton-dialog.tsx  SupportChatOnDialog
@@ -143,7 +143,7 @@ src/components/user-account-list.tsx
 ## Services
 src/services/cache.service.ts  fn checkCacheVersion, fn cacheUserProfile, fn getCachedUserProfile, fn cacheClassificationData, fn getCachedClassificationData, fn cachePrivacyMode, ... (43 exports)
 src/services/community.service.ts  fn fetchGroupMemberCount, fn fetchGroupMemberCountQuick, fn fetchCommunityListings, fn listGroupInCommunity, fn unlistGroupFromCommunity, fn fetchCommunityListing, ... (8 exports)
-src/services/conversations.service.tsx  fn fetchMessageThreadsRaw, fn buildShellConversations, fn decryptConversationPreviews, fn cacheDecryptionResult, fn invalidateMessageCache, fn fetchFollowedUsers, ... (45 exports)
+src/services/conversations.service.tsx  fn fetchMessageThreadsRaw, fn buildShellConversations, fn decryptConversationPreviews, fn cacheDecryptionResult, fn invalidateMessageCache, fn fetchFollowedUsers, ... (47 exports)
 src/services/deso-activity.service.ts  fn fetchDesoActivity
 src/services/feedback.service.ts  fn submitFeedback
 src/services/ffmpeg.service.ts  fn compressAudioToMp4
@@ -184,7 +184,7 @@ src/utils/atomic-tip.ts  fn sendAtomicDesoTip, sendAtomicUsdcTip
 src/utils/avatar.ts  AVATAR_COLORS | fn hashToColorIndex, getInitials
 src/utils/batch-members.ts  MEMBER_BATCH_SIZE | fn batchedGetBulkAccessGroups, batchedAddMembers, batchedRemoveMembers
 src/utils/community-cache.ts  fn clearCommunityCache
-src/utils/constants.ts  ASSOCIATION_TYPE_APPROVED, ASSOCIATION_TYPE_BLOCKED, ASSOCIATION_VALUE_APPROVED, ASSOCIATION_VALUE_BLOCKED, ASSOCIATION_TYPE_GROUP_ARCHIVED, ASSOCIATION_TYPE_CHAT_ARCHIVED, ... (40 exports)
+src/utils/constants.ts  ASSOCIATION_TYPE_APPROVED, ASSOCIATION_TYPE_BLOCKED, ASSOCIATION_VALUE_APPROVED, ASSOCIATION_VALUE_BLOCKED, ASSOCIATION_TYPE_GROUP_ARCHIVED, ASSOCIATION_TYPE_CHAT_ARCHIVED, ... (42 exports)
 src/utils/detect-language.ts  fn detectLanguageSync, detectLanguage
 src/utils/error-capture.ts  fn getAppVersion, getPlatform, captureError
 src/utils/error-codes.ts  ERROR_CODES

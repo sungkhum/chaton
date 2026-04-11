@@ -207,15 +207,6 @@
       "CurrencyToggle"
     ]
   },
-  "src/components/dm-price-toggle.tsx": {
-    "imports": [
-      "src/store/index.ts",
-      "src/services/conversations.service.tsx"
-    ],
-    "exports": [
-      "DmPriceToggle"
-    ]
-  },
   "src/components/edit-profile-dialog.tsx": {
     "imports": [
       "src/store/index.ts",
@@ -282,6 +273,17 @@
     ],
     "exports": [
       "Header"
+    ]
+  },
+  "src/components/inbox-rules.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/services/conversations.service.tsx",
+      "src/utils/spam-filter.ts",
+      "src/components/shared/discrete-slider.tsx"
+    ],
+    "exports": [
+      "InboxRules"
     ]
   },
   "src/components/install-prompt.tsx": {
@@ -777,9 +779,8 @@
       "src/components/shared/save-to-clipboard.tsx",
       "src/components/privacy-toggle.tsx",
       "src/components/tip-currency-toggle.tsx",
-      "src/components/dm-price-toggle.tsx",
       "src/components/language-selector.tsx",
-      "src/components/spam-filter-settings.tsx",
+      "src/components/inbox-rules.tsx",
       "src/hooks/useFocusTrap.ts"
     ],
     "exports": [
@@ -798,22 +799,19 @@
       "ChunkErrorBoundary"
     ]
   },
+  "src/components/shared/discrete-slider.tsx": {
+    "imports": [],
+    "exports": [
+      "findClosestStopIndex",
+      "DiscreteSlider"
+    ]
+  },
   "src/components/shared/save-to-clipboard.tsx": {
     "imports": [
       "src/utils/helpers.ts"
     ],
     "exports": [
       "SaveToClipboard"
-    ]
-  },
-  "src/components/spam-filter-settings.tsx": {
-    "imports": [
-      "src/store/index.ts",
-      "src/services/conversations.service.tsx",
-      "src/utils/spam-filter.ts"
-    ],
-    "exports": [
-      "SpamFilterSettings"
     ]
   },
   "src/components/speed-dial-fab.tsx": {
@@ -1126,6 +1124,8 @@
       "fetchArchivedGroups",
       "createArchiveAssociation",
       "deleteArchiveAssociation",
+      "fetchAcceptedGroups",
+      "createGroupAcceptedAssociation",
       "createArchiveChatAssociation",
       "deleteAssociationById",
       "createDismissAssociation",
@@ -1330,6 +1330,8 @@
       "ASSOCIATION_TYPE_GROUP_ARCHIVED",
       "ASSOCIATION_TYPE_CHAT_ARCHIVED",
       "ASSOCIATION_VALUE_ARCHIVED",
+      "ASSOCIATION_TYPE_GROUP_ACCEPTED",
+      "ASSOCIATION_VALUE_GROUP_ACCEPTED",
       "ASSOCIATION_TYPE_DISMISSED",
       "ASSOCIATION_VALUE_DISMISSED",
       "ASSOCIATION_TYPE_GROUP_JOIN_REQUEST",

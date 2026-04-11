@@ -4,20 +4,14 @@ export interface SpamFilterConfig {
   enabled: boolean;
   /** Minimum DESO balance in nanos (0 = disabled). */
   minBalanceNanos: number;
-  /** Minimum creator coin price in DeSo nanos (0 = disabled). */
-  minCoinPriceNanos: number;
   /** Require the sender to have a DeSo profile. */
   requireProfile: boolean;
-  /** Minimum number of creator coin holders (0 = disabled). */
-  minCoinHolders: number;
 }
 
 export const DEFAULT_SPAM_FILTER: SpamFilterConfig = {
   enabled: false,
   minBalanceNanos: 0,
-  minCoinPriceNanos: 0,
   requireProfile: false,
-  minCoinHolders: 0,
 };
 
 /**
@@ -40,16 +34,6 @@ export function passesSenderFilter(
   if (filter.minBalanceNanos > 0) {
     const balance = senderBalanceNanos ?? profile?.DESOBalanceNanos ?? 0;
     if (balance < filter.minBalanceNanos) return false;
-  }
-
-  if (filter.minCoinPriceNanos > 0) {
-    const coinPrice = profile?.CoinPriceDeSoNanos ?? 0;
-    if (coinPrice < filter.minCoinPriceNanos) return false;
-  }
-
-  if (filter.minCoinHolders > 0) {
-    const holders = profile?.CoinEntry?.NumberOfHolders ?? 0;
-    if (holders < filter.minCoinHolders) return false;
   }
 
   return true;

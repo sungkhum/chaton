@@ -29,6 +29,7 @@ import {
   ASSOCIATION_TYPE_BLOCKED,
   ASSOCIATION_TYPE_CHAT_ARCHIVED,
   ASSOCIATION_TYPE_DISMISSED,
+  ASSOCIATION_TYPE_GROUP_ACCEPTED,
   ASSOCIATION_TYPE_GROUP_ARCHIVED,
   ASSOCIATION_TYPE_GROUP_JOIN_REJECTED,
   ASSOCIATION_TYPE_GROUP_JOIN_REQUEST,
@@ -1422,11 +1423,19 @@ export function classifyConversation(
   dismissedUsers: Set<string>,
   paidUsers: Set<string> = new Set(),
   spamFilter?: SpamFilterConfig,
-  senderProfiles?: Map<string, ProfileEntryResponse>
+  senderProfiles?: Map<string, ProfileEntryResponse>,
+  acceptedGroups: Set<string> = new Set(),
+  groupsWithMyMessages: Set<string> = new Set()
 ): "chat" | "request" | "blocked" | "archived" | "dismissed" {
   if (conversation.ChatType === ChatType.GROUPCHAT) {
     if (archivedGroups.has(conversationKey)) return "archived";
-    return "chat";
+    // Owner always sees their own groups
+    if (conversation.firstMessagePublicKey === myPublicKey) return "chat";
+    // Explicitly accepted via association
+    if (acceptedGroups.has(conversationKey)) return "chat";
+    // Implicitly accepted: user has sent a message in the group
+    if (groupsWithMyMessages.has(conversationKey)) return "chat";
+    return "request";
   }
 
   const otherKey = conversation.firstMessagePublicKey;
@@ -1561,6 +1570,58 @@ export async function deleteArchiveAssociation(
       TransactorPublicKeyBase58Check: myPublicKey,
       AssociationID: associationId,
     })
+  );
+}
+
+// ── Group accepted (user consented to group membership) ─────────────
+
+export async function fetchAcceptedGroups(
+  publicKey: string
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  let lastId = "";
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const res = await getUserAssociations({
+      TransactorPublicKeyBase58Check: publicKey,
+      AssociationType: ASSOCIATION_TYPE_GROUP_ACCEPTED,
+      Limit: 100,
+      ...(lastId ? { LastSeenAssociationID: lastId } : {}),
+    });
+
+    const associations = res.Associations || [];
+    if (associations.length === 0) break;
+
+    for (const a of associations) {
+      // Reconstruct conversation key: ownerPubKey + groupKeyName
+      const conversationKey =
+        a.TargetUserPublicKeyBase58Check + a.AssociationValue;
+      map.set(conversationKey, a.AssociationID);
+    }
+
+    if (associations.length < 100) break;
+    lastId = associations[associations.length - 1]!.AssociationID;
+  }
+
+  return map;
+}
+
+export async function createGroupAcceptedAssociation(
+  myPublicKey: string,
+  groupOwnerPublicKey: string,
+  groupKeyName: string
+): Promise<void> {
+  await withAuth(() =>
+    createUserAssociation(
+      {
+        TransactorPublicKeyBase58Check: myPublicKey,
+        TargetUserPublicKeyBase58Check: groupOwnerPublicKey,
+        AssociationType: ASSOCIATION_TYPE_GROUP_ACCEPTED,
+        AssociationValue: groupKeyName,
+      },
+      { checkPermissions: false }
+    )
   );
 }
 
@@ -1715,15 +1776,7 @@ export async function fetchSpamFilterSettings(
           0,
           Number(assoc.ExtraData.minBalanceNanos) || 0
         ),
-        minCoinPriceNanos: Math.max(
-          0,
-          Number(assoc.ExtraData.minCoinPriceNanos) || 0
-        ),
         requireProfile: assoc.ExtraData.requireProfile === "true",
-        minCoinHolders: Math.max(
-          0,
-          Number(assoc.ExtraData.minCoinHolders) || 0
-        ),
       };
       return { config, associationId: assoc.AssociationID };
     }
@@ -1766,9 +1819,7 @@ export async function setSpamFilterOnChain(
         AssociationValue: ASSOCIATION_VALUE_SPAM_FILTER,
         ExtraData: {
           minBalanceNanos: String(config.minBalanceNanos),
-          minCoinPriceNanos: String(config.minCoinPriceNanos),
           requireProfile: config.requireProfile ? "true" : "false",
-          minCoinHolders: String(config.minCoinHolders),
         },
       },
       { checkPermissions: false }
