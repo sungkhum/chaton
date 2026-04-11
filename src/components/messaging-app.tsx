@@ -1410,12 +1410,21 @@ export const MessagingApp: FC = () => {
       .then((res) => {
         setSenderProfiles((prev) => {
           const next = new Map(prev);
+          let changed = false;
           for (const u of res.UserList ?? []) {
             if (u.ProfileEntryResponse) {
-              next.set(u.PublicKeyBase58Check, u.ProfileEntryResponse);
+              const existing = next.get(u.PublicKeyBase58Check);
+              if (
+                !existing ||
+                existing.DESOBalanceNanos !==
+                  u.ProfileEntryResponse.DESOBalanceNanos
+              ) {
+                next.set(u.PublicKeyBase58Check, u.ProfileEntryResponse);
+                changed = true;
+              }
             }
           }
-          return next;
+          return changed ? next : prev;
         });
       })
       .catch(() => {

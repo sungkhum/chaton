@@ -63,9 +63,11 @@ on-chain follows and User Associations (no backend needed).
 5. `chaton:chat-archived` association exists → Archived
 6. Current user follows the other user on DeSo → Chats
 7. `chaton:chat-approved` association exists → Chats
-8. User initiated the conversation (via search) → Chats
-9. Current user sent the first message → Chats
-10. Everything else → Requests
+8. User paid the current user → Chats
+9. User initiated the conversation (via search) → Chats
+10. Current user sent the first message → Chats
+11. Spam filter enabled and sender passes filter criteria → Chats
+12. Everything else → Requests
 
 ### Data flow
 
