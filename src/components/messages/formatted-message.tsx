@@ -162,7 +162,7 @@ export function FormattedMessage({
     el.addEventListener("load", onLoad, true); // capture phase for img load
     // Reveal already-cached images that loaded before the listener attached
     el.querySelectorAll<HTMLImageElement>("img[data-cp]").forEach((img) => {
-      if (img.complete) img.style.opacity = "1";
+      if (img.complete && img.naturalWidth > 0) img.style.opacity = "1";
     });
     return () => {
       el.removeEventListener("error", onError, true);

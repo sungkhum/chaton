@@ -124,12 +124,21 @@ export function AnimatedEmoji({
     setLoaded(true);
   }, []);
 
+  // Reset loaded state when emoji changes (component reused with different prop)
+  useEffect(() => {
+    setLoaded(false);
+  }, [codepoint]);
+
   // Handle already-cached images that fire load synchronously before React attaches the handler
   useEffect(() => {
-    if (imgRef.current?.complete && !failed) {
+    if (
+      imgRef.current?.complete &&
+      imgRef.current.naturalWidth > 0 &&
+      !failed
+    ) {
       setLoaded(true);
     }
-  }, [failed]);
+  }, [failed, codepoint]);
 
   if (failed) {
     return (
