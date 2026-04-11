@@ -2,6 +2,46 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <!-- Stale-chunk recovery: after a deployment, the service worker may serve
+         old chunk filenames that no longer exist on the server. Cloudflare's SPA
+         fallback returns index.html (text/html) for missing JS files, causing a
+         MIME type error that prevents the app from bootstrapping. This inline
+         script catches that error, clears all SW caches, and reloads once.
+         MUST be before any module script so the listener is registered first. -->
+    <script>
+      !function(){
+        var KEY = "__chaton_chunk_recovery";
+        var prev = sessionStorage.getItem(KEY);
+        if (prev && Date.now() - Number(prev) < 30000) return;
+        window.addEventListener("error", function(e) {
+          var msg = String(e.message || "");
+          if (
+            msg.indexOf("MIME") > -1 ||
+            msg.indexOf("not a valid JavaScript") > -1 ||
+            msg.indexOf("Loading chunk") > -1 ||
+            msg.indexOf("dynamically imported module") > -1
+          ) {
+            sessionStorage.setItem(KEY, String(Date.now()));
+            var tasks = [];
+            if ("serviceWorker" in navigator) {
+              tasks.push(
+                navigator.serviceWorker.getRegistrations().then(function(regs) {
+                  return Promise.all(regs.map(function(r) { return r.unregister(); }));
+                })
+              );
+            }
+            if ("caches" in window) {
+              tasks.push(
+                caches.keys().then(function(keys) {
+                  return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+                })
+              );
+            }
+            Promise.all(tasks).finally(function() { location.reload(); });
+          }
+        }, true);
+      }();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content" />
     <title>ChatOn — Messaging that no one can shut down</title>
 
@@ -92,6 +132,7 @@
     </div>
 
     <div id="root"></div>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
