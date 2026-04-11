@@ -153,8 +153,21 @@ export function FormattedMessage({
       const text = document.createTextNode(img.alt);
       img.replaceWith(text);
     };
+    const onLoad = (e: Event) => {
+      const img = e.target as HTMLImageElement;
+      if (img.tagName !== "IMG" || !img.dataset.cp) return;
+      img.style.opacity = "1";
+    };
     el.addEventListener("error", onError, true); // capture phase for img errors
-    return () => el.removeEventListener("error", onError, true);
+    el.addEventListener("load", onLoad, true); // capture phase for img load
+    // Reveal already-cached images that loaded before the listener attached
+    el.querySelectorAll<HTMLImageElement>("img[data-cp]").forEach((img) => {
+      if (img.complete) img.style.opacity = "1";
+    });
+    return () => {
+      el.removeEventListener("error", onError, true);
+      el.removeEventListener("load", onLoad, true);
+    };
   }, [html]);
 
   // Intercept clicks on internal join links — open as in-app modal

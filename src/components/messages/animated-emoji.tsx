@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 
 const CDN_BASE = "https://fonts.gstatic.com/s/e/notoemoji/latest";
 
@@ -85,7 +85,7 @@ export function replaceEmojisInHtml(html: string): string {
           return (
             `<img src="${CDN_BASE}/${cp}/512.webp" alt="${segment}"` +
             ' width="20" height="20" loading="lazy" draggable="false"' +
-            ' class="inline-block shrink-0" style="width:20px;height:20px;vertical-align:-3px"' +
+            ' class="inline-block shrink-0" style="width:20px;height:20px;vertical-align:-3px;opacity:0;transition:opacity .15s ease-in"' +
             ` data-cp="${cp}">`
           );
         })
@@ -112,11 +112,24 @@ export function AnimatedEmoji({
   const codepoint = emojiToCodepoint(emoji);
   const knownFailed = failedCodepoints.has(codepoint);
   const [failed, setFailed] = useState(knownFailed);
+  const [loaded, setLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
 
   const handleError = useCallback(() => {
     failedCodepoints.add(codepoint);
     setFailed(true);
   }, [codepoint]);
+
+  const handleLoad = useCallback(() => {
+    setLoaded(true);
+  }, []);
+
+  // Handle already-cached images that fire load synchronously before React attaches the handler
+  useEffect(() => {
+    if (imgRef.current?.complete && !failed) {
+      setLoaded(true);
+    }
+  }, [failed]);
 
   if (failed) {
     return (
@@ -133,6 +146,7 @@ export function AnimatedEmoji({
 
   return (
     <img
+      ref={imgRef}
       src={`${CDN_BASE}/${codepoint}/512.webp`}
       alt={emoji}
       width={size}
@@ -140,8 +154,16 @@ export function AnimatedEmoji({
       loading={eager ? "eager" : "lazy"}
       draggable={false}
       onError={handleError}
+      onLoad={handleLoad}
       className={`inline-block shrink-0 ${className}`}
-      style={{ width: size, height: size, minWidth: size, minHeight: size }}
+      style={{
+        width: size,
+        height: size,
+        minWidth: size,
+        minHeight: size,
+        opacity: loaded ? 1 : 0,
+        transition: "opacity .15s ease-in",
+      }}
     />
   );
 }
