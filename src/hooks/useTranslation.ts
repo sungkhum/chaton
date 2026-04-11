@@ -63,12 +63,14 @@ export function useTranslation(
       }
 
       const parsed = parseMessageType(message);
-      const sourceLang = parsed.lang || detectLanguageSync(text) || "auto";
 
       setTranslatingKeys((prev) => new Set(prev).add(key));
 
       try {
-        const result = await translateText(text, sourceLang, preferredLang);
+        // Use "auto" for manual translate — user explicitly asked, let the API
+        // detect the source language. Stored msg:lang can be wrong when mentions
+        // (@username) corrupt franc's trigram detection at send time.
+        const result = await translateText(text, "auto", preferredLang);
         if (result) {
           setTranslations((prev) =>
             new Map(prev).set(key, {

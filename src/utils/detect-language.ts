@@ -70,7 +70,16 @@ const ISO3_TO_ISO1: Record<string, string> = {
 export function detectLanguageSync(text: string): string | null {
   if (text.length < 10) return null;
 
-  const iso3 = franc(text);
+  // Strip @mentions and emoji — they corrupt trigram-based detection
+  // (e.g. "@natanwells hola mundo" was detected as French instead of Spanish,
+  //  "😂😂😂 hola amigos 🎉" was detected as Plateau Malagasy)
+  const cleaned = text
+    .replace(/@\w+/g, "")
+    .replace(/\p{Emoji_Presentation}|\p{Extended_Pictographic}/gu, "")
+    .trim();
+  if (cleaned.length < 10) return null;
+
+  const iso3 = franc(cleaned);
   if (iso3 === "und") return null;
 
   return ISO3_TO_ISO1[iso3] || iso3;
