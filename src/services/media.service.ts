@@ -40,16 +40,36 @@ export interface VideoUploadResult {
   url: string;
 }
 
+const VIDEO_UPLOAD_TIMEOUT_MS = 120_000;
+
 export async function uploadVideoFile(file: File): Promise<VideoUploadResult> {
   const appUser = useStore.getState().appUser;
   if (!appUser) throw new Error("Must be logged in to upload media");
 
-  const response = await desoUploadVideo({
-    UserPublicKeyBase58Check: appUser.PublicKeyBase58Check,
-    file,
+  const uploadAndPoll = async () => {
+    const response = await desoUploadVideo({
+      UserPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+      file,
+    });
+
+    await pollForVideoReady(response.asset.id);
+    return response;
+  };
+
+  let timerId: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timerId = setTimeout(
+      () => reject(new Error("Upload timed out — try a shorter clip or Wi-Fi")),
+      VIDEO_UPLOAD_TIMEOUT_MS
+    );
   });
 
-  await pollForVideoReady(response.asset.id);
+  let response: Awaited<ReturnType<typeof desoUploadVideo>>;
+  try {
+    response = await Promise.race([uploadAndPoll(), timeout]);
+  } finally {
+    clearTimeout(timerId!);
+  }
 
   // Get the actual playback URL from video status (response.url is just the upload endpoint).
   // The API returns playbackUrl (lowercase) despite the TS types saying playbackURL (uppercase).

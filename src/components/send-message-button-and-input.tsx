@@ -35,7 +35,14 @@ import {
   getDisplayUrl,
   trackShare,
 } from "../services/klipy.service";
-import { uploadImage, uploadVideoFile } from "../services/media.service";
+import {
+  uploadImage,
+  uploadVideoFile,
+  formatFileSize,
+} from "../services/media.service";
+import { MAX_VIDEO_FILE_SIZE } from "../utils/constants";
+import { captureError } from "../utils/error-capture";
+import { ERROR_CODES } from "../utils/error-codes";
 import { AudioRecorderPanel } from "./compose/audio-recorder-panel";
 import { ReplyBanner } from "./compose/reply-banner";
 import {
@@ -467,6 +474,14 @@ export const SendMessageButtonAndInput = forwardRef<
     };
 
     const stageVideo = (file: File) => {
+      if (file.size > MAX_VIDEO_FILE_SIZE) {
+        toast.error(
+          `Video too large (${formatFileSize(
+            file.size
+          )}). Maximum size is ${formatFileSize(MAX_VIDEO_FILE_SIZE)}.`
+        );
+        return;
+      }
       if (pendingVideo) URL.revokeObjectURL(pendingVideo.previewUrl);
       const previewUrl = URL.createObjectURL(file);
       const video = document.createElement("video");
@@ -540,7 +555,22 @@ export const SendMessageButtonAndInput = forwardRef<
         URL.revokeObjectURL(pendingVideo.previewUrl);
         setPendingVideo(null);
       } catch (err: any) {
-        toast.error(`Video upload failed: ${err.message || err}`);
+        const raw = err.message || String(err);
+        let userMsg: string;
+        if (/timed?\s*out|abort/i.test(raw)) {
+          userMsg = "Video upload timed out — try a shorter clip or Wi-Fi";
+        } else if (/load failed|failed to fetch|network/i.test(raw)) {
+          userMsg = "Video upload failed — check your connection and try again";
+        } else if (/playback|transcode|format|process/i.test(raw)) {
+          userMsg = "This video format isn't supported — try converting to MP4";
+        } else {
+          userMsg = `Video upload failed: ${raw}`;
+        }
+        toast.error(userMsg);
+        captureError(ERROR_CODES.MEDIA_UPLOAD_FAILED, raw, {
+          stack: err.stack,
+          component: "SendMessageButtonAndInput",
+        });
       } finally {
         setIsUploading(false);
       }
@@ -908,6 +938,7 @@ export const SendMessageButtonAndInput = forwardRef<
                     file={pendingVideo.file}
                     previewUrl={pendingVideo.previewUrl}
                     onCancel={cancelVideo}
+                    isUploading={isUploading}
                   />
                 </ViewTransition>
               )}

@@ -121,6 +121,7 @@ export const DESO_NETWORK: Readonly<DeSoNetwork> = IS_MAINNET
   : DeSoNetwork.testnet;
 export const PUBLIC_KEY_LENGTH: Readonly<number> = IS_MAINNET ? 55 : 54;
 export const PUBLIC_KEY_PREFIX: Readonly<string> = IS_MAINNET ? "BC" : "tBC";
+export const MAX_VIDEO_FILE_SIZE = 250 * 1024 * 1024; // 250 MB
 export const MESSAGES_ONE_REQUEST_LIMIT = 25;
 export const FETCH_THREADS_TIMEOUT_MS = 30_000;
 export const MAX_MEMBERS_IN_GROUP_SUMMARY_SHOWN = 4;

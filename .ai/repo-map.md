@@ -22,7 +22,7 @@
 # Messaging
 send-msg-failed (SEND_MSG_FAILED)
 decrypt-msg-failed (DECRYPT_MSG_FAILED)
-media-upload-failed (MEDIA_UPLOAD_FAILED)
+media-upload-failed (MEDIA_UPLOAD_FAILED) → src/components/send-message-button-and-input.tsx
 reaction-failed (REACTION_FAILED)
 # Auth / Identity
 auth-derived-key (AUTH_DERIVED_KEY)
@@ -182,7 +182,7 @@ src/store/index.ts  fn useStore
 src/utils/atomic-tip.ts  fn sendAtomicDesoTip, sendAtomicUsdcTip
 src/utils/avatar.ts  AVATAR_COLORS | fn hashToColorIndex, getInitials
 src/utils/community-cache.ts  fn clearCommunityCache
-src/utils/constants.ts  ASSOCIATION_TYPE_APPROVED, ASSOCIATION_TYPE_BLOCKED, ASSOCIATION_VALUE_APPROVED, ASSOCIATION_VALUE_BLOCKED, ASSOCIATION_TYPE_GROUP_ARCHIVED, ASSOCIATION_TYPE_CHAT_ARCHIVED, ... (33 exports)
+src/utils/constants.ts  ASSOCIATION_TYPE_APPROVED, ASSOCIATION_TYPE_BLOCKED, ASSOCIATION_VALUE_APPROVED, ASSOCIATION_VALUE_BLOCKED, ASSOCIATION_TYPE_GROUP_ARCHIVED, ASSOCIATION_TYPE_CHAT_ARCHIVED, ... (34 exports)
 src/utils/detect-language.ts  fn detectLanguageSync, detectLanguage
 src/utils/error-capture.ts  fn getAppVersion, getPlatform, captureError
 src/utils/error-codes.ts  ERROR_CODES
