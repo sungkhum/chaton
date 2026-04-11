@@ -427,6 +427,63 @@ function build() {
   return lines.join("\n");
 }
 
+// ─── 5. DEPENDENCY GRAPH ──────────────────────────────────────────────────
+
+function extractDependencyGraph() {
+  const allFiles = [...walkDir(SRC), ...walkDir(resolve(ROOT, "worker/src"))];
+  const graph = {};
+
+  const importRe = /import\s+(?:(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)(?:\s*,\s*(?:\{[^}]*\}|\*\s+as\s+\w+|\w+))*\s+from\s+)?["']([^"']+)["']/g;
+
+  for (const filePath of allFiles) {
+    let content;
+    try { content = readFileSync(filePath, "utf8"); } catch { continue; }
+
+    const relPath = rel(filePath);
+    const imports = [];
+
+    let m;
+    importRe.lastIndex = 0;
+    while ((m = importRe.exec(content))) {
+      const spec = m[1];
+      // Skip node_modules / bare specifiers
+      if (!spec.startsWith(".") && !spec.startsWith("src/")) continue;
+
+      // Resolve relative imports
+      let resolved;
+      if (spec.startsWith(".")) {
+        const base = dirname(filePath);
+        const candidate = resolve(base, spec);
+        resolved = resolveFile(candidate);
+      } else {
+        resolved = resolveFile(resolve(ROOT, spec));
+      }
+
+      if (resolved) {
+        const relResolved = rel(resolved);
+        if (!imports.includes(relResolved)) imports.push(relResolved);
+      }
+    }
+
+    const exports = extractExports(filePath).map(s => s.name);
+    graph[relPath] = { imports, exports };
+  }
+
+  return graph;
+}
+
+function resolveFile(candidate) {
+  const suffixes = ["", ".ts", ".tsx", "/index.ts", "/index.tsx"];
+  for (const s of suffixes) {
+    const full = candidate + s;
+    try {
+      const st = statSync(full, { throwIfNoEntry: false });
+      if (st && st.isFile()) return full;
+    } catch {}
+  }
+  return null;
+}
+
 // ─── MAIN ──────────────────────────────────────────────────────────────────
 
 mkdirSync(dirname(OUTPUT), { recursive: true });
@@ -436,3 +493,11 @@ writeFileSync(OUTPUT, output, "utf8");
 const lineCount = output.split("\n").length;
 const sizeKB = (Buffer.byteLength(output) / 1024).toFixed(1);
 console.log(`repo-map: ${lineCount} lines, ${sizeKB}KB → ${relative(ROOT, OUTPUT)}`);
+
+// Generate dependency graph
+const graph = extractDependencyGraph();
+const graphPath = resolve(ROOT, ".ai/dependency-graph.json");
+writeFileSync(graphPath, JSON.stringify(graph, null, 2), "utf8");
+const graphEntries = Object.keys(graph).length;
+const graphKB = (Buffer.byteLength(JSON.stringify(graph)) / 1024).toFixed(1);
+console.log(`dep-graph: ${graphEntries} files, ${graphKB}KB → ${relative(ROOT, graphPath)}`);

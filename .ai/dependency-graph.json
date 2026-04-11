@@ -1,0 +1,1625 @@
+{
+  "src/App.tsx": {
+    "imports": [
+      "src/components/header.tsx",
+      "src/components/install-prompt.tsx",
+      "src/components/messaging-app.tsx",
+      "src/components/sw-update-prompt.tsx",
+      "src/components/route-error-boundary.tsx",
+      "src/components/blog/blog-registry.ts",
+      "src/store/index.ts",
+      "src/utils/with-auth.ts",
+      "src/utils/constants.ts",
+      "src/services/cache.service.ts",
+      "src/services/conversations.service.tsx"
+    ],
+    "exports": []
+  },
+  "src/components/about-page.tsx": {
+    "imports": [
+      "src/hooks/usePageMeta.ts",
+      "src/components/public-layout.tsx"
+    ],
+    "exports": [
+      "AboutPage"
+    ]
+  },
+  "src/components/blog/blog-index.tsx": {
+    "imports": [
+      "src/hooks/usePageMeta.ts",
+      "src/components/public-layout.tsx",
+      "src/components/blog/blog-registry.ts"
+    ],
+    "exports": [
+      "BlogIndex"
+    ]
+  },
+  "src/components/blog/blog-post-layout.tsx": {
+    "imports": [
+      "src/hooks/usePageMeta.ts",
+      "src/components/public-layout.tsx"
+    ],
+    "exports": [
+      "BlogPostLayout"
+    ]
+  },
+  "src/components/blog/blog-registry.ts": {
+    "imports": [],
+    "exports": [
+      "getBlogSlugs",
+      "getPostBySlug",
+      "lazyPost"
+    ]
+  },
+  "src/components/blog/posts/best-decentralized-messaging-apps-2026.tsx": {
+    "imports": [
+      "src/components/blog/blog-post-layout.tsx"
+    ],
+    "exports": []
+  },
+  "src/components/blog/posts/chaton-vs-signal.tsx": {
+    "imports": [
+      "src/components/blog/blog-post-layout.tsx"
+    ],
+    "exports": []
+  },
+  "src/components/blog/posts/chaton-vs-telegram.tsx": {
+    "imports": [
+      "src/components/blog/blog-post-layout.tsx"
+    ],
+    "exports": []
+  },
+  "src/components/blog/posts/near-zero-infrastructure.tsx": {
+    "imports": [
+      "src/components/blog/blog-post-layout.tsx"
+    ],
+    "exports": []
+  },
+  "src/components/bug-report-modal.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/services/ticket.service.ts"
+    ],
+    "exports": [
+      "BugReportModal"
+    ]
+  },
+  "src/components/community-page.tsx": {
+    "imports": [
+      "src/hooks/usePageMeta.ts",
+      "src/components/public-layout.tsx",
+      "src/services/community.service.ts",
+      "src/utils/profanity-filter.ts",
+      "src/utils/invite-link.ts",
+      "src/components/messaging-display-avatar.tsx"
+    ],
+    "exports": []
+  },
+  "src/components/community-tab.tsx": {
+    "imports": [
+      "src/services/community.service.ts",
+      "src/utils/profanity-filter.ts",
+      "src/utils/invite-link.ts",
+      "src/components/messaging-display-avatar.tsx",
+      "src/store/index.ts"
+    ],
+    "exports": []
+  },
+  "src/components/compare-page.tsx": {
+    "imports": [
+      "src/hooks/usePageMeta.ts",
+      "src/components/public-layout.tsx"
+    ],
+    "exports": [
+      "ComparePage"
+    ]
+  },
+  "src/components/compose-panel.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/utils/constants.ts",
+      "src/utils/helpers.ts",
+      "src/components/messaging-display-avatar.tsx",
+      "src/utils/search-helpers.ts"
+    ],
+    "exports": []
+  },
+  "src/components/compose/audio-recorder-panel.tsx": {
+    "imports": [
+      "src/hooks/useAudioRecorder.ts"
+    ],
+    "exports": [
+      "AudioRecorderPanel"
+    ]
+  },
+  "src/components/compose/emoji-picker-button.tsx": {
+    "imports": [
+      "src/components/shared/chunk-error-boundary.tsx",
+      "src/components/messages/animated-emoji.tsx",
+      "src/hooks/useMobile.ts"
+    ],
+    "exports": [
+      "EmojiPickerButton"
+    ]
+  },
+  "src/components/compose/full-emoji-picker.tsx": {
+    "imports": [],
+    "exports": [
+      "FullEmojiPicker"
+    ]
+  },
+  "src/components/compose/gif-picker.tsx": {
+    "imports": [
+      "src/services/klipy.service.ts",
+      "src/hooks/useMobile.ts"
+    ],
+    "exports": [
+      "GifPicker"
+    ]
+  },
+  "src/components/compose/image-preview-panel.tsx": {
+    "imports": [],
+    "exports": [
+      "ImagePreviewPanel"
+    ]
+  },
+  "src/components/compose/link-attachment-panel.tsx": {
+    "imports": [
+      "src/services/og.service.ts",
+      "src/utils/link-services.ts"
+    ],
+    "exports": [
+      "LinkAttachmentPanel"
+    ]
+  },
+  "src/components/compose/mention-picker.tsx": {
+    "imports": [
+      "src/components/messaging-display-avatar.tsx"
+    ],
+    "exports": [
+      "MentionPicker"
+    ]
+  },
+  "src/components/compose/reply-banner.tsx": {
+    "imports": [],
+    "exports": [
+      "ReplyBanner"
+    ]
+  },
+  "src/components/compose/video-preview-panel.tsx": {
+    "imports": [],
+    "exports": [
+      "VideoPreviewPanel"
+    ]
+  },
+  "src/components/currency-toggle.tsx": {
+    "imports": [],
+    "exports": [
+      "CurrencyToggle"
+    ]
+  },
+  "src/components/edit-profile-dialog.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/services/media.service.ts",
+      "src/utils/with-auth.ts"
+    ],
+    "exports": [
+      "EditProfileDialog"
+    ]
+  },
+  "src/components/faq-page.tsx": {
+    "imports": [
+      "src/hooks/usePageMeta.ts",
+      "src/components/public-layout.tsx"
+    ],
+    "exports": [
+      "FaqPage"
+    ]
+  },
+  "src/components/feedback-modal.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/services/feedback.service.ts",
+      "src/services/ticket.service.ts",
+      "src/services/media.service.ts"
+    ],
+    "exports": [
+      "FeedbackModal"
+    ]
+  },
+  "src/components/form/my-error-label.tsx": {
+    "imports": [],
+    "exports": [
+      "MyErrorLabel"
+    ]
+  },
+  "src/components/form/my-input.tsx": {
+    "imports": [
+      "src/components/form/my-error-label.tsx"
+    ],
+    "exports": [
+      "MyInput"
+    ]
+  },
+  "src/components/group-image-picker.tsx": {
+    "imports": [
+      "src/utils/avatar.ts",
+      "src/services/media.service.ts"
+    ],
+    "exports": [
+      "GroupImagePicker"
+    ]
+  },
+  "src/components/header.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/components/notification-toggle.tsx",
+      "src/utils/helpers.ts",
+      "src/components/messaging-display-avatar.tsx",
+      "src/components/edit-profile-dialog.tsx",
+      "src/components/support-chaton-dialog.tsx",
+      "src/components/user-account-list.tsx",
+      "src/components/settings-modal.tsx"
+    ],
+    "exports": [
+      "Header"
+    ]
+  },
+  "src/components/install-prompt.tsx": {
+    "imports": [
+      "src/hooks/useInstallPrompt.ts"
+    ],
+    "exports": [
+      "InstallPrompt"
+    ]
+  },
+  "src/components/join-confirmation-modal.tsx": {
+    "imports": [],
+    "exports": [
+      "JoinConfirmationModal"
+    ]
+  },
+  "src/components/join-group-modal.tsx": {
+    "imports": [
+      "src/services/community.service.ts",
+      "src/store/index.ts",
+      "src/utils/invite-link.ts",
+      "src/services/conversations.service.tsx",
+      "src/utils/extra-data.ts"
+    ],
+    "exports": [
+      "JoinGroupModal"
+    ]
+  },
+  "src/components/join-group-page.tsx": {
+    "imports": [
+      "src/services/community.service.ts",
+      "src/hooks/usePageMeta.ts",
+      "src/store/index.ts",
+      "src/utils/invite-link.ts",
+      "src/services/conversations.service.tsx",
+      "src/utils/extra-data.ts",
+      "src/components/onboarding/pre-signup-tutorial.tsx"
+    ],
+    "exports": [
+      "JoinGroupPage"
+    ]
+  },
+  "src/components/landing-page.tsx": {
+    "imports": [
+      "src/hooks/usePageMeta.ts",
+      "src/components/messages/animated-emoji.tsx",
+      "src/components/onboarding/pre-signup-tutorial.tsx",
+      "src/components/seo-structured-data.tsx",
+      "src/components/public-layout.tsx"
+    ],
+    "exports": [
+      "LandingPage"
+    ]
+  },
+  "src/components/language-selector.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/services/cache.service.ts"
+    ],
+    "exports": [
+      "LanguageSelector"
+    ]
+  },
+  "src/components/legal-page.tsx": {
+    "imports": [
+      "src/hooks/usePageMeta.ts"
+    ],
+    "exports": []
+  },
+  "src/components/manage-members-dialog.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/utils/with-auth.ts",
+      "src/hooks/useKeyDown.ts",
+      "src/hooks/useMembers.ts",
+      "src/hooks/useMobile.ts",
+      "src/hooks/usePresence.ts",
+      "src/utils/helpers.ts",
+      "src/utils/constants.ts",
+      "src/utils/extra-data.ts",
+      "src/services/conversations.service.tsx",
+      "src/utils/invite-link.ts",
+      "src/utils/types.ts",
+      "src/services/community.service.ts",
+      "src/utils/community-cache.ts",
+      "src/components/group-image-picker.tsx",
+      "src/components/messaging-display-avatar.tsx",
+      "src/utils/search-helpers.ts",
+      "src/components/search-users.tsx"
+    ],
+    "exports": [
+      "ManageMembersDialog"
+    ]
+  },
+  "src/components/messages/animated-emoji.tsx": {
+    "imports": [],
+    "exports": [
+      "markEmojiCodepointFailed",
+      "emojiToCodepoint",
+      "parseEmojiOnlyMessage",
+      "replaceEmojisInHtml",
+      "AnimatedEmoji"
+    ]
+  },
+  "src/components/messages/audio-message.tsx": {
+    "imports": [],
+    "exports": [
+      "AudioMessage"
+    ]
+  },
+  "src/components/messages/file-message.tsx": {
+    "imports": [
+      "src/services/media.service.ts",
+      "src/utils/link-services.ts"
+    ],
+    "exports": [
+      "FileMessage"
+    ]
+  },
+  "src/components/messages/formatted-message.tsx": {
+    "imports": [
+      "src/utils/extra-data.ts",
+      "src/store/index.ts",
+      "src/components/messages/animated-emoji.tsx"
+    ],
+    "exports": [
+      "FormattedMessage"
+    ]
+  },
+  "src/components/messages/gif-message.tsx": {
+    "imports": [],
+    "exports": [
+      "GifMessage"
+    ]
+  },
+  "src/components/messages/image-message.tsx": {
+    "imports": [],
+    "exports": [
+      "ImageMessage"
+    ]
+  },
+  "src/components/messages/join-link-preview.tsx": {
+    "imports": [
+      "src/services/community.service.ts",
+      "src/store/index.ts",
+      "src/utils/invite-link.ts",
+      "src/utils/extra-data.ts"
+    ],
+    "exports": [
+      "JoinLinkPreview"
+    ]
+  },
+  "src/components/messages/link-preview.tsx": {
+    "imports": [
+      "src/services/og.service.ts",
+      "src/utils/link-services.ts"
+    ],
+    "exports": [
+      "extractFirstUrl",
+      "LinkPreview"
+    ]
+  },
+  "src/components/messages/message-status-indicator.tsx": {
+    "imports": [
+      "src/store/index.ts"
+    ],
+    "exports": [
+      "MessageStatusIndicator"
+    ]
+  },
+  "src/components/messages/reaction-detail-view.tsx": {
+    "imports": [
+      "src/components/messages/animated-emoji.tsx",
+      "src/components/messaging-display-avatar.tsx",
+      "src/hooks/useMobile.ts"
+    ],
+    "exports": [
+      "ReactionDetailView"
+    ]
+  },
+  "src/components/messages/reaction-emoji-picker.tsx": {
+    "imports": [],
+    "exports": [
+      "ReactionEmojiPicker"
+    ]
+  },
+  "src/components/messages/reaction-pills.tsx": {
+    "imports": [
+      "src/components/messages/animated-emoji.tsx",
+      "src/components/messaging-display-avatar.tsx",
+      "src/components/messages/reaction-detail-view.tsx",
+      "src/hooks/useMobile.ts"
+    ],
+    "exports": [
+      "ReactionPills"
+    ]
+  },
+  "src/components/messages/reply-preview.tsx": {
+    "imports": [],
+    "exports": [
+      "ReplyPreview"
+    ]
+  },
+  "src/components/messages/sticker-message.tsx": {
+    "imports": [],
+    "exports": [
+      "StickerMessage"
+    ]
+  },
+  "src/components/messages/tip-message.tsx": {
+    "imports": [
+      "src/utils/helpers.ts",
+      "src/utils/exchange-rate.ts",
+      "src/utils/usdc-balance.ts",
+      "src/components/messages/reply-preview.tsx",
+      "src/components/messages/formatted-message.tsx",
+      "src/components/messaging-display-avatar.tsx"
+    ],
+    "exports": [
+      "TipMessage",
+      "TipFooter"
+    ]
+  },
+  "src/components/messages/tip-pills.tsx": {
+    "imports": [
+      "src/components/messaging-display-avatar.tsx",
+      "src/hooks/useMobile.ts",
+      "src/utils/exchange-rate.ts",
+      "src/utils/usdc-balance.ts",
+      "src/utils/helpers.ts"
+    ],
+    "exports": [
+      "TipPills"
+    ]
+  },
+  "src/components/messages/video-message.tsx": {
+    "imports": [],
+    "exports": [
+      "VideoMessage"
+    ]
+  },
+  "src/components/messaging-app.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/hooks/useMessageSearch.ts",
+      "src/hooks/useMobile.ts",
+      "src/hooks/useWebSocket.ts",
+      "src/hooks/useTypingIndicator.ts",
+      "src/hooks/usePresence.ts",
+      "src/hooks/useSwipeBack.ts",
+      "src/utils/with-auth.ts",
+      "src/services/conversations.service.tsx",
+      "src/services/cache.service.ts",
+      "src/utils/constants.ts",
+      "src/utils/helpers.ts",
+      "src/utils/types.ts",
+      "src/utils/extra-data.ts",
+      "src/utils/detect-language.ts",
+      "src/utils/exchange-rate.ts",
+      "src/utils/usdc-balance.ts",
+      "src/components/join-group-modal.tsx",
+      "src/components/messaging-bubbles.tsx",
+      "src/components/messaging-conversation-accounts.tsx",
+      "src/components/messaging-conversation-button.tsx",
+      "src/components/messaging-display-avatar.tsx",
+      "src/components/messaging-setup-button.tsx",
+      "src/components/onboarding/onboarding-wizard.tsx",
+      "src/utils/onboarding.ts",
+      "src/utils/search-helpers.ts",
+      "src/components/send-message-button-and-input.tsx",
+      "src/services/pending-messages.service.ts",
+      "src/services/hidden-messages.service.ts"
+    ],
+    "exports": []
+  },
+  "src/components/messaging-bubbles.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/components/shared/chunk-error-boundary.tsx",
+      "src/hooks/useMobile.ts",
+      "src/services/conversations.service.tsx",
+      "src/utils/constants.ts",
+      "src/utils/extra-data.ts",
+      "src/services/cache.service.ts",
+      "src/hooks/useTranslation.ts",
+      "src/components/language-selector.tsx",
+      "src/utils/types.ts",
+      "src/components/messaging-display-avatar.tsx",
+      "src/components/messages/message-status-indicator.tsx",
+      "src/components/messages/image-message.tsx",
+      "src/components/messages/gif-message.tsx",
+      "src/components/messages/sticker-message.tsx",
+      "src/components/messages/video-message.tsx",
+      "src/components/messages/audio-message.tsx",
+      "src/components/messages/file-message.tsx",
+      "src/components/messages/reply-preview.tsx",
+      "src/components/messages/reaction-pills.tsx",
+      "src/components/messages/tip-message.tsx",
+      "src/components/messages/tip-pills.tsx",
+      "src/components/messages/formatted-message.tsx",
+      "src/components/messages/link-preview.tsx",
+      "src/components/messages/animated-emoji.tsx",
+      "src/utils/search-helpers.ts"
+    ],
+    "exports": [
+      "MessagingBubblesAndAvatar"
+    ]
+  },
+  "src/components/messaging-conversation-accounts.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/services/message-search.service.ts",
+      "src/utils/extra-data.ts",
+      "src/utils/helpers.ts",
+      "src/utils/types.ts",
+      "src/components/compose-panel.tsx",
+      "src/components/messaging-display-avatar.tsx",
+      "src/components/search-message-results.tsx",
+      "src/utils/search-helpers.ts",
+      "src/components/start-group-chat.tsx",
+      "src/components/community-tab.tsx"
+    ],
+    "exports": []
+  },
+  "src/components/messaging-conversation-button.tsx": {
+    "imports": [],
+    "exports": []
+  },
+  "src/components/messaging-display-avatar.tsx": {
+    "imports": [
+      "src/utils/avatar.ts",
+      "src/utils/helpers.ts"
+    ],
+    "exports": []
+  },
+  "src/components/messaging-setup-button.tsx": {
+    "imports": [
+      "src/utils/with-auth.ts",
+      "src/store/index.ts",
+      "src/components/send-funds-dialog.tsx"
+    ],
+    "exports": [
+      "MessagingSetupButton"
+    ]
+  },
+  "src/components/messaging-start-new-conversation.tsx": {
+    "imports": [
+      "src/utils/constants.ts",
+      "src/utils/search-helpers.ts",
+      "src/components/search-users.tsx"
+    ],
+    "exports": []
+  },
+  "src/components/not-found-page.tsx": {
+    "imports": [
+      "src/components/public-layout.tsx",
+      "src/hooks/usePageMeta.ts"
+    ],
+    "exports": [
+      "NotFoundPage"
+    ]
+  },
+  "src/components/notification-toggle.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/utils/push-notifications.ts",
+      "src/services/cache.service.ts"
+    ],
+    "exports": [
+      "NotificationToggle"
+    ]
+  },
+  "src/components/onboarding/onboarding-wizard.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/services/media.service.ts",
+      "src/utils/with-auth.ts",
+      "src/utils/constants.ts",
+      "src/utils/onboarding.ts"
+    ],
+    "exports": [
+      "OnboardingWizard"
+    ]
+  },
+  "src/components/onboarding/pre-signup-tutorial.tsx": {
+    "imports": [],
+    "exports": [
+      "PreSignupTutorial"
+    ]
+  },
+  "src/components/privacy-toggle.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/services/conversations.service.tsx"
+    ],
+    "exports": [
+      "PrivacyToggle"
+    ]
+  },
+  "src/components/public-layout.tsx": {
+    "imports": [
+      "src/store/index.ts"
+    ],
+    "exports": [
+      "PublicNav",
+      "PublicFooter"
+    ]
+  },
+  "src/components/route-error-boundary.tsx": {
+    "imports": [
+      "src/utils/error-capture.ts",
+      "src/utils/error-codes.ts",
+      "src/store/index.ts"
+    ],
+    "exports": [
+      "RouteErrorBoundary"
+    ]
+  },
+  "src/components/search-message-results.tsx": {
+    "imports": [
+      "src/services/message-search.service.ts",
+      "src/utils/search-helpers.ts",
+      "src/utils/extra-data.ts",
+      "src/utils/helpers.ts",
+      "src/components/messaging-display-avatar.tsx"
+    ],
+    "exports": []
+  },
+  "src/components/search-users.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/utils/helpers.ts",
+      "src/utils/search-helpers.ts",
+      "src/components/messaging-display-avatar.tsx",
+      "src/components/form/my-error-label.tsx"
+    ],
+    "exports": [
+      "SearchUsers"
+    ]
+  },
+  "src/components/send-funds-dialog.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/utils/helpers.ts",
+      "src/utils/search-helpers.ts",
+      "src/components/shared/alert-notification.tsx",
+      "src/components/shared/save-to-clipboard.tsx"
+    ],
+    "exports": [
+      "SendFundsDialog"
+    ]
+  },
+  "src/components/send-message-button-and-input.tsx": {
+    "imports": [
+      "src/hooks/useMobile.ts",
+      "src/components/compose/emoji-picker-button.tsx",
+      "src/components/compose/gif-picker.tsx",
+      "src/components/compose/image-preview-panel.tsx",
+      "src/components/compose/video-preview-panel.tsx",
+      "src/components/compose/mention-picker.tsx",
+      "src/services/klipy.service.ts",
+      "src/services/media.service.ts",
+      "src/utils/constants.ts",
+      "src/utils/error-capture.ts",
+      "src/utils/error-codes.ts",
+      "src/components/compose/audio-recorder-panel.tsx",
+      "src/components/compose/reply-banner.tsx",
+      "src/components/compose/link-attachment-panel.tsx",
+      "src/hooks/useDraftMessages.ts",
+      "src/utils/extra-data.ts",
+      "src/store/index.ts",
+      "src/services/og.service.ts"
+    ],
+    "exports": [
+      "SendMessageButtonAndInput"
+    ]
+  },
+  "src/components/seo-structured-data.tsx": {
+    "imports": [],
+    "exports": [
+      "SeoStructuredData"
+    ]
+  },
+  "src/components/settings-modal.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/utils/helpers.ts",
+      "src/components/messaging-display-avatar.tsx",
+      "src/components/shared/save-to-clipboard.tsx",
+      "src/components/privacy-toggle.tsx",
+      "src/components/tip-currency-toggle.tsx",
+      "src/components/language-selector.tsx",
+      "src/hooks/useFocusTrap.ts"
+    ],
+    "exports": [
+      "SettingsModal"
+    ]
+  },
+  "src/components/shared/alert-notification.tsx": {
+    "imports": [],
+    "exports": [
+      "AlertNotification"
+    ]
+  },
+  "src/components/shared/chunk-error-boundary.tsx": {
+    "imports": [],
+    "exports": [
+      "ChunkErrorBoundary"
+    ]
+  },
+  "src/components/shared/save-to-clipboard.tsx": {
+    "imports": [
+      "src/utils/helpers.ts"
+    ],
+    "exports": [
+      "SaveToClipboard"
+    ]
+  },
+  "src/components/speed-dial-fab.tsx": {
+    "imports": [],
+    "exports": []
+  },
+  "src/components/start-group-chat.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/hooks/useMembers.ts",
+      "src/hooks/useMobile.ts",
+      "src/services/conversations.service.tsx",
+      "src/services/community.service.ts",
+      "src/utils/invite-link.ts",
+      "src/utils/with-auth.ts",
+      "src/utils/constants.ts",
+      "src/utils/extra-data.ts",
+      "src/components/messaging-display-avatar.tsx",
+      "src/components/group-image-picker.tsx",
+      "src/hooks/useKeyDown.ts"
+    ],
+    "exports": [
+      "StartGroupChat"
+    ]
+  },
+  "src/components/support-chaton-dialog.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/utils/constants.ts",
+      "src/utils/helpers.ts",
+      "src/utils/with-auth.ts"
+    ],
+    "exports": [
+      "SupportChatOnDialog"
+    ]
+  },
+  "src/components/support-page.tsx": {
+    "imports": [
+      "src/hooks/usePageMeta.ts",
+      "src/store/index.ts",
+      "src/utils/constants.ts",
+      "src/utils/helpers.ts",
+      "src/utils/with-auth.ts",
+      "src/components/public-layout.tsx"
+    ],
+    "exports": [
+      "SupportPage"
+    ]
+  },
+  "src/components/sw-update-prompt.tsx": {
+    "imports": [
+      "src/hooks/useSwUpdate.ts"
+    ],
+    "exports": [
+      "SwUpdatePrompt"
+    ]
+  },
+  "src/components/tip-confirm-dialog.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/utils/helpers.ts",
+      "src/utils/with-auth.ts",
+      "src/utils/exchange-rate.ts",
+      "src/utils/usdc-balance.ts",
+      "src/utils/constants.ts",
+      "src/utils/tip-fees.ts",
+      "src/utils/atomic-tip.ts",
+      "src/services/cache.service.ts",
+      "src/components/messaging-display-avatar.tsx",
+      "src/components/currency-toggle.tsx"
+    ],
+    "exports": [
+      "TipConfirmDialog"
+    ]
+  },
+  "src/components/tip-currency-toggle.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/services/cache.service.ts"
+    ],
+    "exports": [
+      "TipCurrencyToggle"
+    ]
+  },
+  "src/components/user-account-list.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/utils/helpers.ts",
+      "src/components/messaging-display-avatar.tsx",
+      "src/services/cache.service.ts"
+    ],
+    "exports": []
+  },
+  "src/hooks/useAudioRecorder.ts": {
+    "imports": [],
+    "exports": [
+      "useAudioRecorder"
+    ]
+  },
+  "src/hooks/useDraftMessages.ts": {
+    "imports": [],
+    "exports": [
+      "useDraftMessages"
+    ]
+  },
+  "src/hooks/useFocusTrap.ts": {
+    "imports": [],
+    "exports": [
+      "useFocusTrap"
+    ]
+  },
+  "src/hooks/useIdleDetection.ts": {
+    "imports": [
+      "src/utils/constants.ts"
+    ],
+    "exports": [
+      "useIdleDetection"
+    ]
+  },
+  "src/hooks/useInstallPrompt.ts": {
+    "imports": [],
+    "exports": [
+      "useInstallPrompt"
+    ]
+  },
+  "src/hooks/useInterval.ts": {
+    "imports": [],
+    "exports": [
+      "useInterval"
+    ]
+  },
+  "src/hooks/useKeyDown.ts": {
+    "imports": [],
+    "exports": []
+  },
+  "src/hooks/useMembers.ts": {
+    "imports": [
+      "src/store/index.ts",
+      "src/utils/search-helpers.ts",
+      "src/utils/types.ts"
+    ],
+    "exports": [
+      "useMembers"
+    ]
+  },
+  "src/hooks/useMessageSearch.ts": {
+    "imports": [
+      "src/utils/types.ts",
+      "src/services/message-search.service.ts"
+    ],
+    "exports": [
+      "useMessageSearch"
+    ]
+  },
+  "src/hooks/useMobile.ts": {
+    "imports": [
+      "src/utils/constants.ts"
+    ],
+    "exports": [
+      "useMobile"
+    ]
+  },
+  "src/hooks/usePageMeta.ts": {
+    "imports": [],
+    "exports": [
+      "usePageMeta"
+    ]
+  },
+  "src/hooks/usePresence.ts": {
+    "imports": [
+      "src/store/index.ts",
+      "src/services/deso-activity.service.ts"
+    ],
+    "exports": [
+      "usePresence"
+    ]
+  },
+  "src/hooks/useSwUpdate.ts": {
+    "imports": [],
+    "exports": [
+      "useSwUpdate"
+    ]
+  },
+  "src/hooks/useSwipeBack.ts": {
+    "imports": [],
+    "exports": [
+      "useSwipeBack"
+    ]
+  },
+  "src/hooks/useTranslation.ts": {
+    "imports": [
+      "src/utils/extra-data.ts",
+      "src/utils/detect-language.ts",
+      "src/services/translate.service.ts"
+    ],
+    "exports": [
+      "useTranslation"
+    ]
+  },
+  "src/hooks/useTypingIndicator.ts": {
+    "imports": [],
+    "exports": [
+      "useTypingIndicator",
+      "useTypingDisplay"
+    ]
+  },
+  "src/hooks/useWebSocket.ts": {
+    "imports": [
+      "src/store/index.ts",
+      "src/utils/push-notifications.ts",
+      "src/services/cache.service.ts"
+    ],
+    "exports": [
+      "useWebSocket"
+    ]
+  },
+  "src/main.tsx": {
+    "imports": [
+      "src/index.css",
+      "src/App.tsx"
+    ],
+    "exports": []
+  },
+  "src/services/cache.service.ts": {
+    "imports": [],
+    "exports": [
+      "checkCacheVersion",
+      "cacheUserProfile",
+      "getCachedUserProfile",
+      "cacheClassificationData",
+      "getCachedClassificationData",
+      "cachePrivacyMode",
+      "getCachedPrivacyMode",
+      "cacheTipCurrency",
+      "getCachedTipCurrency",
+      "cachePreferredLanguage",
+      "getCachedPreferredLanguage",
+      "cacheAutoTranslate",
+      "getCachedAutoTranslate",
+      "cacheUsernameMap",
+      "getCachedUsernameMap",
+      "cacheLastConversationKey",
+      "getCachedLastConversationKey",
+      "cacheConversations",
+      "getCachedConversations",
+      "cacheProfileMap",
+      "getCachedProfileMap",
+      "cacheConversationMessages",
+      "getCachedConversationMessages",
+      "cacheMutedConversations",
+      "getCachedMutedConversations",
+      "cacheAccountProfiles",
+      "getCachedAccountProfiles",
+      "syncUnreadConversations",
+      "clearActiveServiceWorkerKeys",
+      "addUnreadConversation",
+      "removeUnreadConversation",
+      "cacheLastReadTimestamp",
+      "getCachedLastReadTimestamps",
+      "mergeReadCursors",
+      "getReadCursorsForSync",
+      "clearCacheForUser",
+      "consumePendingNotificationConversation",
+      "cachePushPublicKey",
+      "clearAllCaches"
+    ]
+  },
+  "src/services/community.service.ts": {
+    "imports": [
+      "src/utils/with-auth.ts",
+      "src/utils/constants.ts",
+      "src/utils/extra-data.ts"
+    ],
+    "exports": [
+      "fetchGroupMemberCount",
+      "fetchGroupMemberCountQuick",
+      "fetchCommunityListings",
+      "listGroupInCommunity",
+      "unlistGroupFromCommunity",
+      "fetchCommunityListing",
+      "updateCommunityListing",
+      "enrichCommunityListings"
+    ]
+  },
+  "src/services/conversations.service.tsx": {
+    "imports": [
+      "src/utils/with-auth.ts",
+      "src/utils/constants.ts",
+      "src/utils/extra-data.ts",
+      "src/utils/types.ts",
+      "src/store/index.ts"
+    ],
+    "exports": [
+      "fetchMessageThreadsRaw",
+      "buildShellConversations",
+      "decryptConversationPreviews",
+      "cacheDecryptionResult",
+      "invalidateMessageCache",
+      "fetchFollowedUsers",
+      "fetchAssociationsByType",
+      "fetchChatAssociations",
+      "classifyConversation",
+      "createApprovalAssociation",
+      "createBlockAssociation",
+      "fetchArchivedGroups",
+      "createArchiveAssociation",
+      "deleteArchiveAssociation",
+      "createArchiveChatAssociation",
+      "deleteAssociationById",
+      "createDismissAssociation",
+      "fetchPrivacyMode",
+      "setPrivacyModeOnChain",
+      "createJoinRequest",
+      "hasExistingJoinRequest",
+      "fetchJoinRequestCountsForOwner",
+      "fetchPendingJoinRequests",
+      "fetchRejectedJoinRequestKeys",
+      "createRejectAssociation",
+      "cleanupOwnJoinRequests",
+      "getConversationsNewMap",
+      "getConversationNew",
+      "getConversations",
+      "getConversationsDifferential",
+      "clearDecryptionCaches",
+      "decryptAccessGroupMessagesWithRetry",
+      "decryptAccessGroupMessages",
+      "encryptAndSendNewMessage",
+      "sendSystemMessage",
+      "encryptAndUpdateMessage"
+    ]
+  },
+  "src/services/deso-activity.service.ts": {
+    "imports": [],
+    "exports": [
+      "fetchDesoActivity"
+    ]
+  },
+  "src/services/feedback.service.ts": {
+    "imports": [
+      "src/store/index.ts",
+      "src/utils/error-capture.ts"
+    ],
+    "exports": [
+      "submitFeedback"
+    ]
+  },
+  "src/services/ffmpeg.service.ts": {
+    "imports": [],
+    "exports": [
+      "compressAudioToMp4"
+    ]
+  },
+  "src/services/hidden-messages.service.ts": {
+    "imports": [],
+    "exports": [
+      "getHiddenMessageIds",
+      "hideMessage"
+    ]
+  },
+  "src/services/klipy.service.ts": {
+    "imports": [],
+    "exports": [
+      "getDisplayUrl",
+      "getThumbnailUrl",
+      "getMessageUrl",
+      "searchGifs",
+      "trendingGifs",
+      "searchStickers",
+      "trendingStickers",
+      "getCategories",
+      "getSearchSuggestions",
+      "trackShare"
+    ]
+  },
+  "src/services/media.service.ts": {
+    "imports": [
+      "src/store/index.ts"
+    ],
+    "exports": [
+      "uploadImage",
+      "uploadVideoFile",
+      "formatFileSize"
+    ]
+  },
+  "src/services/message-search.service.ts": {
+    "imports": [
+      "src/utils/constants.ts",
+      "src/utils/extra-data.ts",
+      "src/utils/helpers.ts",
+      "src/utils/types.ts",
+      "src/services/cache.service.ts",
+      "src/services/conversations.service.tsx"
+    ],
+    "exports": [
+      "searchCachedMessages",
+      "deepSearchConversation",
+      "orchestrateDeepSearch"
+    ]
+  },
+  "src/services/og.service.ts": {
+    "imports": [],
+    "exports": [
+      "fetchOgData"
+    ]
+  },
+  "src/services/pending-messages.service.ts": {
+    "imports": [],
+    "exports": [
+      "getPendingMessages",
+      "addPendingMessage",
+      "removePendingMessage",
+      "clearPendingMessages"
+    ]
+  },
+  "src/services/ticket.service.ts": {
+    "imports": [
+      "src/store/index.ts",
+      "src/utils/error-capture.ts"
+    ],
+    "exports": [
+      "submitBugReport",
+      "submitManualBugReport"
+    ]
+  },
+  "src/services/translate.service.ts": {
+    "imports": [],
+    "exports": [
+      "translateText",
+      "getCachedTranslation"
+    ]
+  },
+  "src/store/index.ts": {
+    "imports": [
+      "src/services/cache.service.ts"
+    ],
+    "exports": [
+      "useStore"
+    ]
+  },
+  "src/sw.ts": {
+    "imports": [],
+    "exports": []
+  },
+  "src/utils/atomic-tip.ts": {
+    "imports": [
+      "src/utils/constants.ts",
+      "src/utils/usdc-balance.ts"
+    ],
+    "exports": [
+      "sendAtomicDesoTip",
+      "sendAtomicUsdcTip"
+    ]
+  },
+  "src/utils/avatar.ts": {
+    "imports": [],
+    "exports": [
+      "hashToColorIndex",
+      "getInitials",
+      "AVATAR_COLORS"
+    ]
+  },
+  "src/utils/community-cache.ts": {
+    "imports": [],
+    "exports": [
+      "clearCommunityCache"
+    ]
+  },
+  "src/utils/constants.ts": {
+    "imports": [],
+    "exports": [
+      "ASSOCIATION_TYPE_APPROVED",
+      "ASSOCIATION_TYPE_BLOCKED",
+      "ASSOCIATION_VALUE_APPROVED",
+      "ASSOCIATION_VALUE_BLOCKED",
+      "ASSOCIATION_TYPE_GROUP_ARCHIVED",
+      "ASSOCIATION_TYPE_CHAT_ARCHIVED",
+      "ASSOCIATION_VALUE_ARCHIVED",
+      "ASSOCIATION_TYPE_DISMISSED",
+      "ASSOCIATION_VALUE_DISMISSED",
+      "ASSOCIATION_TYPE_GROUP_JOIN_REQUEST",
+      "ASSOCIATION_TYPE_GROUP_JOIN_REJECTED",
+      "ASSOCIATION_TYPE_GROUP_INVITE_CODE",
+      "INVITE_CODE_LENGTH",
+      "ASSOCIATION_TYPE_COMMUNITY_LISTED",
+      "ASSOCIATION_TYPE_PRIVACY_MODE",
+      "PRIVACY_MODE_FULL",
+      "PRIVACY_MODE_STANDARD",
+      "getTransactionSpendingLimits",
+      "MAX_VIDEO_FILE_SIZE",
+      "MESSAGES_ONE_REQUEST_LIMIT",
+      "FETCH_THREADS_TIMEOUT_MS",
+      "MAX_MEMBERS_IN_GROUP_SUMMARY_SHOWN",
+      "MAX_MEMBERS_TO_REQUEST_IN_GROUP",
+      "MOBILE_WIDTH_BREAKPOINT",
+      "REFRESH_MESSAGES_INTERVAL_MS",
+      "REFRESH_MESSAGES_MOBILE_INTERVAL_MS",
+      "REFRESH_MESSAGES_MAX_INTERVAL_MS",
+      "REFRESH_MESSAGES_WS_CONNECTED_MS",
+      "IDLE_TIMEOUT_MS",
+      "FOREGROUND_RESUME_DEBOUNCE_MS",
+      "BASE_TITLE",
+      "TITLE_DIVIDER",
+      "TIP_FEE_RATE",
+      "TIP_FEE_THRESHOLD_USD"
+    ]
+  },
+  "src/utils/detect-language.ts": {
+    "imports": [],
+    "exports": [
+      "detectLanguageSync",
+      "detectLanguage"
+    ]
+  },
+  "src/utils/error-capture.ts": {
+    "imports": [],
+    "exports": [
+      "getAppVersion",
+      "getPlatform",
+      "captureError"
+    ]
+  },
+  "src/utils/error-codes.ts": {
+    "imports": [],
+    "exports": [
+      "ERROR_CODES"
+    ]
+  },
+  "src/utils/exchange-rate.ts": {
+    "imports": [],
+    "exports": [
+      "fetchExchangeRate",
+      "usdToNanos",
+      "nanosToUsd",
+      "formatUsd"
+    ]
+  },
+  "src/utils/extra-data.ts": {
+    "imports": [],
+    "exports": [
+      "getEncryptedExtraDataKeys",
+      "parseMessageType",
+      "getGroupImageUrl",
+      "getGroupDisplayName",
+      "getGroupPinnedMessage",
+      "getGroupMembersCanShare",
+      "buildExtraData",
+      "tipHasCustomMessage",
+      "MSG_TYPE",
+      "MSG_REPLY_TO",
+      "MSG_REPLY_PREVIEW",
+      "MSG_REPLY_SENDER",
+      "MSG_IMAGE_URL",
+      "MSG_GIF_URL",
+      "MSG_GIF_TITLE",
+      "MSG_MEDIA_WIDTH",
+      "MSG_MEDIA_HEIGHT",
+      "MSG_VIDEO_URL",
+      "MSG_AUDIO_URL",
+      "MSG_DURATION",
+      "MSG_FILE_NAME",
+      "MSG_FILE_SIZE",
+      "MSG_FILE_TYPE",
+      "MSG_FILE_URL",
+      "MSG_FILE_DESCRIPTION",
+      "MSG_OG_TITLE",
+      "MSG_OG_DESCRIPTION",
+      "MSG_OG_IMAGE",
+      "MSG_EMOJI",
+      "MSG_ACTION",
+      "MSG_EDITED",
+      "MSG_DELETED",
+      "MSG_MENTIONS",
+      "MSG_ENCRYPTED",
+      "MSG_SYSTEM_ACTION",
+      "MSG_SYSTEM_MEMBERS",
+      "MSG_TIP_AMOUNT_NANOS",
+      "MSG_TIP_TX_HASH",
+      "MSG_TIP_REPLY_TO",
+      "MSG_TIP_RECIPIENT",
+      "MSG_TIP_CURRENCY",
+      "MSG_TIP_AMOUNT_USDC",
+      "MSG_TIP_CUSTOM_MESSAGE",
+      "MSG_LANG",
+      "STANDARD_ENCRYPTED_KEYS",
+      "FULL_ENCRYPTED_KEYS",
+      "GROUP_IMAGE_URL",
+      "GROUP_DISPLAY_NAME",
+      "GROUP_PINNED_MESSAGE",
+      "GROUP_PINNED_PREVIEW",
+      "GROUP_MEMBERS_CAN_SHARE"
+    ]
+  },
+  "src/utils/helpers.ts": {
+    "imports": [
+      "src/utils/search-helpers.ts",
+      "src/store/index.ts",
+      "src/utils/constants.ts",
+      "src/utils/extra-data.ts",
+      "src/utils/types.ts"
+    ],
+    "exports": [
+      "copyTextToClipboard",
+      "getProfileURL",
+      "desoNanosToDeso",
+      "formatDesoAmount",
+      "scrollContainerToElement",
+      "getChatNameFromConversation",
+      "isMaybeDeSoPublicKey",
+      "isMaybeETHAddress",
+      "isMaybeENSName",
+      "formatDisplayName",
+      "hasSetupMessaging",
+      "formatRelativeTimestamp",
+      "formatLastSeen"
+    ]
+  },
+  "src/utils/invite-link.ts": {
+    "imports": [
+      "src/utils/constants.ts"
+    ],
+    "exports": [
+      "buildInviteUrl",
+      "extractInviteCode",
+      "resolveInviteCode",
+      "registerInviteCode",
+      "fetchInviteCode",
+      "revokeInviteCode"
+    ]
+  },
+  "src/utils/link-services.ts": {
+    "imports": [],
+    "exports": [
+      "detectLinkService",
+      "extractFileNameFromUrl"
+    ]
+  },
+  "src/utils/onboarding.ts": {
+    "imports": [],
+    "exports": [
+      "isOnboardingComplete",
+      "markOnboardingComplete"
+    ]
+  },
+  "src/utils/profanity-filter.ts": {
+    "imports": [],
+    "exports": [
+      "containsProfanity"
+    ]
+  },
+  "src/utils/push-notifications.ts": {
+    "imports": [],
+    "exports": [
+      "requestPushPermission",
+      "subscribeToPush",
+      "getExistingSubscription",
+      "isPushSupported",
+      "getNotificationPermission",
+      "unsubscribeFromPush"
+    ]
+  },
+  "src/utils/search-helpers.ts": {
+    "imports": [],
+    "exports": [
+      "shortenLongWord",
+      "nameOrFormattedKey"
+    ]
+  },
+  "src/utils/tip-fees.ts": {
+    "imports": [
+      "src/utils/constants.ts"
+    ],
+    "exports": [
+      "hasTipFee",
+      "tipFeeUsd",
+      "tipRecipientUsd",
+      "splitDesoTip",
+      "splitUsdcTip"
+    ]
+  },
+  "src/utils/types.ts": {
+    "imports": [],
+    "exports": [
+      "updateConv",
+      "UNDECRYPTED_PLACEHOLDER"
+    ]
+  },
+  "src/utils/usdc-balance.ts": {
+    "imports": [
+      "src/utils/constants.ts"
+    ],
+    "exports": [
+      "fetchUsdcBalance",
+      "invalidateUsdcBalanceCache",
+      "usdcBaseUnitsToUsd",
+      "usdToUsdcBaseUnits",
+      "toHexUint256"
+    ]
+  },
+  "src/utils/with-auth.ts": {
+    "imports": [
+      "src/utils/constants.ts",
+      "src/store/index.ts"
+    ],
+    "exports": [
+      "withAuth",
+      "needsPermissionUpgrade",
+      "requestFullPermissions"
+    ]
+  },
+  "worker/src/chat-relay.ts": {
+    "imports": [
+      "worker/src/web-push.ts",
+      "worker/src/jwt.ts",
+      "worker/src/db.ts"
+    ],
+    "exports": [
+      "ChatRelay"
+    ]
+  },
+  "worker/src/db.ts": {
+    "imports": [],
+    "exports": [
+      "upsertUser",
+      "upsertSubscription",
+      "removeSubscription",
+      "getOptedInUsers",
+      "getCronOffset",
+      "setCronOffset",
+      "getSubscriptionsForUser",
+      "getThreadStates",
+      "upsertThreadState",
+      "upsertThreadStateBatch",
+      "deactivateSubscription",
+      "incrementFailureCount",
+      "setUserOnline",
+      "setUserOffline",
+      "cleanupStaleOnlineFlags",
+      "getLastSeenBatch",
+      "disablePush",
+      "cleanupInactiveSubscriptions",
+      "resetFailureCount",
+      "recordPushSent",
+      "wasRecentlyNotified",
+      "cleanupNotificationDedup",
+      "getReadCursors",
+      "upsertReadCursors"
+    ]
+  },
+  "worker/src/deso-tx.ts": {
+    "imports": [],
+    "exports": [
+      "signTransaction",
+      "constructCreateAssociation",
+      "constructDeleteAssociation",
+      "submitTransaction",
+      "queryAssociations",
+      "verifyGroupOwnership"
+    ]
+  },
+  "worker/src/feedback.ts": {
+    "imports": [
+      "worker/src/shared-validation.ts",
+      "worker/src/jwt.ts"
+    ],
+    "exports": [
+      "handleFeedbackSubmit",
+      "handleFeedbackCreate",
+      "handleFeedbackPoll",
+      "handleFeedbackUpdate"
+    ]
+  },
+  "worker/src/index.ts": {
+    "imports": [
+      "worker/src/og.ts",
+      "worker/src/poll.ts",
+      "worker/src/db.ts",
+      "worker/src/web-push.ts",
+      "worker/src/jwt.ts",
+      "worker/src/invite-codes.ts",
+      "worker/src/tickets.ts",
+      "worker/src/feedback.ts"
+    ],
+    "exports": []
+  },
+  "worker/src/invite-codes.ts": {
+    "imports": [
+      "worker/src/jwt.ts",
+      "worker/src/deso-tx.ts"
+    ],
+    "exports": [
+      "handleCreateInviteCode",
+      "handleRevokeInviteCode"
+    ]
+  },
+  "worker/src/jwt.ts": {
+    "imports": [],
+    "exports": [
+      "validateDesoJwt"
+    ]
+  },
+  "worker/src/og.ts": {
+    "imports": [],
+    "exports": [
+      "handleOgFetch"
+    ]
+  },
+  "worker/src/poll.ts": {
+    "imports": [
+      "worker/src/db.ts"
+    ],
+    "exports": [
+      "handleScheduled"
+    ]
+  },
+  "worker/src/shared-validation.ts": {
+    "imports": [],
+    "exports": [
+      "checkRateLimit",
+      "sanitize",
+      "sanitizeRequired",
+      "verifyApiKey",
+      "json",
+      "VALID_ERROR_CODES"
+    ]
+  },
+  "worker/src/tickets.ts": {
+    "imports": [
+      "worker/src/shared-validation.ts",
+      "worker/src/jwt.ts"
+    ],
+    "exports": [
+      "handleTicketSubmit",
+      "handleTicketPoll",
+      "handleTicketUpdate"
+    ]
+  },
+  "worker/src/web-push.ts": {
+    "imports": [],
+    "exports": [
+      "sendPushNotification"
+    ]
+  }
+}
