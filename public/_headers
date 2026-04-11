@@ -1,0 +1,9 @@
+# Service worker must never be cached — stale sw.js prevents updates
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# Main HTML should also not be strongly cached
+/
+  Cache-Control: no-cache, must-revalidate
+/index.html
+  Cache-Control: no-cache, must-revalidate
