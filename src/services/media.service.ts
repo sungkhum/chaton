@@ -40,14 +40,33 @@ export interface VideoUploadResult {
   url: string;
 }
 
+const VIDEO_UPLOAD_TIMEOUT_MS = 60_000;
+
 export async function uploadVideoFile(file: File): Promise<VideoUploadResult> {
   const appUser = useStore.getState().appUser;
   if (!appUser) throw new Error("Must be logged in to upload media");
 
-  const response = await desoUploadVideo({
-    UserPublicKeyBase58Check: appUser.PublicKeyBase58Check,
-    file,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    VIDEO_UPLOAD_TIMEOUT_MS
+  );
+
+  let response: Awaited<ReturnType<typeof desoUploadVideo>>;
+  try {
+    response = await desoUploadVideo({
+      UserPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+      file,
+      signal: controller.signal,
+    } as any);
+  } catch (err: any) {
+    if (controller.signal.aborted) {
+      throw new Error("Upload timed out — try a shorter clip or Wi-Fi");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   await pollForVideoReady(response.asset.id);
 
