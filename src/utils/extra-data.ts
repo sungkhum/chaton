@@ -279,6 +279,16 @@ function safeParseMentions(raw: string): MentionEntry[] | undefined {
   }
 }
 
+/** Returns true if the string looks like still-encrypted ECIES hex (not yet decrypted). */
+function isEncryptedHex(value: string | undefined): boolean {
+  return !!value && value.length >= 64 && /^[0-9a-f]+$/i.test(value);
+}
+
+/** Returns the value only if it doesn't look like encrypted hex. */
+function decryptedOrUndefined(value: string | undefined): string | undefined {
+  return value && !isEncryptedHex(value) ? value : undefined;
+}
+
 export function parseMessageType(
   message: DecryptedMessageEntryResponse
 ): ParsedMessage {
@@ -300,7 +310,8 @@ export function parseMessageType(
     gifUrl: extra[MSG_GIF_URL],
     gifTitle: extra[MSG_GIF_TITLE],
     videoUrl: extra[MSG_VIDEO_URL] || desoAppMedia.videoUrl,
-    audioUrl: extra[MSG_AUDIO_URL] || desoAppMedia.audioUrl,
+    audioUrl:
+      decryptedOrUndefined(extra[MSG_AUDIO_URL]) || desoAppMedia.audioUrl,
     localThumbnail: extra["_localThumbnail"],
     duration: extra[MSG_DURATION]
       ? parseFloat(extra[MSG_DURATION])
@@ -322,8 +333,11 @@ export function parseMessageType(
     replyTo: extra[MSG_REPLY_TO],
     replyPreview: extra[MSG_REPLY_PREVIEW],
     replySender: extra[MSG_REPLY_SENDER],
-    emoji: extra[MSG_EMOJI],
-    action: extra[MSG_ACTION] as "add" | "remove" | undefined,
+    emoji: decryptedOrUndefined(extra[MSG_EMOJI]),
+    action: decryptedOrUndefined(extra[MSG_ACTION]) as
+      | "add"
+      | "remove"
+      | undefined,
     edited: extra[MSG_EDITED] === "true",
     deleted: extra[MSG_DELETED] === "true",
     mentions: extra[MSG_MENTIONS]

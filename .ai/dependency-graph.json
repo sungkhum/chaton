@@ -1,6 +1,7 @@
 {
   "src/App.tsx": {
     "imports": [
+      "src/utils/lazy-with-reload.ts",
       "src/components/header.tsx",
       "src/components/install-prompt.tsx",
       "src/components/messaging-app.tsx",
@@ -44,7 +45,9 @@
     ]
   },
   "src/components/blog/blog-registry.ts": {
-    "imports": [],
+    "imports": [
+      "src/utils/lazy-with-reload.ts"
+    ],
     "exports": [
       "getBlogSlugs",
       "getPostBySlug",
@@ -346,12 +349,12 @@
     "imports": [
       "src/store/index.ts",
       "src/utils/with-auth.ts",
+      "src/utils/batch-members.ts",
       "src/hooks/useKeyDown.ts",
       "src/hooks/useMembers.ts",
       "src/hooks/useMobile.ts",
       "src/hooks/usePresence.ts",
       "src/utils/helpers.ts",
-      "src/utils/constants.ts",
       "src/utils/extra-data.ts",
       "src/services/conversations.service.tsx",
       "src/utils/invite-link.ts",
@@ -806,7 +809,7 @@
       "src/services/community.service.ts",
       "src/utils/invite-link.ts",
       "src/utils/with-auth.ts",
-      "src/utils/constants.ts",
+      "src/utils/batch-members.ts",
       "src/utils/extra-data.ts",
       "src/components/messaging-display-avatar.tsx",
       "src/components/group-image-picker.tsx",
@@ -1273,6 +1276,18 @@
       "AVATAR_COLORS"
     ]
   },
+  "src/utils/batch-members.ts": {
+    "imports": [
+      "src/utils/with-auth.ts",
+      "src/utils/constants.ts"
+    ],
+    "exports": [
+      "batchedGetBulkAccessGroups",
+      "batchedAddMembers",
+      "batchedRemoveMembers",
+      "MEMBER_BATCH_SIZE"
+    ]
+  },
   "src/utils/community-cache.ts": {
     "imports": [],
     "exports": [
@@ -1446,6 +1461,12 @@
       "registerInviteCode",
       "fetchInviteCode",
       "revokeInviteCode"
+    ]
+  },
+  "src/utils/lazy-with-reload.ts": {
+    "imports": [],
+    "exports": [
+      "lazyWithReload"
     ]
   },
   "src/utils/link-services.ts": {

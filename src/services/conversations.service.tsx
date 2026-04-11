@@ -351,11 +351,23 @@ export async function decryptConversationPreviews(
         }
       }
 
+      // Decrypt ExtraData fields (emoji, reactions, media URLs) before caching.
+      // Without this, the cache stores messages with encrypted ExtraData, and
+      // subsequent poll refreshes hit the cache and skip ExtraData decryption —
+      // causing emojis and reactions to flash in and out.
+      const withExtraData = await Promise.all(
+        decrypted.map((msg) =>
+          msg.DecryptedMessage && !msg.error
+            ? decryptExtraDataFields(msg, currentGroups)
+            : msg
+        )
+      );
+
       const updates = new Map<string, DecryptedMessageEntryResponse>();
       for (let j = 0; j < uncachedBatch.length; j++) {
-        const result = decrypted[j]!;
+        const result = withExtraData[j]!;
         updates.set(uncachedBatch[j]![0], result);
-        // Cache successful decryptions for future polls
+        // Cache successful decryptions (now with decrypted ExtraData)
         if (result.DecryptedMessage && !result.error) {
           cacheDecryptionResult(result.MessageInfo.TimestampNanos, result);
         }
