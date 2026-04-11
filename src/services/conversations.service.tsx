@@ -1711,13 +1711,19 @@ export async function fetchSpamFilterSettings(
     if (assoc?.ExtraData) {
       const config: SpamFilterConfig = {
         enabled: true,
-        minBalanceNanos: parseInt(assoc.ExtraData.minBalanceNanos || "0", 10),
-        minCoinPriceNanos: parseInt(
-          assoc.ExtraData.minCoinPriceNanos || "0",
-          10
+        minBalanceNanos: Math.max(
+          0,
+          Number(assoc.ExtraData.minBalanceNanos) || 0
+        ),
+        minCoinPriceNanos: Math.max(
+          0,
+          Number(assoc.ExtraData.minCoinPriceNanos) || 0
         ),
         requireProfile: assoc.ExtraData.requireProfile === "true",
-        minCoinHolders: parseInt(assoc.ExtraData.minCoinHolders || "0", 10),
+        minCoinHolders: Math.max(
+          0,
+          Number(assoc.ExtraData.minCoinHolders) || 0
+        ),
       };
       return { config, associationId: assoc.AssociationID };
     }

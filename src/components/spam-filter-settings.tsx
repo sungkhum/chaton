@@ -15,7 +15,7 @@ function nanosToDisplay(nanos: number): string {
 
 function displayToNanos(display: string): number {
   const val = parseFloat(display);
-  if (isNaN(val) || val < 0) return 0;
+  if (isNaN(val) || val < 0 || !isFinite(val)) return 0;
   return Math.round(val * 1e9);
 }
 
@@ -56,19 +56,6 @@ export function SpamFilterSettings() {
     );
   }, []);
 
-  const handleToggle = useCallback(() => {
-    if (loading) return;
-    if (spamFilter.enabled) {
-      // Disable — save immediately
-      handleDisable();
-    } else {
-      // Enable — open the editor with defaults
-      syncFormFromConfig(DEFAULT_SPAM_FILTER);
-      setRequireProfile(true); // sensible default when enabling
-      setEditing(true);
-    }
-  }, [spamFilter.enabled, loading]);
-
   const handleDisable = useCallback(async () => {
     if (!appUser || loading) return;
     const prev = spamFilter;
@@ -93,6 +80,19 @@ export function SpamFilterSettings() {
     }
   }, [appUser, loading, spamFilter, spamFilterAssociationId, setSpamFilter]);
 
+  const handleToggle = useCallback(() => {
+    if (loading) return;
+    if (spamFilter.enabled) {
+      // Disable — save immediately
+      handleDisable();
+    } else {
+      // Enable — open the editor with defaults
+      syncFormFromConfig(DEFAULT_SPAM_FILTER);
+      setRequireProfile(true); // sensible default when enabling
+      setEditing(true);
+    }
+  }, [spamFilter.enabled, loading, handleDisable, syncFormFromConfig]);
+
   const handleSave = useCallback(async () => {
     if (!appUser || loading) return;
 
@@ -101,7 +101,7 @@ export function SpamFilterSettings() {
       minBalanceNanos: displayToNanos(minBalance),
       minCoinPriceNanos: displayToNanos(minCoinPrice),
       requireProfile,
-      minCoinHolders: parseInt(minCoinHolders, 10) || 0,
+      minCoinHolders: Math.max(0, parseInt(minCoinHolders, 10) || 0),
     };
 
     const prev = spamFilter;

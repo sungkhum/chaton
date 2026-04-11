@@ -570,6 +570,7 @@ export async function clearCacheForUser(publicKey: string): Promise<void> {
     "lastRead",
     "privacyMode",
     "dmPrice",
+    "spamFilter",
   ];
   for (const t of lsTypes) {
     lsDel(publicKey, t);
