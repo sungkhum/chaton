@@ -371,3 +371,69 @@ test.describe("Pinned message", () => {
     await expect(page.getByText("Pin Message")).toBeVisible({ timeout: 3_000 });
   });
 });
+
+test.describe("Long message expand/collapse", () => {
+  test.setTimeout(60_000);
+
+  test("long messages show 'Show more' button and can expand", async ({
+    page,
+    waitForAppReady,
+  }) => {
+    await page.goto("/");
+    await waitForAppReady();
+    await injectUser(page);
+
+    // Generate a message long enough to exceed 300px collapsed height
+    const longText = Array.from({ length: 40 }, (_, i) =>
+      `Line ${i + 1}: This is a really long message that should cause the expand button to appear.`
+    ).join("\n");
+    const dm = makeDmConversation();
+    dm.conversation.messages.push(
+      makeMessage(longText, false, NOW + 1e12)
+    );
+    await injectConversation(page, dm);
+
+    const messages = page.locator("#scrollableArea");
+    // Wait for short messages to render first
+    await expect(messages.getByText("Hey, how are you?")).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // The "Show more" button should appear for the long message
+    const showMore = messages.getByRole("button", { name: "Show more" });
+    await expect(showMore).toBeVisible({ timeout: 10_000 });
+
+    // Click to expand
+    await showMore.click();
+
+    // After expanding, button text changes to "Show less"
+    await expect(
+      messages.getByRole("button", { name: "Show less" })
+    ).toBeVisible();
+
+    // "Show more" should no longer be present
+    await expect(showMore).not.toBeVisible();
+  });
+
+  test("short messages do not show expand button", async ({
+    page,
+    waitForAppReady,
+  }) => {
+    await page.goto("/");
+    await waitForAppReady();
+    await injectUser(page);
+
+    const dm = makeDmConversation();
+    await injectConversation(page, dm);
+
+    const messages = page.locator("#scrollableArea");
+    await expect(messages.getByText("Hey, how are you?")).toBeVisible({
+      timeout: 5_000,
+    });
+
+    // No expand button for short messages
+    await expect(
+      messages.getByRole("button", { name: "Show more" })
+    ).not.toBeVisible();
+  });
+});
