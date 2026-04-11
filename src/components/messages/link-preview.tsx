@@ -88,7 +88,7 @@ function TweetPreview({ og, url }: { og: OgData; url: string }) {
             <img
               src={og.image}
               alt={og.title || "Tweet media"}
-              className="w-full max-h-[200px] object-cover"
+              className="w-full max-h-[300px] object-contain"
               onError={() => setImageError(true)}
             />
           </div>
@@ -165,7 +165,7 @@ function RedditPreview({ og, url }: { og: OgData; url: string }) {
             <img
               src={og.image}
               alt={og.title || "Reddit post"}
-              className="w-full max-h-[200px] object-cover"
+              className="w-full max-h-[300px] object-contain"
               onError={() => setImageError(true)}
             />
           </div>
