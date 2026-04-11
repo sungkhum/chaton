@@ -139,7 +139,7 @@ function convertTstampToDateTime(tstampNanos: number) {
 
 /** Detect raw encrypted hex that slipped through decryption without throwing */
 function looksLikeEncryptedHex(text: string): boolean {
-  return text.length >= 66 && /^[0-9a-f]+$/i.test(text);
+  return text.length >= 64 && /^[0-9a-f]+$/i.test(text);
 }
 
 function MessageContent({
@@ -2109,8 +2109,11 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                 onTouchEnd={(e) => e.stopPropagation()}
                               >
                                 {onReply &&
-                                  !looksLikeEncryptedHex(
-                                    message.DecryptedMessage
+                                  !(
+                                    message.DecryptedMessage &&
+                                    looksLikeEncryptedHex(
+                                      message.DecryptedMessage
+                                    )
                                   ) && (
                                     <button
                                       onClick={() => {
