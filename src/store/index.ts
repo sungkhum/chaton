@@ -2,11 +2,13 @@ import { create } from "zustand";
 import { AccessGroupEntryResponse, User } from "deso-protocol";
 import {
   cacheClassificationData,
+  cacheDmPrice,
   cacheMutedConversations,
   cachePrivacyMode,
   cacheUserProfile,
   clearActiveServiceWorkerKeys,
 } from "../services/cache.service";
+import { clearDmPriceLookupCache } from "../services/conversations.service";
 import type { PrivacyMode } from "../utils/extra-data";
 import type { ErrorContext } from "../utils/error-capture";
 
@@ -84,6 +86,22 @@ interface ChatOnState {
   privacyModeAssociationId: string | null;
   setPrivacyMode: (mode: PrivacyMode, associationId?: string | null) => void;
 
+  // Paid messaging — per-message price for DMs from strangers (Focus-compatible)
+  dmPriceUsdCents: number | null;
+  dmFollowingPriceUsdCents: number;
+  dmPriceAssociationId: string | null;
+  setDmPrice: (
+    cents: number | null,
+    followingCents?: number,
+    associationId?: string | null
+  ) => void;
+
+  // Users who have paid to DM me
+  paidUsers: Set<string>;
+  paidAssociationIds: Map<string, string>;
+  addPaidUser: (publicKey: string) => void;
+  rollbackPaidUser: (publicKey: string) => void;
+
   setClassificationData: (
     followedUsers: Set<string>,
     approved: Set<string>,
@@ -95,7 +113,9 @@ interface ChatOnState {
     archivedChats: Set<string>,
     archivedChatIds: Map<string, string>,
     dismissed: Set<string>,
-    dismissedIds: Map<string, string>
+    dismissedIds: Map<string, string>,
+    paid?: Set<string>,
+    paidIds?: Map<string, string>
   ) => void;
   addInitiatedChat: (publicKey: string) => void;
   approveUser: (publicKey: string) => void;
@@ -162,6 +182,8 @@ function classificationSnapshot(
     archivedChatAssociationIds: Map<string, string>;
     dismissedUsers: Set<string>;
     dismissedAssociationIds: Map<string, string>;
+    paidUsers: Set<string>;
+    paidAssociationIds: Map<string, string>;
   }> = {}
 ) {
   return {
@@ -182,6 +204,9 @@ function classificationSnapshot(
     dismissedUsers: overrides.dismissedUsers ?? state.dismissedUsers,
     dismissedAssociationIds:
       overrides.dismissedAssociationIds ?? state.dismissedAssociationIds,
+    paidUsers: overrides.paidUsers ?? state.paidUsers,
+    paidAssociationIds:
+      overrides.paidAssociationIds ?? state.paidAssociationIds,
   };
 }
 
@@ -376,6 +401,50 @@ export const useStore = create<ChatOnState>((set) => ({
       };
     }),
 
+  // Paid messaging
+  dmPriceUsdCents: null,
+  dmFollowingPriceUsdCents: 0,
+  dmPriceAssociationId: null,
+  setDmPrice: (cents, followingCents, associationId) =>
+    set((state) => {
+      const publicKey = state.appUser?.PublicKeyBase58Check;
+      if (publicKey)
+        cacheDmPrice(publicKey, {
+          cents,
+          followingCents: followingCents ?? state.dmFollowingPriceUsdCents,
+          associationId: associationId ?? state.dmPriceAssociationId,
+        });
+      return {
+        dmPriceUsdCents: cents,
+        ...(followingCents !== undefined
+          ? { dmFollowingPriceUsdCents: followingCents }
+          : {}),
+        ...(associationId !== undefined
+          ? { dmPriceAssociationId: associationId }
+          : {}),
+      };
+    }),
+
+  paidUsers: EMPTY_SET,
+  paidAssociationIds: EMPTY_MAP,
+  addPaidUser: (publicKey) =>
+    set((state) => {
+      const next = new Set([...state.paidUsers, publicKey]);
+      const myKey = state.appUser?.PublicKeyBase58Check;
+      if (myKey)
+        cacheClassificationData(
+          myKey,
+          classificationSnapshot(state, { paidUsers: next })
+        );
+      return { paidUsers: next };
+    }),
+  rollbackPaidUser: (publicKey) =>
+    set((state) => {
+      const next = new Set(state.paidUsers);
+      next.delete(publicKey);
+      return { paidUsers: next };
+    }),
+
   setClassificationData: (
     followedUsers,
     approved,
@@ -387,7 +456,9 @@ export const useStore = create<ChatOnState>((set) => ({
     archivedChatsSet,
     archivedChatIds,
     dismissed,
-    dismissedIds
+    dismissedIds,
+    paid,
+    paidIds
   ) =>
     set((state) => {
       const publicKey = state.appUser?.PublicKeyBase58Check;
@@ -404,6 +475,8 @@ export const useStore = create<ChatOnState>((set) => ({
           archivedChatAssociationIds: archivedChatIds,
           dismissedUsers: dismissed,
           dismissedAssociationIds: dismissedIds,
+          paidUsers: paid ?? state.paidUsers,
+          paidAssociationIds: paidIds ?? state.paidAssociationIds,
         });
       }
       return {
@@ -419,6 +492,8 @@ export const useStore = create<ChatOnState>((set) => ({
         dismissedUsers: dismissed,
         dismissedAssociationIds: dismissedIds,
         chatRequestsLoaded: true,
+        ...(paid ? { paidUsers: paid } : {}),
+        ...(paidIds ? { paidAssociationIds: paidIds } : {}),
       };
     }),
 
@@ -656,6 +731,7 @@ export const useStore = create<ChatOnState>((set) => ({
   resetChatRequestState: () => {
     if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
     clearActiveServiceWorkerKeys();
+    clearDmPriceLookupCache();
     set({
       followedUsers: EMPTY_SET,
       approvedUsers: EMPTY_SET,
@@ -669,11 +745,16 @@ export const useStore = create<ChatOnState>((set) => ({
       archivedChatAssociationIds: EMPTY_MAP,
       dismissedUsers: EMPTY_SET,
       dismissedAssociationIds: EMPTY_MAP,
+      paidUsers: EMPTY_SET,
+      paidAssociationIds: EMPTY_MAP,
       chatRequestsLoaded: false,
       mutedConversations: EMPTY_SET,
       joinRequestCounts: new Map(),
       privacyMode: "full" as PrivacyMode,
       privacyModeAssociationId: null,
+      dmPriceUsdCents: null,
+      dmFollowingPriceUsdCents: 0,
+      dmPriceAssociationId: null,
       unreadByConversation: new Map(),
       totalUnread: 0,
       sessionTipTotalUsdCents: 0,

@@ -10,11 +10,8 @@
 /faq → FaqPage → src/components/faq-page.tsx
 /about → AboutPage → src/components/about-page.tsx
 /compare → ComparePage → src/components/compare-page.tsx
-/blog → BlogIndex → src/components/blog/blog-index.tsx
+/blog → BlogIndex → ?
 /blog/* → PostComponent → ?
-/join/:code → JoinGroupPage → src/components/join-group-page.tsx
-/ (logged-out) → LandingPage → src/components/landing-page.tsx
-* (404) → NotFoundPage → src/components/not-found-page.tsx
 (authenticated) → MessagingApp → src/components/messaging-app.tsx
 
 ## Error Codes
@@ -22,7 +19,7 @@
 # Messaging
 send-msg-failed (SEND_MSG_FAILED)
 decrypt-msg-failed (DECRYPT_MSG_FAILED)
-media-upload-failed (MEDIA_UPLOAD_FAILED) → src/components/send-message-button-and-input.tsx
+media-upload-failed (MEDIA_UPLOAD_FAILED)
 reaction-failed (REACTION_FAILED)
 # Auth / Identity
 auth-derived-key (AUTH_DERIVED_KEY)
@@ -76,6 +73,7 @@ src/components/compose/mention-picker.tsx  MentionPicker
 src/components/compose/reply-banner.tsx  ReplyBanner
 src/components/compose/video-preview-panel.tsx  VideoPreviewPanel
 src/components/currency-toggle.tsx  CurrencyToggle
+src/components/dm-price-toggle.tsx  fn DmPriceToggle
 src/components/edit-profile-dialog.tsx  EditProfileDialog
 src/components/faq-page.tsx  FaqPage
 src/components/feedback-modal.tsx  fn FeedbackModal
@@ -141,9 +139,9 @@ src/components/tip-currency-toggle.tsx  fn TipCurrencyToggle
 src/components/user-account-list.tsx
 
 ## Services
-src/services/cache.service.ts  fn checkCacheVersion, fn cacheUserProfile, fn getCachedUserProfile, fn cacheClassificationData, fn getCachedClassificationData, fn cachePrivacyMode, ... (39 exports)
+src/services/cache.service.ts  fn checkCacheVersion, fn cacheUserProfile, fn getCachedUserProfile, fn cacheClassificationData, fn getCachedClassificationData, fn cachePrivacyMode, ... (41 exports)
 src/services/community.service.ts  fn fetchGroupMemberCount, fn fetchGroupMemberCountQuick, fn fetchCommunityListings, fn listGroupInCommunity, fn unlistGroupFromCommunity, fn fetchCommunityListing, ... (8 exports)
-src/services/conversations.service.tsx  fn fetchMessageThreadsRaw, fn buildShellConversations, fn decryptConversationPreviews, fn cacheDecryptionResult, fn invalidateMessageCache, fn fetchFollowedUsers, ... (36 exports)
+src/services/conversations.service.tsx  fn fetchMessageThreadsRaw, fn buildShellConversations, fn decryptConversationPreviews, fn cacheDecryptionResult, fn invalidateMessageCache, fn fetchFollowedUsers, ... (43 exports)
 src/services/deso-activity.service.ts  fn fetchDesoActivity
 src/services/feedback.service.ts  fn submitFeedback
 src/services/ffmpeg.service.ts  fn compressAudioToMp4
@@ -179,17 +177,20 @@ src/hooks/useWebSocket.ts  fn useWebSocket
 src/store/index.ts  fn useStore
 
 ## Utils
+src/utils/atomic-paid-message.ts  fn sendAtomicPaidMessage
 src/utils/atomic-tip.ts  fn sendAtomicDesoTip, sendAtomicUsdcTip
 src/utils/avatar.ts  AVATAR_COLORS | fn hashToColorIndex, getInitials
+src/utils/batch-members.ts  MEMBER_BATCH_SIZE | fn batchedGetBulkAccessGroups, batchedAddMembers, batchedRemoveMembers
 src/utils/community-cache.ts  fn clearCommunityCache
-src/utils/constants.ts  ASSOCIATION_TYPE_APPROVED, ASSOCIATION_TYPE_BLOCKED, ASSOCIATION_VALUE_APPROVED, ASSOCIATION_VALUE_BLOCKED, ASSOCIATION_TYPE_GROUP_ARCHIVED, ASSOCIATION_TYPE_CHAT_ARCHIVED, ... (34 exports)
+src/utils/constants.ts  ASSOCIATION_TYPE_APPROVED, ASSOCIATION_TYPE_BLOCKED, ASSOCIATION_VALUE_APPROVED, ASSOCIATION_VALUE_BLOCKED, ASSOCIATION_TYPE_GROUP_ARCHIVED, ASSOCIATION_TYPE_CHAT_ARCHIVED, ... (37 exports)
 src/utils/detect-language.ts  fn detectLanguageSync, detectLanguage
 src/utils/error-capture.ts  fn getAppVersion, getPlatform, captureError
 src/utils/error-codes.ts  ERROR_CODES
 src/utils/exchange-rate.ts  fn fetchExchangeRate, usdToNanos, nanosToUsd, formatUsd
-src/utils/extra-data.ts  fn getEncryptedExtraDataKeys, fn parseMessageType, fn getGroupImageUrl, fn getGroupDisplayName, fn getGroupPinnedMessage, fn getGroupMembersCanShare, ... (51 exports)
+src/utils/extra-data.ts  fn getEncryptedExtraDataKeys, fn parseMessageType, fn getGroupImageUrl, fn getGroupDisplayName, fn getGroupPinnedMessage, fn getGroupMembersCanShare, ... (54 exports)
 src/utils/helpers.ts  fn copyTextToClipboard, fn getProfileURL, fn desoNanosToDeso, fn formatDesoAmount, fn scrollContainerToElement, fn getChatNameFromConversation, ... (13 exports)
 src/utils/invite-link.ts  fn buildInviteUrl, extractInviteCode, resolveInviteCode, registerInviteCode, fetchInviteCode, revokeInviteCode
+src/utils/lazy-with-reload.ts  fn lazyWithReload
 src/utils/link-services.ts  fn detectLinkService, extractFileNameFromUrl
 src/utils/onboarding.ts  fn isOnboardingComplete, markOnboardingComplete
 src/utils/profanity-filter.ts  fn containsProfanity

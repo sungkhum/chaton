@@ -8,6 +8,7 @@ import {
   ShieldBan,
   Pin,
   X,
+  CircleDollarSign,
 } from "lucide-react";
 import { useStore } from "../store";
 import { useShallow } from "zustand/react/shallow";
@@ -76,6 +77,10 @@ import {
   fetchJoinRequestCountsForOwner,
   fetchMessageThreadsRaw,
   fetchFollowedUsers,
+  fetchPaidMessagingSettings,
+  fetchUserPaidMessagingSettings,
+  createPaidAssociation,
+  prepareEncryptedDMMessage,
   fetchPrivacyMode,
   getConversations,
   getConversationsDifferential,
@@ -95,6 +100,7 @@ import {
   getCachedLastConversationKey,
   getCachedLastReadTimestamps,
   getCachedMutedConversations,
+  getCachedDmPrice,
   getCachedPrivacyMode,
   getCachedUsernameMap,
   getCachedUserProfile,
@@ -138,6 +144,7 @@ import {
   type MentionEntry,
 } from "../utils/extra-data";
 import { detectLanguageSync } from "../utils/detect-language";
+import { sendAtomicPaidMessage } from "../utils/atomic-paid-message";
 const LazyTipConfirmDialog = lazy(() =>
   import("./tip-confirm-dialog").then((m) => ({ default: m.TipConfirmDialog }))
 );
@@ -297,6 +304,7 @@ export const MessagingApp: FC = () => {
     archivedGroups,
     archivedChats,
     dismissedUsers,
+    paidUsers,
     unreadByConversation,
     mutedConversations,
   } = useStore(
@@ -313,6 +321,7 @@ export const MessagingApp: FC = () => {
       archivedGroups: s.archivedGroups,
       archivedChats: s.archivedChats,
       dismissedUsers: s.dismissedUsers,
+      paidUsers: s.paidUsers,
       unreadByConversation: s.unreadByConversation,
       mutedConversations: s.mutedConversations,
     }))
@@ -371,6 +380,12 @@ export const MessagingApp: FC = () => {
     timestamp: string;
     sender: string;
   } | null>(null);
+  const [recipientDmPrice, setRecipientDmPrice] = useState<{
+    cents: number;
+    followingCents: number;
+  } | null>(null);
+  // Tracks whether the user has confirmed paying for this conversation (resets on switch)
+  const [paidDmConfirmed, setPaidDmConfirmed] = useState(false);
   const sendInputRef = useRef<SendMessageInputHandle>(null);
   const bubblesRef = useRef<MessagingBubblesHandle>(null);
   const [editingMessage, setEditingMessage] = useState<{
@@ -440,6 +455,72 @@ export const MessagingApp: FC = () => {
     // Pre-warm exchange rate cache so micro-tips don't hit a cold fetch
     fetchExchangeRate().catch(() => {});
   }, [selectedConversationPublicKey]);
+
+  // Fetch the recipient's DM price when opening a DM conversation.
+  // Resets when switching conversations. Skips group chats and self-DMs.
+  // If the sender already follows the recipient, uses the follower price tier.
+  useEffect(() => {
+    setRecipientDmPrice(null);
+    setPaidDmConfirmed(false);
+    if (!selectedConversationPublicKey || !appUser) return;
+    const convo = conversationsRef.current[selectedConversationPublicKey];
+    if (!convo || convo.ChatType === ChatType.GROUPCHAT) return;
+    const otherKey = convo.firstMessagePublicKey;
+    if (!otherKey || otherKey === appUser.PublicKeyBase58Check) return;
+    // Skip if already approved (no payment needed)
+    if (approvedUsers.has(otherKey)) return;
+
+    const senderFollowsRecipient = followedUsers.has(otherKey);
+
+    let cancelled = false;
+    fetchUserPaidMessagingSettings(otherKey).then((result) => {
+      if (cancelled || result.cents === null || result.cents <= 0) return;
+      // Use follower price if the sender follows the recipient
+      const effectiveCents = senderFollowsRecipient
+        ? result.followingCents
+        : result.cents;
+      // If effective price is 0, no payment needed
+      if (effectiveCents <= 0) return;
+      setRecipientDmPrice({
+        cents: effectiveCents,
+        followingCents: result.followingCents,
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedConversationPublicKey, appUser, followedUsers, approvedUsers]);
+
+  // Fire-and-forget: claim any pending Focus tips when opening a DM thread.
+  // Focus's API accepts standard DeSo auth (Public-Key header + JWT).
+  // Silent failure — this is a nice-to-have, not critical.
+  useEffect(() => {
+    if (!selectedConversationPublicKey || !appUser) return;
+    const convo = conversationsRef.current[selectedConversationPublicKey];
+    if (!convo || convo.ChatType === ChatType.GROUPCHAT) return;
+    const otherKey = convo.firstMessagePublicKey;
+    if (!otherKey || otherKey === appUser.PublicKeyBase58Check) return;
+
+    const myPk = appUser.PublicKeyBase58Check;
+    identity
+      .jwt()
+      .then((jwt: string) => {
+        // Try both thread identifier orderings
+        const threadId = `${myPk}-${otherKey}-default-key-default-key-false`;
+        fetch("https://focus.xyz/api/v0/message/views", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Public-Key": myPk,
+            Authorization: `Bearer ${jwt}`,
+          },
+          body: JSON.stringify({
+            MessageViews: [{ ThreadIdentifier: threadId }],
+          }),
+        }).catch(() => {});
+      })
+      .catch(() => {});
+  }, [selectedConversationPublicKey, appUser]);
 
   // Proactively tell the service worker which conversation is active so it can
   // suppress push notifications for the conversation the user is viewing.
@@ -1259,7 +1340,8 @@ export const MessagingApp: FC = () => {
           initiatedChats,
           archivedGroups,
           archivedChats,
-          dismissedUsers
+          dismissedUsers,
+          paidUsers
         );
         if (cls === "chat") chats[key] = convo;
         else if (cls === "request") requests[key] = convo;
@@ -1280,6 +1362,7 @@ export const MessagingApp: FC = () => {
       archivedGroups,
       archivedChats,
       dismissedUsers,
+      paidUsers,
       appUser,
     ]);
 
@@ -2138,6 +2221,7 @@ export const MessagingApp: FC = () => {
             const archivedSet = new Set(archivedMap.keys());
             const archivedChatsSet = new Set(assoc.archivedChats.keys());
             const dismissedSet = new Set(assoc.dismissed.keys());
+            const paidSet = new Set(assoc.paid.keys());
             setClassificationData(
               mutual,
               approvedSet,
@@ -2149,7 +2233,9 @@ export const MessagingApp: FC = () => {
               archivedChatsSet,
               assoc.archivedChats,
               dismissedSet,
-              assoc.dismissed
+              assoc.dismissed,
+              paidSet,
+              assoc.paid
             );
           })
           .catch(() => {});
@@ -2444,6 +2530,18 @@ export const MessagingApp: FC = () => {
     if (cachedPrivacy) {
       useStore.getState().setPrivacyMode(cachedPrivacy as "standard" | "full");
     }
+
+    // Load DM price from cache
+    const cachedDmPrice = getCachedDmPrice(publicKey);
+    if (cachedDmPrice) {
+      useStore
+        .getState()
+        .setDmPrice(
+          cachedDmPrice.cents,
+          cachedDmPrice.followingCents,
+          cachedDmPrice.associationId
+        );
+    }
     let renderedFromCache = false;
 
     if (cachedConvos && Object.keys(cachedConvos).length > 0) {
@@ -2460,7 +2558,9 @@ export const MessagingApp: FC = () => {
           cachedClassification.archivedChats,
           cachedClassification.archivedChatAssociationIds,
           cachedClassification.dismissedUsers,
-          cachedClassification.dismissedAssociationIds
+          cachedClassification.dismissedAssociationIds,
+          cachedClassification.paidUsers,
+          cachedClassification.paidAssociationIds
         );
       }
 
@@ -2582,6 +2682,7 @@ export const MessagingApp: FC = () => {
             const archivedSet = new Set(archivedMap.keys());
             const archivedChatsSet = new Set(assoc.archivedChats.keys());
             const dismissedSet = new Set(assoc.dismissed.keys());
+            const paidSet = new Set(assoc.paid.keys());
             setClassificationData(
               mutual,
               approvedSet,
@@ -2593,7 +2694,9 @@ export const MessagingApp: FC = () => {
               archivedChatsSet,
               assoc.archivedChats,
               dismissedSet,
-              assoc.dismissed
+              assoc.dismissed,
+              paidSet,
+              assoc.paid
             );
           })
           .catch((e) => {
@@ -2611,6 +2714,15 @@ export const MessagingApp: FC = () => {
       })
       .catch((e) => {
         console.error("Failed to fetch privacy mode:", e);
+      });
+
+    // Fetch paid messaging settings (DM price) from on-chain in parallel
+    fetchPaidMessagingSettings(publicKey)
+      .then(({ cents, followingCents, associationId }) => {
+        useStore.getState().setDmPrice(cents, followingCents, associationId);
+      })
+      .catch((e) => {
+        console.error("Failed to fetch paid messaging settings:", e);
       });
 
     // --- Conversation loading: progressive for first load, blocking for cache revalidation ---
@@ -4148,6 +4260,44 @@ export const MessagingApp: FC = () => {
                     </div>
                   )}
 
+                  {/* Paid DM price banner */}
+                  {recipientDmPrice &&
+                    recipientDmPrice.cents > 0 &&
+                    selectedConversation?.ChatType === ChatType.DM && (
+                      <div className="shrink-0 border-b border-amber-500/10 bg-amber-500/[0.03] px-4 md:px-5 py-2.5 flex items-start gap-3">
+                        <CircleDollarSign className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                        <div className="min-w-0 flex-1">
+                          <span className="text-xs text-gray-300 block leading-relaxed">
+                            <span className="text-white font-medium">
+                              @
+                              {activeChatUsersMap[
+                                selectedConversation.firstMessagePublicKey
+                              ] ||
+                                selectedConversation.firstMessagePublicKey.slice(
+                                  0,
+                                  8
+                                )}
+                            </span>{" "}
+                            charges{" "}
+                            <span className="text-amber-400 font-semibold">
+                              ${(recipientDmPrice.cents / 100).toFixed(2)}
+                            </span>{" "}
+                            per message
+                          </span>
+                          <span className="text-[11px] text-gray-500 block mt-1">
+                            Payment goes to their wallet. Once they reply,
+                            messaging is free.
+                          </span>
+                          <button
+                            onClick={() => setRecipientDmPrice(null)}
+                            className="text-[11px] text-gray-600 hover:text-gray-400 mt-1 transition-colors"
+                          >
+                            Send to Requests instead (free) →
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                   <div className="pr-2 rounded-none w-[100%] bg-transparent ml-[calc-340px] pb-0 flex-1 min-h-0">
                     <div className="border-none flex flex-col h-full">
                       <div className="overflow-hidden flex-1 min-h-0">
@@ -4963,6 +5113,11 @@ export const MessagingApp: FC = () => {
                                 }
                               : undefined
                           }
+                          paidDmPriceCents={
+                            recipientDmPrice
+                              ? recipientDmPrice.cents
+                              : undefined
+                          }
                           onClick={async (
                             messageToSend: string,
                             extraData?: Record<string, string>,
@@ -4971,6 +5126,28 @@ export const MessagingApp: FC = () => {
                             }
                           ) => {
                             if (!selectedConversation) return;
+
+                            // Paid DM first-send confirmation: check BEFORE any
+                            // state mutations so the message text stays in the input.
+                            // Returns false to abort the send — the input component
+                            // will NOT clear the text field because onClick threw.
+                            const wouldBePaidDm =
+                              recipientDmPrice &&
+                              recipientDmPrice.cents > 0 &&
+                              selectedConversation.ChatType === ChatType.DM;
+                            if (wouldBePaidDm && !paidDmConfirmed) {
+                              setPaidDmConfirmed(true);
+                              toast(
+                                `Messages to this user cost $${(
+                                  recipientDmPrice.cents / 100
+                                ).toFixed(
+                                  2
+                                )} each (paid to their wallet). Tap Send again to confirm.`,
+                                { duration: 5000 }
+                              );
+                              // Throw to prevent the input from clearing the message
+                              throw new Error("__PAID_DM_CONFIRM__");
+                            }
                             // Merge reply data into extraData if replying
                             if (replyToMessage) {
                               extraData = {
@@ -5091,29 +5268,89 @@ export const MessagingApp: FC = () => {
                               }
                             }
 
-                            // Persist to IndexedDB so the message survives app close.
-                            // Awaited so the write lands before the blockchain call starts.
-                            const pending: PendingMessage = {
-                              localId,
-                              conversationKey: convKey,
-                              messageText: messageToSend,
-                              senderPublicKey: appUser.PublicKeyBase58Check,
-                              recipientPublicKey,
-                              recipientAccessGroupKeyName,
-                              extraData,
-                              createdAt: Date.now(),
-                            };
-                            await addPendingMessage(pending);
+                            // Paid DM: atomic payment + message bundle
+                            const isPaidDm =
+                              recipientDmPrice &&
+                              recipientDmPrice.cents > 0 &&
+                              selectedConversation?.ChatType === ChatType.DM &&
+                              recipientAccessGroupKeyName ===
+                                DEFAULT_KEY_MESSAGING_GROUP_NAME;
 
                             try {
-                              await encryptAndSendNewMessage(
-                                messageToSend,
-                                appUser.PublicKeyBase58Check,
-                                recipientPublicKey,
-                                recipientAccessGroupKeyName,
-                                DEFAULT_KEY_MESSAGING_GROUP_NAME,
-                                extraData
-                              );
+                              if (isPaidDm) {
+                                // Paid DMs are NOT persisted to IndexedDB — retry
+                                // would send without payment. User must re-send manually.
+                                const { requestBody } =
+                                  await prepareEncryptedDMMessage(
+                                    messageToSend,
+                                    appUser.PublicKeyBase58Check,
+                                    recipientPublicKey,
+                                    recipientAccessGroupKeyName,
+                                    DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                                    extraData
+                                  );
+                                await withAuth(() =>
+                                  sendAtomicPaidMessage(
+                                    appUser.PublicKeyBase58Check,
+                                    recipientPublicKey,
+                                    recipientDmPrice.cents,
+                                    "DESO",
+                                    requestBody
+                                  )
+                                );
+                                // Fire-and-forget: create paid association
+                                createPaidAssociation(
+                                  appUser.PublicKeyBase58Check,
+                                  recipientPublicKey
+                                ).catch(() => {});
+                              } else {
+                                // Persist to IndexedDB so the message survives app close.
+                                const pending: PendingMessage = {
+                                  localId,
+                                  conversationKey: convKey,
+                                  messageText: messageToSend,
+                                  senderPublicKey: appUser.PublicKeyBase58Check,
+                                  recipientPublicKey,
+                                  recipientAccessGroupKeyName,
+                                  extraData,
+                                  createdAt: Date.now(),
+                                };
+                                await addPendingMessage(pending);
+                                await encryptAndSendNewMessage(
+                                  messageToSend,
+                                  appUser.PublicKeyBase58Check,
+                                  recipientPublicKey,
+                                  recipientAccessGroupKeyName,
+                                  DEFAULT_KEY_MESSAGING_GROUP_NAME,
+                                  extraData
+                                );
+                              }
+
+                              // Auto-approve on reply: if the other user paid
+                              // to DM us, approve them so future messages are free
+                              if (
+                                paidUsers.has(recipientPublicKey) &&
+                                !approvedUsers.has(recipientPublicKey)
+                              ) {
+                                useStore
+                                  .getState()
+                                  .approveUser(recipientPublicKey);
+                                import(
+                                  "../services/conversations.service"
+                                ).then((mod) =>
+                                  mod
+                                    .createApprovalAssociation(
+                                      appUser.PublicKeyBase58Check,
+                                      recipientPublicKey
+                                    )
+                                    .catch(() => {
+                                      useStore
+                                        .getState()
+                                        .rollbackApproval(recipientPublicKey);
+                                    })
+                                );
+                              }
+
                               // Sent successfully — remove from IndexedDB
                               removePendingMessage(
                                 appUser.PublicKeyBase58Check,
@@ -5160,9 +5397,25 @@ export const MessagingApp: FC = () => {
                                   ),
                                 }))
                               );
-                              toast.error(
-                                `An error occurred while sending your message. Error: ${e.toString()}`
-                              );
+                              // Show user-friendly error for paid DM failures
+                              const errStr = e?.toString?.() || "";
+                              const isInsufficientBalance =
+                                errStr.includes("InsufficientBalance") ||
+                                errStr.includes("not enough") ||
+                                errStr.includes("RuleErrorInsufficientBalance");
+                              if (isInsufficientBalance) {
+                                toast.error(
+                                  "Not enough DESO to send this paid message. Add funds and try again."
+                                );
+                              } else {
+                                toast.error(
+                                  `Failed to send message. ${
+                                    errStr.length > 120
+                                      ? "Please try again."
+                                      : errStr
+                                  }`
+                                );
+                              }
                               return Promise.reject(e);
                             } finally {
                               setLockRefresh(false);

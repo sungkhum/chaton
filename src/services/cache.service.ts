@@ -150,6 +150,8 @@ interface CachedClassification {
   archivedChatAssociationIds: [string, string][];
   dismissedUsers: string[];
   dismissedAssociationIds: [string, string][];
+  paidUsers?: string[];
+  paidAssociationIds?: [string, string][];
 }
 
 export interface ClassificationData {
@@ -164,6 +166,8 @@ export interface ClassificationData {
   archivedChatAssociationIds: Map<string, string>;
   dismissedUsers: Set<string>;
   dismissedAssociationIds: Map<string, string>;
+  paidUsers: Set<string>;
+  paidAssociationIds: Map<string, string>;
 }
 
 export function cacheClassificationData(
@@ -186,6 +190,8 @@ export function cacheClassificationData(
     ),
     dismissedUsers: Array.from(data.dismissedUsers),
     dismissedAssociationIds: Array.from(data.dismissedAssociationIds.entries()),
+    paidUsers: Array.from(data.paidUsers),
+    paidAssociationIds: Array.from(data.paidAssociationIds.entries()),
   };
   lsSet(publicKey, "classification", serialized);
 }
@@ -209,6 +215,8 @@ export function getCachedClassificationData(
     archivedChatAssociationIds: new Map(raw.archivedChatAssociationIds || []),
     dismissedUsers: new Set(raw.dismissedUsers || []),
     dismissedAssociationIds: new Map(raw.dismissedAssociationIds || []),
+    paidUsers: new Set(raw.paidUsers || []),
+    paidAssociationIds: new Map(raw.paidAssociationIds || []),
   };
 }
 
@@ -222,6 +230,31 @@ export function cachePrivacyMode(publicKey: string, mode: string): void {
 
 export function getCachedPrivacyMode(publicKey: string): string | null {
   return lsGet<string>(publicKey, "privacyMode");
+}
+
+// ---------------------------------------------------------------------------
+// DM price setting (localStorage — sync)
+// ---------------------------------------------------------------------------
+
+interface CachedDmPrice {
+  cents: number | null;
+  followingCents: number;
+  associationId: string | null;
+}
+
+export function cacheDmPrice(
+  publicKey: string,
+  data: {
+    cents: number | null;
+    followingCents: number;
+    associationId: string | null;
+  }
+): void {
+  lsSet(publicKey, "dmPrice", data);
+}
+
+export function getCachedDmPrice(publicKey: string): CachedDmPrice | null {
+  return lsGet<CachedDmPrice>(publicKey, "dmPrice");
 }
 
 // ---------------------------------------------------------------------------
@@ -512,6 +545,7 @@ export async function clearCacheForUser(publicKey: string): Promise<void> {
     "mutedConversations",
     "lastRead",
     "privacyMode",
+    "dmPrice",
   ];
   for (const t of lsTypes) {
     lsDel(publicKey, t);

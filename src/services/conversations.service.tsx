@@ -31,11 +31,15 @@ import {
   ASSOCIATION_TYPE_GROUP_ARCHIVED,
   ASSOCIATION_TYPE_GROUP_JOIN_REJECTED,
   ASSOCIATION_TYPE_GROUP_JOIN_REQUEST,
+  ASSOCIATION_TYPE_PAID_MESSAGING,
+  ASSOCIATION_TYPE_CHAT_PAID,
   ASSOCIATION_TYPE_PRIVACY_MODE,
   ASSOCIATION_VALUE_APPROVED,
   ASSOCIATION_VALUE_ARCHIVED,
   ASSOCIATION_VALUE_BLOCKED,
   ASSOCIATION_VALUE_DISMISSED,
+  ASSOCIATION_VALUE_PAID,
+  ASSOCIATION_VALUE_PAID_MESSAGING,
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
   FETCH_THREADS_TIMEOUT_MS,
   PRIVACY_MODE_FULL,
@@ -1019,14 +1023,22 @@ async function decryptExtraDataFields(
   };
 }
 
-export const encryptAndSendNewMessage = async (
+/**
+ * Prepare an encrypted DM message request body WITHOUT broadcasting.
+ * Used by both encryptAndSendNewMessage (normal send) and
+ * sendAtomicPaidMessage (bundled payment+message).
+ */
+export const prepareEncryptedDMMessage = async (
   messageToSend: string,
   senderPublicKeyBase58Check: string,
   RecipientPublicKeyBase58Check: string,
   RecipientMessagingKeyName = DEFAULT_KEY_MESSAGING_GROUP_NAME,
   SenderMessagingKeyName = DEFAULT_KEY_MESSAGING_GROUP_NAME,
   additionalExtraData: Record<string, string> = {}
-): Promise<string> => {
+): Promise<{
+  requestBody: Record<string, unknown>;
+  isDM: boolean;
+}> => {
   if (SenderMessagingKeyName !== DEFAULT_KEY_MESSAGING_GROUP_NAME) {
     return Promise.reject("sender must use default key for now");
   }
@@ -1114,8 +1126,30 @@ export const encryptAndSendNewMessage = async (
     !RecipientMessagingKeyName ||
     RecipientMessagingKeyName === DEFAULT_KEY_MESSAGING_GROUP_NAME;
 
+  return { requestBody, isDM };
+};
+
+export const encryptAndSendNewMessage = async (
+  messageToSend: string,
+  senderPublicKeyBase58Check: string,
+  RecipientPublicKeyBase58Check: string,
+  RecipientMessagingKeyName = DEFAULT_KEY_MESSAGING_GROUP_NAME,
+  SenderMessagingKeyName = DEFAULT_KEY_MESSAGING_GROUP_NAME,
+  additionalExtraData: Record<string, string> = {}
+): Promise<string> => {
+  const { requestBody, isDM } = await prepareEncryptedDMMessage(
+    messageToSend,
+    senderPublicKeyBase58Check,
+    RecipientPublicKeyBase58Check,
+    RecipientMessagingKeyName,
+    SenderMessagingKeyName,
+    additionalExtraData
+  );
+
   const { submittedTransactionResponse } = await withAuth(() =>
-    isDM ? sendDMMessage(requestBody) : sendGroupChatMessage(requestBody)
+    isDM
+      ? sendDMMessage(requestBody as any)
+      : sendGroupChatMessage(requestBody as any)
   );
 
   if (!submittedTransactionResponse) {
@@ -1341,15 +1375,19 @@ export async function fetchChatAssociations(publicKey: string): Promise<{
   blocked: Map<string, string>;
   archivedChats: Map<string, string>;
   dismissed: Map<string, string>;
+  paid: Map<string, string>;
 }> {
-  const [approved, blocked, archivedChats, dismissed] = await Promise.all([
-    fetchAssociationsByType(publicKey, ASSOCIATION_TYPE_APPROVED),
-    fetchAssociationsByType(publicKey, ASSOCIATION_TYPE_BLOCKED),
-    fetchAssociationsByType(publicKey, ASSOCIATION_TYPE_CHAT_ARCHIVED),
-    fetchAssociationsByType(publicKey, ASSOCIATION_TYPE_DISMISSED),
-  ]);
+  const [approved, blocked, archivedChats, dismissed, paid] = await Promise.all(
+    [
+      fetchAssociationsByType(publicKey, ASSOCIATION_TYPE_APPROVED),
+      fetchAssociationsByType(publicKey, ASSOCIATION_TYPE_BLOCKED),
+      fetchAssociationsByType(publicKey, ASSOCIATION_TYPE_CHAT_ARCHIVED),
+      fetchAssociationsByType(publicKey, ASSOCIATION_TYPE_DISMISSED),
+      fetchAssociationsByTargetType(publicKey, ASSOCIATION_TYPE_CHAT_PAID),
+    ]
+  );
 
-  return { approved, blocked, archivedChats, dismissed };
+  return { approved, blocked, archivedChats, dismissed, paid };
 }
 
 export function classifyConversation(
@@ -1362,7 +1400,8 @@ export function classifyConversation(
   initiatedChats: Set<string>,
   archivedGroups: Set<string>,
   archivedChats: Set<string>,
-  dismissedUsers: Set<string>
+  dismissedUsers: Set<string>,
+  paidUsers: Set<string> = new Set()
 ): "chat" | "request" | "blocked" | "archived" | "dismissed" {
   if (conversation.ChatType === ChatType.GROUPCHAT) {
     if (archivedGroups.has(conversationKey)) return "archived";
@@ -1376,6 +1415,7 @@ export function classifyConversation(
   if (archivedChats.has(otherKey)) return "archived";
   if (followedUsers.has(otherKey)) return "chat";
   if (approvedUsers.has(otherKey)) return "chat";
+  if (paidUsers.has(otherKey)) return "chat";
   if (initiatedChats.has(otherKey)) return "chat";
 
   // If the current user sent the first message (chronologically), they initiated
@@ -1619,6 +1659,209 @@ export async function setPrivacyModeOnChain(
   });
 
   return res.Associations?.[0]?.AssociationID || "";
+}
+
+// ─── Paid Messaging Settings (Focus-compatible) ─────────────────────
+
+/** In-memory session cache for other users' DM prices. */
+const dmPriceLookupCache = new Map<
+  string,
+  { cents: number | null; followingCents: number; fetchedAt: number }
+>();
+const DM_PRICE_LOOKUP_TTL_MS = 5 * 60 * 1000;
+
+/** Clear the in-memory DM price lookup cache (call on logout/account switch). */
+export function clearDmPriceLookupCache(): void {
+  dmPriceLookupCache.clear();
+}
+
+/**
+ * Fetch the current user's own paid messaging settings (self-association).
+ * Returns cents = null if the feature is not enabled.
+ */
+export async function fetchPaidMessagingSettings(publicKey: string): Promise<{
+  cents: number | null;
+  followingCents: number;
+  associationId: string | null;
+}> {
+  try {
+    const res = await getUserAssociations({
+      TransactorPublicKeyBase58Check: publicKey,
+      AssociationType: ASSOCIATION_TYPE_PAID_MESSAGING,
+      Limit: 1,
+    });
+
+    const assoc = res.Associations?.[0];
+    if (assoc?.ExtraData) {
+      const cents = parseInt(assoc.ExtraData.FeePerMessageUsdCents || "0", 10);
+      const followingCents = parseInt(
+        assoc.ExtraData.FollowingFeePerMessageUsdCents || "0",
+        10
+      );
+      return {
+        cents: cents > 0 ? cents : null,
+        followingCents,
+        associationId: assoc.AssociationID,
+      };
+    }
+  } catch (e) {
+    console.error("Failed to fetch paid messaging settings:", e);
+  }
+  return { cents: null, followingCents: 0, associationId: null };
+}
+
+/**
+ * Set or update the user's paid messaging settings on-chain.
+ * Uses the Focus-compatible PAID_MESSAGING_SETTINGS association type.
+ * Pass cents = null to disable (deletes association).
+ */
+export async function setPaidMessagingSettingsOnChain(
+  myPublicKey: string,
+  cents: number | null,
+  followingCents: number,
+  existingAssociationId: string | null
+): Promise<string> {
+  // Delete old association if it exists
+  if (existingAssociationId) {
+    await withAuth(() =>
+      deleteUserAssociation({
+        TransactorPublicKeyBase58Check: myPublicKey,
+        AssociationID: existingAssociationId,
+      })
+    );
+  }
+
+  // If disabling, just delete
+  if (cents === null || cents <= 0) {
+    return "";
+  }
+
+  await withAuth(() =>
+    createUserAssociation(
+      {
+        TransactorPublicKeyBase58Check: myPublicKey,
+        TargetUserPublicKeyBase58Check: myPublicKey, // self-association
+        AssociationType: ASSOCIATION_TYPE_PAID_MESSAGING,
+        AssociationValue: ASSOCIATION_VALUE_PAID_MESSAGING,
+        ExtraData: {
+          FeePerMessageUsdCents: String(cents),
+          FollowingFeePerMessageUsdCents: String(followingCents),
+        },
+      },
+      { checkPermissions: false }
+    )
+  );
+
+  // Fetch the new association ID
+  const res = await getUserAssociations({
+    TransactorPublicKeyBase58Check: myPublicKey,
+    AssociationType: ASSOCIATION_TYPE_PAID_MESSAGING,
+    Limit: 1,
+  });
+
+  return res.Associations?.[0]?.AssociationID || "";
+}
+
+/**
+ * Fetch another user's paid messaging price. Cached in memory for 5 minutes.
+ * Returns cents = null if the user doesn't charge for DMs.
+ */
+export async function fetchUserPaidMessagingSettings(
+  targetPublicKey: string
+): Promise<{ cents: number | null; followingCents: number }> {
+  // Check session cache
+  const cached = dmPriceLookupCache.get(targetPublicKey);
+  if (cached && Date.now() - cached.fetchedAt < DM_PRICE_LOOKUP_TTL_MS) {
+    return { cents: cached.cents, followingCents: cached.followingCents };
+  }
+
+  try {
+    const res = await getUserAssociations({
+      TransactorPublicKeyBase58Check: targetPublicKey,
+      AssociationType: ASSOCIATION_TYPE_PAID_MESSAGING,
+      Limit: 1,
+    });
+
+    const assoc = res.Associations?.[0];
+    if (assoc?.ExtraData) {
+      const cents = parseInt(assoc.ExtraData.FeePerMessageUsdCents || "0", 10);
+      const followingCents = parseInt(
+        assoc.ExtraData.FollowingFeePerMessageUsdCents || "0",
+        10
+      );
+      const result = { cents: cents > 0 ? cents : null, followingCents };
+      dmPriceLookupCache.set(targetPublicKey, {
+        ...result,
+        fetchedAt: Date.now(),
+      });
+      return result;
+    }
+  } catch (e) {
+    console.error("Failed to fetch user paid messaging settings:", e);
+  }
+
+  const result = { cents: null, followingCents: 0 };
+  dmPriceLookupCache.set(targetPublicKey, {
+    ...result,
+    fetchedAt: Date.now(),
+  });
+  return result;
+}
+
+/**
+ * Fetch associations where the current user is the TARGET.
+ * Used for paid DM tracking: sender (transactor) → me (target).
+ * Returns Map<transactorPubKey, associationId>.
+ */
+export async function fetchAssociationsByTargetType(
+  targetPublicKey: string,
+  associationType: string
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  let lastId = "";
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const res = await getUserAssociations({
+      TargetUserPublicKeyBase58Check: targetPublicKey,
+      AssociationType: associationType,
+      Limit: 100,
+      ...(lastId ? { LastSeenAssociationID: lastId } : {}),
+    });
+
+    const associations = res.Associations || [];
+    if (associations.length === 0) break;
+
+    for (const a of associations) {
+      map.set(a.TransactorPublicKeyBase58Check, a.AssociationID);
+    }
+
+    if (associations.length < 100) break;
+    lastId = associations[associations.length - 1]!.AssociationID;
+  }
+
+  return map;
+}
+
+/**
+ * Record that a sender has paid to DM a recipient.
+ * Creates a chaton:chat-paid association (sender → recipient).
+ */
+export async function createPaidAssociation(
+  senderPublicKey: string,
+  recipientPublicKey: string
+): Promise<void> {
+  await withAuth(() =>
+    createUserAssociation(
+      {
+        TransactorPublicKeyBase58Check: senderPublicKey,
+        TargetUserPublicKeyBase58Check: recipientPublicKey,
+        AssociationType: ASSOCIATION_TYPE_CHAT_PAID,
+        AssociationValue: ASSOCIATION_VALUE_PAID,
+      },
+      { checkPermissions: false }
+    )
+  );
 }
 
 // ─── Group Join Requests ─────────────────────────────────────────────

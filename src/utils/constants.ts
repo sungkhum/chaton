@@ -51,6 +51,20 @@ export const ASSOCIATION_TYPE_PRIVACY_MODE = "chaton:privacy-mode";
 export const PRIVACY_MODE_FULL = "full";
 export const PRIVACY_MODE_STANDARD = "standard";
 
+// Paid messaging settings — uses Focus's association type for cross-app compatibility.
+// Any DeSo messaging app can query this to check if a user charges for DMs.
+// Self-association: Transactor = Target = user's own public key.
+// ExtraData carries the actual price config:
+//   "FeePerMessageUsdCents" = price for non-followers (string of integer cents)
+//   "FollowingFeePerMessageUsdCents" = price for followers (string of integer cents)
+export const ASSOCIATION_TYPE_PAID_MESSAGING = "PAID_MESSAGING_SETTINGS";
+export const ASSOCIATION_VALUE_PAID_MESSAGING = "PAID_MESSAGING_SETTINGS";
+
+// Paid user tracking — records that a sender has paid to DM a recipient.
+// Transactor = sender, Target = recipient, Value = "paid".
+export const ASSOCIATION_TYPE_CHAT_PAID = "chaton:chat-paid";
+export const ASSOCIATION_VALUE_PAID = "paid";
+
 export const getTransactionSpendingLimits = (
   publicKey: string
 ): TransactionSpendingLimitResponseOptions => {

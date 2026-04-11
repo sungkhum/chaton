@@ -50,6 +50,12 @@ export const MSG_TIP_CUSTOM_MESSAGE = "msg:tipHasCustomMessage";
 // Language detection metadata — any DeSo messaging app can read this
 export const MSG_LANG = "msg:lang";
 
+// Paid DM metadata — plaintext (NOT encrypted) so any app can classify.
+// PaymentAmountUsdCents is Focus-compatible; msg:paidDm and msg:paidCurrency are ChatOn-specific.
+export const MSG_PAYMENT_AMOUNT_USD_CENTS = "PaymentAmountUsdCents";
+export const MSG_PAID_DM = "msg:paidDm";
+export const MSG_PAID_CURRENCY = "msg:paidCurrency";
+
 /** ExtraData keys always encrypted (reaction privacy — default). */
 export const STANDARD_ENCRYPTED_KEYS = [
   MSG_EMOJI,
@@ -169,6 +175,12 @@ export interface ParsedMessage {
   tipHasCustomMessage?: boolean;
   /** ISO 639-1 language code detected at send time (e.g., "en", "es"). */
   lang?: string;
+  /** True when this message was sent with a paid DM payment. */
+  paidDm?: boolean;
+  /** Payment amount in USD cents for paid DMs. */
+  paidAmountUsdCents?: number;
+  /** Currency used for paid DM payment ("DESO" or "USDC"). */
+  paidCurrency?: TipCurrency;
 }
 
 /**
@@ -335,6 +347,14 @@ export function parseMessageType(
       ? safeParseMentions(extra[MSG_SYSTEM_MEMBERS])
       : undefined,
     lang: extra[MSG_LANG] || undefined,
+    paidDm:
+      extra[MSG_PAID_DM] === "true" ||
+      (extra[MSG_PAYMENT_AMOUNT_USD_CENTS] !== undefined &&
+        parseInt(extra[MSG_PAYMENT_AMOUNT_USD_CENTS], 10) > 0),
+    paidAmountUsdCents: extra[MSG_PAYMENT_AMOUNT_USD_CENTS]
+      ? parseInt(extra[MSG_PAYMENT_AMOUNT_USD_CENTS], 10) || undefined
+      : undefined,
+    paidCurrency: (extra[MSG_PAID_CURRENCY] as TipCurrency) || undefined,
   };
 }
 
@@ -459,6 +479,10 @@ export function buildExtraData(
   if (parsed.systemAction) extra[MSG_SYSTEM_ACTION] = parsed.systemAction;
   if (parsed.systemMembers && parsed.systemMembers.length > 0)
     extra[MSG_SYSTEM_MEMBERS] = JSON.stringify(parsed.systemMembers);
+  if (parsed.paidDm) extra[MSG_PAID_DM] = "true";
+  if (parsed.paidAmountUsdCents !== undefined)
+    extra[MSG_PAYMENT_AMOUNT_USD_CENTS] = String(parsed.paidAmountUsdCents);
+  if (parsed.paidCurrency) extra[MSG_PAID_CURRENCY] = parsed.paidCurrency;
 
   return extra;
 }

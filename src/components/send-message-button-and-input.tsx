@@ -84,6 +84,8 @@ export interface SendMessageButtonAndInputProps {
   mentionCandidates?: MentionCandidate[];
   /** Called when the user taps the $ tip button in the toolbar. */
   onTipClick?: () => void;
+  /** When > 0, this DM requires payment. Shows price on the send button. */
+  paidDmPriceCents?: number;
 }
 
 export interface SendMessageInputHandle {
@@ -107,11 +109,14 @@ export const SendMessageButtonAndInput = forwardRef<
       onSubmitEdit,
       mentionCandidates,
       onTipClick,
+      paidDmPriceCents,
     },
     ref
   ) => {
     const { isTouchDevice } = useMobile();
     const [isSending, setIsSending] = useState(false);
+    // Synchronous guard against double-tap race (useState batching can miss rapid clicks)
+    const isSendingRef = useRef(false);
     const [isUploading, setIsUploading] = useState(false);
     const [showGifPicker, setShowGifPicker] = useState(false);
     const [pendingImage, setPendingImage] = useState<{
@@ -238,12 +243,13 @@ export const SendMessageButtonAndInput = forwardRef<
         toast.warning("The provided message is empty");
         return;
       }
-      if (isSending) {
+      if (isSending || isSendingRef.current) {
         toast.warning(
           "Going too fast! Please wait a second before sending another message"
         );
         return;
       }
+      isSendingRef.current = true;
       setIsSending(true);
       setMessageToSend("");
       setMentionQuery(null);
@@ -261,6 +267,7 @@ export const SendMessageButtonAndInput = forwardRef<
       } catch {
         setMessageToSend(msg);
       }
+      isSendingRef.current = false;
       setIsSending(false);
       // On touch devices, the keyboard has already dismissed when the user
       // tapped Send. Re-focusing would briefly reopen the keyboard and leave
@@ -1167,10 +1174,17 @@ export const SendMessageButtonAndInput = forwardRef<
                     showMicButton ? setIsRecordingAudio(true) : handleSend()
                   }
                   disabled={isSending || isUploading}
-                  className={`p-2 rounded-full shrink-0 cursor-pointer transition-all ${
-                    editingMessage
-                      ? "glass-send-edit text-blue-300 hover:border-blue-400/60"
-                      : "glass-fab text-[#34F080] hover:border-[#34F080]/60"
+                  className={`shrink-0 cursor-pointer transition-all ${
+                    paidDmPriceCents &&
+                    paidDmPriceCents > 0 &&
+                    !editingMessage &&
+                    !showMicButton
+                      ? "px-3 py-1.5 rounded-full glass-fab text-[#34F080] hover:border-[#34F080]/60"
+                      : `p-2 rounded-full ${
+                          editingMessage
+                            ? "glass-send-edit text-blue-300 hover:border-blue-400/60"
+                            : "glass-fab text-[#34F080] hover:border-[#34F080]/60"
+                        }`
                   }`}
                   type="button"
                 >
@@ -1180,6 +1194,13 @@ export const SendMessageButtonAndInput = forwardRef<
                     <Check className="w-5 h-5" />
                   ) : showMicButton ? (
                     <Mic className="w-5 h-5" />
+                  ) : paidDmPriceCents && paidDmPriceCents > 0 ? (
+                    <span className="flex items-center gap-1.5 text-[#34F080]">
+                      <Send className="w-4 h-4" />
+                      <span className="text-[11px] font-bold tracking-tight">
+                        ${(paidDmPriceCents / 100).toFixed(2)}
+                      </span>
+                    </span>
                   ) : (
                     <Send className="w-5 h-5" />
                   )}

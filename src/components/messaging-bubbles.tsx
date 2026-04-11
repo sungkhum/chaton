@@ -1824,7 +1824,15 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                             if (parsed.deleted) return null;
                             const timestampInside =
                               (!isMedia && !isEmojiOnly) || mediaHasCaption;
-                            const timeText = `${
+                            const paidLabel =
+                              !IsSender &&
+                              parsed.paidDm &&
+                              parsed.paidAmountUsdCents
+                                ? `$${(parsed.paidAmountUsdCents / 100).toFixed(
+                                    2
+                                  )} paid · `
+                                : "";
+                            const timeText = `${paidLabel}${
                               parsed.edited && !parsed.deleted
                                 ? "(edited) "
                                 : ""
