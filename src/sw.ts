@@ -23,7 +23,7 @@ const RELAY_URL = import.meta.env.VITE_RELAY_URL || "";
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
-  skipWaiting: false,
+  skipWaiting: true,
   clientsClaim: true,
   navigationPreload: false,
   runtimeCaching: [
