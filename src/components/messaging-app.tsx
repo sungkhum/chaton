@@ -396,6 +396,7 @@ export const MessagingApp: FC = () => {
   const [paidDmConfirmed, setPaidDmConfirmed] = useState(false);
   const sendInputRef = useRef<SendMessageInputHandle>(null);
   const bubblesRef = useRef<MessagingBubblesHandle>(null);
+  const fetchedBalanceKeysRef = useRef<Set<string>>(new Set());
   const [editingMessage, setEditingMessage] = useState<{
     text: string;
     timestamp: string;
@@ -1387,6 +1388,41 @@ export const MessagingApp: FC = () => {
       spamFilter,
       senderProfiles,
     ]);
+
+  // DeSo messaging APIs may return 0 for DESOBalanceNanos in profile responses.
+  // When the spam filter needs balance checking, fetch real balances via
+  // getUsersStateless and update senderProfiles with the accurate data.
+  useEffect(() => {
+    if (!spamFilter?.enabled || !spamFilter.minBalanceNanos) return;
+
+    const keysToFetch = [...senderProfiles.keys()].filter(
+      (k) => !fetchedBalanceKeysRef.current.has(k)
+    );
+    if (keysToFetch.length === 0) return;
+
+    // Mark as pending immediately to avoid duplicate requests
+    for (const k of keysToFetch) fetchedBalanceKeysRef.current.add(k);
+
+    getUsersStateless({
+      PublicKeysBase58Check: keysToFetch,
+      SkipForLeaderboard: true,
+    })
+      .then((res) => {
+        setSenderProfiles((prev) => {
+          const next = new Map(prev);
+          for (const u of res.UserList ?? []) {
+            if (u.ProfileEntryResponse) {
+              next.set(u.PublicKeyBase58Check, u.ProfileEntryResponse);
+            }
+          }
+          return next;
+        });
+      })
+      .catch(() => {
+        // Allow retry on failure
+        for (const k of keysToFetch) fetchedBalanceKeysRef.current.delete(k);
+      });
+  }, [spamFilter, senderProfiles]);
 
   // Compute per-conversation highlights: unread @mentions and reactions to my messages.
   // Uses the most recent messages loaded in each conversation (the preview page).
