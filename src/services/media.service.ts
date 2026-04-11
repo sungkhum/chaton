@@ -56,14 +56,20 @@ export async function uploadVideoFile(file: File): Promise<VideoUploadResult> {
     return response;
   };
 
+  let timerId: ReturnType<typeof setTimeout>;
   const timeout = new Promise<never>((_, reject) => {
-    setTimeout(
+    timerId = setTimeout(
       () => reject(new Error("Upload timed out — try a shorter clip or Wi-Fi")),
       VIDEO_UPLOAD_TIMEOUT_MS
     );
   });
 
-  const response = await Promise.race([uploadAndPoll(), timeout]);
+  let response: Awaited<ReturnType<typeof desoUploadVideo>>;
+  try {
+    response = await Promise.race([uploadAndPoll(), timeout]);
+  } finally {
+    clearTimeout(timerId!);
+  }
 
   // Get the actual playback URL from video status (response.url is just the upload endpoint).
   // The API returns playbackUrl (lowercase) despite the TS types saying playbackURL (uppercase).
