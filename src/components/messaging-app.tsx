@@ -148,6 +148,7 @@ import {
   type MentionEntry,
 } from "../utils/extra-data";
 import { detectLanguageSync } from "../utils/detect-language";
+import { preloadMarkdownPipeline } from "./messages/formatted-message";
 import { sendAtomicPaidMessage } from "../utils/atomic-paid-message";
 const LazyTipConfirmDialog = lazy(() =>
   import("./tip-confirm-dialog").then((m) => ({ default: m.TipConfirmDialog }))
@@ -2100,7 +2101,25 @@ export const MessagingApp: FC = () => {
       mergeUsernames({ [currentKey]: ownUsername });
     }
 
+    // Skip rehydration if this is a background refresh of the same user
+    // (e.g. hydrateUser cache-hit then API refresh). The appUser object
+    // reference changes but the public key is identical — re-running
+    // rehydrateConversation would unmount/remount the bubbles component
+    // (via loadingConversation toggle), causing all animated emojis to
+    // flash as they lose their loaded state.
+    const alreadyHydrated =
+      !switched && Object.keys(conversationsRef.current).length > 0;
+    if (alreadyHydrated) {
+      // Still seed username above, but don't re-run the full rehydration
+      return;
+    }
+
     if (hasSetupMessaging(appUser)) {
+      // Kick off the markdown pipeline load so it's ready before messages
+      // render — prevents the ready:false→true transition that would
+      // recreate all inline emoji <img> elements (restarting animations).
+      preloadMarkdownPipeline();
+
       // New users who haven't completed onboarding see the wizard first.
       // Existing users are auto-graduated: anyone with cached data OR an
       // existing on-chain profile is clearly not a first-time user.
@@ -2482,8 +2501,19 @@ export const MessagingApp: FC = () => {
     const allMemberKeys: string[] = [];
     const allProfiles: PublicKeyToProfileEntryResponseMap = {};
 
+    // Retry helper — QUIC/network errors are transient; one retry usually succeeds
+    const fetchMembersWithRetry = async (
+      params: Parameters<typeof getPaginatedAccessGroupMembers>[0]
+    ) => {
+      try {
+        return await getPaginatedAccessGroupMembers(params);
+      } catch {
+        return getPaginatedAccessGroupMembers(params);
+      }
+    };
+
     const [firstPageResult, ownerResult] = await Promise.all([
-      getPaginatedAccessGroupMembers({
+      fetchMembersWithRetry({
         AccessGroupOwnerPublicKeyBase58Check: OwnerPublicKeyBase58Check,
         AccessGroupKeyName,
         MaxMembersToFetch: PAGE_SIZE,
@@ -2505,7 +2535,7 @@ export const MessagingApp: FC = () => {
     if (firstPageKeys.length >= PAGE_SIZE) {
       let cursor = firstPageKeys[firstPageKeys.length - 1]!;
       for (;;) {
-        const page = await getPaginatedAccessGroupMembers({
+        const page = await fetchMembersWithRetry({
           AccessGroupOwnerPublicKeyBase58Check: OwnerPublicKeyBase58Check,
           AccessGroupKeyName,
           MaxMembersToFetch: PAGE_SIZE,
@@ -2672,22 +2702,13 @@ export const MessagingApp: FC = () => {
 
       renderedFromCache = true;
 
-      if (selectConversation && cachedKeyToUse) {
-        // Capture the last-read timestamp before selecting, for the unread divider
-        const lastReadTs = getCachedLastReadTimestamps(publicKey);
-        setOpenedLastReadNanos(lastReadTs[cachedKeyToUse] ?? null);
-
-        // Gate the bubbles component behind the loading spinner until full
-        // cached (or network) messages are available.  Without this, the
-        // component mounts with just the conversation-list preview message,
-        // the scroll-to-unread-divider fires on that minimal set, and the
-        // guard ref prevents a re-scroll when the real messages arrive.
-        setLoadingConversation(true);
-        setSelectedConversationPublicKey(cachedKeyToUse);
-        setPubKeyPlusGroupName(cachedKeyToUse);
-      }
-
-      // Try to show cached messages for the selected conversation
+      // Load cached messages BEFORE mounting the bubbles component so
+      // it renders with the full message set on first mount. The old
+      // approach set loadingConversation=true (unmounting the bubbles),
+      // loaded messages, then set loadingConversation=false (remounting).
+      // That unmount/remount cycle destroyed all AnimatedEmoji loaded
+      // state, causing every emoji to flash black→visible.
+      let hasCachedMessages = false;
       if (cachedKeyToUse && cachedConvos[cachedKeyToUse]) {
         const cachedMsgs = await getCachedConversationMessages(
           publicKey,
@@ -2700,8 +2721,22 @@ export const MessagingApp: FC = () => {
               messages: cachedMsgs as DecryptedMessageEntryResponse[],
             }))
           );
-          setLoadingConversation(false);
+          hasCachedMessages = true;
         }
+      }
+
+      if (selectConversation && cachedKeyToUse) {
+        // Capture the last-read timestamp before selecting, for the unread divider
+        const lastReadTs = getCachedLastReadTimestamps(publicKey);
+        setOpenedLastReadNanos(lastReadTs[cachedKeyToUse] ?? null);
+
+        if (!hasCachedMessages) {
+          // No cached messages — show spinner until the network fetch arrives.
+          // This only gates the initial mount, not a remount.
+          setLoadingConversation(true);
+        }
+        setSelectedConversationPublicKey(cachedKeyToUse);
+        setPubKeyPlusGroupName(cachedKeyToUse);
       }
 
       // Eagerly refresh the selected conversation via the fast paginated

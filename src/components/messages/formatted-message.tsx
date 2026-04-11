@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
+
 import { MentionEntry } from "../../utils/extra-data";
 import { useStore } from "../../store";
 import {
@@ -20,10 +21,23 @@ const JOIN_LINK_RE =
 // ── Lazy-loaded markdown pipeline ──
 // marked (~30KB) and DOMPurify (~35KB) are loaded on first render
 // instead of eagerly, keeping them out of the critical path.
+// Call preloadMarkdownPipeline() early (e.g. when user logs in) so the
+// pipeline is ready before messages render — avoids the ready:false→true
+// transition that recreates all inline emoji <img> elements.
 let renderMarkdown:
   | ((text: string, mentions?: MentionEntry[]) => string)
   | null = null;
 let loadPromise: Promise<void> | null = null;
+
+/** Kick off the markdown pipeline load early so it's ready before messages render. */
+export function preloadMarkdownPipeline(): Promise<void> {
+  return loadMarkdownPipeline();
+}
+
+// Start loading immediately on import — don't wait for the first
+// FormattedMessage to mount. This gives the pipeline a head start
+// so `ready` starts as `true` by the time messages render.
+if (typeof window !== "undefined") loadMarkdownPipeline();
 
 function loadMarkdownPipeline(): Promise<void> {
   if (renderMarkdown) return Promise.resolve();
@@ -140,18 +154,33 @@ export function FormattedMessage({
     }
   }, []);
 
+  // Stabilize mentions so useMemo only recomputes when content actually
+  // changes — not on every render due to a new array reference from
+  // JSON.parse in safeParseMentions. Without this, every parent re-render
+  // recomputes html, and if the value differs even slightly (e.g. mentions
+  // going from undefined → populated), React replaces the innerHTML,
+  // destroying all inline emoji <img> elements (restarting animations).
+  const mentionsKey = mentions ? mentions.map((m) => m.un).join(",") : "";
+  // eslint-disable-next-line -- intentionally using mentionsKey (derived) instead of mentions (unstable ref)
+  const stableMentions = useMemo(() => mentions, [mentionsKey]);
+
   const html = useMemo(() => {
     if (!renderMarkdown) return "";
     try {
-      return replaceEmojisInHtml(renderMarkdown(children, mentions));
+      return replaceEmojisInHtml(renderMarkdown(children, stableMentions));
     } catch {
-      return renderMarkdown(children, mentions);
+      return renderMarkdown(children, stableMentions);
     }
-  }, [children, mentions, ready]);
+  }, [children, stableMentions, ready]);
 
-  // Delegated error handler for animated emoji <img> tags that 404.
-  // Replaces the broken img with its alt text (the original emoji) and
-  // caches the codepoint so future renders skip the CDN request.
+  // Memoize the dangerouslySetInnerHTML prop object so React sees the same
+  // reference on re-renders. Without this, `{{ __html: html }}` creates a
+  // new object every render, and React replaces the innerHTML even though
+  // the html string value is identical — destroying all inline emoji <img>
+  // elements and causing the flash-to-black.
+  const innerHtmlProp = useMemo(() => ({ __html: html }), [html]);
+
+  // Delegated error/load handlers for inline animated emoji <img> tags.
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = containerRef.current;
@@ -163,20 +192,9 @@ export function FormattedMessage({
       const text = document.createTextNode(img.alt);
       img.replaceWith(text);
     };
-    const onLoad = (e: Event) => {
-      const img = e.target as HTMLImageElement;
-      if (img.tagName !== "IMG" || !img.dataset.cp) return;
-      img.style.opacity = "1";
-    };
-    el.addEventListener("error", onError, true); // capture phase for img errors
-    el.addEventListener("load", onLoad, true); // capture phase for img load
-    // Reveal already-cached images that loaded before the listener attached
-    el.querySelectorAll<HTMLImageElement>("img[data-cp]").forEach((img) => {
-      if (img.complete && img.naturalWidth > 0) img.style.opacity = "1";
-    });
+    el.addEventListener("error", onError, true);
     return () => {
       el.removeEventListener("error", onError, true);
-      el.removeEventListener("load", onLoad, true);
     };
   }, [html]);
 
@@ -235,7 +253,7 @@ export function FormattedMessage({
                 }
               : undefined
           }
-          dangerouslySetInnerHTML={{ __html: html }}
+          dangerouslySetInnerHTML={innerHtmlProp}
           onClick={handleClick}
         />
         {collapsed && (

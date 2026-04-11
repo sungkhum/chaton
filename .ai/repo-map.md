@@ -93,7 +93,7 @@ src/components/manage-members-dialog.tsx  ManageMembersDialog
 src/components/messages/animated-emoji.tsx  fn markEmojiCodepointFailed, emojiToCodepoint, parseEmojiOnlyMessage, replaceEmojisInHtml, AnimatedEmoji
 src/components/messages/audio-message.tsx  AudioMessage
 src/components/messages/file-message.tsx  FileMessage
-src/components/messages/formatted-message.tsx  fn FormattedMessage
+src/components/messages/formatted-message.tsx  fn preloadMarkdownPipeline, FormattedMessage
 src/components/messages/gif-message.tsx  GifMessage
 src/components/messages/image-message.tsx  ImageMessage
 src/components/messages/join-link-preview.tsx  fn JoinLinkPreview

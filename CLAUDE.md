@@ -150,6 +150,26 @@ Stored via `createAccessGroup` / `updateAccessGroup`. Any DeSo messaging app can
 - Sonner for toasts
 - Cloudflare Workers + Durable Objects for WebSocket relay
 
+## React 19 dangerouslySetInnerHTML rule
+
+**Never use inline `dangerouslySetInnerHTML={{ __html: html }}` in JSX.**
+Always memoize the prop object:
+
+```tsx
+const innerHtmlProp = useMemo(() => ({ __html: html }), [html]);
+// ...
+<div dangerouslySetInnerHTML={innerHtmlProp} />
+```
+
+React 19 uses `Object.is()` for prop comparison. An inline `{{ __html: html }}`
+creates a new object on every render, so React replaces the innerHTML every time
+— even when the html string is identical. This destroys and recreates all child
+DOM elements (images, iframes, etc.), causing visible flashing.
+
+This was the root cause of the emoji flashing bug: inline emoji `<img>` tags
+inside `FormattedMessage` were destroyed and recreated ~6 times during boot
+because the `dangerouslySetInnerHTML` prop object was a new reference each render.
+
 ## Tipping fees
 
 - Tips < $0.10 USD: no fee, full amount goes to recipient

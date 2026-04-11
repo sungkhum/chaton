@@ -1,6 +1,7 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback } from "react";
 
 const CDN_BASE = "https://fonts.gstatic.com/s/e/notoemoji/latest";
+const EMOJI_FORMAT = "512.webp";
 
 // Emoji codepoints known to NOT have animated versions — populated on 404.
 // Persists for the session so we don't retry broken URLs.
@@ -83,9 +84,10 @@ export function replaceEmojisInHtml(html: string): string {
           const cp = emojiToCodepoint(segment);
           if (failedCodepoints.has(cp)) return segment;
           return (
-            `<img src="${CDN_BASE}/${cp}/512.webp" alt="${segment}"` +
-            ' width="20" height="20" loading="lazy" draggable="false"' +
-            ' class="inline-block shrink-0" style="width:20px;height:20px;vertical-align:-3px;opacity:0;transition:opacity .15s ease-in"' +
+            `<img src="${CDN_BASE}/${cp}/${EMOJI_FORMAT}" alt="${segment}"` +
+            ' width="20" height="20" loading="eager" draggable="false"' +
+            ' class="inline-block shrink-0"' +
+            ' style="width:20px;height:20px;vertical-align:-3px;transform:translateZ(0)"' +
             ` data-cp="${cp}">`
           );
         })
@@ -107,38 +109,15 @@ export function AnimatedEmoji({
   emoji,
   size = 20,
   className = "",
-  eager = false,
 }: AnimatedEmojiProps) {
   const codepoint = emojiToCodepoint(emoji);
   const knownFailed = failedCodepoints.has(codepoint);
   const [failed, setFailed] = useState(knownFailed);
-  const [loaded, setLoaded] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
 
   const handleError = useCallback(() => {
     failedCodepoints.add(codepoint);
     setFailed(true);
   }, [codepoint]);
-
-  const handleLoad = useCallback(() => {
-    setLoaded(true);
-  }, []);
-
-  // Reset loaded state when emoji changes (component reused with different prop)
-  useEffect(() => {
-    setLoaded(false);
-  }, [codepoint]);
-
-  // Handle already-cached images that fire load synchronously before React attaches the handler
-  useEffect(() => {
-    if (
-      imgRef.current?.complete &&
-      imgRef.current.naturalWidth > 0 &&
-      !failed
-    ) {
-      setLoaded(true);
-    }
-  }, [failed, codepoint]);
 
   if (failed) {
     return (
@@ -155,23 +134,20 @@ export function AnimatedEmoji({
 
   return (
     <img
-      ref={imgRef}
-      src={`${CDN_BASE}/${codepoint}/512.webp`}
+      src={`${CDN_BASE}/${codepoint}/${EMOJI_FORMAT}`}
       alt={emoji}
       width={size}
       height={size}
-      loading={eager ? "eager" : "lazy"}
+      loading="eager"
       draggable={false}
       onError={handleError}
-      onLoad={handleLoad}
       className={`inline-block shrink-0 ${className}`}
       style={{
         width: size,
         height: size,
         minWidth: size,
         minHeight: size,
-        opacity: loaded ? 1 : 0,
-        transition: "opacity .15s ease-in",
+        transform: "translateZ(0)",
       }}
     />
   );

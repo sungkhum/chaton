@@ -430,6 +430,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
     ref
   ) => {
     const messageAreaRef = useRef<HTMLDivElement>(null);
+
     const { appUser, allAccessGroups, setAllAccessGroups } = useStore(
       useShallow((s) => ({
         appUser: s.appUser,
@@ -444,6 +445,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
         ChatType: ChatType.DM,
         firstMessagePublicKey: "",
       } as Conversation);
+
     const [allowScrolling, setAllowScrolling] = useState<boolean>(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [hoveredMessage, setHoveredMessage] = useState<string | null>(null);
