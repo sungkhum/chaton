@@ -51,6 +51,7 @@ src/store/index.ts — Zustand store: AppUser, MessageStatus, useStore
 
 ## Components
 src/components/about-page.tsx  AboutPage
+src/components/archive-confirm-modal.tsx  fn ArchiveConfirmModal
 src/components/blog/blog-index.tsx  BlogIndex
 src/components/blog/blog-post-layout.tsx  BlogPostLayout
 src/components/blog/blog-registry.ts  fn getBlogSlugs, getPostBySlug, lazyPost

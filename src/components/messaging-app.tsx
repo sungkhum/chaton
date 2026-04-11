@@ -10,6 +10,7 @@ import {
   X,
   CircleDollarSign,
 } from "lucide-react";
+import { ArchiveConfirmModal } from "./archive-confirm-modal";
 import { useStore } from "../store";
 import { useShallow } from "zustand/react/shallow";
 import {
@@ -419,6 +420,15 @@ export const MessagingApp: FC = () => {
     new Set()
   );
   const [dmMenuOpen, setDmMenuOpen] = useState(false);
+  const [archiveConfirm, setArchiveConfirm] = useState<{
+    type: "dm" | "group";
+    conversationKey: string;
+    publicKey: string;
+    name: string;
+    /** Group-only fields */
+    groupOwnerPublicKey?: string;
+    groupKeyName?: string;
+  } | null>(null);
   const [blockConfirm, setBlockConfirm] = useState<{
     conversationKey: string;
     publicKey: string;
@@ -4239,7 +4249,20 @@ export const MessagingApp: FC = () => {
                             conversation={selectedConversation}
                             conversationKey={selectedConversationPublicKey}
                             onSuccess={rehydrateConversation}
-                            onLeaveGroup={handleArchiveGroup}
+                            onLeaveGroup={(
+                              conversationKey,
+                              groupOwnerPublicKey,
+                              groupKeyName
+                            ) => {
+                              setArchiveConfirm({
+                                type: "group",
+                                conversationKey,
+                                publicKey: groupOwnerPublicKey,
+                                name: getCurrentChatName(),
+                                groupOwnerPublicKey,
+                                groupKeyName,
+                              });
+                            }}
                             onOptimisticSystemMessage={
                               handleOptimisticSystemMessage
                             }
@@ -4252,10 +4275,14 @@ export const MessagingApp: FC = () => {
                           <>
                             <button
                               onClick={() => {
-                                handleArchiveChat(
-                                  selectedConversationPublicKey,
-                                  selectedConversation.firstMessagePublicKey
-                                );
+                                setArchiveConfirm({
+                                  type: "dm",
+                                  conversationKey:
+                                    selectedConversationPublicKey,
+                                  publicKey:
+                                    selectedConversation.firstMessagePublicKey,
+                                  name: getCurrentChatName(),
+                                });
                               }}
                               className="p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
                               title="Archive chat"
@@ -5531,6 +5558,33 @@ export const MessagingApp: FC = () => {
             )}
           </div>
         )}
+      {/* Archive / Leave Group confirmation */}
+      {archiveConfirm && (
+        <ArchiveConfirmModal
+          type={archiveConfirm.type}
+          name={archiveConfirm.name}
+          onCancel={() => setArchiveConfirm(null)}
+          onConfirm={() => {
+            if (archiveConfirm.type === "dm") {
+              handleArchiveChat(
+                archiveConfirm.conversationKey,
+                archiveConfirm.publicKey
+              );
+            } else if (
+              archiveConfirm.groupOwnerPublicKey &&
+              archiveConfirm.groupKeyName
+            ) {
+              handleArchiveGroup(
+                archiveConfirm.conversationKey,
+                archiveConfirm.groupOwnerPublicKey,
+                archiveConfirm.groupKeyName
+              );
+            }
+            setArchiveConfirm(null);
+          }}
+        />
+      )}
+
       {/* Block confirmation dialog */}
       {blockConfirm && (
         <>

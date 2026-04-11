@@ -24,6 +24,12 @@
       "AboutPage"
     ]
   },
+  "src/components/archive-confirm-modal.tsx": {
+    "imports": [],
+    "exports": [
+      "ArchiveConfirmModal"
+    ]
+  },
   "src/components/blog/blog-index.tsx": {
     "imports": [
       "src/hooks/usePageMeta.ts",
@@ -516,6 +522,7 @@
   },
   "src/components/messaging-app.tsx": {
     "imports": [
+      "src/components/archive-confirm-modal.tsx",
       "src/store/index.ts",
       "src/hooks/useMessageSearch.ts",
       "src/hooks/useMobile.ts",
