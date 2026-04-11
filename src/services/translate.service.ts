@@ -50,6 +50,42 @@ function enqueue<T>(fn: () => Promise<T>): Promise<T> {
   });
 }
 
+// Replace @mentions with XML-style placeholders that translation APIs preserve,
+// and return a function to restore them in the translated output.
+function protectMentions(text: string): {
+  cleaned: string;
+  restore: (translated: string) => string;
+} {
+  const mentions: string[] = [];
+  const cleaned = text.replace(/@\w+/g, (match) => {
+    const idx = mentions.length;
+    mentions.push(match);
+    return `<x${idx}/>`;
+  });
+
+  const restore = (translated: string): string => {
+    let result = translated;
+    for (let i = 0; i < mentions.length; i++) {
+      // Handle variants the API might return: <x0/>, <x0 />, <x0>, </x0>, <x0></x0>
+      const mention = mentions[i]!;
+      result = result.replace(
+        new RegExp(`<x${i}\\s*/?>(?:\\s*</x${i}>)?|</x${i}>`, "g"),
+        mention
+      );
+    }
+    // If the API dropped a placeholder entirely, prepend the missing mention
+    for (let i = 0; i < mentions.length; i++) {
+      const mention = mentions[i]!;
+      if (!result.includes(mention)) {
+        result = mention + " " + result;
+      }
+    }
+    return result;
+  };
+
+  return { cleaned, restore };
+}
+
 /**
  * Translate text using the free MyMemory API (CORS-friendly, no key needed).
  *
@@ -73,6 +109,16 @@ export async function translateText(
   if (cached === "same") return null;
   if (cached) return cached;
 
+  // Protect @mentions from being translated/mangled
+  const { cleaned: textToTranslate, restore } = protectMentions(text);
+
+  // If the message is only mentions with no translatable text, skip the API call
+  const strippedText = textToTranslate.replace(/<x\d+\/>/g, "").trim();
+  if (!strippedText) {
+    cache.set(key, "same");
+    return null;
+  }
+
   return enqueue(async () => {
     // Re-check cache (another request may have resolved while queued)
     const rechecked = cache.get(key);
@@ -85,7 +131,7 @@ export async function translateText(
           ? `auto|${targetLang}`
           : `${sourceLang}|${targetLang}`;
       const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(
-        text.slice(0, 5000)
+        textToTranslate.slice(0, 5000)
       )}&langpair=${langPair}`;
 
       const res = await fetch(url);
@@ -96,7 +142,8 @@ export async function translateText(
         return null;
       }
 
-      const translatedText = data.responseData.translatedText as string;
+      const rawTranslated = data.responseData.translatedText as string;
+      const translatedText = restore(rawTranslated);
       const detectedLang =
         data.matches?.[0]?.source?.split("-")[0] || sourceLang;
 
