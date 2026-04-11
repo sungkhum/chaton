@@ -2492,6 +2492,12 @@ export const MessagingApp: FC = () => {
         const lastReadTs = getCachedLastReadTimestamps(publicKey);
         setOpenedLastReadNanos(lastReadTs[cachedKeyToUse] ?? null);
 
+        // Gate the bubbles component behind the loading spinner until full
+        // cached (or network) messages are available.  Without this, the
+        // component mounts with just the conversation-list preview message,
+        // the scroll-to-unread-divider fires on that minimal set, and the
+        // guard ref prevents a re-scroll when the real messages arrive.
+        setLoadingConversation(true);
         setSelectedConversationPublicKey(cachedKeyToUse);
         setPubKeyPlusGroupName(cachedKeyToUse);
       }
