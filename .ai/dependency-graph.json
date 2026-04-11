@@ -198,6 +198,15 @@
       "CurrencyToggle"
     ]
   },
+  "src/components/dm-price-toggle.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/services/conversations.service.tsx"
+    ],
+    "exports": [
+      "DmPriceToggle"
+    ]
+  },
   "src/components/edit-profile-dialog.tsx": {
     "imports": [
       "src/store/index.ts",
@@ -522,6 +531,7 @@
       "src/utils/types.ts",
       "src/utils/extra-data.ts",
       "src/utils/detect-language.ts",
+      "src/utils/atomic-paid-message.ts",
       "src/utils/exchange-rate.ts",
       "src/utils/usdc-balance.ts",
       "src/components/join-group-modal.tsx",
@@ -755,6 +765,7 @@
       "src/components/shared/save-to-clipboard.tsx",
       "src/components/privacy-toggle.tsx",
       "src/components/tip-currency-toggle.tsx",
+      "src/components/dm-price-toggle.tsx",
       "src/components/language-selector.tsx",
       "src/hooks/useFocusTrap.ts"
     ],
@@ -1013,6 +1024,8 @@
       "getCachedClassificationData",
       "cachePrivacyMode",
       "getCachedPrivacyMode",
+      "cacheDmPrice",
+      "getCachedDmPrice",
       "cacheTipCurrency",
       "getCachedTipCurrency",
       "cachePreferredLanguage",
@@ -1092,6 +1105,12 @@
       "createDismissAssociation",
       "fetchPrivacyMode",
       "setPrivacyModeOnChain",
+      "clearDmPriceLookupCache",
+      "fetchPaidMessagingSettings",
+      "setPaidMessagingSettingsOnChain",
+      "fetchUserPaidMessagingSettings",
+      "fetchAssociationsByTargetType",
+      "createPaidAssociation",
       "createJoinRequest",
       "hasExistingJoinRequest",
       "fetchJoinRequestCountsForOwner",
@@ -1106,6 +1125,7 @@
       "clearDecryptionCaches",
       "decryptAccessGroupMessagesWithRetry",
       "decryptAccessGroupMessages",
+      "prepareEncryptedDMMessage",
       "encryptAndSendNewMessage",
       "sendSystemMessage",
       "encryptAndUpdateMessage"
@@ -1213,7 +1233,8 @@
   },
   "src/store/index.ts": {
     "imports": [
-      "src/services/cache.service.ts"
+      "src/services/cache.service.ts",
+      "src/services/conversations.service.tsx"
     ],
     "exports": [
       "useStore"
@@ -1222,6 +1243,17 @@
   "src/sw.ts": {
     "imports": [],
     "exports": []
+  },
+  "src/utils/atomic-paid-message.ts": {
+    "imports": [
+      "src/utils/constants.ts",
+      "src/utils/tip-fees.ts",
+      "src/utils/exchange-rate.ts",
+      "src/utils/extra-data.ts"
+    ],
+    "exports": [
+      "sendAtomicPaidMessage"
+    ]
   },
   "src/utils/atomic-tip.ts": {
     "imports": [
@@ -1267,6 +1299,10 @@
       "ASSOCIATION_TYPE_PRIVACY_MODE",
       "PRIVACY_MODE_FULL",
       "PRIVACY_MODE_STANDARD",
+      "ASSOCIATION_TYPE_PAID_MESSAGING",
+      "ASSOCIATION_VALUE_PAID_MESSAGING",
+      "ASSOCIATION_TYPE_CHAT_PAID",
+      "ASSOCIATION_VALUE_PAID",
       "getTransactionSpendingLimits",
       "MAX_VIDEO_FILE_SIZE",
       "MESSAGES_ONE_REQUEST_LIMIT",
@@ -1363,6 +1399,9 @@
       "MSG_TIP_AMOUNT_USDC",
       "MSG_TIP_CUSTOM_MESSAGE",
       "MSG_LANG",
+      "MSG_PAYMENT_AMOUNT_USD_CENTS",
+      "MSG_PAID_DM",
+      "MSG_PAID_CURRENCY",
       "STANDARD_ENCRYPTED_KEYS",
       "FULL_ENCRYPTED_KEYS",
       "GROUP_IMAGE_URL",

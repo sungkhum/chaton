@@ -1,4 +1,11 @@
-import { useCallback, useMemo, useState, useEffect, useRef } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import { MentionEntry } from "../../utils/extra-data";
 import { useStore } from "../../store";
 import {
@@ -113,6 +120,9 @@ function highlightMentions(html: string, mentions: MentionEntry[]): string {
   return html;
 }
 
+/** Max collapsed height in px. Messages taller than this get a "Show more" button. */
+const COLLAPSE_HEIGHT = 300;
+
 export function FormattedMessage({
   children,
   mentions,
@@ -170,6 +180,18 @@ export function FormattedMessage({
     };
   }, [html]);
 
+  // ── Expand / collapse for long messages ──
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    // getBoundingClientRect works for both inline and block elements
+    const height = el.getBoundingClientRect().height;
+    setIsOverflowing(height > COLLAPSE_HEIGHT);
+  }, [html]);
+
   // Intercept clicks on internal join links — open as in-app modal
   const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
@@ -192,12 +214,45 @@ export function FormattedMessage({
     return <div className={baseClass}>{children}</div>;
   }
 
+  const collapsed = isOverflowing && !expanded;
+
   return (
-    <div
-      ref={containerRef}
-      className={baseClass}
-      dangerouslySetInnerHTML={{ __html: html }}
-      onClick={handleClick}
-    />
+    <div className={isOverflowing ? "relative" : undefined}>
+      <div
+        ref={containerRef}
+        className={baseClass}
+        style={
+          collapsed
+            ? {
+                maxHeight: COLLAPSE_HEIGHT,
+                overflow: "hidden",
+                display: "block",
+              }
+            : undefined
+        }
+        dangerouslySetInnerHTML={{ __html: html }}
+        onClick={handleClick}
+      />
+      {collapsed && (
+        <div
+          className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
+          style={{
+            background:
+              "linear-gradient(to bottom, transparent, rgba(0,0,0,0.6))",
+          }}
+        />
+      )}
+      {isOverflowing && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded((v) => !v);
+          }}
+          className="text-[12px] text-[#34F080] mt-1 cursor-pointer hover:text-[#34F080]/80 transition-colors"
+        >
+          {expanded ? "Show less" : "Show more"}
+        </button>
+      )}
+    </div>
   );
 }
