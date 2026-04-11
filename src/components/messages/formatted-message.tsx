@@ -184,12 +184,16 @@ export function FormattedMessage({
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
+  // Reset expanded state when message content changes
+  useEffect(() => {
+    setExpanded(false);
+  }, [html]);
+
   useLayoutEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    // getBoundingClientRect works for both inline and block elements
-    const height = el.getBoundingClientRect().height;
-    setIsOverflowing(height > COLLAPSE_HEIGHT);
+    // scrollHeight returns full content height even when maxHeight/overflow:hidden is applied
+    setIsOverflowing(el.scrollHeight > COLLAPSE_HEIGHT);
   }, [html]);
 
   // Intercept clicks on internal join links — open as in-app modal
