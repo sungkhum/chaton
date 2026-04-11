@@ -20,6 +20,7 @@ import {
   getPaginatedGroupChatThread,
   getUsersStateless,
   NewMessageEntryResponse,
+  ProfileEntryResponse,
   PublicKeyToProfileEntryResponseMap,
   sendDeso,
   identity,
@@ -78,6 +79,7 @@ import {
   fetchMessageThreadsRaw,
   fetchFollowedUsers,
   fetchPaidMessagingSettings,
+  fetchSpamFilterSettings,
   fetchUserPaidMessagingSettings,
   createPaidAssociation,
   prepareEncryptedDMMessage,
@@ -102,6 +104,7 @@ import {
   getCachedMutedConversations,
   getCachedDmPrice,
   getCachedPrivacyMode,
+  getCachedSpamFilter,
   getCachedUsernameMap,
   getCachedUserProfile,
   mergeReadCursors,
@@ -307,6 +310,7 @@ export const MessagingApp: FC = () => {
     paidUsers,
     unreadByConversation,
     mutedConversations,
+    spamFilter,
   } = useStore(
     useShallow((s) => ({
       appUser: s.appUser,
@@ -324,6 +328,7 @@ export const MessagingApp: FC = () => {
       paidUsers: s.paidUsers,
       unreadByConversation: s.unreadByConversation,
       mutedConversations: s.mutedConversations,
+      spamFilter: s.spamFilter,
     }))
   );
   // Actions — stable references, never cause re-renders
@@ -361,6 +366,9 @@ export const MessagingApp: FC = () => {
   const [profilePicByPublicKey, setProfilePicByPublicKey] = useState<{
     [key: string]: string;
   }>({});
+  const [senderProfiles, setSenderProfiles] = useState<
+    Map<string, ProfileEntryResponse>
+  >(new Map());
   // autoFetchConversations was removed — conversationsLoading now tracks this
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [, setPubKeyPlusGroupName] = useState<string>("");
@@ -388,6 +396,7 @@ export const MessagingApp: FC = () => {
   const [paidDmConfirmed, setPaidDmConfirmed] = useState(false);
   const sendInputRef = useRef<SendMessageInputHandle>(null);
   const bubblesRef = useRef<MessagingBubblesHandle>(null);
+  const fetchedBalanceKeysRef = useRef<Set<string>>(new Set());
   const [editingMessage, setEditingMessage] = useState<{
     text: string;
     timestamp: string;
@@ -1031,6 +1040,16 @@ export const MessagingApp: FC = () => {
             if (Object.keys(freshPics).length) {
               setProfilePicByPublicKey((s) => ({ ...s, ...freshPics }));
             }
+            // Merge sender profiles for spam filter classification
+            setSenderProfiles((prev) => {
+              const next = new Map(prev);
+              for (const [pk, profile] of Object.entries(
+                publicKeyToProfileEntryResponseMap
+              )) {
+                if (profile) next.set(pk, profile);
+              }
+              return next;
+            });
 
             const currentSelectedKey = selectedConversationPublicKeyRef.current;
 
@@ -1341,7 +1360,9 @@ export const MessagingApp: FC = () => {
           archivedGroups,
           archivedChats,
           dismissedUsers,
-          paidUsers
+          paidUsers,
+          spamFilter,
+          senderProfiles
         );
         if (cls === "chat") chats[key] = convo;
         else if (cls === "request") requests[key] = convo;
@@ -1364,7 +1385,53 @@ export const MessagingApp: FC = () => {
       dismissedUsers,
       paidUsers,
       appUser,
+      spamFilter,
+      senderProfiles,
     ]);
+
+  // DeSo messaging APIs may return 0 for DESOBalanceNanos in profile responses.
+  // When the spam filter needs balance checking, fetch real balances via
+  // getUsersStateless and update senderProfiles with the accurate data.
+  useEffect(() => {
+    if (!spamFilter?.enabled || !spamFilter.minBalanceNanos) return;
+
+    const keysToFetch = [...senderProfiles.keys()].filter(
+      (k) => !fetchedBalanceKeysRef.current.has(k)
+    );
+    if (keysToFetch.length === 0) return;
+
+    // Mark as pending immediately to avoid duplicate requests
+    for (const k of keysToFetch) fetchedBalanceKeysRef.current.add(k);
+
+    getUsersStateless({
+      PublicKeysBase58Check: keysToFetch,
+      SkipForLeaderboard: true,
+    })
+      .then((res) => {
+        setSenderProfiles((prev) => {
+          const next = new Map(prev);
+          let changed = false;
+          for (const u of res.UserList ?? []) {
+            if (u.ProfileEntryResponse) {
+              const existing = next.get(u.PublicKeyBase58Check);
+              if (
+                !existing ||
+                existing.DESOBalanceNanos !==
+                  u.ProfileEntryResponse.DESOBalanceNanos
+              ) {
+                next.set(u.PublicKeyBase58Check, u.ProfileEntryResponse);
+                changed = true;
+              }
+            }
+          }
+          return changed ? next : prev;
+        });
+      })
+      .catch(() => {
+        // Allow retry on failure
+        for (const k of keysToFetch) fetchedBalanceKeysRef.current.delete(k);
+      });
+  }, [spamFilter, senderProfiles]);
 
   // Compute per-conversation highlights: unread @mentions and reactions to my messages.
   // Uses the most recent messages loaded in each conversation (the preview page).
@@ -2542,6 +2609,14 @@ export const MessagingApp: FC = () => {
           cachedDmPrice.associationId
         );
     }
+    // Load spam filter from cache
+    const cachedSpamFilter = getCachedSpamFilter(publicKey);
+    if (cachedSpamFilter) {
+      useStore
+        .getState()
+        .setSpamFilter(cachedSpamFilter.config, cachedSpamFilter.associationId);
+    }
+
     let renderedFromCache = false;
 
     if (cachedConvos && Object.keys(cachedConvos).length > 0) {
@@ -2725,6 +2800,15 @@ export const MessagingApp: FC = () => {
         console.error("Failed to fetch paid messaging settings:", e);
       });
 
+    // Fetch spam filter settings from on-chain in parallel
+    fetchSpamFilterSettings(publicKey)
+      .then(({ config, associationId }) => {
+        useStore.getState().setSpamFilter(config, associationId);
+      })
+      .catch((e) => {
+        console.error("Failed to fetch spam filter settings:", e);
+      });
+
     // --- Conversation loading: progressive for first load, blocking for cache revalidation ---
     let conversationResult;
 
@@ -2858,6 +2942,16 @@ export const MessagingApp: FC = () => {
             }
           );
           mergeUsernames(publicKeyToUsername);
+          // Populate sender profiles for spam filter classification
+          setSenderProfiles((prev) => {
+            const next = new Map(prev);
+            for (const [pk, profile] of Object.entries(
+              publicKeyToProfileEntryResponseMap
+            )) {
+              if (profile) next.set(pk, profile);
+            }
+            return next;
+          });
           setProfilePicByPublicKey((state) => ({
             ...state,
             ...profilePicUrls,
@@ -3064,6 +3158,13 @@ export const MessagingApp: FC = () => {
         }
       });
       mergeUsernames(publicKeyToUsername);
+      setSenderProfiles((prev) => {
+        const next = new Map(prev);
+        for (const [pk, profile] of Object.entries(profileMap)) {
+          if (profile) next.set(pk, profile);
+        }
+        return next;
+      });
       setProfilePicByPublicKey((state) => ({
         ...state,
         ...profilePicUrls,

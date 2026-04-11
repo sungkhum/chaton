@@ -129,6 +129,7 @@ src/components/settings-modal.tsx  SettingsModal
 src/components/shared/alert-notification.tsx  AlertNotification
 src/components/shared/chunk-error-boundary.tsx  class ChunkErrorBoundary
 src/components/shared/save-to-clipboard.tsx  SaveToClipboard
+src/components/spam-filter-settings.tsx  fn SpamFilterSettings
 src/components/speed-dial-fab.tsx
 src/components/start-group-chat.tsx  StartGroupChat
 src/components/support-chaton-dialog.tsx  SupportChatOnDialog
@@ -139,9 +140,9 @@ src/components/tip-currency-toggle.tsx  fn TipCurrencyToggle
 src/components/user-account-list.tsx
 
 ## Services
-src/services/cache.service.ts  fn checkCacheVersion, fn cacheUserProfile, fn getCachedUserProfile, fn cacheClassificationData, fn getCachedClassificationData, fn cachePrivacyMode, ... (41 exports)
+src/services/cache.service.ts  fn checkCacheVersion, fn cacheUserProfile, fn getCachedUserProfile, fn cacheClassificationData, fn getCachedClassificationData, fn cachePrivacyMode, ... (43 exports)
 src/services/community.service.ts  fn fetchGroupMemberCount, fn fetchGroupMemberCountQuick, fn fetchCommunityListings, fn listGroupInCommunity, fn unlistGroupFromCommunity, fn fetchCommunityListing, ... (8 exports)
-src/services/conversations.service.tsx  fn fetchMessageThreadsRaw, fn buildShellConversations, fn decryptConversationPreviews, fn cacheDecryptionResult, fn invalidateMessageCache, fn fetchFollowedUsers, ... (43 exports)
+src/services/conversations.service.tsx  fn fetchMessageThreadsRaw, fn buildShellConversations, fn decryptConversationPreviews, fn cacheDecryptionResult, fn invalidateMessageCache, fn fetchFollowedUsers, ... (45 exports)
 src/services/deso-activity.service.ts  fn fetchDesoActivity
 src/services/feedback.service.ts  fn submitFeedback
 src/services/ffmpeg.service.ts  fn compressAudioToMp4
@@ -182,7 +183,7 @@ src/utils/atomic-tip.ts  fn sendAtomicDesoTip, sendAtomicUsdcTip
 src/utils/avatar.ts  AVATAR_COLORS | fn hashToColorIndex, getInitials
 src/utils/batch-members.ts  MEMBER_BATCH_SIZE | fn batchedGetBulkAccessGroups, batchedAddMembers, batchedRemoveMembers
 src/utils/community-cache.ts  fn clearCommunityCache
-src/utils/constants.ts  ASSOCIATION_TYPE_APPROVED, ASSOCIATION_TYPE_BLOCKED, ASSOCIATION_VALUE_APPROVED, ASSOCIATION_VALUE_BLOCKED, ASSOCIATION_TYPE_GROUP_ARCHIVED, ASSOCIATION_TYPE_CHAT_ARCHIVED, ... (38 exports)
+src/utils/constants.ts  ASSOCIATION_TYPE_APPROVED, ASSOCIATION_TYPE_BLOCKED, ASSOCIATION_VALUE_APPROVED, ASSOCIATION_VALUE_BLOCKED, ASSOCIATION_TYPE_GROUP_ARCHIVED, ASSOCIATION_TYPE_CHAT_ARCHIVED, ... (40 exports)
 src/utils/detect-language.ts  fn detectLanguageSync, detectLanguage
 src/utils/error-capture.ts  fn getAppVersion, getPlatform, captureError
 src/utils/error-codes.ts  ERROR_CODES
@@ -196,6 +197,7 @@ src/utils/onboarding.ts  fn isOnboardingComplete, markOnboardingComplete
 src/utils/profanity-filter.ts  fn containsProfanity
 src/utils/push-notifications.ts  fn requestPushPermission, subscribeToPush, getExistingSubscription, isPushSupported, getNotificationPermission, unsubscribeFromPush
 src/utils/search-helpers.ts  fn shortenLongWord, nameOrFormattedKey
+src/utils/spam-filter.ts  fn passesSenderFilter
 src/utils/tip-fees.ts  fn hasTipFee, tipFeeUsd, tipRecipientUsd, splitDesoTip, splitUsdcTip
 src/utils/types.ts  UNDECRYPTED_PLACEHOLDER | fn updateConv
 src/utils/usdc-balance.ts  fn fetchUsdcBalance, invalidateUsdcBalanceCache, usdcBaseUnitsToUsd, usdToUsdcBaseUnits, toHexUint256
