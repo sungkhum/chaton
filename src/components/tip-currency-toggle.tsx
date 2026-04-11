@@ -31,7 +31,7 @@ export function TipCurrencyToggle() {
   return (
     <button
       onClick={toggle}
-      className="flex items-center justify-between w-full py-2.5 px-3 rounded-lg transition-colors text-gray-400 hover:text-white hover:bg-white/[0.06] cursor-pointer"
+      className="flex items-center justify-between w-full py-3 px-3 rounded-lg transition-colors text-gray-400 hover:text-white hover:bg-white/[0.06] cursor-pointer"
     >
       <div className="flex items-center">
         <Coins className="mr-3 w-[18px] h-[18px]" />

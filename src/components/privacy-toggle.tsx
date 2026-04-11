@@ -58,7 +58,7 @@ export function PrivacyToggle() {
     <button
       onClick={toggle}
       disabled={loading}
-      className="flex items-center justify-between w-full py-2.5 px-3 rounded-lg transition-colors disabled:opacity-50 text-gray-400 hover:text-white hover:bg-white/[0.06] cursor-pointer"
+      className="flex items-center justify-between w-full py-3 px-3 rounded-lg transition-colors disabled:opacity-50 text-gray-400 hover:text-white hover:bg-white/[0.06] cursor-pointer"
     >
       <div className="flex items-center">
         {isFull ? (

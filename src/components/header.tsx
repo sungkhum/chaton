@@ -1,30 +1,28 @@
 import { identity } from "deso-protocol";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "../store";
 import { useShallow } from "zustand/react/shallow";
 import {
-  Copy,
-  Check,
   LogOut,
   Pencil,
-  SmilePlus,
-  Wallet,
   Heart,
-  Share2,
   MessageSquareText,
+  Settings,
+  ArrowLeftRight,
 } from "lucide-react";
 import { NotificationToggle } from "./notification-toggle";
-import { PrivacyToggle } from "./privacy-toggle";
 import { toast } from "sonner";
 import { formatDisplayName, getProfileURL } from "../utils/helpers";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
-import { SaveToClipboard } from "./shared/save-to-clipboard";
 import { EditProfileDialog } from "./edit-profile-dialog";
 import { SupportChatOnDialog } from "./support-chaton-dialog";
-import { TipCurrencyToggle } from "./tip-currency-toggle";
-import { LanguageSelector } from "./language-selector";
 import { UserAccountList } from "./user-account-list";
+import { SettingsModal } from "./settings-modal";
+import { Identity } from "deso-protocol/src/identity/identity";
+
+const MENU_ITEM_SELECTOR =
+  'button[role="menuitem"], a[role="menuitem"]' as const;
 
 export const Header = () => {
   const { appUser, setLockRefresh } = useStore(
@@ -36,7 +34,85 @@ export const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showSupport, setShowSupport] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
   const avatarRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Check if user has multiple accounts — memoized to avoid snapshot() on every render
+  const hasMultipleAccounts = useMemo(() => {
+    try {
+      const snapshot = (identity as Identity<Storage>).snapshot();
+      const alternateUsers = Object.keys(snapshot.alternateUsers || {});
+      return alternateUsers.length > 0;
+    } catch {
+      return false;
+    }
+  }, [appUser]);
+
+  const profileUrl = appUser?.ProfileEntryResponse?.Username
+    ? getProfileURL(appUser.ProfileEntryResponse.Username)
+    : null;
+
+  // Stable onClose callbacks
+  const closeEditProfile = useCallback(() => setShowEditProfile(false), []);
+  const closeSupport = useCallback(() => setShowSupport(false), []);
+  const closeSettings = useCallback(() => setShowSettings(false), []);
+
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false);
+    setShowAccountSwitcher(false);
+    // Return focus to trigger
+    triggerRef.current?.focus();
+  }, []);
+
+  // Focus trap + arrow key navigation for dropdown menu
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    // Auto-focus first menu item on open
+    requestAnimationFrame(() => {
+      const first =
+        menuRef.current?.querySelector<HTMLElement>(MENU_ITEM_SELECTOR);
+      first?.focus();
+    });
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!menuRef.current) return;
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeMenu();
+        return;
+      }
+
+      // Arrow key navigation + Tab focus trap
+      if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Tab") {
+        const items =
+          menuRef.current.querySelectorAll<HTMLElement>(MENU_ITEM_SELECTOR);
+        if (items.length === 0) return;
+
+        const currentIndex = Array.from(items).findIndex(
+          (item) => item === document.activeElement
+        );
+
+        let nextIndex: number;
+        if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
+          e.preventDefault();
+          nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+        } else {
+          e.preventDefault();
+          nextIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+        }
+
+        items[nextIndex]?.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [menuOpen, closeMenu]);
 
   return (
     <header className="flex justify-between items-center px-4 h-14 fixed top-0 z-[60] w-full bg-[#080d16]/95 backdrop-blur-xl border-b border-white/5">
@@ -62,28 +138,34 @@ export const Header = () => {
           )}
 
           <div ref={avatarRef}>
-            <div
-              className="cursor-pointer"
+            <button
+              ref={triggerRef}
+              className="cursor-pointer bg-transparent border-none p-0"
               onClick={() => setMenuOpen(!menuOpen)}
+              aria-expanded={menuOpen}
+              aria-haspopup="true"
+              aria-label="User menu"
             >
               <MessagingDisplayAvatar
                 publicKey={appUser?.PublicKeyBase58Check}
                 diameter={35}
                 classNames="ml-1 md:ml-3"
               />
-            </div>
+            </button>
 
             {menuOpen &&
               createPortal(
                 <>
                   <div
                     className="fixed inset-0 z-[61]"
-                    onClick={() => setMenuOpen(false)}
+                    onClick={closeMenu}
                     onMouseDown={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}
                   />
                   <div
-                    className="fixed z-[62] w-[min(280px,calc(100vw-2rem))] glass-menu rounded-2xl p-2.5 max-h-[calc(100dvh-4.5rem)] overflow-y-auto custom-scrollbar"
+                    ref={menuRef}
+                    role="menu"
+                    className="fixed z-[62] w-[min(280px,calc(100vw-2rem))] glass-menu rounded-2xl p-2.5"
                     style={{
                       top:
                         (avatarRef.current?.getBoundingClientRect().bottom ??
@@ -94,34 +176,54 @@ export const Header = () => {
                           window.innerWidth),
                     }}
                   >
-                    <div className="px-2 pt-1.5 pb-2.5 flex justify-between items-center border-b border-white/[0.06]">
-                      <span className="font-bold text-[15px] text-white/90 tracking-tight">
-                        Profiles
-                      </span>
-                      <button
-                        className="glass-btn-primary text-[#34F080] font-semibold text-xs py-1 px-2.5 rounded-lg outline-none transition-colors"
-                        onClick={async () => {
-                          setLockRefresh(true);
-                          try {
-                            await identity.login();
-                          } catch (e) {
-                            toast.error(`Error logging in: ${e}`);
-                            console.error(e);
-                          }
-                          setLockRefresh(false);
-                        }}
-                      >
-                        Add
-                      </button>
-                    </div>
+                    {/* Profile header */}
+                    {appUser &&
+                      (profileUrl ? (
+                        <a
+                          href={profileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          role="menuitem"
+                          className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-white/[0.06] transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
+                        >
+                          <MessagingDisplayAvatar
+                            publicKey={appUser.PublicKeyBase58Check}
+                            diameter={36}
+                            classNames="shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[14px] font-semibold text-white truncate">
+                              {formatDisplayName(appUser)}
+                            </div>
+                            {appUser.ProfileEntryResponse?.Username && (
+                              <div className="text-[12px] text-gray-500 truncate">
+                                @{appUser.ProfileEntryResponse.Username}
+                              </div>
+                            )}
+                          </div>
+                        </a>
+                      ) : (
+                        <div className="flex items-center gap-2.5 px-3 py-2.5">
+                          <MessagingDisplayAvatar
+                            publicKey={appUser.PublicKeyBase58Check}
+                            diameter={36}
+                            classNames="shrink-0"
+                          />
+                          <div className="text-[14px] font-semibold text-white truncate">
+                            {formatDisplayName(appUser)}
+                          </div>
+                        </div>
+                      ))}
 
-                    <UserAccountList onSwitch={() => setMenuOpen(false)} />
+                    <div className="border-t border-white/[0.06] my-1.5" />
 
+                    {/* Edit Profile */}
                     {appUser && (
                       <button
-                        className="flex items-center w-full py-2.5 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors"
+                        role="menuitem"
+                        className="flex items-center w-full py-3 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
                         onClick={() => {
-                          setMenuOpen(false);
+                          closeMenu();
                           setShowEditProfile(true);
                         }}
                       >
@@ -130,95 +232,17 @@ export const Header = () => {
                       </button>
                     )}
 
-                    {appUser?.ProfileEntryResponse && (
-                      <a
-                        href={getProfileURL(
-                          appUser.ProfileEntryResponse.Username
-                        )}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center py-2.5 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors"
-                      >
-                        <SmilePlus className="mr-3 w-[18px] h-[18px]" />
-                        <span className="text-[14px]">View Profile</span>
-                      </a>
-                    )}
-
-                    {appUser && (
-                      <div className="flex items-center py-2.5 text-gray-400 hover:text-white px-3 hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors">
-                        <SaveToClipboard
-                          text={appUser.PublicKeyBase58Check}
-                          copyIcon={<Copy className="w-[18px] h-[18px] mr-2" />}
-                          copiedIcon={
-                            <Check className="w-[18px] h-[18px] mr-2" />
-                          }
-                        >
-                          <span className="text-[14px]">Copy Public Key</span>
-                        </SaveToClipboard>
-                      </div>
-                    )}
+                    {/* Notifications */}
+                    <NotificationToggle menuItemRole />
 
                     <div className="border-t border-white/[0.06] my-1.5" />
 
-                    <NotificationToggle />
-                    <PrivacyToggle />
-                    <TipCurrencyToggle />
-                    <LanguageSelector />
-
-                    <div className="border-t border-white/[0.06] my-1.5" />
-
-                    <a
-                      href="https://wallet.deso.com"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center py-2.5 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors"
-                    >
-                      <Wallet className="mr-3 w-[18px] h-[18px]" />
-                      <span className="text-[14px]">DeSo Wallet</span>
-                    </a>
-
+                    {/* Send Feedback */}
                     <button
-                      className="flex items-center w-full py-2.5 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors"
-                      onClick={async () => {
-                        setMenuOpen(false);
-                        const shareData = {
-                          title: "ChatOn",
-                          text: "Chat with me on ChatOn — decentralized, end-to-end encrypted messaging on the blockchain. No censorship, no middlemen.",
-                          url: "https://getchaton.com",
-                        };
-                        if (navigator.share) {
-                          try {
-                            await navigator.share(shareData);
-                          } catch {
-                            /* cancelled */
-                          }
-                        } else {
-                          navigator.clipboard.writeText(
-                            `${shareData.text}\n${shareData.url}`
-                          );
-                          toast.success("Invite link copied!");
-                        }
-                      }}
-                    >
-                      <Share2 className="mr-3 w-[18px] h-[18px]" />
-                      <span className="text-[14px]">Invite Friends</span>
-                    </button>
-
-                    <button
-                      className="flex items-center w-full py-2.5 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors"
+                      role="menuitem"
+                      className="flex items-center w-full py-3 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
                       onClick={() => {
-                        setMenuOpen(false);
-                        setShowSupport(true);
-                      }}
-                    >
-                      <Heart className="mr-3 w-[18px] h-[18px] text-[#34F080]" />
-                      <span className="text-[14px]">Support ChatOn</span>
-                    </button>
-
-                    <button
-                      className="flex items-center w-full py-2.5 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors"
-                      onClick={() => {
-                        setMenuOpen(false);
+                        closeMenu();
                         useStore.getState().openFeedbackModal();
                       }}
                     >
@@ -226,10 +250,79 @@ export const Header = () => {
                       <span className="text-[14px]">Send Feedback</span>
                     </button>
 
+                    {/* Donate */}
+                    <button
+                      role="menuitem"
+                      className="flex items-center w-full py-3 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
+                      onClick={() => {
+                        closeMenu();
+                        setShowSupport(true);
+                      }}
+                    >
+                      <Heart className="mr-3 w-[18px] h-[18px] text-[#34F080]" />
+                      <span className="text-[14px]">Donate</span>
+                    </button>
+
                     <div className="border-t border-white/[0.06] my-1.5" />
 
+                    {/* Settings */}
                     <button
-                      className="flex items-center w-full py-2.5 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors"
+                      role="menuitem"
+                      className="flex items-center w-full py-3 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
+                      onClick={() => {
+                        closeMenu();
+                        setShowSettings(true);
+                      }}
+                    >
+                      <Settings className="mr-3 w-[18px] h-[18px]" />
+                      <span className="text-[14px]">Settings</span>
+                    </button>
+
+                    <div className="border-t border-white/[0.06] my-1.5" />
+
+                    {/* Switch Account — only if multiple accounts */}
+                    {hasMultipleAccounts &&
+                      (showAccountSwitcher ? (
+                        <div className="menu-expand">
+                          <div className="overflow-hidden">
+                            <UserAccountList onSwitch={() => closeMenu()} />
+                            <button
+                              role="menuitem"
+                              className="flex items-center w-full py-3 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
+                              onClick={async () => {
+                                setLockRefresh(true);
+                                try {
+                                  await identity.login();
+                                } catch (e) {
+                                  toast.error(`Error logging in: ${e}`);
+                                  console.error(e);
+                                }
+                                setLockRefresh(false);
+                                closeMenu();
+                              }}
+                            >
+                              <span className="mr-3 w-[18px] h-[18px] flex items-center justify-center text-[#34F080] text-lg font-bold">
+                                +
+                              </span>
+                              <span className="text-[14px]">Add Account</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          role="menuitem"
+                          className="flex items-center w-full py-3 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
+                          onClick={() => setShowAccountSwitcher(true)}
+                        >
+                          <ArrowLeftRight className="mr-3 w-[18px] h-[18px]" />
+                          <span className="text-[14px]">Switch Account</span>
+                        </button>
+                      ))}
+
+                    {/* Logout */}
+                    <button
+                      role="menuitem"
+                      className="flex items-center w-full py-3 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
                       onClick={async () => {
                         if (!appUser) return;
                         setLockRefresh(true);
@@ -240,7 +333,7 @@ export const Header = () => {
                           console.error(e);
                         }
                         setLockRefresh(false);
-                        setMenuOpen(false);
+                        closeMenu();
                       }}
                     >
                       <LogOut className="mr-3 w-[18px] h-[18px]" />
@@ -254,17 +347,12 @@ export const Header = () => {
         </div>
       </div>
       {showEditProfile && appUser && (
-        <EditProfileDialog
-          appUser={appUser}
-          onClose={() => setShowEditProfile(false)}
-        />
+        <EditProfileDialog appUser={appUser} onClose={closeEditProfile} />
       )}
       {showSupport && appUser && (
-        <SupportChatOnDialog
-          appUser={appUser}
-          onClose={() => setShowSupport(false)}
-        />
+        <SupportChatOnDialog appUser={appUser} onClose={closeSupport} />
       )}
+      {showSettings && <SettingsModal onClose={closeSettings} />}
     </header>
   );
 };

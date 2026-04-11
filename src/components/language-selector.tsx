@@ -133,7 +133,7 @@ export function LanguageSelector() {
       {/* Language selector row */}
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center justify-between w-full py-2.5 px-3 rounded-lg transition-colors text-gray-400 hover:text-white hover:bg-white/[0.06] cursor-pointer"
+        className="flex items-center justify-between w-full py-3 px-3 rounded-lg transition-colors text-gray-400 hover:text-white hover:bg-white/[0.06] cursor-pointer"
       >
         <div className="flex items-center">
           <Globe className="mr-3 w-[18px] h-[18px]" />
@@ -171,7 +171,7 @@ export function LanguageSelector() {
       {/* Auto-translate toggle */}
       <button
         onClick={toggleAutoTranslate}
-        className="flex items-center justify-between w-full py-2.5 px-3 rounded-lg transition-colors text-gray-400 hover:text-white hover:bg-white/[0.06] cursor-pointer"
+        className="flex items-center justify-between w-full py-3 px-3 rounded-lg transition-colors text-gray-400 hover:text-white hover:bg-white/[0.06] cursor-pointer"
       >
         <div className="flex items-center">
           <Languages className="mr-3 w-[18px] h-[18px]" />

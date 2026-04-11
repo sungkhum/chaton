@@ -89,7 +89,9 @@ async function ensureSubscription(publicKey: string) {
   }
 }
 
-export function NotificationToggle() {
+export function NotificationToggle({
+  menuItemRole,
+}: { menuItemRole?: boolean } = {}) {
   const appUser = useStore((s) => s.appUser);
   const [pushState, setPushState] = useState<PushState>("disabled");
   const [loading, setLoading] = useState(false);
@@ -247,7 +249,8 @@ export function NotificationToggle() {
     <button
       onClick={isDenied ? undefined : toggle}
       disabled={loading || isDenied}
-      className={`flex items-center justify-between w-full py-2.5 px-3 rounded-lg transition-colors disabled:opacity-50 ${
+      {...(menuItemRole ? { role: "menuitem" as const } : {})}
+      className={`flex items-center justify-between w-full py-3 px-3 rounded-lg transition-colors disabled:opacity-50 outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50 ${
         isDenied
           ? "text-gray-500 cursor-not-allowed"
           : "text-gray-400 hover:text-white hover:bg-white/[0.06] cursor-pointer"

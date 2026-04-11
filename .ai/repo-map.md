@@ -1,4 +1,4 @@
-# Repo Map (generated 2026-04-10)
+# Repo Map (generated 2026-04-11)
 # Compact codebase index for AI agents. Read this FIRST, then do targeted file reads.
 
 ## Routes
@@ -124,6 +124,7 @@ src/components/search-users.tsx  SearchUsers
 src/components/send-funds-dialog.tsx  SendFundsDialog
 src/components/send-message-button-and-input.tsx  SendMessageButtonAndInput
 src/components/seo-structured-data.tsx  SeoStructuredData
+src/components/settings-modal.tsx  SettingsModal
 src/components/shared/alert-notification.tsx  AlertNotification
 src/components/shared/chunk-error-boundary.tsx  class ChunkErrorBoundary
 src/components/shared/save-to-clipboard.tsx  SaveToClipboard
@@ -155,6 +156,7 @@ src/services/translate.service.ts  fn translateText, getCachedTranslation
 ## Hooks
 src/hooks/useAudioRecorder.ts  fn useAudioRecorder
 src/hooks/useDraftMessages.ts  fn useDraftMessages
+src/hooks/useFocusTrap.ts  fn useFocusTrap
 src/hooks/useIdleDetection.ts  fn useIdleDetection
 src/hooks/useInstallPrompt.ts  fn useInstallPrompt
 src/hooks/useInterval.ts  fn useInterval

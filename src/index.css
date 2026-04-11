@@ -999,6 +999,24 @@ input::placeholder {
   animation: modal-card-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* Expand/collapse animation using grid-rows trick for auto-height */
+.menu-expand {
+  display: grid;
+  grid-template-rows: 1fr;
+  animation: menu-expand-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes menu-expand-in {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  to {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+}
+
 /* Blog prose styles */
 .prose-chaton {
   color: #d1d5db;
