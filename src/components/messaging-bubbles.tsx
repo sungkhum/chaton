@@ -1758,7 +1758,15 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                               }`}
                             >
                               <ReplyPreview
-                                replyPreview={parsed.replyPreview}
+                                replyPreview={
+                                  looksLikeEncryptedHex(parsed.replyPreview)
+                                    ? visibleMessages.find(
+                                        (m) =>
+                                          m.MessageInfo.TimestampNanosString ===
+                                          parsed.replyTo
+                                      )?.DecryptedMessage || parsed.replyPreview
+                                    : parsed.replyPreview
+                                }
                                 replySender={parsed.replySender}
                                 translatedReplyPreview={
                                   !showingOriginalKeys.has(messageKey)
