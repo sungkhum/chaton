@@ -219,9 +219,13 @@ function looksLikeEncryptedHex(text: string): boolean {
   return text.length >= 64 && /^[0-9a-f]+$/i.test(text);
 }
 
-function latestIncomingTimestamp(convo: Conversation): number {
+function latestIncomingTimestamp(
+  convo: Conversation,
+  myPublicKey: string
+): number {
   for (const m of convo.messages) {
-    if (!m.IsSender) return m.MessageInfo.TimestampNanos;
+    if (!m.IsSender && m.SenderInfo.OwnerPublicKeyBase58Check !== myPublicKey)
+      return m.MessageInfo.TimestampNanos;
   }
   return 0;
 }
@@ -1212,7 +1216,10 @@ export const MessagingApp: FC = () => {
                     store.archivedGroups.has(k)
                   )
                     continue;
-                  const msgTs = latestIncomingTimestamp(convo);
+                  const msgTs = latestIncomingTimestamp(
+                    convo,
+                    appUser.PublicKeyBase58Check
+                  );
                   if (!msgTs) continue;
                   const lastRead = lastReadTimestamps[k];
                   if (lastRead === undefined) {
@@ -1285,7 +1292,9 @@ export const MessagingApp: FC = () => {
       cacheLastReadTimestamp(user.PublicKeyBase58Check, conversationKey, ts);
       // Clear unread if cursor >= latest incoming message
       const convo = conversationsRef.current[conversationKey];
-      const incomingTs = convo ? latestIncomingTimestamp(convo) : 0;
+      const incomingTs = convo
+        ? latestIncomingTimestamp(convo, user.PublicKeyBase58Check)
+        : 0;
       if (incomingTs && ts >= incomingTs) {
         clearUnread(conversationKey);
         removeUnreadConversation(conversationKey);
@@ -1314,7 +1323,7 @@ export const MessagingApp: FC = () => {
         if (k === currentKey) continue; // Viewing — already read
         if (store.mutedConversations.has(k) || store.archivedGroups.has(k))
           continue;
-        const msgTs = latestIncomingTimestamp(convo);
+        const msgTs = latestIncomingTimestamp(convo, pk);
         if (!msgTs) continue; // No incoming messages — nothing to mark unread
         const lastRead = merged[k];
         if (lastRead === undefined) continue; // No cursor — preserve existing state
@@ -2777,7 +2786,7 @@ export const MessagingApp: FC = () => {
       for (const [k, convo] of Object.entries(cachedConvos)) {
         if (k === cachedKeyToUse) continue;
         if (cachedMuted.has(k) || cachedArchived.has(k)) continue;
-        const msgTs = latestIncomingTimestamp(convo);
+        const msgTs = latestIncomingTimestamp(convo, publicKey);
         if (!msgTs) continue;
         const lastRead = cachedLastRead[k];
         if (lastRead !== undefined && msgTs > lastRead) {
@@ -3301,7 +3310,7 @@ export const MessagingApp: FC = () => {
       for (const [k, convo] of Object.entries(conversationsResponse)) {
         if (k === keyToUse) continue; // Currently selected conversation
         if (muted.has(k) || archived.has(k)) continue; // Skip muted/archived
-        const msgTs = latestIncomingTimestamp(convo);
+        const msgTs = latestIncomingTimestamp(convo, publicKey);
         if (!msgTs) continue; // No incoming messages
         const lastRead = lastReadTimestamps[k];
         if (lastRead === undefined) {

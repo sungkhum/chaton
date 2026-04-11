@@ -10,8 +10,11 @@
 /faq → FaqPage → src/components/faq-page.tsx
 /about → AboutPage → src/components/about-page.tsx
 /compare → ComparePage → src/components/compare-page.tsx
-/blog → BlogIndex → ?
+/blog → BlogIndex → src/components/blog/blog-index.tsx
 /blog/* → PostComponent → ?
+/join/:code → JoinGroupPage → src/components/join-group-page.tsx
+/ (logged-out) → LandingPage → src/components/landing-page.tsx
+* (404) → NotFoundPage → src/components/not-found-page.tsx
 (authenticated) → MessagingApp → src/components/messaging-app.tsx
 
 ## Error Codes
@@ -182,7 +185,6 @@ src/store/index.ts  fn useStore
 src/utils/atomic-paid-message.ts  fn sendAtomicPaidMessage
 src/utils/atomic-tip.ts  fn sendAtomicDesoTip, sendAtomicUsdcTip
 src/utils/avatar.ts  AVATAR_COLORS | fn hashToColorIndex, getInitials
-src/utils/batch-members.ts  MEMBER_BATCH_SIZE | fn batchedGetBulkAccessGroups, batchedAddMembers, batchedRemoveMembers
 src/utils/community-cache.ts  fn clearCommunityCache
 src/utils/constants.ts  ASSOCIATION_TYPE_APPROVED, ASSOCIATION_TYPE_BLOCKED, ASSOCIATION_VALUE_APPROVED, ASSOCIATION_VALUE_BLOCKED, ASSOCIATION_TYPE_GROUP_ARCHIVED, ASSOCIATION_TYPE_CHAT_ARCHIVED, ... (40 exports)
 src/utils/detect-language.ts  fn detectLanguageSync, detectLanguage
@@ -192,7 +194,6 @@ src/utils/exchange-rate.ts  fn fetchExchangeRate, usdToNanos, nanosToUsd, format
 src/utils/extra-data.ts  fn getEncryptedExtraDataKeys, fn parseMessageType, fn getGroupImageUrl, fn getGroupDisplayName, fn getGroupPinnedMessage, fn getGroupMembersCanShare, ... (54 exports)
 src/utils/helpers.ts  fn copyTextToClipboard, fn getProfileURL, fn desoNanosToDeso, fn formatDesoAmount, fn scrollContainerToElement, fn getChatNameFromConversation, ... (13 exports)
 src/utils/invite-link.ts  fn buildInviteUrl, extractInviteCode, resolveInviteCode, registerInviteCode, fetchInviteCode, revokeInviteCode
-src/utils/lazy-with-reload.ts  fn lazyWithReload
 src/utils/link-services.ts  fn detectLinkService, extractFileNameFromUrl
 src/utils/onboarding.ts  fn isOnboardingComplete, markOnboardingComplete
 src/utils/profanity-filter.ts  fn containsProfanity
