@@ -452,7 +452,7 @@ export const SendMessageButtonAndInput = forwardRef<
     };
 
     const confirmImage = async (caption?: string) => {
-      if (!pendingImage) return;
+      if (!pendingImage || isSendingRef.current) return;
       setIsUploading(true);
       try {
         const result = await uploadImage(pendingImage.file);
@@ -537,7 +537,7 @@ export const SendMessageButtonAndInput = forwardRef<
     };
 
     const confirmVideo = async (caption?: string) => {
-      if (!pendingVideo) return;
+      if (!pendingVideo || isSendingRef.current) return;
       setIsUploading(true);
       try {
         const result = await uploadVideoFile(pendingVideo.file);
@@ -725,6 +725,9 @@ export const SendMessageButtonAndInput = forwardRef<
 
     /** Unified send: routes to link/image/video/gif confirm when media is staged, otherwise normal send */
     const handleSend = async () => {
+      // Guard against rapid taps on mobile — state-based disabled is async,
+      // so multiple taps can slip through before React re-renders.
+      if (isSendingRef.current) return;
       if (showLinkPanel && linkPanelRef.current) {
         await linkPanelRef.current.triggerSend();
         return;
