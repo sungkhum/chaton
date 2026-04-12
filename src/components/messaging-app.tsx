@@ -1364,11 +1364,25 @@ export const MessagingApp: FC = () => {
           archivedConversations: {} as ConversationMap,
         };
 
-      // Pre-compute which groups the user has sent a message in (implicit acceptance)
       const myPk = appUser.PublicKeyBase58Check;
+
+      // Pre-migration: the group request feature requires chaton:group-accepted
+      // associations to exist for each group the user has consented to. Before
+      // migration runs (one-time background job), treat ALL existing groups as
+      // implicitly accepted so they stay in Chats, not Requests.
+      const migrated = !!localStorage.getItem(
+        `chaton:group-accept-migrated:${myPk}`
+      );
+
+      // Pre-compute which groups the user has sent a message in (implicit acceptance)
       const groupsWithMyMessages = new Set<string>();
       for (const [key, convo] of Object.entries(conversations)) {
         if (convo.ChatType !== ChatType.GROUPCHAT) continue;
+        if (!migrated) {
+          // Pre-migration: treat all existing groups as implicitly accepted
+          groupsWithMyMessages.add(key);
+          continue;
+        }
         if (
           convo.messages?.some(
             (m) =>
@@ -1425,6 +1439,50 @@ export const MessagingApp: FC = () => {
       spamFilter,
       senderProfiles,
     ]);
+
+  // One-time migration: create chaton:group-accepted associations for all
+  // existing group memberships so the group request feature works going forward.
+  // Runs in background, gated by localStorage so it only happens once per user.
+  useEffect(() => {
+    if (!appUser || !chatRequestsLoaded) return;
+    const pk = appUser.PublicKeyBase58Check;
+    const migrationKey = `chaton:group-accept-migrated:${pk}`;
+    if (localStorage.getItem(migrationKey)) return;
+
+    const groupsToMigrate = Object.entries(conversations).filter(
+      ([key, convo]) =>
+        convo.ChatType === ChatType.GROUPCHAT &&
+        !archivedGroups.has(key) &&
+        convo.firstMessagePublicKey !== pk &&
+        !acceptedGroups.has(key)
+    );
+
+    if (groupsToMigrate.length === 0) {
+      localStorage.setItem(migrationKey, "1");
+      return;
+    }
+
+    // Fire-and-forget: create associations in background, don't block UI
+    Promise.all(
+      groupsToMigrate.map(([key]) => {
+        const ownerPk = key.slice(0, PUBLIC_KEY_LENGTH);
+        const gkn = key.slice(PUBLIC_KEY_LENGTH);
+        return createGroupAcceptedAssociation(pk, ownerPk, gkn).catch(() => {});
+      })
+    ).then(() => {
+      localStorage.setItem(migrationKey, "1");
+      // Refresh accepted groups so next classification uses real associations
+      fetchAcceptedGroups(pk)
+        .then((ids) => mergeAcceptedGroupIds(ids))
+        .catch(() => {});
+    });
+  }, [
+    appUser,
+    chatRequestsLoaded,
+    conversations,
+    archivedGroups,
+    acceptedGroups,
+  ]);
 
   // DeSo messaging APIs may return 0 for DESOBalanceNanos in profile responses.
   // When the spam filter needs balance checking, fetch real balances via
