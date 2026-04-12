@@ -57,7 +57,8 @@ on-chain follows and User Associations (no backend needed).
 ### Classification order (first match wins)
 
 **Group chats:**
-1. `chat:group-archived` → Archived
+1. `chat:group-archived` AND no `chaton:group-accepted` → Archived
+   (If both exist, acceptance wins — user rejoined after leaving)
 2. Current user is the group owner → Chats
 3. `chaton:group-accepted` association exists → Chats
 4. Current user has sent a message in the group → Chats (lazy acceptance)

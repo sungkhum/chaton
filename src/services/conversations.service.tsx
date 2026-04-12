@@ -1428,7 +1428,11 @@ export function classifyConversation(
   groupsWithMyMessages: Set<string> = new Set()
 ): "chat" | "request" | "blocked" | "archived" | "dismissed" {
   if (conversation.ChatType === ChatType.GROUPCHAT) {
-    if (archivedGroups.has(conversationKey)) return "archived";
+    if (archivedGroups.has(conversationKey)) {
+      // If user explicitly accepted after archiving (e.g., rejoined via
+      // invite link), the acceptance overrides the archive.
+      if (!acceptedGroups.has(conversationKey)) return "archived";
+    }
     // Owner always sees their own groups
     if (conversation.firstMessagePublicKey === myPublicKey) return "chat";
     // Explicitly accepted via association
