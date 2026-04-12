@@ -119,6 +119,30 @@ const COMPARISON_DATA: ComparisonRow[] = [
     whatsapp: "no",
     session: "no",
   },
+  {
+    feature: "In-chat tipping",
+    chatOn: "yes",
+    signal: "no",
+    telegram: "partial",
+    whatsapp: "no",
+    session: "no",
+  },
+  {
+    feature: "Paid DMs",
+    chatOn: "yes",
+    signal: "no",
+    telegram: "no",
+    whatsapp: "no",
+    session: "no",
+  },
+  {
+    feature: "Auto-translation",
+    chatOn: "yes",
+    signal: "no",
+    telegram: "yes",
+    whatsapp: "yes",
+    session: "no",
+  },
 ];
 
 const CellValue = ({ value }: { value: string }) => {
@@ -153,7 +177,7 @@ const APP_SUMMARIES = [
   {
     name: "ChatOn vs Session",
     content:
-      "Session and ChatOn both offer end-to-end encryption without requiring a phone number. Session routes messages through an onion network (Lokinet) for metadata protection. ChatOn stores messages on the DeSo blockchain for persistence and portability. Session provides stronger metadata privacy. ChatOn provides faster message delivery, richer features (GIFs, reactions, community directory), and chat history that survives across apps. Choose Session for maximum metadata privacy. Choose ChatOn for a fuller messaging experience with portable history.",
+      "Session and ChatOn both offer end-to-end encryption without requiring a phone number. Session routes messages through an onion network (Lokinet) for metadata protection. ChatOn stores messages on the DeSo blockchain for persistence and portability. Session provides stronger metadata privacy. ChatOn provides faster message delivery, richer features (GIFs, reactions, community directory, in-chat tipping, paid DMs, and auto-translation), and chat history that survives across apps. Choose Session for maximum metadata privacy. Choose ChatOn for a fuller messaging experience with portable history.",
   },
 ];
 

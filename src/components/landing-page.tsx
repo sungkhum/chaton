@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePageMeta } from "../hooks/usePageMeta";
 import { AnimatedEmoji } from "./messages/animated-emoji";
 import {
@@ -15,12 +15,30 @@ import {
   Users,
   Send,
   Smile,
+  DollarSign,
+  Languages,
+  AtSign,
+  Coins,
+  CircleDollarSign,
+  PenLine,
+  MessageSquareMore,
+  Bell,
+  BellOff,
+  CheckCheck,
+  UserCog,
 } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { PreSignupTutorial } from "./onboarding/pre-signup-tutorial";
 import { SeoStructuredData } from "./seo-structured-data";
 import { PublicNav } from "./public-layout";
+import {
+  EnrichedCommunityListing,
+  enrichCommunityListings,
+  fetchCommunityListings,
+} from "../services/community.service";
+import { MessagingDisplayAvatar } from "./messaging-display-avatar";
+import { buildInviteUrl } from "../utils/invite-link";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -37,6 +55,23 @@ export const LandingPage = () => {
 
   const root = useRef<HTMLDivElement>(null);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [communities, setCommunities] = useState<EnrichedCommunityListing[]>(
+    []
+  );
+
+  const FEATURED_GROUPS = ["AI Wire", "ChatOn Fun", "Deso Bulls"];
+
+  useEffect(() => {
+    fetchCommunityListings()
+      .then((raw) => enrichCommunityListings(raw))
+      .then((enriched) => {
+        const featured = FEATURED_GROUPS.map((name) =>
+          enriched.find((l) => l.groupKeyName === name)
+        ).filter((l): l is EnrichedCommunityListing => !!l);
+        setCommunities(featured);
+      })
+      .catch(() => {});
+  }, []);
 
   useLayoutEffect(() => {
     if (!root.current) return;
@@ -447,8 +482,8 @@ export const LandingPage = () => {
             </h1>
             <p className="hero-desc text-base md:text-2xl text-gray-400 leading-relaxed max-w-2xl font-medium border-l-4 border-[#34F080]/25 pl-5 md:pl-8 mb-8 md:mb-14">
               ChatOn is end-to-end encrypted messaging on the DeSo blockchain.
-              Your messages, media, and metadata are unreadable to everyone
-              except you and your recipients.{" "}
+              Send messages, tip creators, and control who reaches your inbox —
+              all on a network no single company controls.{" "}
               <span className="text-white">
                 Built to scale. Impossible to censor.
               </span>
@@ -474,48 +509,88 @@ export const LandingPage = () => {
           <div className="hero-mockup lg:col-span-5 mt-8 lg:mt-0 landing-mockup-wrap">
             <div className="landing-mockup-inner relative">
               <div className="landing-glass-card rounded-3xl lg:rounded-[60px] p-5 lg:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.5)] lg:shadow-[0_40px_100px_rgba(0,0,0,0.7),0_0_60px_rgba(43,184,154,0.06)] border-white/5 bg-[#0F1520]/80">
-                <div className="flex items-center gap-3 lg:gap-5 mb-5 lg:mb-12">
-                  <img
-                    src="/ChatOn-Logo-Small.png"
-                    alt=""
-                    className="w-10 h-10 lg:w-14 lg:h-14 rounded-xl lg:rounded-2xl"
-                  />
-                  <div className="text-left">
-                    <div className="text-base lg:text-xl font-black">
+                {/* Chat header */}
+                <div className="flex items-center gap-3 lg:gap-4 mb-5 lg:mb-8 pb-4 lg:pb-6 border-b border-white/5">
+                  <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-gradient-to-br from-[#34F080]/40 to-[#20E0AA]/20 shrink-0 flex items-center justify-center text-xs lg:text-sm font-black text-[#34F080]">
+                    SN
+                  </div>
+                  <div className="text-left flex-1">
+                    <div className="text-sm lg:text-base font-black">
                       Satoshi_N
                     </div>
                     <div className="text-[9px] lg:text-[10px] text-[#34F080] uppercase font-black tracking-widest">
                       Encrypted
                     </div>
                   </div>
+                  <div className="w-2 h-2 rounded-full bg-[#34F080] shrink-0" />
                 </div>
 
-                <div className="space-y-3 lg:space-y-6">
-                  <div className="relative bg-[#34F080]/8 border border-[#34F080]/20 p-4 lg:p-6 rounded-2xl lg:rounded-[30px] rounded-tr-none ml-4 lg:ml-8">
-                    <p className="text-xs lg:text-sm font-semibold text-[#34F080] text-left">
-                      Messages stored on-chain, encrypted with your keys. No one
-                      else can read them.
-                    </p>
-                    <span className="absolute -bottom-3 right-4 bg-[#1a2233] border border-white/10 rounded-full px-1.5 py-0.5 flex items-center justify-center">
-                      <AnimatedEmoji emoji="🔒" size={18} />
-                    </span>
+                {/* Chat messages */}
+                <div className="space-y-3 lg:space-y-5">
+                  {/* Received message */}
+                  <div className="flex gap-2 items-end">
+                    <div className="w-6 h-6 lg:w-7 lg:h-7 rounded-full bg-gradient-to-br from-[#34F080]/30 to-[#20E0AA]/10 shrink-0 flex items-center justify-center text-[8px] lg:text-[9px] font-bold text-[#34F080]/70">
+                      SN
+                    </div>
+                    <div>
+                      <div className="bg-white/5 border border-white/8 px-3 lg:px-4 py-2 lg:py-3 rounded-2xl rounded-bl-sm max-w-[85%]">
+                        <div className="text-[10px] text-[#34F080] font-bold mb-0.5">
+                          Satoshi_N
+                        </div>
+                        <div className="text-xs lg:text-sm text-gray-300">
+                          Every message encrypted before it leaves your device.
+                          No one else can read them. 🔒
+                        </div>
+                      </div>
+                      <div className="flex gap-1.5 -mt-1 relative z-10 ml-1">
+                        <div className="flex items-center gap-1 bg-[#1a2436] border border-[#34F080]/20 rounded-full px-2 py-0.5">
+                          <AnimatedEmoji emoji="💯" size={14} />
+                          <span className="text-[9px] font-bold text-[#34F080]">
+                            2
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="relative bg-white/5 border border-white/10 p-4 lg:p-6 rounded-2xl lg:rounded-[30px] rounded-tl-none mr-4 lg:mr-8">
-                    <p className="text-xs lg:text-sm font-semibold text-gray-300 text-left">
-                      The blockchain knows we talked. But only we know what we
-                      said.
-                    </p>
-                    <span className="absolute -bottom-3 left-4 bg-[#1a2233] border border-white/10 rounded-full px-1.5 py-0.5 flex items-center justify-center">
-                      <AnimatedEmoji emoji="🤝" size={18} />
-                    </span>
+
+                  {/* Sent message */}
+                  <div className="flex justify-end">
+                    <div className="bg-[#34F080]/10 border border-[#34F080]/20 px-3 lg:px-4 py-2 lg:py-3 rounded-2xl rounded-br-sm max-w-[85%]">
+                      <div className="text-xs lg:text-sm text-[#34F080]/90">
+                        That's why I switched. No company in the middle.
+                      </div>
+                    </div>
                   </div>
-                  <div className="relative bg-[#40B8E0]/10 border border-[#40B8E0]/20 p-4 lg:p-6 rounded-2xl lg:rounded-[30px] rounded-tr-none ml-4 lg:ml-8">
-                    <p className="text-xs lg:text-sm font-semibold text-[#40B8E0] text-left">
-                      Exactly how messaging should work.
-                    </p>
-                    <span className="absolute -bottom-3 right-4 bg-[#1a2233] border border-white/10 rounded-full px-1.5 py-0.5 flex items-center justify-center">
-                      <AnimatedEmoji emoji="🔥" size={18} />
-                    </span>
+
+                  {/* Received message with tip pill + reaction */}
+                  <div className="flex gap-2 items-end">
+                    <div className="w-6 h-6 lg:w-7 lg:h-7 rounded-full bg-gradient-to-br from-[#34F080]/30 to-[#20E0AA]/10 shrink-0 flex items-center justify-center text-[8px] lg:text-[9px] font-bold text-[#34F080]/70">
+                      SN
+                    </div>
+                    <div>
+                      <div className="bg-white/5 border border-white/8 px-3 lg:px-4 py-2 lg:py-3 rounded-2xl rounded-bl-sm max-w-[85%]">
+                        <div className="text-xs lg:text-sm text-gray-300">
+                          Exactly how messaging should work.
+                        </div>
+                      </div>
+                      <div className="flex gap-1.5 -mt-1 relative z-10 ml-1 flex-wrap">
+                        <div className="flex items-center gap-1 h-[22px] bg-[#2775ca]/[0.10] border border-[#2775ca]/25 rounded-full px-1.5 py-0.5 backdrop-blur-xl">
+                          <CircleDollarSign className="w-3 h-3 text-[#2775ca]" />
+                          <span className="text-[10px] font-semibold text-[#2775ca]">
+                            $0.50
+                          </span>
+                          <div className="w-4 h-4 rounded-full bg-gradient-to-br from-[#40B8E0]/40 to-[#40B8E0]/20 ring-1 ring-[#141c2b] flex items-center justify-center text-[6px] font-bold text-[#40B8E0]/70">
+                            Y
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 bg-[#1a2436] border border-white/10 rounded-full px-2 py-0.5">
+                          <AnimatedEmoji emoji="🔥" size={14} />
+                          <span className="text-[9px] font-bold text-gray-400">
+                            3
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -631,9 +706,9 @@ export const LandingPage = () => {
               </span>
             </h2>
             <p className="text-base md:text-xl text-gray-400 max-w-3xl mx-auto font-medium leading-relaxed">
-              Group chats, reactions, GIFs, video, replies, typing indicators,
-              and spam filtering — everything you expect from a modern
-              messenger, built on infrastructure you actually own.
+              Tipping, paid DMs, group chats, reactions, GIFs, video, replies,
+              and real-time translation — everything you expect from a modern
+              messenger, plus features you won't find anywhere else.
             </p>
           </div>
 
@@ -649,9 +724,9 @@ export const LandingPage = () => {
               </h3>
               <p className="text-base md:text-lg text-gray-400 font-medium leading-relaxed">
                 Create encrypted group conversations with custom names and
-                profile images. Add or remove members anytime. Every group is a
-                portable on-chain access group that works across the entire DeSo
-                ecosystem.
+                images. Share invite links to let anyone join with a tap, or
+                list your group in the public community directory. Every group
+                is portable across the entire DeSo ecosystem.
               </p>
             </div>
             <div className="landing-mockup-wrap">
@@ -675,7 +750,9 @@ export const LandingPage = () => {
                   </div>
                   <div className="space-y-3">
                     <div className="flex gap-2 items-end">
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#34F080]/30 to-[#34F080]/10 shrink-0" />
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#34F080]/30 to-[#34F080]/10 shrink-0 flex items-center justify-center text-[8px] font-bold text-[#34F080]/70">
+                        A
+                      </div>
                       <div className="bg-white/5 border border-white/8 px-3 py-2 rounded-2xl rounded-bl-sm max-w-[80%]">
                         <div className="text-[10px] text-[#34F080] font-bold mb-0.5">
                           Alex
@@ -686,7 +763,9 @@ export const LandingPage = () => {
                       </div>
                     </div>
                     <div className="flex gap-2 items-end">
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#40B8E0]/30 to-[#40B8E0]/10 shrink-0" />
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#40B8E0]/30 to-[#40B8E0]/10 shrink-0 flex items-center justify-center text-[8px] font-bold text-[#40B8E0]/70">
+                        M
+                      </div>
                       <div className="bg-white/5 border border-white/8 px-3 py-2 rounded-2xl rounded-bl-sm max-w-[80%]">
                         <div className="text-[10px] text-[#40B8E0] font-bold mb-0.5">
                           Maya
@@ -697,9 +776,20 @@ export const LandingPage = () => {
                       </div>
                     </div>
                     <div className="flex justify-end">
-                      <div className="bg-[#34F080]/10 border border-[#34F080]/20 px-3 py-2 rounded-2xl rounded-br-sm max-w-[80%]">
-                        <div className="text-xs text-[#34F080]/90">
-                          Shipping the update tonight 🚀
+                      <div>
+                        <div className="bg-[#34F080]/10 border border-[#34F080]/20 px-3 py-2 rounded-2xl rounded-br-sm max-w-[80%] ml-auto">
+                          <div className="text-xs text-[#34F080]/90">
+                            Shipping the update tonight 🚀
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-1.5 -mt-1 relative z-10 mr-1">
+                          <div className="flex items-center gap-1 h-[22px] bg-[#2775ca]/[0.10] border border-[#2775ca]/25 rounded-full px-1.5 py-0.5 backdrop-blur-xl">
+                            <CircleDollarSign className="w-3 h-3 text-[#2775ca]" />
+                            <span className="text-[10px] font-semibold text-[#2775ca]">
+                              $0.01
+                            </span>
+                            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-[#40B8E0]/40 to-[#40B8E0]/20 ring-1 ring-[#141c2b]" />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -723,27 +813,29 @@ export const LandingPage = () => {
                   <div className="space-y-4">
                     {/* Message with reactions */}
                     <div className="flex gap-2 items-end">
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#20E0AA]/30 to-[#20E0AA]/10 shrink-0" />
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#20E0AA]/30 to-[#20E0AA]/10 shrink-0 flex items-center justify-center text-[8px] font-bold text-[#20E0AA]/70">
+                        J
+                      </div>
                       <div>
                         <div className="bg-white/5 border border-white/8 px-3 py-2 rounded-2xl rounded-bl-sm">
                           <div className="text-xs text-gray-300">
                             The new landing page looks incredible!
                           </div>
                         </div>
-                        <div className="flex gap-1.5 mt-1.5 ml-1">
-                          <div className="flex items-center gap-1 bg-[#34F080]/10 border border-[#34F080]/20 rounded-full px-2 py-0.5">
+                        <div className="flex gap-1.5 -mt-1 relative z-10 ml-1">
+                          <div className="flex items-center gap-1 bg-[#1a2436] border border-[#34F080]/20 rounded-full px-2 py-0.5">
                             <AnimatedEmoji emoji="👍" size={14} />
                             <span className="text-[9px] font-bold text-[#34F080]">
                               2
                             </span>
                           </div>
-                          <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
+                          <div className="flex items-center gap-1 bg-[#1a2436] border border-white/10 rounded-full px-2 py-0.5">
                             <AnimatedEmoji emoji="❤️" size={14} />
                             <span className="text-[9px] font-bold text-gray-400">
                               3
                             </span>
                           </div>
-                          <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
+                          <div className="flex items-center gap-1 bg-[#1a2436] border border-white/10 rounded-full px-2 py-0.5">
                             <AnimatedEmoji emoji="🔥" size={14} />
                             <span className="text-[9px] font-bold text-gray-400">
                               1
@@ -759,7 +851,9 @@ export const LandingPage = () => {
                     </div>
                     {/* Reply preview + message */}
                     <div className="flex gap-2 items-end">
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#20E0AA]/30 to-[#20E0AA]/10 shrink-0" />
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#20E0AA]/30 to-[#20E0AA]/10 shrink-0 flex items-center justify-center text-[8px] font-bold text-[#20E0AA]/70">
+                        J
+                      </div>
                       <div className="bg-white/5 border border-white/8 rounded-2xl rounded-bl-sm overflow-hidden max-w-[85%]">
                         <div className="bg-white/3 border-l-2 border-[#20E0AA] px-3 py-1.5 mx-2 mt-2 rounded-r-lg">
                           <div className="text-[9px] text-[#20E0AA] font-bold">
@@ -778,7 +872,9 @@ export const LandingPage = () => {
                     </div>
                     {/* Big emoji reply */}
                     <div className="flex gap-2 items-end">
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#20E0AA]/30 to-[#20E0AA]/10 shrink-0" />
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#20E0AA]/30 to-[#20E0AA]/10 shrink-0 flex items-center justify-center text-[8px] font-bold text-[#20E0AA]/70">
+                        J
+                      </div>
                       <div className="flex items-center gap-1 py-1">
                         <AnimatedEmoji emoji="👍" size={48} />
                         <AnimatedEmoji emoji="💯" size={48} />
@@ -806,7 +902,7 @@ export const LandingPage = () => {
           </div>
 
           {/* Feature 3: Smart Inbox */}
-          <div className="showcase-feature grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16 items-center">
+          <div className="showcase-feature grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16 items-center mb-16 md:mb-32">
             <div>
               <div className="inline-flex items-center gap-2 text-[10px] font-black tracking-[0.3em] uppercase text-[#40B8E0] mb-4 md:mb-6">
                 <ShieldCheck className="w-4 h-4" />
@@ -816,10 +912,10 @@ export const LandingPage = () => {
                 Your inbox. Your rules.
               </h3>
               <p className="text-base md:text-lg text-gray-400 font-medium leading-relaxed">
-                Messages from people you don't follow land in Requests — not
-                your main inbox. Accept to start chatting, block to dismiss.
-                Classification uses on-chain follows and associations. No
-                backend, no middleman.
+                Messages from strangers land in Requests — not your main inbox.
+                Set custom filters like minimum DESO balance or verified profile
+                to auto-sort who gets through. Accept, block, or dismiss — all
+                enforced on-chain with no backend.
               </p>
             </div>
             <div className="landing-mockup-wrap">
@@ -839,7 +935,9 @@ export const LandingPage = () => {
                   <div className="space-y-3">
                     <div className="bg-white/3 border border-white/5 rounded-xl p-3">
                       <div className="flex items-center gap-3 mb-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3090D0]/30 to-[#3090D0]/10 shrink-0" />
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3090D0]/30 to-[#3090D0]/10 shrink-0 flex items-center justify-center text-[9px] font-bold text-[#3090D0]/70">
+                          CF
+                        </div>
                         <div className="text-left flex-1 min-w-0">
                           <div className="text-xs font-bold text-gray-300">
                             CryptoFan_42
@@ -860,7 +958,9 @@ export const LandingPage = () => {
                     </div>
                     <div className="bg-white/3 border border-white/5 rounded-xl p-3">
                       <div className="flex items-center gap-3 mb-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-600 to-gray-800 shrink-0" />
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-600 to-gray-800 shrink-0 flex items-center justify-center text-[9px] font-bold text-gray-400">
+                          NU
+                        </div>
                         <div className="text-left flex-1 min-w-0">
                           <div className="text-xs font-bold text-gray-300">
                             NewUser_2024
@@ -890,6 +990,176 @@ export const LandingPage = () => {
             </div>
           </div>
 
+          {/* Feature 4: Tipping */}
+          <div className="showcase-feature grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16 items-center mb-16 md:mb-32">
+            <div className="order-2 lg:order-1 landing-mockup-wrap">
+              <div className="landing-mockup-inner face-right">
+                <div className="landing-glass-card rounded-3xl p-5 md:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
+                  <div className="space-y-4">
+                    {/* Message with tip pills below (like reaction pills) */}
+                    <div className="flex gap-2 items-end">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#2775ca]/30 to-[#2775ca]/10 shrink-0 flex items-center justify-center text-[8px] font-bold text-[#2775ca]/70">
+                        K
+                      </div>
+                      <div>
+                        <div className="bg-white/5 border border-white/8 px-3 py-2 rounded-2xl rounded-bl-sm">
+                          <div className="text-xs text-gray-300">
+                            Just shipped the new landing page! 🚀
+                          </div>
+                        </div>
+                        <div className="flex gap-1.5 -mt-1 relative z-10 ml-1 flex-wrap">
+                          {/* DESO tip pill — blue glassmorphism */}
+                          <div className="flex items-center gap-1 h-[22px] bg-[#2775ca]/[0.08] border border-[#2775ca]/25 rounded-full px-2 py-0.5 backdrop-blur-xl">
+                            <CircleDollarSign className="w-3 h-3 text-[#2775ca]" />
+                            <span className="text-[11px] font-semibold text-[#2775ca]">
+                              $1.50
+                            </span>
+                            <div className="flex -space-x-1.5 ml-0.5">
+                              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-[#34F080]/40 to-[#34F080]/20 ring-1 ring-[#141c2b]" />
+                              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-[#40B8E0]/40 to-[#40B8E0]/20 ring-1 ring-[#141c2b]" />
+                            </div>
+                          </div>
+                          {/* Reaction pill alongside tips */}
+                          <div className="flex items-center gap-1 bg-[#1a2436] border border-white/10 rounded-full px-2 py-0.5">
+                            <AnimatedEmoji emoji="🔥" size={14} />
+                            <span className="text-[9px] font-bold text-gray-400">
+                              4
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sent message */}
+                    <div className="flex items-end justify-end gap-2">
+                      <div className="bg-[#34F080]/10 border border-[#34F080]/15 px-3 py-2 rounded-2xl rounded-br-sm max-w-[85%]">
+                        <div className="text-xs text-gray-200">
+                          Amazing work — this deserves a tip! 🎉
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Standalone USDC tip message (receipt style) */}
+                    <div className="flex gap-2 items-end">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#20E0AA]/30 to-[#20E0AA]/10 shrink-0 flex items-center justify-center text-[8px] font-bold text-[#20E0AA]/70">
+                        L
+                      </div>
+                      <div className="bg-white/5 border border-white/8 px-3 py-2 rounded-2xl rounded-bl-sm">
+                        <div className="flex items-center gap-1.5">
+                          <CircleDollarSign className="w-4 h-4 text-[#34F080]" />
+                          <span className="text-sm font-bold text-[#34F080]">
+                            $2.00
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">
+                          2.00 USDC
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-white/5 text-center">
+                    <span className="text-[9px] text-gray-600 font-bold uppercase tracking-widest">
+                      Atomic on-chain transactions · instant delivery
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="order-1 lg:order-2">
+              <div className="inline-flex items-center gap-2 text-[10px] font-black tracking-[0.3em] uppercase text-[#34F080] mb-4 md:mb-6">
+                <Coins className="w-4 h-4" />
+                Instant Tips
+              </div>
+              <h3 className="text-2xl md:text-5xl font-black tracking-tight mb-4 md:mb-6 leading-tight">
+                Tip anyone.{" "}
+                <span className="landing-text-logo-gradient">
+                  No middleman.
+                </span>
+              </h3>
+              <p className="text-base md:text-lg text-gray-400 font-medium leading-relaxed">
+                Send DESO or USDC to anyone in a conversation. Tips under $0.10
+                have zero platform fees. Everything happens in a single atomic
+                transaction — instant, verifiable, and entirely on-chain.
+              </p>
+            </div>
+          </div>
+
+          {/* Feature 5: Paid DMs */}
+          <div className="showcase-feature grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16 items-center mb-16 md:mb-32">
+            <div>
+              <div className="inline-flex items-center gap-2 text-[10px] font-black tracking-[0.3em] uppercase text-[#40B8E0] mb-4 md:mb-6">
+                <DollarSign className="w-4 h-4" />
+                Paid DMs
+              </div>
+              <h3 className="text-2xl md:text-5xl font-black tracking-tight mb-4 md:mb-6 leading-tight">
+                Get paid for{" "}
+                <span className="landing-text-logo-gradient">
+                  your attention.
+                </span>
+              </h3>
+              <p className="text-base md:text-lg text-gray-400 font-medium leading-relaxed">
+                Set a price for DMs from people you haven't chatted with. Their
+                payment is bundled with the first message in a single atomic
+                transaction. Once you reply, the conversation is free. Your
+                price, your rules — enforced by the blockchain.
+              </p>
+            </div>
+            <div className="landing-mockup-wrap">
+              <div className="landing-mockup-inner">
+                <div className="landing-glass-card rounded-3xl p-5 md:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#40B8E0] mb-4">
+                    Inbox Rules
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="text-[11px] text-gray-400 mb-2 font-bold">
+                        Price per message
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-1.5 bg-white/5 rounded-full relative">
+                          <div className="absolute left-0 top-0 h-full w-[40%] bg-gradient-to-r from-[#40B8E0] to-[#3090D0] rounded-full" />
+                          <div className="absolute top-1/2 -translate-y-1/2 left-[40%] w-3 h-3 bg-white rounded-full shadow-lg border-2 border-[#40B8E0]" />
+                        </div>
+                        <span className="text-sm font-black text-white">
+                          $1.00
+                        </span>
+                      </div>
+                    </div>
+                    <div className="bg-white/3 border border-white/5 rounded-xl p-3">
+                      <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
+                        Free pass filter
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-gray-400">
+                            Require DeSo profile
+                          </span>
+                          <div className="w-8 h-[18px] bg-[#34F080]/30 rounded-full relative shrink-0">
+                            <div className="absolute right-[3px] top-[3px] w-3 h-3 bg-[#34F080] rounded-full" />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-gray-400">
+                            Min DESO balance
+                          </span>
+                          <span className="text-[11px] font-bold text-white">
+                            1 DESO
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-[#40B8E0]/5 border border-[#40B8E0]/15 rounded-xl p-3">
+                      <div className="text-[11px] text-[#40B8E0] font-medium">
+                        Senders who pass your filter message free. Everyone else
+                        pays $1.00/msg.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Mini Features Grid */}
           <div className="mt-16 md:mt-28">
             <div className="showcase-heading text-center mb-8 md:mb-12">
@@ -898,56 +1168,63 @@ export const LandingPage = () => {
               </p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-              {[
-                {
-                  color: "#34F080",
-                  title: "Edit & Delete",
-                  desc: "Fix typos or remove messages after sending",
-                },
-                {
-                  color: "#20E0AA",
-                  title: "Typing Indicators",
-                  desc: "See when someone is composing a reply",
-                },
-                {
-                  color: "#40B8E0",
-                  title: "Push Notifications",
-                  desc: "Real-time alerts via WebSocket relay",
-                },
-                {
-                  color: "#3090D0",
-                  title: "Mute Conversations",
-                  desc: "Silence noisy chats without leaving",
-                },
-                {
-                  color: "#34F080",
-                  title: "Send $DESO",
-                  desc: "Tip friends with crypto in any chat",
-                },
-                {
-                  color: "#20E0AA",
-                  title: "Multi-Account",
-                  desc: "Switch between DeSo identities instantly",
-                },
-                {
-                  color: "#40B8E0",
-                  title: "Message Status",
-                  desc: "Sending, sent, and confirmed indicators",
-                },
-                {
-                  color: "#3090D0",
-                  title: "Leave & Archive",
-                  desc: "Leave groups and rejoin anytime from Archived",
-                },
-              ].map((f) => (
+              {(
+                [
+                  {
+                    icon: PenLine,
+                    color: "#34F080",
+                    title: "Edit & Delete",
+                    desc: "Fix typos or remove messages after sending",
+                  },
+                  {
+                    icon: MessageSquareMore,
+                    color: "#20E0AA",
+                    title: "Typing Indicators",
+                    desc: "See when someone is composing a reply",
+                  },
+                  {
+                    icon: Bell,
+                    color: "#40B8E0",
+                    title: "Push Notifications",
+                    desc: "Real-time alerts via WebSocket relay",
+                  },
+                  {
+                    icon: BellOff,
+                    color: "#3090D0",
+                    title: "Mute Conversations",
+                    desc: "Silence noisy chats without leaving",
+                  },
+                  {
+                    icon: Languages,
+                    color: "#34F080",
+                    title: "Auto-Translate",
+                    desc: "Messages translated to your language in real-time",
+                  },
+                  {
+                    icon: UserCog,
+                    color: "#20E0AA",
+                    title: "Multi-Account",
+                    desc: "Switch between DeSo identities instantly",
+                  },
+                  {
+                    icon: CheckCheck,
+                    color: "#40B8E0",
+                    title: "Message Status",
+                    desc: "Sending, sent, and confirmed indicators",
+                  },
+                  {
+                    icon: AtSign,
+                    color: "#3090D0",
+                    title: "@Mentions",
+                    desc: "Tag people in group conversations",
+                  },
+                ] as const
+              ).map((f) => (
                 <div
                   key={f.title}
                   className="showcase-mini landing-glass-card p-4 md:p-5 rounded-2xl text-left"
                 >
-                  <div
-                    className="w-2 h-2 rounded-full mb-3"
-                    style={{ background: f.color }}
-                  />
+                  <f.icon className="w-5 h-5 mb-3" style={{ color: f.color }} />
                   <div className="text-sm font-bold text-white mb-1">
                     {f.title}
                   </div>
@@ -1136,65 +1413,60 @@ export const LandingPage = () => {
 
           {/* Community preview cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10 md:mb-16">
-            {[
-              {
-                name: "DeSo Builders",
-                desc: "Building the future of decentralized social. Share projects, get feedback, collaborate.",
-                members: 128,
-                color: "#34F080",
-                initials: "DB",
-              },
-              {
-                name: "Crypto Trading Hub",
-                desc: "Market analysis, trade setups, and real-time discussion. All skill levels welcome.",
-                members: 256,
-                color: "#20E0AA",
-                initials: "CT",
-              },
-              {
-                name: "Web3 Design Studio",
-                desc: "UI/UX designers working on decentralized products. Portfolio reviews, job leads, inspiration.",
-                members: 89,
-                color: "#40B8E0",
-                initials: "WD",
-              },
-            ].map((group) => (
-              <div
-                key={group.name}
-                className="community-card landing-glass-card rounded-3xl p-6 md:p-8 text-left"
-              >
-                <div className="flex items-center gap-3.5 mb-4">
-                  <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-black text-black shrink-0"
-                    style={{
-                      background: `linear-gradient(135deg, ${group.color}, ${group.color}80)`,
-                    }}
-                  >
-                    {group.initials}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-base font-bold text-white truncate">
-                      {group.name}
-                    </h4>
-                    <p className="text-[11px] text-gray-500">
-                      {group.members} members
-                    </p>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-400 leading-relaxed mb-5 line-clamp-2">
-                  {group.desc}
-                </p>
-                <div
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-black text-black"
-                  style={{
-                    background: `linear-gradient(135deg, ${group.color}, ${group.color}90)`,
-                  }}
+            {communities.map((listing) => {
+              const displayName =
+                listing.groupDisplayName ??
+                listing.groupKeyName.replace(/\0/g, "");
+              const ownerUsername = listing.ownerProfile?.Username;
+              return (
+                <a
+                  key={listing.associationId}
+                  href={
+                    listing.inviteCode
+                      ? buildInviteUrl(listing.inviteCode)
+                      : "/community"
+                  }
+                  className="community-card landing-glass-card rounded-3xl p-6 md:p-8 text-left block group"
                 >
-                  Join
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </div>
-              </div>
-            ))}
+                  <div className="flex items-center gap-3.5 mb-4">
+                    <MessagingDisplayAvatar
+                      publicKey={listing.groupKeyName}
+                      groupChat
+                      groupImageUrl={listing.groupImageUrl}
+                      diameter={48}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-base font-bold text-white truncate group-hover:text-[#34F080] transition-colors">
+                        {displayName}
+                      </h4>
+                      {ownerUsername && (
+                        <p className="text-[11px] text-gray-500">
+                          by @{ownerUsername}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {listing.description && (
+                    <p className="text-sm text-gray-400 leading-relaxed mb-5 line-clamp-2">
+                      {listing.description}
+                    </p>
+                  )}
+                  {!listing.description && <div className="mb-5" />}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                      <Users className="w-3.5 h-3.5" />
+                      <span>
+                        {listing.memberCount}
+                        {listing.memberCountCapped ? "+" : ""} members
+                      </span>
+                    </div>
+                    <span className="px-4 py-2 bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black text-xs font-black rounded-full opacity-80 group-hover:opacity-100 transition-opacity">
+                      Join
+                    </span>
+                  </div>
+                </a>
+              );
+            })}
           </div>
 
           <div className="community-cta text-center">
@@ -1257,6 +1529,12 @@ export const LandingPage = () => {
                 <Globe className="w-7 h-7 text-[#34F080]" />
                 <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">
                   Global Network
+                </span>
+              </div>
+              <div className="cta-badge flex flex-col items-center gap-3">
+                <Coins className="w-7 h-7 text-[#20E0AA]" />
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">
+                  Built-in Tips
                 </span>
               </div>
             </div>

@@ -332,7 +332,10 @@
       "src/components/messages/animated-emoji.tsx",
       "src/components/onboarding/pre-signup-tutorial.tsx",
       "src/components/seo-structured-data.tsx",
-      "src/components/public-layout.tsx"
+      "src/components/public-layout.tsx",
+      "src/services/community.service.ts",
+      "src/components/messaging-display-avatar.tsx",
+      "src/utils/invite-link.ts"
     ],
     "exports": [
       "LandingPage"

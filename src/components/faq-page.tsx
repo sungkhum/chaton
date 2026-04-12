@@ -63,6 +63,26 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
     a: "You need a tiny amount of DESO tokens to cover transaction fees, but you don't need to buy any. During signup, you complete a simple CAPTCHA to receive free starter DESO — enough for thousands of messages. You do not need a crypto wallet, exchange account, or any prior crypto experience to start chatting.",
   },
   {
+    q: "How does tipping work in ChatOn?",
+    a: "You can send DESO or USDC tips to anyone in a conversation. Tips are delivered in a single atomic transaction — the payment and any tip message are bundled together so they either both succeed or both fail. Tips under $0.10 have zero platform fees. Tips of $0.10 or more include a 10% platform fee that supports ChatOn development.",
+  },
+  {
+    q: "What are paid DMs?",
+    a: 'Paid DMs let you set a price for messages from new contacts. When someone you haven\'t chatted with sends you a message, their payment is bundled with the message in a single atomic transaction. Once you reply, the conversation becomes free. You can also set a "free pass" filter — for example, requiring senders to have a DeSo profile or a minimum DESO balance — so qualified senders can message you without paying.',
+  },
+  {
+    q: "How does the spam filter work?",
+    a: "ChatOn classifies incoming messages using on-chain data — no backend required. Messages from existing contacts go straight to your Chats tab. Messages from new senders land in Requests. You can set additional filters like requiring a minimum DESO balance or a verified DeSo profile. Senders who meet your criteria are auto-approved; everyone else stays in Requests until you accept or dismiss them.",
+  },
+  {
+    q: "Can ChatOn translate messages automatically?",
+    a: "Yes. ChatOn detects the language of each message when it's sent and can auto-translate messages into your preferred language in real-time. Translation happens client-side and uses a free, privacy-respecting API. You can also manually translate any individual message from the context menu.",
+  },
+  {
+    q: "How do group invite links work?",
+    a: "Group owners can generate a shareable invite link with a short code. Anyone with the link can preview the group and request to join. Owners can also list their group in the public community directory so anyone can discover and join it. Invite links can be revoked and regenerated at any time.",
+  },
+  {
     q: "Is ChatOn open source?",
     a: "Yes. ChatOn's entire codebase is publicly available on GitHub at github.com/sungkhum/chaton. Anyone can inspect the code, verify how encryption works, report issues, or contribute improvements. Open source means you don't have to take our word for it — you can check for yourself.",
   },

@@ -15,6 +15,10 @@ import {
   Bell,
   FileText,
   Reply,
+  Coins,
+  DollarSign,
+  Languages,
+  Filter,
 } from "lucide-react";
 import gsap from "gsap";
 
@@ -53,6 +57,26 @@ const FEATURES = [
     icon: Reply,
     title: "Reply threads",
     desc: "Reply to specific messages with quoted previews to keep conversations organized and easy to follow.",
+  },
+  {
+    icon: Coins,
+    title: "Instant Tips",
+    desc: "Send DESO or USDC tips to anyone in a conversation. Atomic transactions ensure instant, verifiable delivery with zero fees on tips under $0.10.",
+  },
+  {
+    icon: DollarSign,
+    title: "Paid DMs",
+    desc: "Set a price for new DMs from people outside your conversations. Payment is bundled with the first message in a single atomic transaction. Reply once and the conversation is free.",
+  },
+  {
+    icon: Languages,
+    title: "Auto-Translation",
+    desc: "Messages are automatically translated to your preferred language in real-time. Language detection happens at send time, and translation runs client-side.",
+  },
+  {
+    icon: Filter,
+    title: "Spam Filtering",
+    desc: "Set custom filters — minimum DESO balance, verified profile — to control who reaches your inbox. Classification uses on-chain data with no backend.",
   },
   {
     icon: Bell,
