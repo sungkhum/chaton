@@ -726,10 +726,30 @@ export const MessagingApp: FC = () => {
             )
         );
 
+        // Build a map of locally-deleted messages by timestamp so we can
+        // preserve the tombstone when the server hasn't indexed the delete yet.
+        const locallyDeletedByTs = new Map<string, any>();
+        for (const m of currentMessages) {
+          if ((m as any)._deletedLocally) {
+            locallyDeletedByTs.set(m.MessageInfo?.TimestampNanosString, m);
+          }
+        }
+
         // Tag blockchain messages that just confirmed an optimistic entry:
         // transfer _localId (keeps React key stable) and set _status: "confirmed"
         // so the user sees the double-checkmark briefly before it fades out.
         const taggedMessages = updatedMessages.map((m) => {
+          const ts = m.MessageInfo.TimestampNanosString;
+          const localTombstone = locallyDeletedByTs.get(ts);
+          if (localTombstone) {
+            // Server has caught up — use canonical server data
+            if (m.MessageInfo?.ExtraData?.["msg:deleted"]) {
+              return m;
+            }
+            // Server hasn't indexed the delete yet — keep local tombstone
+            return localTombstone;
+          }
+
           const key = msgDedupeKey(
             m.SenderInfo.OwnerPublicKeyBase58Check,
             m.DecryptedMessage,
@@ -4754,6 +4774,9 @@ export const MessagingApp: FC = () => {
                               };
 
                               // Optimistic: replace message with tombstone
+                              // _deletedLocally marker prevents mergeConversationUpdate
+                              // from overwriting the tombstone with stale server data
+                              // before the node indexes the update transaction.
                               setConversations((prev) =>
                                 updateConv(prev, convKey, (c) => ({
                                   ...c,
@@ -4762,7 +4785,9 @@ export const MessagingApp: FC = () => {
                                     timestampNanosString
                                       ? {
                                           ...m,
+                                          _localId: undefined,
                                           DecryptedMessage: "",
+                                          _deletedLocally: true,
                                           MessageInfo: {
                                             ...m.MessageInfo,
                                             ExtraData: deletedExtraData,
