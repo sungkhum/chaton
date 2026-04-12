@@ -9,6 +9,7 @@ import {
   CircleDollarSign,
   FileIcon,
   Image as ImageIcon,
+  LogOut,
   MessageSquarePlus,
   Mic,
   Plus,
@@ -55,6 +56,7 @@ import {
   ConversationMap,
   UNDECRYPTED_PLACEHOLDER,
 } from "../utils/types";
+import { PUBLIC_KEY_LENGTH } from "../utils/constants";
 import type { DecryptedMessageEntryResponse } from "deso-protocol";
 
 /** Render conversation preview text with shimmer for undecrypted and fallback for failed */
@@ -377,6 +379,8 @@ export const MessagingConversationAccount: FC<{
   onAccept: (conversationKey: string, publicKey: string) => void;
   onBlock: (conversationKey: string, publicKey: string) => void;
   onDismiss: (conversationKey: string, publicKey: string) => void;
+  onAcceptGroup: (conversationKey: string) => void;
+  onLeaveGroup: (conversationKey: string) => void;
   onUnarchive: (conversationKey: string) => void;
   onUnarchiveChat: (publicKey: string) => void;
   onUnblock: (publicKey: string) => void;
@@ -411,6 +415,8 @@ export const MessagingConversationAccount: FC<{
   onAccept,
   onBlock,
   onDismiss,
+  onAcceptGroup,
+  onLeaveGroup,
   onUnarchive,
   onUnarchiveChat,
   onUnblock,
@@ -976,6 +982,8 @@ export const MessagingConversationAccount: FC<{
                             Object.entries(requestConversations),
                             selectedConversationPublicKey
                           ).map(([key, value]) => {
+                            const isGroup =
+                              value.ChatType === ChatType.GROUPCHAT;
                             const publicKey = value.firstMessagePublicKey;
                             const chatName = getChatNameFromConversation(
                               value,
@@ -994,6 +1002,16 @@ export const MessagingConversationAccount: FC<{
                             const displayName =
                               shortenLongWord(chatName, 7, 7) ||
                               shortenLongWord(publicKey);
+                            const ownerUsername = isGroup
+                              ? getUsernameByPublicKeyBase58Check[publicKey]
+                              : undefined;
+                            const groupImageUrl = isGroup
+                              ? getGroupImageUrl(
+                                  allAccessGroups,
+                                  key.slice(0, PUBLIC_KEY_LENGTH),
+                                  key.slice(PUBLIC_KEY_LENGTH)
+                                )
+                              : undefined;
 
                             return (
                               <div key={`request-thread-${key}`}>
@@ -1004,11 +1022,19 @@ export const MessagingConversationAccount: FC<{
                                     onClick={() => onClick(key)}
                                     className="flex items-center gap-3 cursor-pointer"
                                   >
-                                    <MessagingDisplayAvatar
-                                      username={chatName}
-                                      publicKey={publicKey}
-                                      diameter={48}
-                                    />
+                                    {isGroup && groupImageUrl ? (
+                                      <img
+                                        src={groupImageUrl}
+                                        alt={chatName}
+                                        className="w-12 h-12 rounded-full object-cover shrink-0"
+                                      />
+                                    ) : (
+                                      <MessagingDisplayAvatar
+                                        username={chatName}
+                                        publicKey={publicKey}
+                                        diameter={48}
+                                      />
+                                    )}
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center justify-between mb-0.5">
                                         <span className="truncate text-sm text-white font-semibold">
@@ -1018,47 +1044,78 @@ export const MessagingConversationAccount: FC<{
                                           {timestamp}
                                         </span>
                                       </div>
-                                      {value.messages[0] && (
+                                      {isGroup && ownerUsername ? (
                                         <p className="truncate text-sm text-gray-500">
-                                          <PreviewText
-                                            msg={value.messages[0]}
-                                          />
+                                          Added by @{ownerUsername}
                                         </p>
+                                      ) : (
+                                        value.messages[0] && (
+                                          <p className="truncate text-sm text-gray-500">
+                                            <PreviewText
+                                              msg={value.messages[0]}
+                                            />
+                                          </p>
+                                        )
                                       )}
                                     </div>
                                   </div>
 
-                                  <div className="flex items-center gap-2 mt-2.5">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        onAccept(key, publicKey);
-                                      }}
-                                      className="flex-1 flex items-center justify-center gap-1 min-h-[36px] py-1.5 rounded-lg bg-[#34F080]/15 text-[#34F080] text-xs font-bold hover:bg-[#34F080]/25 cursor-pointer transition-colors"
-                                    >
-                                      <Check className="w-3.5 h-3.5" />
-                                      Accept
-                                    </button>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        onBlock(key, publicKey);
-                                      }}
-                                      className="flex-1 flex items-center justify-center gap-1 min-h-[36px] py-1.5 rounded-lg glass-btn-danger text-red-400 text-xs font-bold cursor-pointer transition-colors"
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                      Block
-                                    </button>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        onDismiss(key, publicKey);
-                                      }}
-                                      className="flex-1 flex items-center justify-center min-h-[36px] py-1.5 rounded-lg bg-white/[0.03] text-gray-500 text-xs font-medium hover:bg-white/5 hover:text-gray-300 cursor-pointer transition-colors"
-                                    >
-                                      Dismiss
-                                    </button>
-                                  </div>
+                                  {isGroup ? (
+                                    <div className="flex items-center gap-2 mt-2.5">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onAcceptGroup(key);
+                                        }}
+                                        className="flex-1 flex items-center justify-center gap-1 min-h-[36px] py-1.5 rounded-lg bg-[#34F080]/15 text-[#34F080] text-xs font-bold hover:bg-[#34F080]/25 cursor-pointer transition-colors"
+                                      >
+                                        <Check className="w-3.5 h-3.5" />
+                                        Accept
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onLeaveGroup(key);
+                                        }}
+                                        className="flex-1 flex items-center justify-center gap-1 min-h-[36px] py-1.5 rounded-lg bg-white/[0.03] text-gray-500 text-xs font-medium hover:bg-white/5 hover:text-gray-300 cursor-pointer transition-colors"
+                                      >
+                                        <LogOut className="w-3.5 h-3.5" />
+                                        Leave
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-2 mt-2.5">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onAccept(key, publicKey);
+                                        }}
+                                        className="flex-1 flex items-center justify-center gap-1 min-h-[36px] py-1.5 rounded-lg bg-[#34F080]/15 text-[#34F080] text-xs font-bold hover:bg-[#34F080]/25 cursor-pointer transition-colors"
+                                      >
+                                        <Check className="w-3.5 h-3.5" />
+                                        Accept
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onBlock(key, publicKey);
+                                        }}
+                                        className="flex-1 flex items-center justify-center gap-1 min-h-[36px] py-1.5 rounded-lg glass-btn-danger text-red-400 text-xs font-bold cursor-pointer transition-colors"
+                                      >
+                                        <X className="w-3.5 h-3.5" />
+                                        Block
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onDismiss(key, publicKey);
+                                        }}
+                                        className="flex-1 flex items-center justify-center min-h-[36px] py-1.5 rounded-lg bg-white/[0.03] text-gray-500 text-xs font-medium hover:bg-white/5 hover:text-gray-300 cursor-pointer transition-colors"
+                                      >
+                                        Dismiss
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="ml-[76px] border-b border-white/5" />
                               </div>

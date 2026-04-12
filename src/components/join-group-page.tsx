@@ -22,6 +22,7 @@ import { useStore } from "../store";
 import { extractInviteCode, resolveInviteCode } from "../utils/invite-link";
 import {
   cleanupOwnJoinRequests,
+  createGroupAcceptedAssociation,
   createJoinRequest,
   hasExistingJoinRequest,
 } from "../services/conversations.service";
@@ -234,6 +235,12 @@ export const JoinGroupPage = () => {
         groupInfo.ownerKey,
         groupInfo.groupKeyName
       );
+      // Pre-accept so the group goes to Chats when the owner approves
+      createGroupAcceptedAssociation(
+        appUser.PublicKeyBase58Check,
+        groupInfo.ownerKey,
+        groupInfo.groupKeyName
+      ).catch(() => {}); // fire-and-forget, non-critical
       // Redirect into the app and show confirmation modal there
       redirectToAppWithConfirmation(groupInfo, "submitted");
     } catch (err: any) {

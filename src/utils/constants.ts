@@ -18,6 +18,11 @@ export const ASSOCIATION_TYPE_GROUP_ARCHIVED = "chat:group-archived";
 export const ASSOCIATION_TYPE_CHAT_ARCHIVED = "chaton:chat-archived";
 export const ASSOCIATION_VALUE_ARCHIVED = "archived";
 
+// Group accepted — user consented to membership in a group they were added to.
+// TargetUser = group owner's public key, Value = access group key name.
+export const ASSOCIATION_TYPE_GROUP_ACCEPTED = "chaton:group-accepted";
+export const ASSOCIATION_VALUE_GROUP_ACCEPTED = "accepted";
+
 // Dismiss — hides a chat request without blocking.
 // TargetUser = the sender's public key, Value = "dismissed".
 export const ASSOCIATION_TYPE_DISMISSED = "chaton:chat-dismissed";

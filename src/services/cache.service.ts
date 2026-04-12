@@ -146,6 +146,8 @@ interface CachedClassification {
   blockedAssociationIds: [string, string][];
   archivedGroups: string[];
   archivedGroupAssociationIds: [string, string][];
+  acceptedGroups?: string[];
+  acceptedGroupAssociationIds?: [string, string][];
   archivedChats: string[];
   archivedChatAssociationIds: [string, string][];
   dismissedUsers: string[];
@@ -162,6 +164,8 @@ export interface ClassificationData {
   blockedAssociationIds: Map<string, string>;
   archivedGroups: Set<string>;
   archivedGroupAssociationIds: Map<string, string>;
+  acceptedGroups: Set<string>;
+  acceptedGroupAssociationIds: Map<string, string>;
   archivedChats: Set<string>;
   archivedChatAssociationIds: Map<string, string>;
   dismissedUsers: Set<string>;
@@ -183,6 +187,10 @@ export function cacheClassificationData(
     archivedGroups: Array.from(data.archivedGroups),
     archivedGroupAssociationIds: Array.from(
       data.archivedGroupAssociationIds.entries()
+    ),
+    acceptedGroups: Array.from(data.acceptedGroups),
+    acceptedGroupAssociationIds: Array.from(
+      data.acceptedGroupAssociationIds.entries()
     ),
     archivedChats: Array.from(data.archivedChats),
     archivedChatAssociationIds: Array.from(
@@ -211,6 +219,8 @@ export function getCachedClassificationData(
     blockedAssociationIds: new Map(raw.blockedAssociationIds),
     archivedGroups: new Set(raw.archivedGroups || []),
     archivedGroupAssociationIds: new Map(raw.archivedGroupAssociationIds || []),
+    acceptedGroups: new Set(raw.acceptedGroups || []),
+    acceptedGroupAssociationIds: new Map(raw.acceptedGroupAssociationIds || []),
     archivedChats: new Set(raw.archivedChats || []),
     archivedChatAssociationIds: new Map(raw.archivedChatAssociationIds || []),
     dismissedUsers: new Set(raw.dismissedUsers || []),

@@ -73,9 +73,11 @@ import {
   invalidateMessageCache,
   encryptAndSendNewMessage,
   encryptAndUpdateMessage,
+  fetchAcceptedGroups,
   fetchArchivedGroups,
   fetchAssociationsByType,
   fetchChatAssociations,
+  createGroupAcceptedAssociation,
   fetchJoinRequestCountsForOwner,
   fetchMessageThreadsRaw,
   fetchFollowedUsers,
@@ -307,6 +309,7 @@ export const MessagingApp: FC = () => {
     initiatedChats,
     chatRequestsLoaded,
     archivedGroups,
+    acceptedGroups,
     archivedChats,
     dismissedUsers,
     paidUsers,
@@ -325,6 +328,7 @@ export const MessagingApp: FC = () => {
       initiatedChats: s.initiatedChats,
       chatRequestsLoaded: s.chatRequestsLoaded,
       archivedGroups: s.archivedGroups,
+      acceptedGroups: s.acceptedGroups,
       archivedChats: s.archivedChats,
       dismissedUsers: s.dismissedUsers,
       paidUsers: s.paidUsers,
@@ -347,6 +351,9 @@ export const MessagingApp: FC = () => {
   const rollbackArchive = useStore((s) => s.rollbackArchive);
   const rollbackUnarchive = useStore((s) => s.rollbackUnarchive);
   const mergeArchivedGroupIds = useStore((s) => s.mergeArchivedGroupIds);
+  const acceptGroup = useStore((s) => s.acceptGroup);
+  const rollbackAcceptGroup = useStore((s) => s.rollbackAcceptGroup);
+  const mergeAcceptedGroupIds = useStore((s) => s.mergeAcceptedGroupIds);
   const archiveChat = useStore((s) => s.archiveChat);
   const unarchiveChat = useStore((s) => s.unarchiveChat);
   const rollbackArchiveChat = useStore((s) => s.rollbackArchiveChat);
@@ -1356,6 +1363,22 @@ export const MessagingApp: FC = () => {
           requestConversations: {} as ConversationMap,
           archivedConversations: {} as ConversationMap,
         };
+
+      // Pre-compute which groups the user has sent a message in (implicit acceptance)
+      const myPk = appUser.PublicKeyBase58Check;
+      const groupsWithMyMessages = new Set<string>();
+      for (const [key, convo] of Object.entries(conversations)) {
+        if (convo.ChatType !== ChatType.GROUPCHAT) continue;
+        if (
+          convo.messages?.some(
+            (m) =>
+              m.IsSender || m.SenderInfo?.OwnerPublicKeyBase58Check === myPk
+          )
+        ) {
+          groupsWithMyMessages.add(key);
+        }
+      }
+
       const chats: ConversationMap = {};
       const requests: ConversationMap = {};
       const archived: ConversationMap = {};
@@ -1363,7 +1386,7 @@ export const MessagingApp: FC = () => {
         const cls = classifyConversation(
           convo,
           key,
-          appUser.PublicKeyBase58Check,
+          myPk,
           followedUsers,
           approvedUsers,
           blockedUsers,
@@ -1373,7 +1396,9 @@ export const MessagingApp: FC = () => {
           dismissedUsers,
           paidUsers,
           spamFilter,
-          senderProfiles
+          senderProfiles,
+          acceptedGroups,
+          groupsWithMyMessages
         );
         if (cls === "chat") chats[key] = convo;
         else if (cls === "request") requests[key] = convo;
@@ -1392,6 +1417,7 @@ export const MessagingApp: FC = () => {
       blockedUsers,
       initiatedChats,
       archivedGroups,
+      acceptedGroups,
       archivedChats,
       dismissedUsers,
       paidUsers,
@@ -1536,6 +1562,52 @@ export const MessagingApp: FC = () => {
     } catch {
       rollbackApproval(publicKey);
       toast.error("Failed to accept chat request");
+    }
+  };
+
+  const handleAcceptGroupRequest = async (conversationKey: string) => {
+    if (!appUser) return;
+    acceptGroup(conversationKey);
+    if (searchQuery) {
+      clearSearch();
+      setSearchClearTrigger((n) => n + 1);
+    }
+    const ownerKey = conversationKey.slice(0, PUBLIC_KEY_LENGTH);
+    const groupKeyName = conversationKey.slice(PUBLIC_KEY_LENGTH);
+    try {
+      await createGroupAcceptedAssociation(
+        appUser.PublicKeyBase58Check,
+        ownerKey,
+        groupKeyName
+      );
+      fetchAcceptedGroups(appUser.PublicKeyBase58Check)
+        .then((ids) => mergeAcceptedGroupIds(ids))
+        .catch(() => {});
+    } catch {
+      rollbackAcceptGroup(conversationKey);
+      toast.error("Failed to accept group");
+    }
+  };
+
+  const handleLeaveGroupRequest = async (conversationKey: string) => {
+    if (!appUser) return;
+    archiveGroup(conversationKey);
+    cleanupAfterClassificationChange(conversationKey);
+    const ownerKey = conversationKey.slice(0, PUBLIC_KEY_LENGTH);
+    const groupKeyName = conversationKey.slice(PUBLIC_KEY_LENGTH);
+    try {
+      await createArchiveAssociation(
+        appUser.PublicKeyBase58Check,
+        ownerKey,
+        groupKeyName
+      );
+      toast("Left group");
+      fetchArchivedGroups(appUser.PublicKeyBase58Check)
+        .then((ids) => mergeArchivedGroupIds(ids))
+        .catch(() => {});
+    } catch {
+      rollbackArchive(conversationKey);
+      toast.error("Failed to leave group");
     }
   };
 
@@ -2310,14 +2382,16 @@ export const MessagingApp: FC = () => {
           fetchFollowedUsers(publicKey),
           fetchChatAssociations(publicKey),
           fetchArchivedGroups(publicKey),
+          fetchAcceptedGroups(publicKey),
         ])
-          .then(([mutual, assoc, archivedMap]) => {
+          .then(([mutual, assoc, archivedMap, acceptedMap]) => {
             const approvedSet = new Set(assoc.approved.keys());
             const blockedSet = new Set(assoc.blocked.keys());
             const archivedSet = new Set(archivedMap.keys());
             const archivedChatsSet = new Set(assoc.archivedChats.keys());
             const dismissedSet = new Set(assoc.dismissed.keys());
             const paidSet = new Set(assoc.paid.keys());
+            const acceptedSet = new Set(acceptedMap.keys());
             setClassificationData(
               mutual,
               approvedSet,
@@ -2331,7 +2405,9 @@ export const MessagingApp: FC = () => {
               dismissedSet,
               assoc.dismissed,
               paidSet,
-              assoc.paid
+              assoc.paid,
+              acceptedSet,
+              acceptedMap
             );
           })
           .catch(() => {});
@@ -2675,7 +2751,9 @@ export const MessagingApp: FC = () => {
           cachedClassification.dismissedUsers,
           cachedClassification.dismissedAssociationIds,
           cachedClassification.paidUsers,
-          cachedClassification.paidAssociationIds
+          cachedClassification.paidAssociationIds,
+          cachedClassification.acceptedGroups,
+          cachedClassification.acceptedGroupAssociationIds
         );
       }
 
@@ -2795,14 +2873,16 @@ export const MessagingApp: FC = () => {
           fetchFollowedUsers(publicKey),
           fetchChatAssociations(publicKey),
           fetchArchivedGroups(publicKey),
+          fetchAcceptedGroups(publicKey),
         ])
-          .then(([mutual, assoc, archivedMap]) => {
+          .then(([mutual, assoc, archivedMap, acceptedMap]) => {
             const approvedSet = new Set(assoc.approved.keys());
             const blockedSet = new Set(assoc.blocked.keys());
             const archivedSet = new Set(archivedMap.keys());
             const archivedChatsSet = new Set(assoc.archivedChats.keys());
             const dismissedSet = new Set(assoc.dismissed.keys());
             const paidSet = new Set(assoc.paid.keys());
+            const acceptedSet = new Set(acceptedMap.keys());
             setClassificationData(
               mutual,
               approvedSet,
@@ -2816,7 +2896,9 @@ export const MessagingApp: FC = () => {
               dismissedSet,
               assoc.dismissed,
               paidSet,
-              assoc.paid
+              assoc.paid,
+              acceptedSet,
+              acceptedMap
             );
           })
           .catch((e) => {
@@ -3991,6 +4073,37 @@ export const MessagingApp: FC = () => {
                         );
                       }
 
+                      // Lazy acceptance: if user opens a group they're already
+                      // participating in (classified as "chat" via message check)
+                      // but haven't explicitly accepted, create the on-chain
+                      // association in the background. Skip groups in Requests —
+                      // those require explicit Accept action.
+                      if (appUser) {
+                        const convo = conversations[key];
+                        if (
+                          convo?.ChatType === ChatType.GROUPCHAT &&
+                          convo.firstMessagePublicKey !==
+                            appUser.PublicKeyBase58Check &&
+                          !acceptedGroups.has(key) &&
+                          !requestConversations[key]
+                        ) {
+                          acceptGroup(key);
+                          const ownerPk = key.slice(0, PUBLIC_KEY_LENGTH);
+                          const gkn = key.slice(PUBLIC_KEY_LENGTH);
+                          createGroupAcceptedAssociation(
+                            appUser.PublicKeyBase58Check,
+                            ownerPk,
+                            gkn
+                          )
+                            .then(() =>
+                              fetchAcceptedGroups(
+                                appUser.PublicKeyBase58Check
+                              ).then((ids) => mergeAcceptedGroupIds(ids))
+                            )
+                            .catch(() => {});
+                        }
+                      }
+
                       setLockRefresh(true);
 
                       // Start the network fetch immediately — don't wait for
@@ -4077,6 +4190,8 @@ export const MessagingApp: FC = () => {
                     onAccept={handleAcceptRequest}
                     onBlock={handleBlockRequest}
                     onDismiss={handleDismissRequest}
+                    onAcceptGroup={handleAcceptGroupRequest}
+                    onLeaveGroup={handleLeaveGroupRequest}
                     onUnarchive={handleUnarchiveGroup}
                     onUnarchiveChat={handleUnarchiveChat}
                     onUnblock={handleUnblock}

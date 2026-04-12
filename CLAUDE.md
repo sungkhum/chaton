@@ -56,23 +56,30 @@ on-chain follows and User Associations (no backend needed).
 
 ### Classification order (first match wins)
 
-1. Group chats + `chat:group-archived` → Archived
-2. Group chats → Chats
-3. `chaton:chat-blocked` association exists → hidden (blocked)
-4. `chaton:chat-dismissed` association exists → hidden (dismissed)
-5. `chaton:chat-archived` association exists → Archived
-6. Current user follows the other user on DeSo → Chats
-7. `chaton:chat-approved` association exists → Chats
-8. User paid the current user → Chats
-9. User initiated the conversation (via search) → Chats
-10. Current user sent the first message → Chats
-11. Spam filter enabled and sender passes filter criteria → Chats
-12. Everything else → Requests
+**Group chats:**
+1. `chat:group-archived` → Archived
+2. Current user is the group owner → Chats
+3. `chaton:group-accepted` association exists → Chats
+4. Current user has sent a message in the group → Chats (lazy acceptance)
+5. Otherwise → Requests (group was added without user consent)
+
+**DM conversations:**
+1. `chaton:chat-blocked` association exists → hidden (blocked)
+2. `chaton:chat-dismissed` association exists → hidden (dismissed)
+3. `chaton:chat-archived` association exists → Archived
+4. Current user follows the other user on DeSo → Chats
+5. `chaton:chat-approved` association exists → Chats
+6. User paid the current user → Chats
+7. User initiated the conversation (via search) → Chats
+8. Current user sent the first message → Chats
+9. Spam filter enabled and sender passes filter criteria → Chats
+10. Everything else → Requests
 
 ### Data flow
 
-- On first load, `fetchMutualFollows` and `fetchChatAssociations` run in `Promise.all`
-  alongside `getConversations`. Results cached in Zustand store for the session.
+- On first load, `fetchFollowedUsers`, `fetchChatAssociations`, `fetchArchivedGroups`,
+  and `fetchAcceptedGroups` run in `Promise.all` alongside `getConversations`.
+  Results cached in Zustand store for the session.
 - `classifyConversation()` is a pure function. A `useMemo` in messaging-app.tsx derives
   `chatConversations` and `requestConversations` from the single `conversations` state
   plus the store Sets. This means all existing optimistic update code works unchanged.
@@ -90,6 +97,12 @@ on-chain follows and User Associations (no backend needed).
 - `chat:group-archived` / value `<AccessGroupKeyName>` — user left/archived a group chat
   (generic `chat:` prefix — any DeSo messaging app can query this to check if a user
   has left a group. Target = group owner's public key, Value = group key name.)
+- `chaton:group-accepted` / value `<AccessGroupKeyName>` — user consented to group
+  membership. Transactor = the user, Target = group owner's public key. Created
+  explicitly when accepting a group request, or pre-emptively when requesting to join
+  via invite link. Groups without this association (and where the user hasn't sent a
+  message) appear in the Requests tab. Lazy-created in the background when a user
+  opens an existing group they've participated in.
 - `chaton:group-join-request` / value `<AccessGroupKeyName>` — user requests to join a
   group via invite link. Transactor = requesting user, Target = group owner. Stays
   on-chain as a receipt after approval; admin panel filters by current membership.

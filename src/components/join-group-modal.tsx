@@ -21,6 +21,7 @@ import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
 import { resolveInviteCode } from "../utils/invite-link";
 import {
+  createGroupAcceptedAssociation,
   createJoinRequest,
   hasExistingJoinRequest,
 } from "../services/conversations.service";
@@ -170,6 +171,12 @@ export function JoinGroupModal({
         groupInfo.ownerKey,
         groupInfo.groupKeyName
       );
+      // Pre-accept so the group goes to Chats when the owner approves
+      createGroupAcceptedAssociation(
+        appUser.PublicKeyBase58Check,
+        groupInfo.ownerKey,
+        groupInfo.groupKeyName
+      ).catch(() => {}); // fire-and-forget, non-critical
       setState("submitted");
     } catch (err: any) {
       console.error("Join request failed:", err);

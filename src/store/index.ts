@@ -73,6 +73,10 @@ interface ChatOnState {
   archivedGroups: Set<string>;
   archivedGroupAssociationIds: Map<string, string>;
 
+  // Accepted groups (user consented to membership)
+  acceptedGroups: Set<string>;
+  acceptedGroupAssociationIds: Map<string, string>;
+
   // Archived DM chats
   archivedChats: Set<string>;
   archivedChatAssociationIds: Map<string, string>;
@@ -128,7 +132,9 @@ interface ChatOnState {
     dismissed: Set<string>,
     dismissedIds: Map<string, string>,
     paid?: Set<string>,
-    paidIds?: Map<string, string>
+    paidIds?: Map<string, string>,
+    acceptedGroups?: Set<string>,
+    acceptedGroupIds?: Map<string, string>
   ) => void;
   addInitiatedChat: (publicKey: string) => void;
   approveUser: (publicKey: string) => void;
@@ -140,6 +146,9 @@ interface ChatOnState {
   rollbackArchive: (conversationKey: string) => void;
   rollbackUnarchive: (conversationKey: string, associationId: string) => void;
   mergeArchivedGroupIds: (ids: Map<string, string>) => void;
+  acceptGroup: (conversationKey: string) => void;
+  rollbackAcceptGroup: (conversationKey: string) => void;
+  mergeAcceptedGroupIds: (ids: Map<string, string>) => void;
   archiveChat: (publicKey: string) => void;
   unarchiveChat: (publicKey: string) => void;
   rollbackArchiveChat: (publicKey: string) => void;
@@ -191,6 +200,8 @@ function classificationSnapshot(
     blockedAssociationIds: Map<string, string>;
     archivedGroups: Set<string>;
     archivedGroupAssociationIds: Map<string, string>;
+    acceptedGroups: Set<string>;
+    acceptedGroupAssociationIds: Map<string, string>;
     archivedChats: Set<string>;
     archivedChatAssociationIds: Map<string, string>;
     dismissedUsers: Set<string>;
@@ -211,6 +222,10 @@ function classificationSnapshot(
     archivedGroupAssociationIds:
       overrides.archivedGroupAssociationIds ??
       state.archivedGroupAssociationIds,
+    acceptedGroups: overrides.acceptedGroups ?? state.acceptedGroups,
+    acceptedGroupAssociationIds:
+      overrides.acceptedGroupAssociationIds ??
+      state.acceptedGroupAssociationIds,
     archivedChats: overrides.archivedChats ?? state.archivedChats,
     archivedChatAssociationIds:
       overrides.archivedChatAssociationIds ?? state.archivedChatAssociationIds,
@@ -376,6 +391,10 @@ export const useStore = create<ChatOnState>((set) => ({
   archivedGroups: EMPTY_SET,
   archivedGroupAssociationIds: EMPTY_MAP,
 
+  // Accepted groups
+  acceptedGroups: EMPTY_SET,
+  acceptedGroupAssociationIds: EMPTY_MAP,
+
   // Archived DM chats
   archivedChats: EMPTY_SET,
   archivedChatAssociationIds: EMPTY_MAP,
@@ -490,7 +509,9 @@ export const useStore = create<ChatOnState>((set) => ({
     dismissed,
     dismissedIds,
     paid,
-    paidIds
+    paidIds,
+    acceptedGroupsSet,
+    acceptedGroupIds
   ) =>
     set((state) => {
       const publicKey = state.appUser?.PublicKeyBase58Check;
@@ -503,6 +524,9 @@ export const useStore = create<ChatOnState>((set) => ({
           blockedAssociationIds: blockedIds,
           archivedGroups: archived,
           archivedGroupAssociationIds: archivedIds,
+          acceptedGroups: acceptedGroupsSet ?? state.acceptedGroups,
+          acceptedGroupAssociationIds:
+            acceptedGroupIds ?? state.acceptedGroupAssociationIds,
           archivedChats: archivedChatsSet,
           archivedChatAssociationIds: archivedChatIds,
           dismissedUsers: dismissed,
@@ -526,6 +550,10 @@ export const useStore = create<ChatOnState>((set) => ({
         chatRequestsLoaded: true,
         ...(paid ? { paidUsers: paid } : {}),
         ...(paidIds ? { paidAssociationIds: paidIds } : {}),
+        ...(acceptedGroupsSet ? { acceptedGroups: acceptedGroupsSet } : {}),
+        ...(acceptedGroupIds
+          ? { acceptedGroupAssociationIds: acceptedGroupIds }
+          : {}),
       };
     }),
 
@@ -622,6 +650,34 @@ export const useStore = create<ChatOnState>((set) => ({
       const nextIds = new Map(state.archivedGroupAssociationIds);
       for (const [k, v] of ids) nextIds.set(k, v);
       return { archivedGroupAssociationIds: nextIds };
+    }),
+
+  // ── Accepted groups ──
+
+  acceptGroup: (conversationKey) =>
+    set((state) => {
+      const next = new Set([...state.acceptedGroups, conversationKey]);
+      const myKey = state.appUser?.PublicKeyBase58Check;
+      if (myKey)
+        cacheClassificationData(
+          myKey,
+          classificationSnapshot(state, { acceptedGroups: next })
+        );
+      return { acceptedGroups: next };
+    }),
+
+  rollbackAcceptGroup: (conversationKey) =>
+    set((state) => {
+      const next = new Set(state.acceptedGroups);
+      next.delete(conversationKey);
+      return { acceptedGroups: next };
+    }),
+
+  mergeAcceptedGroupIds: (ids) =>
+    set((state) => {
+      const nextIds = new Map(state.acceptedGroupAssociationIds);
+      for (const [k, v] of ids) nextIds.set(k, v);
+      return { acceptedGroupAssociationIds: nextIds };
     }),
 
   // ── Archived DM chats ──
@@ -773,6 +829,8 @@ export const useStore = create<ChatOnState>((set) => ({
       blockedAssociationIds: EMPTY_MAP,
       archivedGroups: EMPTY_SET,
       archivedGroupAssociationIds: EMPTY_MAP,
+      acceptedGroups: EMPTY_SET,
+      acceptedGroupAssociationIds: EMPTY_MAP,
       archivedChats: EMPTY_SET,
       archivedChatAssociationIds: EMPTY_MAP,
       dismissedUsers: EMPTY_SET,
