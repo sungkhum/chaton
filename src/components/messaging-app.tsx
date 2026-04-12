@@ -731,7 +731,7 @@ export const MessagingApp: FC = () => {
         const locallyDeletedByTs = new Map<string, any>();
         for (const m of currentMessages) {
           if ((m as any)._deletedLocally) {
-            locallyDeletedByTs.set(m.MessageInfo.TimestampNanosString, m);
+            locallyDeletedByTs.set(m.MessageInfo?.TimestampNanosString, m);
           }
         }
 
@@ -742,10 +742,9 @@ export const MessagingApp: FC = () => {
           const ts = m.MessageInfo.TimestampNanosString;
           const localTombstone = locallyDeletedByTs.get(ts);
           if (localTombstone) {
-            // Server has caught up — strip the local marker
+            // Server has caught up — use canonical server data
             if (m.MessageInfo?.ExtraData?.["msg:deleted"]) {
-              const { _deletedLocally, ...rest } = localTombstone;
-              return rest;
+              return m;
             }
             // Server hasn't indexed the delete yet — keep local tombstone
             return localTombstone;
@@ -4786,6 +4785,7 @@ export const MessagingApp: FC = () => {
                                     timestampNanosString
                                       ? {
                                           ...m,
+                                          _localId: undefined,
                                           DecryptedMessage: "",
                                           _deletedLocally: true,
                                           MessageInfo: {
