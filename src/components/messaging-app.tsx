@@ -1371,7 +1371,7 @@ export const MessagingApp: FC = () => {
       // migration runs (one-time background job), treat ALL existing groups as
       // implicitly accepted so they stay in Chats, not Requests.
       const migrated = !!localStorage.getItem(
-        `chaton:group-accept-migrated:${myPk}`
+        `chaton:group-accept-migrated-v2:${myPk}`
       );
 
       // Pre-compute which groups the user has sent a message in (implicit acceptance)
@@ -1443,10 +1443,15 @@ export const MessagingApp: FC = () => {
   // One-time migration: create chaton:group-accepted associations for all
   // existing group memberships so the group request feature works going forward.
   // Runs in background, gated by localStorage so it only happens once per user.
+  // Key is versioned (v2) because v1 had a bug that set the flag prematurely
+  // when conversations hadn't loaded yet.
   useEffect(() => {
     if (!appUser || !chatRequestsLoaded) return;
+    // Wait until conversations have actually loaded (non-empty)
+    if (Object.keys(conversations).length === 0) return;
+
     const pk = appUser.PublicKeyBase58Check;
-    const migrationKey = `chaton:group-accept-migrated:${pk}`;
+    const migrationKey = `chaton:group-accept-migrated-v2:${pk}`;
     if (localStorage.getItem(migrationKey)) return;
 
     const groupsToMigrate = Object.entries(conversations).filter(
