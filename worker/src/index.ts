@@ -19,6 +19,7 @@ import { validateDesoJwt } from "./jwt";
 import { handleCreateInviteCode, handleRevokeInviteCode } from "./invite-codes";
 import { handleTicketSubmit, handleTicketPoll, handleTicketUpdate } from "./tickets";
 import { handleFeedbackSubmit, handleFeedbackCreate, handleFeedbackPoll, handleFeedbackUpdate } from "./feedback";
+import { handleStats } from "./stats";
 
 export interface Env {
   CHAT_RELAY: DurableObjectNamespace;
@@ -89,6 +90,22 @@ export default {
         JSON.stringify({ status: "ok", timestamp: Date.now() }),
         { headers: { "Content-Type": "application/json" } }
       );
+    }
+
+    // Stats API — public, cached 1 hour
+    if (url.pathname === "/api/stats") {
+      if (request.method === "OPTIONS") {
+        return new Response(null, {
+          headers: {
+            "Access-Control-Allow-Origin": "https://stats.getchaton.com",
+            "Access-Control-Allow-Methods": "GET",
+            "Access-Control-Max-Age": "86400",
+          },
+        });
+      }
+      if (request.method === "GET") {
+        return handleStats(env.DB);
+      }
     }
 
     // WebSocket upgrade — check Origin header (browsers always send it)
@@ -265,8 +282,11 @@ async function handlePushSubscribe(
       return new Response("Invalid or missing JWT", { status: 401 });
     }
 
+    // Detect platform from User-Agent for stats aggregation
+    const platform = detectPlatform(request.headers.get("User-Agent") ?? "");
+
     // Write to D1 (primary store for cron-based push)
-    const userId = await upsertUser(env.DB, publicKey);
+    const userId = await upsertUser(env.DB, publicKey, platform);
     await upsertSubscription(
       env.DB,
       userId,
@@ -449,6 +469,15 @@ async function deliverPush(env: Env, job: PushJob): Promise<void> {
       }
     }
   }
+}
+
+// ── Platform detection (for stats) ──
+
+function detectPlatform(ua: string): string {
+  if (/iPhone|iPad|iPod/i.test(ua)) return "ios";
+  if (/Android/i.test(ua)) return "android";
+  if (/Electron|Tauri/i.test(ua)) return "desktop";
+  return "web";
 }
 
 // ── KLIPY API proxy ──

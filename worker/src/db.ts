@@ -19,17 +19,19 @@ export interface DbThreadState {
   last_seen_timestamp: string;
 }
 
-/** Create or update a user record. Returns the user ID. */
+/** Create or update a user record. Returns the user ID.
+ *  Optionally stores the platform (ios/android/web/desktop) derived from User-Agent. */
 export async function upsertUser(
   db: D1Database,
-  desoPublicKey: string
+  desoPublicKey: string,
+  platform?: string
 ): Promise<number> {
   await db
     .prepare(
-      `INSERT INTO users (deso_public_key) VALUES (?)
-       ON CONFLICT (deso_public_key) DO UPDATE SET push_enabled = 1`
+      `INSERT INTO users (deso_public_key, platform) VALUES (?, ?)
+       ON CONFLICT (deso_public_key) DO UPDATE SET push_enabled = 1, platform = COALESCE(?, platform)`
     )
-    .bind(desoPublicKey)
+    .bind(desoPublicKey, platform ?? null, platform ?? null)
     .run();
 
   const row = await db
