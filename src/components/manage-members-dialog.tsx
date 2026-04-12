@@ -1,21 +1,21 @@
 import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
 import {
-  AccessGroupEntryResponse,
   AccessGroupPrivateInfo,
-  addAccessGroupMembers,
   deleteUserAssociation,
-  encrypt,
   getAllAccessGroupsMemberOnly,
-  getBulkAccessGroups,
   getPaginatedAccessGroupMembers,
   identity,
   publicKeyToBase58Check,
-  removeAccessGroupMembers,
   updateAccessGroup,
-  waitForTransactionFound,
 } from "deso-protocol";
 import { withAuth } from "../utils/with-auth";
+import {
+  batchedGetBulkAccessGroups,
+  batchedAddMembers,
+  batchedRemoveMembers,
+  type BatchResult,
+} from "../utils/batch-members";
 import {
   Check,
   CheckCheck,
@@ -45,7 +45,6 @@ import { useMembers } from "../hooks/useMembers";
 import { useMobile } from "../hooks/useMobile";
 import { usePresence } from "../hooks/usePresence";
 import { formatLastSeen } from "../utils/helpers";
-import { DEFAULT_KEY_MESSAGING_GROUP_NAME } from "../utils/constants";
 import {
   GROUP_DISPLAY_NAME,
   GROUP_IMAGE_URL,
@@ -592,13 +591,22 @@ export const ManageMembersDialog = ({
     try {
       // Sequential: add members first, then remove. These are irreversible
       // blockchain transactions — if add fails we must not have already removed.
-      await addMembersAction(groupName, memberKeysToAdd);
+      const addResult = await addMembersAction(groupName, memberKeysToAdd);
       await removeMembersAction(groupName, memberKeysToRemove);
 
-      // Best-effort: send system log message for newly added members
-      if (appUser && memberKeysToAdd.length > 0) {
+      if (addResult.failedKeys.length > 0) {
+        toast.warning(
+          `${addResult.failedKeys.length} member${
+            addResult.failedKeys.length === 1 ? "" : "s"
+          } couldn't be added. You can retry later.`
+        );
+      }
+
+      // Best-effort: send system log message for successfully added members
+      const succeededAddKeys = new Set(addResult.succeededKeys);
+      if (appUser && succeededAddKeys.size > 0) {
         const addedMembers = members
-          .filter((m) => memberKeysToAdd.includes(m.id))
+          .filter((m) => succeededAddKeys.has(m.id))
           .map((m) => ({ pk: m.id, un: m.text }));
         onOptimisticSystemMessage(addedMembers);
         sendSystemMessage(
@@ -613,7 +621,7 @@ export const ManageMembersDialog = ({
       onSuccess();
       handleOpen();
     } catch {
-      // Errors already toasted by updateMembers
+      toast.error("Something went wrong while updating group members");
     } finally {
       setUpdating(false);
     }
@@ -622,105 +630,96 @@ export const ManageMembersDialog = ({
   const addMembersAction = async (
     groupName: string,
     memberKeys: Array<string>
-  ) => {
+  ): Promise<BatchResult> => {
     if (!appUser) return Promise.reject(new Error("You are not logged in."));
-    return updateMembers(
-      groupName,
-      memberKeys,
-      async (groupEntries?: Array<AccessGroupEntryResponse>) => {
-        let accessGroupKeyInfo: AccessGroupPrivateInfo;
-        try {
-          const resp = await getAllAccessGroupsMemberOnly({
-            PublicKeyBase58Check: appUser.PublicKeyBase58Check,
-          });
+    if (memberKeys.length === 0) {
+      return {
+        succeededKeys: [],
+        failedKeys: [],
+        partialSuccess: false,
+        fullSuccess: true,
+      };
+    }
 
-          const encryptedKey = (resp.AccessGroupsMember ?? []).find(
-            (entry) =>
-              entry?.AccessGroupOwnerPublicKeyBase58Check ===
-                appUser.PublicKeyBase58Check &&
-              entry?.AccessGroupKeyName === groupName &&
-              entry?.AccessGroupMemberEntryResponse
-          )?.AccessGroupMemberEntryResponse?.EncryptedKey;
+    // Resolve the group's private key
+    let accessGroupKeyInfo: AccessGroupPrivateInfo | undefined;
+    try {
+      const resp = await getAllAccessGroupsMemberOnly({
+        PublicKeyBase58Check: appUser.PublicKeyBase58Check,
+      });
 
-          if (encryptedKey) {
-            const keys = await identity.decryptAccessGroupKeyPair(encryptedKey);
-            const pkBs58Check = await publicKeyToBase58Check(keys.public);
-            accessGroupKeyInfo = {
-              AccessGroupPublicKeyBase58Check: pkBs58Check,
-              AccessGroupPrivateKeyHex: keys.seedHex,
-              AccessGroupKeyName: groupName,
-            };
-          }
-        } catch {
-          accessGroupKeyInfo = await identity.accessGroupStandardDerivation(
-            groupName
-          );
-        }
+      const encryptedKey = (resp.AccessGroupsMember ?? []).find(
+        (entry) =>
+          entry?.AccessGroupOwnerPublicKeyBase58Check ===
+            appUser.PublicKeyBase58Check &&
+          entry?.AccessGroupKeyName === groupName &&
+          entry?.AccessGroupMemberEntryResponse
+      )?.AccessGroupMemberEntryResponse?.EncryptedKey;
 
-        const memberList = await Promise.all(
-          (groupEntries || []).map(async (entry) => ({
-            AccessGroupMemberPublicKeyBase58Check:
-              entry.AccessGroupOwnerPublicKeyBase58Check,
-            AccessGroupMemberKeyName: entry.AccessGroupKeyName,
-            EncryptedKey: await encrypt(
-              entry.AccessGroupPublicKeyBase58Check,
-              accessGroupKeyInfo!.AccessGroupPrivateKeyHex
-            ),
-          }))
-        );
-
-        const { submittedTransactionResponse } = await withAuth(() =>
-          addAccessGroupMembers({
-            AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
-            AccessGroupKeyName: groupName,
-            AccessGroupMemberList: memberList,
-            MinFeeRateNanosPerKB: 1000,
-          })
-        );
-
-        if (!submittedTransactionResponse) {
-          throw new Error(
-            "Failed to submit transaction to add members to group."
-          );
-        }
+      if (encryptedKey) {
+        const keys = await identity.decryptAccessGroupKeyPair(encryptedKey);
+        const pkBs58Check = await publicKeyToBase58Check(keys.public);
+        accessGroupKeyInfo = {
+          AccessGroupPublicKeyBase58Check: pkBs58Check,
+          AccessGroupPrivateKeyHex: keys.seedHex,
+          AccessGroupKeyName: groupName,
+        };
       }
+    } catch {
+      // fallthrough to standard derivation
+    }
+
+    if (!accessGroupKeyInfo) {
+      accessGroupKeyInfo = await identity.accessGroupStandardDerivation(
+        groupName
+      );
+    }
+
+    // Fetch member access group entries in batches
+    const { entries, pairsNotFound } = await batchedGetBulkAccessGroups(
+      memberKeys
     );
+    if (pairsNotFound.length) {
+      onPairMissing();
+      throw new Error("Some members haven't registered a messaging key");
+    }
+
+    // Add members in batches
+    return batchedAddMembers({
+      ownerPublicKey: appUser.PublicKeyBase58Check,
+      groupKeyName: groupName,
+      accessGroupPrivateKeyHex: accessGroupKeyInfo.AccessGroupPrivateKeyHex,
+      memberEntries: entries,
+    });
   };
 
   const removeMembersAction = async (
     groupName: string,
     memberKeys: Array<string>
-  ) => {
-    if (!appUser) {
-      toast.error("You are not logged in.");
-      return;
+  ): Promise<BatchResult> => {
+    if (!appUser) return Promise.reject(new Error("You are not logged in."));
+    if (memberKeys.length === 0) {
+      return {
+        succeededKeys: [],
+        failedKeys: [],
+        partialSuccess: false,
+        fullSuccess: true,
+      };
     }
-    return updateMembers(
-      groupName,
-      memberKeys,
-      async (groupEntries?: Array<AccessGroupEntryResponse>) => {
-        const { submittedTransactionResponse } = await withAuth(() =>
-          removeAccessGroupMembers({
-            AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
-            AccessGroupKeyName: groupName,
-            AccessGroupMemberList: (groupEntries || []).map((entry) => ({
-              AccessGroupMemberPublicKeyBase58Check:
-                entry.AccessGroupOwnerPublicKeyBase58Check,
-              AccessGroupMemberKeyName: entry.AccessGroupKeyName,
-              EncryptedKey: "",
-            })),
-            MinFeeRateNanosPerKB: 1000,
-          })
-        );
 
-        if (!submittedTransactionResponse) {
-          throw new Error(
-            "Failed to submit transaction to update group members."
-          );
-        }
-        return waitForTransactionFound(submittedTransactionResponse.TxnHashHex);
-      }
+    const { entries, pairsNotFound } = await batchedGetBulkAccessGroups(
+      memberKeys
     );
+    if (pairsNotFound.length) {
+      onPairMissing();
+      throw new Error("Some members not found");
+    }
+
+    return batchedRemoveMembers({
+      ownerPublicKey: appUser.PublicKeyBase58Check,
+      groupKeyName: groupName,
+      memberEntries: entries,
+    });
   };
 
   // ── Invite Link Handlers ──
@@ -963,20 +962,47 @@ export const ManageMembersDialog = ({
 
     // ── Fire blockchain transaction in background ──
     addMembersAction(groupName, keysToApprove)
-      .then(() => {
-        // Best-effort: send system log message
-        sendSystemMessage(
-          appUser.PublicKeyBase58Check,
-          groupOwnerKey,
-          groupName,
-          "member-joined",
-          approvedMembers
-        );
+      .then((result) => {
+        // Rollback only the failed members
+        if (result.failedKeys.length > 0) {
+          const failedSet = new Set(result.failedKeys);
+          const failedRequests = approvedRequests.filter((r) =>
+            failedSet.has(r.requesterPublicKey)
+          );
+          setJoinRequests((prev) => [...prev, ...failedRequests]);
+          setJoinRequestBadge((prev) => prev + failedRequests.length);
+          for (const req of failedRequests) {
+            removeMember(req.requesterPublicKey);
+          }
+          toast.warning(
+            `${result.failedKeys.length} member${
+              result.failedKeys.length === 1 ? "" : "s"
+            } couldn't be added`
+          );
+        }
+
+        // Send system message for successfully added members only
+        if (result.succeededKeys.length > 0) {
+          const succeededSet = new Set(result.succeededKeys);
+          const succeededMembers = approvedMembers.filter((m) =>
+            succeededSet.has(m.pk)
+          );
+          sendSystemMessage(
+            appUser.PublicKeyBase58Check,
+            groupOwnerKey,
+            groupName,
+            "member-joined",
+            succeededMembers
+          );
+        }
 
         // Best-effort cleanup: delete join request associations on-chain.
         const ownerKey = appUser.PublicKeyBase58Check;
+        const succeededRequests = approvedRequests.filter((r) =>
+          result.succeededKeys.includes(r.requesterPublicKey)
+        );
         Promise.allSettled(
-          approvedRequests.map((r) =>
+          succeededRequests.map((r) =>
             deleteUserAssociation(
               {
                 TransactorPublicKeyBase58Check: ownerKey,
@@ -988,7 +1014,7 @@ export const ManageMembersDialog = ({
         ).catch(() => {});
       })
       .catch(() => {
-        // ── Rollback: restore join requests and remove from members ──
+        // ── Full failure rollback: restore all join requests ──
         setJoinRequests((prev) => [...prev, ...approvedRequests]);
         setJoinRequestBadge((prev) => prev + keysToApprove.length);
         for (const req of approvedRequests) {
@@ -1075,30 +1101,6 @@ export const ManageMembersDialog = ({
         new Set(joinRequests.map((r) => r.requesterPublicKey))
       );
     }
-  };
-
-  const updateMembers = async (
-    groupName: string,
-    memberKeys: Array<string>,
-    updateAction: (entries?: Array<AccessGroupEntryResponse>) => Promise<void>
-  ) => {
-    if (memberKeys.length === 0) return;
-
-    const { AccessGroupEntries, PairsNotFound } = await getBulkAccessGroups({
-      GroupOwnerAndGroupKeyNamePairs: memberKeys.map((pubKey) => ({
-        GroupOwnerPublicKeyBase58Check: pubKey,
-        GroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
-      })),
-    });
-
-    if (PairsNotFound?.length) {
-      onPairMissing();
-      return;
-    }
-
-    await updateAction(AccessGroupEntries).catch(() =>
-      toast.error("Something went wrong while submitting the transaction")
-    );
   };
 
   return (

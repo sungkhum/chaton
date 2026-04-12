@@ -1,11 +1,5 @@
 import { SearchUsers } from "components/search-users";
-import {
-  addAccessGroupMembers,
-  createAccessGroup,
-  encrypt,
-  getBulkAccessGroups,
-  identity,
-} from "deso-protocol";
+import { createAccessGroup, identity } from "deso-protocol";
 import { Globe, Link2, Loader2, X } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useStore } from "../store";
@@ -16,7 +10,10 @@ import { encryptAndSendNewMessage } from "../services/conversations.service";
 import { listGroupInCommunity } from "../services/community.service";
 import { registerInviteCode } from "../utils/invite-link";
 import { withAuth } from "../utils/with-auth";
-import { DEFAULT_KEY_MESSAGING_GROUP_NAME } from "../utils/constants";
+import {
+  batchedGetBulkAccessGroups,
+  batchedAddMembers,
+} from "../utils/batch-members";
 import { GROUP_DISPLAY_NAME, GROUP_IMAGE_URL } from "../utils/extra-data";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { GroupImagePicker } from "./group-image-picker";
@@ -29,7 +26,12 @@ export interface StartGroupChatProps {
   defaultCommunity?: boolean;
 }
 
-export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, defaultCommunity }: StartGroupChatProps) => {
+export const StartGroupChat = ({
+  onSuccess,
+  open: controlledOpen,
+  onOpenChange,
+  defaultCommunity,
+}: StartGroupChatProps) => {
   const appUser = useStore((s) => s.appUser);
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
@@ -49,6 +51,7 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, 
     setLoading,
     open
   );
+  const [progressText, setProgressText] = useState("");
   const membersAreaRef = useRef<HTMLDivElement>(null);
   const { isMobile } = useMobile();
 
@@ -63,6 +66,7 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, 
       setChatName("");
       setGroupImageUrl("");
       setFormTouched(false);
+      setProgressText("");
       setWantInviteLink(false);
       setWantCommunityList(false);
       setCommunityDescription("");
@@ -89,7 +93,11 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, 
     handleOpen();
   };
 
-  const startGroupChat = async (groupName: string, memberKeys: Array<string>, imageUrl: string) => {
+  const startGroupChat = async (
+    groupName: string,
+    memberKeys: Array<string>,
+    imageUrl: string
+  ) => {
     if (!appUser) {
       toast.error("You must be logged in to start a group chat.");
       return;
@@ -98,7 +106,9 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, 
     setLoading(true);
 
     try {
-      const accessGroupKeys = await identity.accessGroupStandardDerivation(groupName);
+      const accessGroupKeys = await identity.accessGroupStandardDerivation(
+        groupName
+      );
 
       const extraData: Record<string, string> = {};
       extraData[GROUP_DISPLAY_NAME] = groupName;
@@ -108,7 +118,8 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, 
         createAccessGroup({
           AccessGroupKeyName: groupName,
           AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
-          AccessGroupPublicKeyBase58Check: accessGroupKeys.AccessGroupPublicKeyBase58Check,
+          AccessGroupPublicKeyBase58Check:
+            accessGroupKeys.AccessGroupPublicKeyBase58Check,
           MinFeeRateNanosPerKB: 1000,
           ...(Object.keys(extraData).length > 0 && { ExtraData: extraData }),
         })
@@ -118,38 +129,40 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, 
         new Set([...memberKeys, appUser.PublicKeyBase58Check])
       );
 
-      const { AccessGroupEntries, PairsNotFound } = await getBulkAccessGroups({
-        GroupOwnerAndGroupKeyNamePairs: groupMembersArray.map((key) => ({
-          GroupOwnerPublicKeyBase58Check: key,
-          GroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
-        })),
-      });
+      const { entries, pairsNotFound } = await batchedGetBulkAccessGroups(
+        groupMembersArray
+      );
 
-      if (PairsNotFound?.length) {
+      if (pairsNotFound.length) {
         onPairMissing();
         return;
       }
 
-      const groupMemberList = await Promise.all(
-        AccessGroupEntries.map(async (accessGroupEntry) => ({
-          AccessGroupMemberPublicKeyBase58Check:
-            accessGroupEntry.AccessGroupOwnerPublicKeyBase58Check,
-          AccessGroupMemberKeyName: accessGroupEntry.AccessGroupKeyName,
-          EncryptedKey: await encrypt(
-            accessGroupEntry.AccessGroupPublicKeyBase58Check,
-            accessGroupKeys.AccessGroupPrivateKeyHex
-          ),
-        }))
-      );
+      const result = await batchedAddMembers({
+        ownerPublicKey: appUser.PublicKeyBase58Check,
+        groupKeyName: groupName,
+        accessGroupPrivateKeyHex: accessGroupKeys.AccessGroupPrivateKeyHex,
+        memberEntries: entries,
+        onProgress: (p) => {
+          if (p.totalBatches > 1) {
+            setProgressText(
+              `Adding members (${p.completedMembers}/${p.totalMembers})...`
+            );
+          }
+        },
+      });
 
-      await withAuth(() =>
-        addAccessGroupMembers({
-          AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
-          AccessGroupKeyName: groupName,
-          AccessGroupMemberList: groupMemberList,
-          MinFeeRateNanosPerKB: 1000,
-        })
-      );
+      if (!result.fullSuccess && result.succeededKeys.length === 0) {
+        throw new Error("Failed to add any members");
+      }
+
+      if (result.failedKeys.length > 0) {
+        toast.warning(
+          `Group created, but ${result.failedKeys.length} member${
+            result.failedKeys.length === 1 ? "" : "s"
+          } couldn't be added. You can add them in group settings.`
+        );
+      }
 
       await encryptAndSendNewMessage(
         `Hi. This is my first message to "${groupName}"`,
@@ -171,14 +184,18 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, 
           }
         } catch (e) {
           console.error("Post-creation setup error:", e);
-          toast.error("Group created, but invite link or community listing failed. You can set these up in group settings.");
+          toast.error(
+            "Group created, but invite link or community listing failed. You can set these up in group settings."
+          );
         }
       }
 
       return `${appUser.PublicKeyBase58Check}${accessGroupKeys.AccessGroupKeyName}`;
     } catch (e) {
       console.error(e);
-      toast.error("something went wrong while submitting the add members transaction");
+      toast.error(
+        "something went wrong while submitting the add members transaction"
+      );
     } finally {
       setLoading(false);
     }
@@ -189,14 +206,18 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, 
       {open && (
         <>
           {/* Backdrop */}
-          <div className="fixed inset-0 bg-black/60 z-[60] modal-backdrop-enter" onClick={handleOpen} />
+          <div
+            className="fixed inset-0 bg-black/60 z-[60] modal-backdrop-enter"
+            onClick={handleOpen}
+          />
           {/* Dialog */}
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <div className="bg-[#0c1220] text-white border border-white/8 w-[min(95vw,440px)] rounded-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl shadow-black/40 modal-card-enter">
-
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/8 shrink-0">
-                <span className="text-[15px] font-semibold text-white">New Group</span>
+                <span className="text-[15px] font-semibold text-white">
+                  New Group
+                </span>
                 <button
                   type="button"
                   onClick={handleOpen}
@@ -206,9 +227,12 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, 
                 </button>
               </div>
 
-              <form name="start-group-chat-form" onSubmit={formSubmit} className="flex flex-col min-h-0 flex-1">
+              <form
+                name="start-group-chat-form"
+                onSubmit={formSubmit}
+                className="flex flex-col min-h-0 flex-1"
+              >
                 <div className="px-4 py-4 overflow-y-auto custom-scrollbar flex-1 min-h-0 space-y-4">
-
                   {/* Group identity: photo + name */}
                   <div className="flex items-center gap-3.5">
                     <GroupImagePicker
@@ -232,7 +256,9 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, 
                         }`}
                       />
                       {formTouched && !isNameValid() && (
-                        <p className="text-red-400 text-xs mt-1 ml-1">Group name is required</p>
+                        <p className="text-red-400 text-xs mt-1 ml-1">
+                          Group name is required
+                        </p>
                       )}
                     </div>
                   </div>
@@ -247,11 +273,18 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, 
                       onSelected={(member) =>
                         addMember(member, () => {
                           setTimeout(() => {
-                            membersAreaRef.current?.scrollTo(0, membersAreaRef.current.scrollHeight);
+                            membersAreaRef.current?.scrollTo(
+                              0,
+                              membersAreaRef.current.scrollHeight
+                            );
                           }, 0);
                         })
                       }
-                      error={formTouched && !areMembersValid() ? "Add at least one member" : ""}
+                      error={
+                        formTouched && !areMembersValid()
+                          ? "Add at least one member"
+                          : ""
+                      }
                     />
 
                     <div
@@ -298,8 +331,12 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, 
                             <Link2 className="w-3.5 h-3.5 text-gray-400" />
                           </div>
                           <div className="min-w-0 text-left">
-                            <div className="text-sm text-white/80">Invite link</div>
-                            <div className="text-[11px] text-white/25 leading-tight">Anyone with the link can request to join</div>
+                            <div className="text-sm text-white/80">
+                              Invite link
+                            </div>
+                            <div className="text-[11px] text-white/25 leading-tight">
+                              Anyone with the link can request to join
+                            </div>
                           </div>
                         </div>
                         <button
@@ -314,23 +351,35 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, 
                           }`}
                           aria-label="Toggle invite link"
                         >
-                          <div className={`w-[16px] h-[16px] rounded-full bg-white absolute top-[3px] transition-transform shadow-sm ${
-                            wantInviteLink ? "translate-x-[21px]" : "translate-x-[3px]"
-                          }`} />
+                          <div
+                            className={`w-[16px] h-[16px] rounded-full bg-white absolute top-[3px] transition-transform shadow-sm ${
+                              wantInviteLink
+                                ? "translate-x-[21px]"
+                                : "translate-x-[3px]"
+                            }`}
+                          />
                         </button>
                       </div>
 
                       {/* Community listing toggle */}
-                      <div className={`flex items-center justify-between py-1.5 transition-opacity ${
-                        wantInviteLink ? "opacity-100" : "opacity-25 pointer-events-none"
-                      }`}>
+                      <div
+                        className={`flex items-center justify-between py-1.5 transition-opacity ${
+                          wantInviteLink
+                            ? "opacity-100"
+                            : "opacity-25 pointer-events-none"
+                        }`}
+                      >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
                             <Globe className="w-3.5 h-3.5 text-gray-400" />
                           </div>
                           <div className="min-w-0 text-left">
-                            <div className="text-sm text-white/80">List in Community</div>
-                            <div className="text-[11px] text-white/25 leading-tight">Let others discover this group</div>
+                            <div className="text-sm text-white/80">
+                              List in Community
+                            </div>
+                            <div className="text-[11px] text-white/25 leading-tight">
+                              Let others discover this group
+                            </div>
                           </div>
                         </div>
                         <button
@@ -338,7 +387,8 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, 
                           onClick={() => {
                             const next = !wantCommunityList;
                             setWantCommunityList(next);
-                            if (next && !wantInviteLink) setWantInviteLink(true);
+                            if (next && !wantInviteLink)
+                              setWantInviteLink(true);
                           }}
                           disabled={!wantInviteLink}
                           className={`relative w-10 h-[22px] rounded-full transition-colors cursor-pointer shrink-0 disabled:cursor-not-allowed ml-3 ${
@@ -346,9 +396,13 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, 
                           }`}
                           aria-label="Toggle community listing"
                         >
-                          <div className={`w-[16px] h-[16px] rounded-full bg-white absolute top-[3px] transition-transform shadow-sm ${
-                            wantCommunityList ? "translate-x-[21px]" : "translate-x-[3px]"
-                          }`} />
+                          <div
+                            className={`w-[16px] h-[16px] rounded-full bg-white absolute top-[3px] transition-transform shadow-sm ${
+                              wantCommunityList
+                                ? "translate-x-[21px]"
+                                : "translate-x-[3px]"
+                            }`}
+                          />
                         </button>
                       </div>
                     </div>
@@ -358,7 +412,11 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, 
                       <div className="mt-2.5">
                         <textarea
                           value={communityDescription}
-                          onChange={(e) => setCommunityDescription(e.target.value.slice(0, 200))}
+                          onChange={(e) =>
+                            setCommunityDescription(
+                              e.target.value.slice(0, 200)
+                            )
+                          }
                           placeholder="Short description for the directory..."
                           rows={2}
                           className="w-full rounded-xl px-3 py-2 text-sm text-white/80 placeholder:text-white/20 bg-white/5 border border-white/8 focus:border-white/15 outline-none resize-none"
@@ -385,8 +443,14 @@ export const StartGroupChat = ({ onSuccess, open: controlledOpen, onOpenChange, 
                     className="glass-btn-primary text-[#34F080] font-semibold rounded-xl py-2 px-5 text-sm flex items-center cursor-pointer transition-colors disabled:opacity-50"
                     disabled={loading || imageUploading}
                   >
-                    {(loading || imageUploading) && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
-                    <span>{imageUploading ? "Uploading..." : "Create"}</span>
+                    {(loading || imageUploading) && (
+                      <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                    )}
+                    <span>
+                      {imageUploading
+                        ? "Uploading..."
+                        : progressText || "Create"}
+                    </span>
                   </button>
                 </div>
               </form>
