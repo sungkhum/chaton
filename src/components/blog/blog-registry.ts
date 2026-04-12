@@ -1,4 +1,5 @@
-import { lazy, type ComponentType, type LazyExoticComponent } from "react";
+import { type ComponentType, type LazyExoticComponent } from "react";
+import { lazyWithReload } from "../../utils/lazy-with-reload";
 
 export interface BlogPostMeta {
   slug: string;
@@ -80,7 +81,7 @@ export const lazyPost = (slug: string) => {
   const post = getPostBySlug(slug);
   if (!post) return null;
 
-  const component = lazy(post.component);
+  const component = lazyWithReload(post.component);
   lazyCache.set(slug, component);
   return component;
 };

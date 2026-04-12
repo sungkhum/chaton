@@ -8,7 +8,8 @@ import {
   User,
 } from "deso-protocol";
 import { Loader2 } from "lucide-react";
-import { lazy, Suspense, useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
+import { lazyWithReload } from "./utils/lazy-with-reload";
 import { Toaster } from "sonner";
 import { Header } from "./components/header";
 import { InstallPrompt } from "./components/install-prompt";
@@ -18,30 +19,37 @@ import { RouteErrorBoundary } from "./components/route-error-boundary";
 
 // bundle-dynamic-imports: Lazy-load route pages so GSAP and page code
 // stay out of the main chunk. Logged-in users never download landing page code.
-const LandingPage = lazy(() =>
+// Uses lazyWithReload to auto-reload once on stale-chunk errors after deploys.
+const LandingPage = lazyWithReload(() =>
   import("./components/landing-page").then((m) => ({ default: m.LandingPage }))
 );
-const LegalPage = lazy(() =>
+const LegalPage = lazyWithReload(() =>
   import("./components/legal-page").then((m) => ({ default: m.LegalPage }))
 );
-const SupportPage = lazy(() =>
+const SupportPage = lazyWithReload(() =>
   import("./components/support-page").then((m) => ({ default: m.SupportPage }))
 );
-const JoinGroupPage = lazy(() => import("./components/join-group-page"));
-const CommunityPage = lazy(() => import("./components/community-page"));
-const FaqPage = lazy(() => import("./components/faq-page"));
-const AboutPage = lazy(() => import("./components/about-page"));
-const ComparePage = lazy(() => import("./components/compare-page"));
-const NotFoundPage = lazy(() => import("./components/not-found-page"));
-const BlogIndex = lazy(() => import("./components/blog/blog-index"));
+const JoinGroupPage = lazyWithReload(
+  () => import("./components/join-group-page")
+);
+const CommunityPage = lazyWithReload(
+  () => import("./components/community-page")
+);
+const FaqPage = lazyWithReload(() => import("./components/faq-page"));
+const AboutPage = lazyWithReload(() => import("./components/about-page"));
+const ComparePage = lazyWithReload(() => import("./components/compare-page"));
+const NotFoundPage = lazyWithReload(
+  () => import("./components/not-found-page")
+);
+const BlogIndex = lazyWithReload(() => import("./components/blog/blog-index"));
 
 // bundle-dynamic-imports: Lazy-load modals — only downloaded when triggered
-const LazyBugReportModal = lazy(() =>
+const LazyBugReportModal = lazyWithReload(() =>
   import("./components/bug-report-modal").then((m) => ({
     default: m.BugReportModal,
   }))
 );
-const LazyFeedbackModal = lazy(() =>
+const LazyFeedbackModal = lazyWithReload(() =>
   import("./components/feedback-modal").then((m) => ({
     default: m.FeedbackModal,
   }))

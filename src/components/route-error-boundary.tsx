@@ -13,8 +13,6 @@ interface State {
   errorInfo: ErrorInfo | null;
 }
 
-const RELOAD_KEY = "chaton:chunk-reload";
-
 /** True if the error looks like a stale/missing chunk after a deployment. */
 function isChunkLoadError(error: Error): boolean {
   const msg = error.message || "";
@@ -30,8 +28,11 @@ function isChunkLoadError(error: Error): boolean {
 /**
  * Error boundary for lazy-loaded route pages.
  * Catches chunk-load failures (e.g. after a deploy with new hashes)
- * and auto-reloads once to pick up new assets. Falls back to a retry
- * screen if the reload doesn't fix it.
+ * and offers a retry instead of showing a white screen.
+ *
+ * Note: most chunk errors are handled earlier by `lazyWithReload` (which
+ * auto-reloads before this boundary is reached). This boundary is the
+ * fallback for cases where the reload didn't help or for non-chunk errors.
  */
 export class RouteErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false, error: null, errorInfo: null };
@@ -43,20 +44,6 @@ export class RouteErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("Route load failed:", error, info);
     this.setState({ errorInfo: info });
-
-    // Auto-reload once for stale chunk errors (e.g. after a deploy).
-    // The sessionStorage flag prevents an infinite reload loop.
-    if (isChunkLoadError(error)) {
-      const lastReload = sessionStorage.getItem(RELOAD_KEY);
-      const now = Date.now();
-      // Allow another auto-reload if the last one was more than 30s ago
-      // (covers the case where a user hits a second stale chunk later).
-      if (!lastReload || now - Number(lastReload) > 30_000) {
-        sessionStorage.setItem(RELOAD_KEY, String(now));
-        window.location.reload();
-        return;
-      }
-    }
   }
 
   handleRetry = () => {
