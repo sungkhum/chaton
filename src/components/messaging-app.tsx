@@ -3605,7 +3605,7 @@ export const MessagingApp: FC = () => {
         // New DM thread with no messages yet returns a 404 — treat as empty.
         // Re-throw any other error (network, auth, 500) so callers can handle it.
         const status = (e as { status?: number }).status;
-        if (status && status !== 404) throw e;
+        if (status !== 404) throw e;
         return {
           updatedConversations: {
             ...currentConversations,
