@@ -3752,7 +3752,8 @@ export const MessagingApp: FC = () => {
   if (
     conversationsReady &&
     safeSelectedKey &&
-    !conversations[safeSelectedKey]
+    !conversations[safeSelectedKey] &&
+    !loadingConversation
   ) {
     safeSelectedKey = Object.keys(conversations)[0] || "";
     setSelectedConversationPublicKey(safeSelectedKey);
