@@ -1650,7 +1650,15 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                         ? "max-w-[90%] md:max-w-[70%]"
                         : "max-w-[80%] md:max-w-[65%]"
                     } ${
-                      isLastInGroup ? "mb-4" : "mb-0.5"
+                      isLastInGroup
+                        ? reactions ||
+                          tips ||
+                          pendingTipTimestamps?.has(
+                            message.MessageInfo.TimestampNanosString
+                          )
+                          ? "mb-4"
+                          : "mb-1"
+                        : "mb-0.5"
                     } transition-[margin-bottom] duration-150 ease-out inline-flex items-end text-left group ${
                       mobileActionFor === messageKey ? "relative z-50" : ""
                     } ${isTouchDevice ? "mobile-no-select" : ""}`}
@@ -1854,7 +1862,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                               // Telegram-style float: sits on the same line as short text,
                               // drops to its own right-aligned line when the text fills the width.
                               return (
-                                <span className="float-right ml-3 mt-1 leading-none">
+                                <span className="float-right ml-3 leading-none">
                                   <span
                                     className={`${timeColor} text-[10px] whitespace-nowrap inline-flex items-center gap-0.5`}
                                     title={new Date(
