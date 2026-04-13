@@ -3601,8 +3601,11 @@ export const MessagingApp: FC = () => {
           MaxMessagesToFetch: MESSAGES_ONE_REQUEST_LIMIT,
           StartTimeStamp: new Date().valueOf() * 1e6,
         });
-      } catch {
-        // New DM thread with no messages yet returns a 404 — treat as empty
+      } catch (e: unknown) {
+        // New DM thread with no messages yet returns a 404 — treat as empty.
+        // Re-throw any other error (network, auth, 500) so callers can handle it.
+        const status = (e as { status?: number }).status;
+        if (status && status !== 404) throw e;
         return {
           updatedConversations: {
             ...currentConversations,
