@@ -453,6 +453,7 @@ export const SendMessageButtonAndInput = forwardRef<
 
     const confirmImage = async (caption?: string) => {
       if (!pendingImage || isSendingRef.current) return;
+      isSendingRef.current = true;
       setIsUploading(true);
       try {
         const result = await uploadImage(pendingImage.file);
@@ -476,6 +477,7 @@ export const SendMessageButtonAndInput = forwardRef<
       } catch (err: any) {
         toast.error(`Image upload failed: ${err.message || err}`);
       } finally {
+        isSendingRef.current = false;
         setIsUploading(false);
       }
     };
@@ -538,6 +540,7 @@ export const SendMessageButtonAndInput = forwardRef<
 
     const confirmVideo = async (caption?: string) => {
       if (!pendingVideo || isSendingRef.current) return;
+      isSendingRef.current = true;
       setIsUploading(true);
       try {
         const result = await uploadVideoFile(pendingVideo.file);
@@ -579,6 +582,7 @@ export const SendMessageButtonAndInput = forwardRef<
           component: "SendMessageButtonAndInput",
         });
       } finally {
+        isSendingRef.current = false;
         setIsUploading(false);
       }
     };
