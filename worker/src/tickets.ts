@@ -209,6 +209,7 @@ export async function handleTicketUpdate(
     const allowed: Record<string, string> = {
       status: "status",
       severity: "severity",
+      error_code: "error_code",
       triage_notes: "notes",
       fix_branch: "fix_branch",
       fix_pr_url: "fix_pr_url",
