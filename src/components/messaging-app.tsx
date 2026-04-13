@@ -2866,6 +2866,23 @@ export const MessagingApp: FC = () => {
         if (selectedKey && prev[selectedKey] && !cachedConvos[selectedKey]) {
           return { [selectedKey]: prev[selectedKey], ...cachedConvos };
         }
+        // Inject a placeholder for brand-new conversations (e.g. compose to
+        // a user never messaged) so the render guard doesn't reset the
+        // selected key before the network fetch completes.
+        if (selectedKey && !cachedConvos[selectedKey]) {
+          const groupKeyName = selectedKey.slice(PUBLIC_KEY_LENGTH);
+          const isGroup =
+            groupKeyName.length > 0 &&
+            groupKeyName !== DEFAULT_KEY_MESSAGING_GROUP_NAME;
+          return {
+            [selectedKey]: {
+              ChatType: isGroup ? ChatType.GROUPCHAT : ChatType.DM,
+              firstMessagePublicKey: selectedKey.slice(0, PUBLIC_KEY_LENGTH),
+              messages: [],
+            },
+            ...cachedConvos,
+          };
+        }
         return cachedConvos;
       });
       setConversationsLoading(false);
@@ -3573,14 +3590,34 @@ export const MessagingApp: FC = () => {
     const convo = currentConvo.messages;
 
     if (currentConvo.ChatType === ChatType.DM) {
-      const messages = await getPaginatedDMThread({
-        UserGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
-        UserGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
-        PartyGroupOwnerPublicKeyBase58Check: currentConvo.firstMessagePublicKey,
-        PartyGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
-        MaxMessagesToFetch: MESSAGES_ONE_REQUEST_LIMIT,
-        StartTimeStamp: new Date().valueOf() * 1e6,
-      });
+      let messages;
+      try {
+        messages = await getPaginatedDMThread({
+          UserGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+          UserGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
+          PartyGroupOwnerPublicKeyBase58Check:
+            currentConvo.firstMessagePublicKey,
+          PartyGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
+          MaxMessagesToFetch: MESSAGES_ONE_REQUEST_LIMIT,
+          StartTimeStamp: new Date().valueOf() * 1e6,
+        });
+      } catch (e: unknown) {
+        // New DM thread with no messages yet returns a 404 — treat as empty.
+        // Re-throw any other error (network, auth, 500) so callers can handle it.
+        const status = (e as { status?: number }).status;
+        if (status !== 404) throw e;
+        return {
+          updatedConversations: {
+            ...currentConversations,
+            [pubKeyPlusGroupName]: {
+              firstMessagePublicKey: currentConvo.firstMessagePublicKey,
+              messages: [],
+              ChatType: ChatType.DM,
+            },
+          },
+          pubKeyPlusGroupName,
+        };
+      }
 
       const { decrypted, updatedAllAccessGroups } =
         await decryptAccessGroupMessagesWithRetry(
@@ -3715,7 +3752,8 @@ export const MessagingApp: FC = () => {
   if (
     conversationsReady &&
     safeSelectedKey &&
-    !conversations[safeSelectedKey]
+    !conversations[safeSelectedKey] &&
+    !loadingConversation
   ) {
     safeSelectedKey = Object.keys(conversations)[0] || "";
     setSelectedConversationPublicKey(safeSelectedKey);
