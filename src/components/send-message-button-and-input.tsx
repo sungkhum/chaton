@@ -117,6 +117,9 @@ export const SendMessageButtonAndInput = forwardRef<
     const [isSending, setIsSending] = useState(false);
     // Synchronous guard against double-tap race (useState batching can miss rapid clicks)
     const isSendingRef = useRef(false);
+    // Separate ref for upload-confirm guard — prevents double-tap during image/video
+    // upload without tripping sendMessage's own isSendingRef check.
+    const isUploadingRef = useRef(false);
     const [isUploading, setIsUploading] = useState(false);
     const [showGifPicker, setShowGifPicker] = useState(false);
     const [pendingImage, setPendingImage] = useState<{
@@ -452,8 +455,9 @@ export const SendMessageButtonAndInput = forwardRef<
     };
 
     const confirmImage = async (caption?: string) => {
-      if (!pendingImage || isSendingRef.current) return;
-      isSendingRef.current = true;
+      if (!pendingImage || isUploadingRef.current || isSendingRef.current)
+        return;
+      isUploadingRef.current = true;
       setIsUploading(true);
       try {
         const result = await uploadImage(pendingImage.file);
@@ -477,7 +481,7 @@ export const SendMessageButtonAndInput = forwardRef<
       } catch (err: any) {
         toast.error(`Image upload failed: ${err.message || err}`);
       } finally {
-        isSendingRef.current = false;
+        isUploadingRef.current = false;
         setIsUploading(false);
       }
     };
@@ -539,8 +543,9 @@ export const SendMessageButtonAndInput = forwardRef<
     };
 
     const confirmVideo = async (caption?: string) => {
-      if (!pendingVideo || isSendingRef.current) return;
-      isSendingRef.current = true;
+      if (!pendingVideo || isUploadingRef.current || isSendingRef.current)
+        return;
+      isUploadingRef.current = true;
       setIsUploading(true);
       try {
         const result = await uploadVideoFile(pendingVideo.file);
@@ -582,7 +587,7 @@ export const SendMessageButtonAndInput = forwardRef<
           component: "SendMessageButtonAndInput",
         });
       } finally {
-        isSendingRef.current = false;
+        isUploadingRef.current = false;
         setIsUploading(false);
       }
     };
