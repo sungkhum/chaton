@@ -1,4 +1,4 @@
-# Repo Map (generated 2026-04-13)
+# Repo Map (generated 2026-04-14)
 # Compact codebase index for AI agents. Read this FIRST, then do targeted file reads.
 
 ## Routes
