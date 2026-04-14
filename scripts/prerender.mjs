@@ -26,12 +26,20 @@ const ROUTES = [
   "/blog/best-decentralized-messaging-apps-2026",
   "/blog/chaton-vs-signal",
   "/blog/chaton-vs-telegram",
+  "/blog/what-is-end-to-end-encryption",
 ];
 
 const BASE_URL = "https://getchaton.com";
 
 /** Blog posts that need OG images. */
 const OG_POSTS = [
+  {
+    slug: "what-is-end-to-end-encryption",
+    title: "What Is End-to-End Encryption? A Plain-Language Guide",
+    description:
+      "End-to-end encryption means only you and your recipient can read your messages — not the app, not the server, not anyone in between. Here's how it works, what it protects, and what it doesn't.",
+    date: "April 13, 2026",
+  },
   {
     slug: "chaton-vs-telegram",
     title: "ChatOn vs Telegram: An Honest Comparison",

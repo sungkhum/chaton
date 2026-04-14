@@ -59,6 +59,7 @@ src/components/blog/posts/best-decentralized-messaging-apps-2026.tsx
 src/components/blog/posts/chaton-vs-signal.tsx
 src/components/blog/posts/chaton-vs-telegram.tsx
 src/components/blog/posts/near-zero-infrastructure.tsx
+src/components/blog/posts/what-is-end-to-end-encryption.tsx
 src/components/bug-report-modal.tsx  fn BugReportModal
 src/components/community-page.tsx
 src/components/community-tab.tsx
