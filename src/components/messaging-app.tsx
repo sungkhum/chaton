@@ -3846,6 +3846,69 @@ export const MessagingApp: FC = () => {
     allAccessGroups,
     setAllAccessGroups,
   ]);
+  const handleScrollToReply = useCallback(
+    async (ts: string) => {
+      if (!appUser || !selectedConversation) return;
+      const firstMsg = selectedConversation.messages[0];
+      if (!firstMsg) return;
+      try {
+        const tsNanos = BigInt(ts);
+        let rawMessages;
+        if (isGroupChat) {
+          const recipientInfo = firstMsg.RecipientInfo;
+          const resp = await getPaginatedGroupChatThread({
+            UserPublicKeyBase58Check: recipientInfo.OwnerPublicKeyBase58Check,
+            AccessGroupKeyName: recipientInfo.AccessGroupKeyName,
+            StartTimeStampString: (tsNanos + 1n).toString(),
+            MaxMessagesToFetch: MESSAGES_ONE_REQUEST_LIMIT,
+          });
+          rawMessages = resp.GroupChatMessages;
+        } else {
+          const resp = await getPaginatedDMThread({
+            UserGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+            UserGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
+            PartyGroupOwnerPublicKeyBase58Check:
+              selectedConversation.firstMessagePublicKey,
+            PartyGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
+            StartTimeStampString: (tsNanos + 1n).toString(),
+            MaxMessagesToFetch: MESSAGES_ONE_REQUEST_LIMIT,
+          });
+          rawMessages = resp.ThreadMessages;
+        }
+        if (rawMessages.length === 0) {
+          toast.error("Original message not found");
+          return;
+        }
+        const { decrypted, updatedAllAccessGroups } =
+          await decryptAccessGroupMessagesWithRetry(
+            appUser.PublicKeyBase58Check,
+            rawMessages,
+            allAccessGroups
+          );
+        setAllAccessGroups(updatedAllAccessGroups);
+        setConversations((prev) =>
+          updateConv(prev, selectedConversationPublicKey, (c) => ({
+            ...c,
+            messages: decrypted,
+          }))
+        );
+        requestAnimationFrame(() => {
+          bubblesRef.current?.scrollToMessage(ts);
+        });
+      } catch (e) {
+        console.error("Failed to load replied message:", e);
+        toast.error("Failed to load original message");
+      }
+    },
+    [
+      appUser,
+      selectedConversation,
+      isGroupChat,
+      selectedConversationPublicKey,
+      allAccessGroups,
+      setAllAccessGroups,
+    ]
+  );
   const handlePinMessage = useCallback(
     async (timestampNanosString: string, preview?: string) => {
       if (!appUser || !selectedConversation || !isGroupChat) return;
@@ -4726,6 +4789,7 @@ export const MessagingApp: FC = () => {
                             lastReadTimestampNanos={openedLastReadNanos}
                             onPin={isGroupOwner ? handlePinMessage : undefined}
                             pinnedMessageTimestamp={pinnedMessageTimestamp}
+                            onScrollToReply={handleScrollToReply}
                             onScroll={(
                               e: Array<DecryptedMessageEntryResponse>
                             ) => {

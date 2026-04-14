@@ -115,6 +115,7 @@ export interface MessagingBubblesProps {
   pinnedMessageTimestamp?: string;
   pendingTipTimestamps?: Set<string>;
   hiddenMessageIds?: Set<string>;
+  onScrollToReply?: (ts: string) => void;
 }
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
@@ -426,6 +427,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       pinnedMessageTimestamp,
       pendingTipTimestamps,
       hiddenMessageIds,
+      onScrollToReply,
     },
     ref
   ) => {
@@ -1784,7 +1786,11 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                         ?.text
                                     : undefined
                                 }
-                                onClick={() => scrollToMessage(parsed.replyTo!)}
+                                onClick={() => {
+                                  if (!scrollToMessage(parsed.replyTo!)) {
+                                    onScrollToReply?.(parsed.replyTo!);
+                                  }
+                                }}
                               />
                             </div>
                           )}
