@@ -92,7 +92,7 @@ const PreviewText = memo(function PreviewText({
   switch (parsed.type) {
     case "audio":
       return (
-        <span className="flex items-center gap-0">
+        <span className="flex items-center gap-1">
           {namePrefix}
           <Mic className={iconClass} />
           {text || "Voice message"}
@@ -100,7 +100,7 @@ const PreviewText = memo(function PreviewText({
       );
     case "image":
       return (
-        <span className="flex items-center gap-0">
+        <span className="flex items-center gap-1">
           {namePrefix}
           <ImageIcon className={iconClass} />
           {text || "Photo"}
@@ -108,7 +108,7 @@ const PreviewText = memo(function PreviewText({
       );
     case "video":
       return (
-        <span className="flex items-center gap-0">
+        <span className="flex items-center gap-1">
           {namePrefix}
           <Video className={iconClass} />
           {text || "Video"}
@@ -116,7 +116,7 @@ const PreviewText = memo(function PreviewText({
       );
     case "gif":
       return (
-        <span className="flex items-center gap-0">
+        <span className="flex items-center gap-1">
           {namePrefix}
           <ImageIcon className={iconClass} />
           {text || "GIF"}
@@ -131,7 +131,7 @@ const PreviewText = memo(function PreviewText({
       );
     case "file":
       return (
-        <span className="flex items-center gap-0">
+        <span className="flex items-center gap-1">
           {namePrefix}
           <FileIcon className={iconClass} />
           {parsed.fileName || text || "File"}
