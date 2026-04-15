@@ -637,7 +637,10 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
         setMobileActionFor(null);
         setReactionPickerFor(null);
       };
-      scrollArea.addEventListener("scroll", dismiss, { passive: true });
+      const onScroll = () => {
+        if (!reactionPickerForRef.current) dismiss();
+      };
+      scrollArea.addEventListener("scroll", onScroll, { passive: true });
       // iOS: keyboard open/close changes visualViewport but not scroll events
       const vv = window.visualViewport;
       const onResize = () => {
@@ -646,7 +649,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       };
       if (vv) vv.addEventListener("resize", onResize);
       return () => {
-        scrollArea.removeEventListener("scroll", dismiss);
+        scrollArea.removeEventListener("scroll", onScroll);
         if (vv) vv.removeEventListener("resize", onResize);
       };
     }, [mobileActionFor]);
