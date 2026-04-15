@@ -156,7 +156,9 @@ const PreviewText = memo(function PreviewText({
       );
     }
     case "system":
-      return <span className="italic text-white/40">{text || ""}</span>;
+      return (
+        <span className="italic text-white/40">{text || "System message"}</span>
+      );
     default:
       return (
         <>
