@@ -654,6 +654,46 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       };
     }, [mobileActionFor]);
 
+    // Reposition mobile emoji bottom sheet above iOS virtual keyboard.
+    // On iOS, `position:fixed; bottom:0` anchors to the layout viewport (behind
+    // the keyboard), not the visual viewport. Use the visualViewport API to
+    // compute the keyboard height and shift the sheet up so it sits above it.
+    useLayoutEffect(() => {
+      if (!isTouchDevice || !reactionPickerFor) return;
+      const el = pickerRef.current;
+      const vv = window.visualViewport;
+      if (!el || !vv) return;
+
+      const reposition = () => {
+        const keyboardOffset = Math.max(
+          0,
+          window.innerHeight - vv.height - vv.offsetTop
+        );
+        el.style.bottom = `${keyboardOffset}px`;
+
+        // If picker + keyboard would overflow the screen, shrink the picker
+        const available = vv.height - 56; // 56px buffer for top header bar
+        if (available < 360) {
+          el.style.maxHeight = `${Math.max(180, available)}px`;
+          el.style.overflow = "hidden";
+        } else {
+          el.style.maxHeight = "";
+          el.style.overflow = "";
+        }
+      };
+
+      reposition();
+      vv.addEventListener("resize", reposition);
+      vv.addEventListener("scroll", reposition);
+      return () => {
+        vv.removeEventListener("resize", reposition);
+        vv.removeEventListener("scroll", reposition);
+        el.style.bottom = "0px";
+        el.style.maxHeight = "";
+        el.style.overflow = "";
+      };
+    }, [isTouchDevice, reactionPickerFor]);
+
     const clearLongPressTimer = useCallback(() => {
       if (longPressTimerRef.current) {
         clearTimeout(longPressTimerRef.current);
