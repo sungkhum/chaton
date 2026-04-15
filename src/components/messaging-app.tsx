@@ -3935,7 +3935,11 @@ export const MessagingApp: FC = () => {
         if (replyFetchIdRef.current !== fetchId) return;
         setAllAccessGroups(updatedAllAccessGroups);
         const currentConv = conversationsRef.current[convKey];
-        if (currentConv) {
+        if (
+          currentConv &&
+          (!savedMessagesRef.current ||
+            savedMessagesRef.current.convKey !== convKey)
+        ) {
           savedMessagesRef.current = {
             messages: currentConv.messages,
             convKey,
