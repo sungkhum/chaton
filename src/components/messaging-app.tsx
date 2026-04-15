@@ -5764,6 +5764,16 @@ export const MessagingApp: FC = () => {
                                 messages: [mockMessage, ...c.messages],
                               }))
                             );
+                            // Advance the read cursor — sending implies the user
+                            // has seen every prior message in the conversation.
+                            cacheLastReadTimestamp(
+                              appUser.PublicKeyBase58Check,
+                              convKey,
+                              TimestampNanos
+                            );
+                            clearUnread(convKey);
+                            removeUnreadConversation(convKey);
+                            sendRead(convKey, String(TimestampNanos));
                             setLockRefresh(true);
 
                             // If a prepare callback was provided (e.g. audio upload),
