@@ -683,6 +683,7 @@ export const MessagingApp: FC = () => {
       updatedMessages: DecryptedMessageEntryResponse[]
     ) => {
       let hasNewlyConfirmed = false;
+      savedMessagesRef.current = null;
 
       setConversations((prev) => {
         const existing = prev[selectedKey];
@@ -3847,6 +3848,34 @@ export const MessagingApp: FC = () => {
     setAllAccessGroups,
   ]);
   const replyFetchIdRef = useRef(0);
+  const savedMessagesRef = useRef<DecryptedMessageEntryResponse[] | null>(null);
+
+  const handleReloadLatest = useCallback(() => {
+    const saved = savedMessagesRef.current;
+    if (!saved) return false;
+    savedMessagesRef.current = null;
+    const convKey = selectedConversationPublicKeyRef.current;
+    setConversations((prev) => {
+      const existing = prev[convKey];
+      if (!existing) return prev;
+      const currentOptimistic = existing.messages.filter(
+        (m: any) =>
+          m._localId && (m._status === "sending" || m._status === "sent")
+      );
+      const savedTs = new Set(
+        saved.map((m) => m.MessageInfo.TimestampNanosString)
+      );
+      const newOptimistic = currentOptimistic.filter(
+        (m: any) => !savedTs.has(m.MessageInfo.TimestampNanosString)
+      );
+      return updateConv(prev, convKey, (c) => ({
+        ...c,
+        messages: [...newOptimistic, ...saved],
+      }));
+    });
+    return true;
+  }, []);
+
   const handleScrollToReply = useCallback(
     async (ts: string) => {
       if (!appUser || !selectedConversation) return;
@@ -3902,6 +3931,7 @@ export const MessagingApp: FC = () => {
         setConversations((prev) => {
           const existing = prev[convKey];
           if (!existing) return prev;
+          savedMessagesRef.current = existing.messages;
           const optimistic = existing.messages.filter(
             (m: any) => m._localId && m._status === "sending"
           );
@@ -4803,6 +4833,7 @@ export const MessagingApp: FC = () => {
                             onPin={isGroupOwner ? handlePinMessage : undefined}
                             pinnedMessageTimestamp={pinnedMessageTimestamp}
                             onScrollToReply={handleScrollToReply}
+                            onReloadLatest={handleReloadLatest}
                             onScroll={(
                               e: Array<DecryptedMessageEntryResponse>
                             ) => {
