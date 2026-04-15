@@ -535,6 +535,8 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
     const longPressPosRef = useRef<{ x: number; y: number } | null>(null);
     const suppressSelectionRef = useRef(false);
     const suppressResizeDismissRef = useRef(false);
+    const reactionPickerForRef = useRef(reactionPickerFor);
+    reactionPickerForRef.current = reactionPickerFor;
     const { isMobile, isTouchDevice } = useMobile();
 
     // iOS ignores user-select:none during long-press — actively clear any
@@ -639,7 +641,8 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       // iOS: keyboard open/close changes visualViewport but not scroll events
       const vv = window.visualViewport;
       const onResize = () => {
-        if (!suppressResizeDismissRef.current) dismiss();
+        if (!suppressResizeDismissRef.current && !reactionPickerForRef.current)
+          dismiss();
       };
       if (vv) vv.addEventListener("resize", onResize);
       return () => {
