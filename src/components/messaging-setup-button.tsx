@@ -1,5 +1,6 @@
-import { createAccessGroup, getAllAccessGroups, identity } from "deso-protocol";
+import { createAccessGroup, getAllAccessGroups } from "deso-protocol";
 import { withAuth } from "../utils/with-auth";
+import { safeLogin } from "../utils/safe-login";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -39,7 +40,7 @@ export const MessagingSetupButton = () => {
     return (
       <button
         className="glass-btn-primary text-[#34F080] font-bold rounded-full text-lg px-6 py-3 cursor-pointer transition-colors"
-        onClick={() => identity.login()}
+        onClick={() => safeLogin()}
       >
         Login with DeSo or Ethereum
       </button>

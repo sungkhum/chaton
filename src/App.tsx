@@ -70,16 +70,7 @@ import {
   checkCacheVersion,
 } from "./services/cache.service";
 import { clearDecryptionCaches } from "./services/conversations.service";
-
-// Mobile browsers and in-app browsers (Telegram, Instagram, etc.) can't
-// reliably use popups for identity login — window.open() either opens a new
-// tab (breaking postMessage) or gets blocked entirely by WebView/WKWebView.
-// Use the redirect flow instead: navigate to identity, then back with query params.
-const isStandalone =
-  window.matchMedia("(display-mode: standalone)").matches ||
-  (navigator as any).standalone === true;
-const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-const useRedirectFlow = isStandalone || isMobile;
+import { useRedirectFlow } from "./utils/safe-login";
 
 configure({
   identityURI: import.meta.env.VITE_IDENTITY_URL,
@@ -96,7 +87,9 @@ configure({
 // yet. Call it again AFTER configure(), but ONLY when the URL actually has
 // identity redirect params. Calling it on clean URLs passes undefined to
 // URLSearchParams which crashes in some WebKit versions.
-if (useRedirectFlow && window.location.search.includes("service=identity")) {
+// Not gated on useRedirectFlow — desktop users may have been redirected by
+// the popup-blocked fallback in safeLogin().
+if (window.location.search.includes("service=identity")) {
   identity.handleRedirectURI(window.location.href);
 }
 

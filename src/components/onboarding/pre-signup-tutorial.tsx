@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { identity } from "deso-protocol";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
+import { safeLogin } from "../../utils/safe-login";
 
 interface PreSignupTutorialProps {
   onClose: () => void;
@@ -37,7 +37,7 @@ export const PreSignupTutorial = ({ onClose }: PreSignupTutorialProps) => {
 
   const handleCreateAccount = () => {
     onClose();
-    identity.login();
+    safeLogin();
   };
 
   return (
@@ -165,7 +165,7 @@ export const PreSignupTutorial = ({ onClose }: PreSignupTutorialProps) => {
               <button
                 onClick={() => {
                   onClose();
-                  identity.login();
+                  safeLogin();
                 }}
                 className="text-[#34F080] hover:underline font-semibold cursor-pointer"
               >

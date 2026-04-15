@@ -8,6 +8,8 @@ import { useStore } from "../store";
  * If the derived key is expired or unauthorized, it automatically
  * re-requests permissions and retries the operation once.
  */
+const REAUTH_POPUP_TIMEOUT_MS = 4000;
+
 export async function withAuth<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
@@ -21,9 +23,55 @@ export async function withAuth<T>(fn: () => Promise<T>): Promise<T> {
       toast.info("Re-authorizing your account...");
 
       try {
-        await identity.requestPermissions({
-          ...getTransactionSpendingLimits(publicKey),
-        });
+        // Race requestPermissions against a timeout to detect popup blockers.
+        // withAuth is often called outside a user-gesture context (catch handler),
+        // so the popup may be blocked. The SDK hangs forever when blocked.
+        let resolved = false;
+        const permPromise = identity
+          .requestPermissions({
+            ...getTransactionSpendingLimits(publicKey),
+          })
+          .then((r) => {
+            resolved = true;
+            return r;
+          });
+
+        // Prevent unhandled rejection if timeout wins and permPromise later rejects
+        permPromise.catch(() => {});
+
+        let raceTimeoutId: ReturnType<typeof setTimeout>;
+        const result = await Promise.race([
+          permPromise.then(() => {
+            clearTimeout(raceTimeoutId);
+            return "ok" as const;
+          }),
+          new Promise<"timeout">((resolve) => {
+            raceTimeoutId = setTimeout(() => {
+              if (!resolved) resolve("timeout");
+            }, REAUTH_POPUP_TIMEOUT_MS);
+          }),
+        ]);
+
+        if (result === "timeout") {
+          useStore.getState().setIsLoadingUser(false);
+          toast.error("Authorization popup may be blocked.", {
+            duration: 20000,
+            description: "Click the button below to re-authorize.",
+            action: {
+              label: "Authorize",
+              onClick: () => {
+                toast.dismiss();
+                requestFullPermissions().then((ok) => {
+                  if (ok)
+                    toast.success(
+                      "Permissions updated! Please try your action again."
+                    );
+                });
+              },
+            },
+          });
+          throw new Error("Re-authorization popup blocked");
+        }
 
         // requestPermissions triggers AUTHORIZE_DERIVED_KEY_START which sets
         // isLoadingUser(true) in App.tsx. Since the user is already logged in,
@@ -46,7 +94,7 @@ export async function withAuth<T>(fn: () => Promise<T>): Promise<T> {
           toast.error(
             "Authorization cancelled. You need to re-authorize to perform this action."
           );
-        } else {
+        } else if (!reAuthStr.includes("popup blocked")) {
           toast.error(
             "Re-authorization failed. Please try logging out and back in."
           );
@@ -84,12 +132,13 @@ export function needsPermissionUpgrade(): boolean {
   const publicKey = appUser?.PublicKeyBase58Check || "";
   if (!publicKey) return false;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  /* eslint-disable @typescript-eslint/no-unused-vars */
   const {
     GlobalDESOLimit,
     DAOCoinOperationLimitMap,
     ...structuralPermissions
   } = getTransactionSpendingLimits(publicKey);
+  /* eslint-enable @typescript-eslint/no-unused-vars */
 
   // AUTHORIZE_DERIVED_KEY is a one-shot permission consumed during key creation,
   // so it always reads as 0 afterward — exclude it to avoid a false positive.

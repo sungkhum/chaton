@@ -1,9 +1,9 @@
 import {
   getBulkAccessGroups,
   getUsersStateless,
-  identity,
   ProfileEntryResponse,
 } from "deso-protocol";
+import { safeLogin } from "../utils/safe-login";
 import { fetchGroupMemberCount } from "../services/community.service";
 import { usePageMeta } from "../hooks/usePageMeta";
 import {
@@ -290,7 +290,7 @@ export const JoinGroupPage = () => {
   };
 
   const handleLogin = () => {
-    identity.login().catch(() => {});
+    safeLogin();
   };
 
   const handleOpenChat = () => {

@@ -198,6 +198,7 @@ src/utils/link-services.ts  fn detectLinkService, extractFileNameFromUrl
 src/utils/onboarding.ts  fn isOnboardingComplete, markOnboardingComplete
 src/utils/profanity-filter.ts  fn containsProfanity
 src/utils/push-notifications.ts  fn requestPushPermission, subscribeToPush, getExistingSubscription, isPushSupported, getNotificationPermission, unsubscribeFromPush
+src/utils/safe-login.ts  fn safeLogin, useRedirectFlow
 src/utils/search-helpers.ts  fn shortenLongWord, nameOrFormattedKey
 src/utils/spam-filter.ts  fn passesSenderFilter
 src/utils/tip-fees.ts  fn hasTipFee, tipFeeUsd, tipRecipientUsd, splitDesoTip, splitUsdcTip

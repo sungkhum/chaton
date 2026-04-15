@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { identity, sendDeso } from "deso-protocol";
 import { usePageMeta } from "../hooks/usePageMeta";
+import { safeLogin } from "../utils/safe-login";
 import { Heart, ArrowRight, Sparkles } from "lucide-react";
 import gsap from "gsap";
 import { toast } from "sonner";
@@ -141,7 +142,7 @@ const LoggedOutCTA = () => (
       Any amount helps.
     </p>
     <button
-      onClick={() => identity.login()}
+      onClick={() => safeLogin()}
       className="inline-flex items-center gap-3 px-8 py-4 landing-btn-vivid text-white font-bold rounded-xl group cursor-pointer text-sm"
     >
       Log In to Support ChatOn

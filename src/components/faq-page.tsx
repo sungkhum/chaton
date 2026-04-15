@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { identity } from "deso-protocol";
 import { usePageMeta } from "../hooks/usePageMeta";
+import { safeLogin } from "../utils/safe-login";
 import { ChevronDown, HelpCircle } from "lucide-react";
 import gsap from "gsap";
 import { PublicNav, PublicFooter } from "./public-layout";
@@ -251,7 +251,7 @@ export const FaqPage = () => {
                 Ask on GitHub
               </a>
               <button
-                onClick={() => identity.login()}
+                onClick={() => safeLogin()}
                 className="px-6 py-3 rounded-xl landing-btn-vivid text-white text-sm font-bold cursor-pointer"
               >
                 Start Messaging

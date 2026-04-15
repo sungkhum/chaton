@@ -12,13 +12,15 @@
       "src/utils/with-auth.ts",
       "src/utils/constants.ts",
       "src/services/cache.service.ts",
-      "src/services/conversations.service.tsx"
+      "src/services/conversations.service.tsx",
+      "src/utils/safe-login.ts"
     ],
     "exports": []
   },
   "src/components/about-page.tsx": {
     "imports": [
       "src/hooks/usePageMeta.ts",
+      "src/utils/safe-login.ts",
       "src/components/public-layout.tsx"
     ],
     "exports": [
@@ -123,6 +125,7 @@
   "src/components/compare-page.tsx": {
     "imports": [
       "src/hooks/usePageMeta.ts",
+      "src/utils/safe-login.ts",
       "src/components/public-layout.tsx"
     ],
     "exports": [
@@ -226,6 +229,7 @@
   "src/components/faq-page.tsx": {
     "imports": [
       "src/hooks/usePageMeta.ts",
+      "src/utils/safe-login.ts",
       "src/components/public-layout.tsx"
     ],
     "exports": [
@@ -320,6 +324,7 @@
   },
   "src/components/join-group-page.tsx": {
     "imports": [
+      "src/utils/safe-login.ts",
       "src/services/community.service.ts",
       "src/hooks/usePageMeta.ts",
       "src/store/index.ts",
@@ -636,6 +641,7 @@
   "src/components/messaging-setup-button.tsx": {
     "imports": [
       "src/utils/with-auth.ts",
+      "src/utils/safe-login.ts",
       "src/store/index.ts",
       "src/components/send-funds-dialog.tsx"
     ],
@@ -683,7 +689,9 @@
     ]
   },
   "src/components/onboarding/pre-signup-tutorial.tsx": {
-    "imports": [],
+    "imports": [
+      "src/utils/safe-login.ts"
+    ],
     "exports": [
       "PreSignupTutorial"
     ]
@@ -699,7 +707,8 @@
   },
   "src/components/public-layout.tsx": {
     "imports": [
-      "src/store/index.ts"
+      "src/store/index.ts",
+      "src/utils/safe-login.ts"
     ],
     "exports": [
       "PublicNav",
@@ -861,6 +870,7 @@
   "src/components/support-page.tsx": {
     "imports": [
       "src/hooks/usePageMeta.ts",
+      "src/utils/safe-login.ts",
       "src/store/index.ts",
       "src/utils/constants.ts",
       "src/utils/helpers.ts",
@@ -1538,6 +1548,15 @@
       "isPushSupported",
       "getNotificationPermission",
       "unsubscribeFromPush"
+    ]
+  },
+  "src/utils/safe-login.ts": {
+    "imports": [
+      "src/utils/constants.ts"
+    ],
+    "exports": [
+      "safeLogin",
+      "useRedirectFlow"
     ]
   },
   "src/utils/search-helpers.ts": {

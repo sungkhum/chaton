@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { identity } from "deso-protocol";
 import { Menu, X } from "lucide-react";
 import { useStore } from "../store";
+import { safeLogin } from "../utils/safe-login";
 
 const NAV_LINKS = [
   { href: "/community", label: "Community" },
@@ -31,7 +31,7 @@ export const PublicNav = ({
     if (useStore.getState().appUser) {
       window.location.href = "/";
     } else {
-      identity.login();
+      safeLogin();
     }
   };
 
@@ -115,7 +115,7 @@ export const PublicNav = ({
           {variant === "auth" ? (
             <>
               <button
-                onClick={() => identity.login()}
+                onClick={() => safeLogin()}
                 className="px-3 sm:px-5 py-2 sm:py-2.5 text-gray-400 hover:text-white text-[11px] sm:text-xs font-bold sm:font-black tracking-wide transition-colors cursor-pointer"
               >
                 Log in

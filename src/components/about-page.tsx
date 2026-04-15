@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
-import { identity } from "deso-protocol";
 import { usePageMeta } from "../hooks/usePageMeta";
+import { safeLogin } from "../utils/safe-login";
 import { PublicNav, PublicFooter } from "./public-layout";
 import {
   Lock,
@@ -353,7 +353,7 @@ export const AboutPage = () => {
           {/* CTA */}
           <div className="about-section text-center">
             <button
-              onClick={() => identity.login()}
+              onClick={() => safeLogin()}
               className="px-8 py-3.5 rounded-xl landing-btn-vivid text-white text-sm font-bold cursor-pointer"
             >
               Start Messaging
