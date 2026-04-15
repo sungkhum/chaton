@@ -1035,7 +1035,18 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
     }, []);
 
     const scrollToLatest = useCallback(() => {
-      if (onReloadLatest?.()) return;
+      const didReload = onReloadLatest?.();
+      if (didReload) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const el = messageAreaRef.current;
+            if (!el) return;
+            const stub = el.querySelector(".scroller-end-stub");
+            stub?.scrollIntoView({ behavior: "smooth" });
+          });
+        });
+        return;
+      }
       const el = messageAreaRef.current;
       if (!el) return;
       const stub = el.querySelector(".scroller-end-stub");

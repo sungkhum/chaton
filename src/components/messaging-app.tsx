@@ -3848,13 +3848,19 @@ export const MessagingApp: FC = () => {
     setAllAccessGroups,
   ]);
   const replyFetchIdRef = useRef(0);
-  const savedMessagesRef = useRef<DecryptedMessageEntryResponse[] | null>(null);
+  const savedMessagesRef = useRef<{
+    messages: DecryptedMessageEntryResponse[];
+    convKey: string;
+  } | null>(null);
 
   const handleReloadLatest = useCallback(() => {
     const saved = savedMessagesRef.current;
-    if (!saved) return false;
-    savedMessagesRef.current = null;
     const convKey = selectedConversationPublicKeyRef.current;
+    if (!saved || saved.convKey !== convKey) {
+      savedMessagesRef.current = null;
+      return false;
+    }
+    savedMessagesRef.current = null;
     setConversations((prev) => {
       const existing = prev[convKey];
       if (!existing) return prev;
@@ -3863,14 +3869,14 @@ export const MessagingApp: FC = () => {
           m._localId && (m._status === "sending" || m._status === "sent")
       );
       const savedTs = new Set(
-        saved.map((m) => m.MessageInfo.TimestampNanosString)
+        saved.messages.map((m) => m.MessageInfo.TimestampNanosString)
       );
       const newOptimistic = currentOptimistic.filter(
         (m: any) => !savedTs.has(m.MessageInfo.TimestampNanosString)
       );
       return updateConv(prev, convKey, (c) => ({
         ...c,
-        messages: [...newOptimistic, ...saved],
+        messages: [...newOptimistic, ...saved.messages],
       }));
     });
     return true;
@@ -3928,10 +3934,16 @@ export const MessagingApp: FC = () => {
           );
         if (replyFetchIdRef.current !== fetchId) return;
         setAllAccessGroups(updatedAllAccessGroups);
+        const currentConv = conversationsRef.current[convKey];
+        if (currentConv) {
+          savedMessagesRef.current = {
+            messages: currentConv.messages,
+            convKey,
+          };
+        }
         setConversations((prev) => {
           const existing = prev[convKey];
           if (!existing) return prev;
-          savedMessagesRef.current = existing.messages;
           const optimistic = existing.messages.filter(
             (m: any) => m._localId && m._status === "sending"
           );
