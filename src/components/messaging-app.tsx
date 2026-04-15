@@ -5147,6 +5147,14 @@ export const MessagingApp: FC = () => {
                                   messages: [mockReaction, ...c.messages],
                                 }))
                               );
+                              cacheLastReadTimestamp(
+                                myKey,
+                                convKey,
+                                TimestampNanos
+                              );
+                              clearUnread(convKey);
+                              removeUnreadConversation(convKey);
+                              sendRead(convKey, String(TimestampNanos));
 
                               try {
                                 await encryptAndSendNewMessage(
