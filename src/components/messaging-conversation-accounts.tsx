@@ -63,9 +63,11 @@ import type { DecryptedMessageEntryResponse } from "deso-protocol";
 const PreviewText = memo(function PreviewText({
   msg,
   senderName,
+  usernameMap,
 }: {
   msg: DecryptedMessageEntryResponse;
   senderName?: string;
+  usernameMap?: { [key: string]: string };
 }) {
   if (msg.DecryptedMessage === UNDECRYPTED_PLACEHOLDER) {
     return (
@@ -138,11 +140,13 @@ const PreviewText = memo(function PreviewText({
     case "tip": {
       // Show the custom message text if the user wrote one, otherwise "Tip"
       const customText = tipHasCustomMessage(parsed) ? text : undefined;
+      const recipientName =
+        parsed.tipRecipient && usernameMap?.[parsed.tipRecipient];
       return (
-        <span className="flex items-center gap-0">
+        <span className="flex items-center gap-1">
           {namePrefix}
           <CircleDollarSign className={iconClass} />
-          {customText || "Tip"}
+          {customText || (recipientName ? `Tipped @${recipientName}` : "Tip")}
         </span>
       );
     }
@@ -321,6 +325,7 @@ const ConversationRow = memo(function ConversationRow({
                         ]
                       : undefined
                   }
+                  usernameMap={getUsernameByPublicKeyBase58Check}
                 />
               ) : (
                 ""
@@ -708,6 +713,9 @@ export const MessagingConversationAccount: FC<{
                                                     ]
                                                   : undefined
                                               }
+                                              usernameMap={
+                                                getUsernameByPublicKeyBase58Check
+                                              }
                                             />
                                           </p>
                                         )}
@@ -1053,6 +1061,9 @@ export const MessagingConversationAccount: FC<{
                                           <p className="truncate text-sm text-gray-500">
                                             <PreviewText
                                               msg={value.messages[0]}
+                                              usernameMap={
+                                                getUsernameByPublicKeyBase58Check
+                                              }
                                             />
                                           </p>
                                         )
