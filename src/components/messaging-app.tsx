@@ -683,6 +683,7 @@ export const MessagingApp: FC = () => {
       updatedMessages: DecryptedMessageEntryResponse[]
     ) => {
       let hasNewlyConfirmed = false;
+      savedMessagesRef.current = null;
 
       setConversations((prev) => {
         const existing = prev[selectedKey];
@@ -3847,6 +3848,40 @@ export const MessagingApp: FC = () => {
     setAllAccessGroups,
   ]);
   const replyFetchIdRef = useRef(0);
+  const savedMessagesRef = useRef<{
+    messages: DecryptedMessageEntryResponse[];
+    convKey: string;
+  } | null>(null);
+
+  const handleReloadLatest = useCallback(() => {
+    const saved = savedMessagesRef.current;
+    const convKey = selectedConversationPublicKeyRef.current;
+    if (!saved || saved.convKey !== convKey) {
+      savedMessagesRef.current = null;
+      return false;
+    }
+    savedMessagesRef.current = null;
+    setConversations((prev) => {
+      const existing = prev[convKey];
+      if (!existing) return prev;
+      const currentOptimistic = existing.messages.filter(
+        (m: any) =>
+          m._localId && (m._status === "sending" || m._status === "sent")
+      );
+      const savedTs = new Set(
+        saved.messages.map((m) => m.MessageInfo.TimestampNanosString)
+      );
+      const newOptimistic = currentOptimistic.filter(
+        (m: any) => !savedTs.has(m.MessageInfo.TimestampNanosString)
+      );
+      return updateConv(prev, convKey, (c) => ({
+        ...c,
+        messages: [...newOptimistic, ...saved.messages],
+      }));
+    });
+    return true;
+  }, []);
+
   const handleScrollToReply = useCallback(
     async (ts: string) => {
       if (!appUser || !selectedConversation) return;
@@ -3899,6 +3934,17 @@ export const MessagingApp: FC = () => {
           );
         if (replyFetchIdRef.current !== fetchId) return;
         setAllAccessGroups(updatedAllAccessGroups);
+        const currentConv = conversationsRef.current[convKey];
+        if (
+          currentConv &&
+          (!savedMessagesRef.current ||
+            savedMessagesRef.current.convKey !== convKey)
+        ) {
+          savedMessagesRef.current = {
+            messages: currentConv.messages,
+            convKey,
+          };
+        }
         setConversations((prev) => {
           const existing = prev[convKey];
           if (!existing) return prev;
@@ -4803,6 +4849,7 @@ export const MessagingApp: FC = () => {
                             onPin={isGroupOwner ? handlePinMessage : undefined}
                             pinnedMessageTimestamp={pinnedMessageTimestamp}
                             onScrollToReply={handleScrollToReply}
+                            onReloadLatest={handleReloadLatest}
                             onScroll={(
                               e: Array<DecryptedMessageEntryResponse>
                             ) => {

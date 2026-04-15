@@ -116,6 +116,7 @@ export interface MessagingBubblesProps {
   pendingTipTimestamps?: Set<string>;
   hiddenMessageIds?: Set<string>;
   onScrollToReply?: (ts: string) => void;
+  onReloadLatest?: () => boolean;
 }
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
@@ -428,6 +429,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       pendingTipTimestamps,
       hiddenMessageIds,
       onScrollToReply,
+      onReloadLatest,
     },
     ref
   ) => {
@@ -1033,11 +1035,23 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
     }, []);
 
     const scrollToLatest = useCallback(() => {
+      const didReload = onReloadLatest?.();
+      if (didReload) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const el = messageAreaRef.current;
+            if (!el) return;
+            const stub = el.querySelector(".scroller-end-stub");
+            stub?.scrollIntoView({ behavior: "smooth" });
+          });
+        });
+        return;
+      }
       const el = messageAreaRef.current;
       if (!el) return;
       const stub = el.querySelector(".scroller-end-stub");
       stub?.scrollIntoView({ behavior: "smooth" });
-    }, []);
+    }, [onReloadLatest]);
 
     const loadMore = useCallback(async () => {
       if (!appUser || isLoadingMore) return;
