@@ -1276,6 +1276,8 @@
       "getPendingMessages",
       "addPendingMessage",
       "removePendingMessage",
+      "incrementPendingMessageRetryCount",
+      "resetPendingMessageRetryCount",
       "clearPendingMessages"
     ]
   },
@@ -1387,6 +1389,7 @@
       "ASSOCIATION_VALUE_PAID",
       "getTransactionSpendingLimits",
       "MAX_VIDEO_FILE_SIZE",
+      "MAX_MESSAGE_TEXT_BYTES",
       "MESSAGES_ONE_REQUEST_LIMIT",
       "FETCH_THREADS_TIMEOUT_MS",
       "MAX_MEMBERS_IN_GROUP_SUMMARY_SHOWN",

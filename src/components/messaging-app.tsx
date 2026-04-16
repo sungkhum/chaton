@@ -119,6 +119,7 @@ import {
   ASSOCIATION_TYPE_DISMISSED,
   BASE_TITLE,
   DEFAULT_KEY_MESSAGING_GROUP_NAME,
+  MAX_MESSAGE_TEXT_BYTES,
   MESSAGES_ONE_REQUEST_LIMIT,
   PUBLIC_KEY_LENGTH,
   FOREGROUND_RESUME_DEBOUNCE_MS,
@@ -205,6 +206,8 @@ import {
   removePendingMessage,
   getPendingMessages,
   clearPendingMessages,
+  incrementPendingMessageRetryCount,
+  resetPendingMessageRetryCount,
   type PendingMessage,
 } from "../services/pending-messages.service";
 import {
@@ -1980,11 +1983,14 @@ export const MessagingApp: FC = () => {
     }
   };
 
-  // Retry a single pending message (used by startup retry and the retry button)
+  // Retry a single pending message (used by startup retry and the retry button).
+  // When isAutoRetry=true, a failure bumps the on-disk retryCount so the next
+  // boot skips auto-retry and prompts the user instead.
   const retryingIds = useRef(new Set<string>());
   const retryPendingMessage = useCallback(
-    async (pending: PendingMessage) => {
+    async (pending: PendingMessage, opts?: { isAutoRetry?: boolean }) => {
       if (!appUser) return;
+      const isAutoRetry = opts?.isAutoRetry === true;
       const {
         localId,
         conversationKey,
@@ -2137,9 +2143,10 @@ export const MessagingApp: FC = () => {
       } catch (e: any) {
         const errorStr = e?.toString() || "Unknown error";
 
-        const isPermanent = /TxnTooBig|TxnTooLarge|MaxMessageLength/i.test(
-          errorStr
-        );
+        const isPermanent =
+          /TxnTooBig|TxnTooLarge|MaxMessageLength|EncryptedTextLengthExceedsMax/i.test(
+            errorStr
+          );
 
         setConversations((prev) => {
           if (!prev[conversationKey]) return prev;
@@ -2153,6 +2160,15 @@ export const MessagingApp: FC = () => {
             },
           };
         });
+
+        // Track failed auto-retries so the next boot prompts the user
+        // instead of silently retrying again.
+        if (isAutoRetry) {
+          incrementPendingMessageRetryCount(
+            appUser.PublicKeyBase58Check,
+            localId
+          );
+        }
 
         if (isPermanent) {
           toast.error("Message too large to send.", {
@@ -2176,7 +2192,9 @@ export const MessagingApp: FC = () => {
               },
             },
           });
-        } else {
+        } else if (!isAutoRetry) {
+          // User-initiated retry failed — surface the error. For auto-retries
+          // we stay quiet and let the startup prompt handle it.
           toast.error(`Failed to send message: ${errorStr}`);
         }
       } finally {
@@ -2195,38 +2213,145 @@ export const MessagingApp: FC = () => {
 
     getPendingMessages(appUser.PublicKeyBase58Check).then((pendingMsgs) => {
       if (pendingMsgs.length === 0) return;
-      toast.info(
-        `Retrying ${pendingMsgs.length} unsent message${
-          pendingMsgs.length > 1 ? "s" : ""
-        }…`,
-        {
-          action: {
-            label: "Clear all",
-            onClick: () => {
-              clearPendingMessages(appUser.PublicKeyBase58Check);
-              // Remove all optimistic messages from every conversation
-              setConversations((prev) => {
-                const localIds = new Set(pendingMsgs.map((m) => m.localId));
-                const next = { ...prev };
-                for (const key of Object.keys(next)) {
-                  const c = next[key];
-                  if (!c) continue;
-                  const filtered = c.messages.filter(
-                    (m: any) => !m._localId || !localIds.has(m._localId)
-                  );
-                  if (filtered.length !== c.messages.length) {
-                    next[key] = { ...c, messages: filtered };
-                  }
-                }
-                return next;
-              });
-              toast.success("Cleared all pending messages");
+
+      // Partition: fresh failures get one automatic retry; messages that have
+      // already failed an auto-retry wait for the user to decide.
+      const toAutoRetry = pendingMsgs.filter((m) => (m.retryCount ?? 0) < 1);
+      const toPrompt = pendingMsgs.filter((m) => (m.retryCount ?? 0) >= 1);
+
+      const clearMessagesFromUi = (msgs: PendingMessage[]) => {
+        const localIds = new Set(msgs.map((m) => m.localId));
+        setConversations((prev) => {
+          const next = { ...prev };
+          for (const key of Object.keys(next)) {
+            const c = next[key];
+            if (!c) continue;
+            const filtered = c.messages.filter(
+              (m: any) => !m._localId || !localIds.has(m._localId)
+            );
+            if (filtered.length !== c.messages.length) {
+              next[key] = { ...c, messages: filtered };
+            }
+          }
+          return next;
+        });
+      };
+
+      if (toAutoRetry.length > 0) {
+        toast.info(
+          `Retrying ${toAutoRetry.length} unsent message${
+            toAutoRetry.length > 1 ? "s" : ""
+          }…`,
+          {
+            action: {
+              label: "Clear all",
+              onClick: () => {
+                clearPendingMessages(appUser.PublicKeyBase58Check);
+                clearMessagesFromUi(pendingMsgs);
+                toast.success("Cleared all pending messages");
+              },
             },
-          },
+          }
+        );
+        for (const pending of toAutoRetry) {
+          retryPendingMessage(pending, { isAutoRetry: true });
         }
-      );
-      for (const pending of pendingMsgs) {
-        retryPendingMessage(pending);
+      }
+
+      if (toPrompt.length > 0) {
+        // Surface the failed messages in the UI so the user sees what's stuck
+        // (with the per-message retry/delete buttons), and show a batch prompt.
+        for (const pending of toPrompt) {
+          const TimestampNanos = pending.createdAt * 1e6;
+          const failedMock = {
+            DecryptedMessage: pending.messageText,
+            IsSender: true,
+            _status: "failed" as const,
+            _localId: pending.localId,
+            SenderInfo: {
+              OwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+              AccessGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
+            },
+            RecipientInfo: {
+              OwnerPublicKeyBase58Check: pending.recipientPublicKey,
+              AccessGroupKeyName: pending.recipientAccessGroupKeyName,
+            },
+            MessageInfo: {
+              TimestampNanos,
+              TimestampNanosString: String(TimestampNanos),
+              ExtraData: pending.extraData || {},
+            },
+          } as DecryptedMessageEntryResponse & {
+            _status: string;
+            _localId: string;
+          };
+          setConversations((prev) => {
+            const c = prev[pending.conversationKey];
+            if (!c) {
+              return {
+                ...prev,
+                [pending.conversationKey]: {
+                  ChatType: ChatType.DM,
+                  firstMessagePublicKey: pending.recipientPublicKey,
+                  messages: [failedMock],
+                },
+              };
+            }
+            if (c.messages.some((m: any) => m._localId === pending.localId)) {
+              return prev;
+            }
+            return {
+              ...prev,
+              [pending.conversationKey]: {
+                ...c,
+                messages: [failedMock, ...c.messages],
+              },
+            };
+          });
+        }
+
+        toast.warning(
+          `${toPrompt.length} message${
+            toPrompt.length > 1 ? "s" : ""
+          } failed to send after retrying. Try again or discard?`,
+          {
+            duration: Infinity,
+            action: {
+              label: "Try again",
+              onClick: () => {
+                for (const pending of toPrompt) {
+                  // User opted in — reset the counter so another failure will
+                  // prompt again rather than being swallowed silently.
+                  resetPendingMessageRetryCount(
+                    appUser.PublicKeyBase58Check,
+                    pending.localId
+                  );
+                  retryPendingMessage(
+                    { ...pending, retryCount: 0 },
+                    { isAutoRetry: true }
+                  );
+                }
+              },
+            },
+            cancel: {
+              label: "Discard",
+              onClick: () => {
+                for (const pending of toPrompt) {
+                  removePendingMessage(
+                    appUser.PublicKeyBase58Check,
+                    pending.localId
+                  );
+                }
+                clearMessagesFromUi(toPrompt);
+                toast.success(
+                  `Discarded ${toPrompt.length} unsent message${
+                    toPrompt.length > 1 ? "s" : ""
+                  }`
+                );
+              },
+            },
+          }
+        );
       }
     });
   }, [appUser, conversationsLoading, retryPendingMessage]);
@@ -5699,6 +5824,18 @@ export const MessagingApp: FC = () => {
                               );
                               // Throw to prevent the input from clearing the message
                               throw new Error("__PAID_DM_CONFIRM__");
+                            }
+                            // DeSo caps EncryptedText at 10,000 bytes. Reject
+                            // oversized plaintext here so it never gets saved
+                            // to IndexedDB and stuck in the retry loop.
+                            const messageByteLength = new TextEncoder().encode(
+                              messageToSend
+                            ).length;
+                            if (messageByteLength > MAX_MESSAGE_TEXT_BYTES) {
+                              toast.error(
+                                `Message too long (${messageByteLength.toLocaleString()} bytes). Split it into smaller messages under ${MAX_MESSAGE_TEXT_BYTES.toLocaleString()} bytes.`
+                              );
+                              throw new Error("__MESSAGE_TOO_LONG__");
                             }
                             // Merge reply data into extraData if replying
                             if (replyToMessage) {

@@ -13,6 +13,12 @@ export interface PendingMessage {
   recipientAccessGroupKeyName: string;
   extraData?: Record<string, string>;
   createdAt: number;
+  /**
+   * Number of automatic retries that have already been attempted on app boot.
+   * 0 (or undefined) = never auto-retried. Once this reaches 1 we stop
+   * auto-retrying and prompt the user to retry or discard.
+   */
+  retryCount?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -48,9 +54,7 @@ export async function getPendingMessages(
 }
 
 /** Save a message as pending before attempting to send. */
-export async function addPendingMessage(
-  msg: PendingMessage
-): Promise<void> {
+export async function addPendingMessage(msg: PendingMessage): Promise<void> {
   if (!store) return;
   try {
     const existing = await getPendingMessages(msg.senderPublicKey);
@@ -75,6 +79,40 @@ export async function removePendingMessage(
     } else {
       await set(storeKey(senderPublicKey), filtered, store);
     }
+  } catch {
+    // ignore
+  }
+}
+
+/** Increment the retry counter on a pending message. */
+export async function incrementPendingMessageRetryCount(
+  senderPublicKey: string,
+  localId: string
+): Promise<void> {
+  if (!store) return;
+  try {
+    const existing = await getPendingMessages(senderPublicKey);
+    const updated = existing.map((m) =>
+      m.localId === localId ? { ...m, retryCount: (m.retryCount ?? 0) + 1 } : m
+    );
+    await set(storeKey(senderPublicKey), updated, store);
+  } catch {
+    // ignore
+  }
+}
+
+/** Reset the retry counter so the next app boot will auto-retry once again. */
+export async function resetPendingMessageRetryCount(
+  senderPublicKey: string,
+  localId: string
+): Promise<void> {
+  if (!store) return;
+  try {
+    const existing = await getPendingMessages(senderPublicKey);
+    const updated = existing.map((m) =>
+      m.localId === localId ? { ...m, retryCount: 0 } : m
+    );
+    await set(storeKey(senderPublicKey), updated, store);
   } catch {
     // ignore
   }

@@ -155,7 +155,7 @@ src/services/klipy.service.ts  fn getDisplayUrl, getThumbnailUrl, getMessageUrl,
 src/services/media.service.ts  fn uploadImage, uploadVideoFile, formatFileSize
 src/services/message-search.service.ts  fn searchCachedMessages, deepSearchConversation, orchestrateDeepSearch
 src/services/og.service.ts  fn fetchOgData
-src/services/pending-messages.service.ts  fn getPendingMessages, addPendingMessage, removePendingMessage, clearPendingMessages
+src/services/pending-messages.service.ts  fn getPendingMessages, addPendingMessage, removePendingMessage, incrementPendingMessageRetryCount, resetPendingMessageRetryCount, clearPendingMessages
 src/services/ticket.service.ts  fn submitBugReport, submitManualBugReport
 src/services/translate.service.ts  fn translateText, getCachedTranslation
 
@@ -187,7 +187,7 @@ src/utils/atomic-tip.ts  fn sendAtomicDesoTip, sendAtomicUsdcTip
 src/utils/avatar.ts  AVATAR_COLORS | fn hashToColorIndex, getInitials
 src/utils/batch-members.ts  MEMBER_BATCH_SIZE | fn batchedGetBulkAccessGroups, batchedAddMembers, batchedRemoveMembers
 src/utils/community-cache.ts  fn clearCommunityCache
-src/utils/constants.ts  ASSOCIATION_TYPE_APPROVED, ASSOCIATION_TYPE_BLOCKED, ASSOCIATION_VALUE_APPROVED, ASSOCIATION_VALUE_BLOCKED, ASSOCIATION_TYPE_GROUP_ARCHIVED, ASSOCIATION_TYPE_CHAT_ARCHIVED, ... (42 exports)
+src/utils/constants.ts  ASSOCIATION_TYPE_APPROVED, ASSOCIATION_TYPE_BLOCKED, ASSOCIATION_VALUE_APPROVED, ASSOCIATION_VALUE_BLOCKED, ASSOCIATION_TYPE_GROUP_ARCHIVED, ASSOCIATION_TYPE_CHAT_ARCHIVED, ... (43 exports)
 src/utils/detect-language.ts  fn detectLanguageSync, detectLanguage
 src/utils/error-capture.ts  fn getAppVersion, getPlatform, captureError
 src/utils/error-codes.ts  ERROR_CODES
