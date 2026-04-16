@@ -547,6 +547,13 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       if (!isTouchDevice) return;
       const onSelectionChange = () => {
         if (suppressSelectionRef.current) {
+          // Don't nuke selection when user is typing in an input — that
+          // disconnects iOS WebKit's keyboard from the focused element.
+          if (
+            document.activeElement instanceof HTMLInputElement ||
+            document.activeElement instanceof HTMLTextAreaElement
+          )
+            return;
           window.getSelection()?.removeAllRanges();
           return;
         }
@@ -885,6 +892,12 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
           }
           // Clear any iOS text selection that started during the hold
           window.getSelection()?.removeAllRanges();
+          // Release selection suppression — the long press gesture is done.
+          // Without this, suppressSelectionRef stays true (clearLongPressTimer
+          // skips the reset because longPressTimerRef is already null),
+          // causing removeAllRanges() on every selectionchange event, which
+          // disconnects iOS keyboard from focused inputs (emoji search).
+          suppressSelectionRef.current = false;
           if (navigator.vibrate) navigator.vibrate(20);
           setReactionPickerFor(null); // Close picker from previous message
           const bubble = target.querySelector<HTMLElement>(

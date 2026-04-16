@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { EmojiPicker } from "frimousse";
-import { useCallback, useRef, useState } from "react";
+import { useState } from "react";
 
 const POPULAR_EMOJI = [
   "😀",
@@ -70,52 +70,20 @@ export function ReactionEmojiPicker({
   categoryBg = "bg-[#141c2b]",
   autoFocusSearch = true,
 }: ReactionEmojiPickerProps) {
-  // iOS WebKit disconnects the keyboard from inputs inside position:fixed
-  // containers when sibling DOM nodes mutate (frimousse re-renders the emoji
-  // grid on each keystroke via requestIdleCallback). The input retains
-  // document.activeElement but keystrokes stop being delivered.
-  //
-  // Fix: use a NATIVE input for typing (outside frimousse's mutating tree)
-  // and a hidden controlled EmojiPicker.Search to drive frimousse's filter.
-  // The native input never has DOM mutations near it, so iOS keeps the
-  // keyboard connected.
-  const [search, setSearch] = useState("");
-  const isSearching = search.length > 0;
-  const nativeInputRef = useRef<HTMLInputElement>(null);
-
-  const handleNativeInput = useCallback(
-    (e: React.FormEvent<HTMLInputElement>) => {
-      setSearch((e.target as HTMLInputElement).value);
-    },
-    []
-  );
+  const [isSearching, setIsSearching] = useState(false);
 
   return (
     <EmojiPicker.Root
       onEmojiSelect={(emoji: { emoji: string }) => onSelect(emoji.emoji)}
       className={className}
     >
-      {/* Native input for typing — immune to iOS keyboard disconnect */}
-      <input
-        ref={nativeInputRef}
+      <EmojiPicker.Search
         className={searchClassName}
         placeholder="Search emoji..."
         autoFocus={autoFocusSearch}
-        onInput={handleNativeInput}
-        type="search"
-        autoCapitalize="off"
-        autoComplete="off"
-        autoCorrect="off"
-        spellCheck={false}
-        enterKeyHint="done"
-      />
-      {/* Hidden frimousse Search — controlled by native input value,
-          drives the emoji filtering without being focused */}
-      <EmojiPicker.Search
-        value={search}
-        className="sr-only"
-        tabIndex={-1}
-        aria-hidden
+        onInput={(e) =>
+          setIsSearching((e.target as HTMLInputElement).value.length > 0)
+        }
       />
       <div className="relative flex-1 min-h-0">
         {/* Frimousse search results — hidden until user types */}
