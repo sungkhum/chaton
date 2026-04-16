@@ -435,12 +435,34 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
   ) => {
     const messageAreaRef = useRef<HTMLDivElement>(null);
 
-    const { appUser, allAccessGroups, setAllAccessGroups } = useStore(
-      useShallow((s) => ({
-        appUser: s.appUser,
-        allAccessGroups: s.allAccessGroups,
-        setAllAccessGroups: s.setAllAccessGroups,
-      }))
+    const { appUser, allAccessGroups, setAllAccessGroups, openUserActionMenu } =
+      useStore(
+        useShallow((s) => ({
+          appUser: s.appUser,
+          allAccessGroups: s.allAccessGroups,
+          setAllAccessGroups: s.setAllAccessGroups,
+          openUserActionMenu: s.openUserActionMenu,
+        }))
+      );
+
+    const handleUserActionClick = useCallback(
+      (publicKey: string, username: string | undefined) =>
+        (e: React.MouseEvent<HTMLElement>) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          openUserActionMenu(
+            publicKey,
+            {
+              top: rect.top,
+              left: rect.left,
+              right: rect.right,
+              bottom: rect.bottom,
+            },
+            username || undefined
+          );
+        },
+      [openUserActionMenu]
     );
     const conversation =
       conversations[conversationPublicKey] ??
@@ -1789,6 +1811,12 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                             }
                             diameter={36}
                             classNames="relative"
+                            onUserClick={handleUserActionClick(
+                              message.SenderInfo.OwnerPublicKeyBase58Check,
+                              getUsernameByPublicKey[
+                                message.SenderInfo.OwnerPublicKeyBase58Check
+                              ]
+                            )}
                           />
                         </div>
                       ) : (
@@ -1820,19 +1848,32 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                           {/* Sender name inside bubble (Telegram-style) */}
                           {isFirstInGroup && !IsSender && (
                             <div
-                              className={`text-[#34F080] text-[11px] font-semibold ${
+                              className={`${
                                 isMedia ? "px-3 pt-1.5 pb-0.5" : "mb-0.5"
                               }`}
                             >
-                              {getUsernameByPublicKey[
-                                message.SenderInfo.OwnerPublicKeyBase58Check
-                              ]
-                                ? getUsernameByPublicKey[
+                              <button
+                                type="button"
+                                onClick={handleUserActionClick(
+                                  message.SenderInfo.OwnerPublicKeyBase58Check,
+                                  getUsernameByPublicKey[
                                     message.SenderInfo.OwnerPublicKeyBase58Check
                                   ]
-                                : shortenLongWord(
-                                    message.SenderInfo.OwnerPublicKeyBase58Check
-                                  )}
+                                )}
+                                className="text-[#34F080] text-[11px] font-semibold hover:underline cursor-pointer"
+                              >
+                                {getUsernameByPublicKey[
+                                  message.SenderInfo.OwnerPublicKeyBase58Check
+                                ]
+                                  ? getUsernameByPublicKey[
+                                      message.SenderInfo
+                                        .OwnerPublicKeyBase58Check
+                                    ]
+                                  : shortenLongWord(
+                                      message.SenderInfo
+                                        .OwnerPublicKeyBase58Check
+                                    )}
+                              </button>
                             </div>
                           )}
                           {/* Reply preview inside the bubble (Telegram-style) */}

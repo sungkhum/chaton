@@ -48,6 +48,7 @@ function ConditionalLink({
   className,
   style,
   onClick,
+  onUserClick,
 }: {
   children: React.ReactElement;
   condition: boolean;
@@ -56,7 +57,23 @@ function ConditionalLink({
   className: string;
   style: any;
   onClick: (e: any) => void;
+  onUserClick?: (e: React.MouseEvent<HTMLElement>) => void;
 }) {
+  if (onUserClick) {
+    return (
+      <button
+        type="button"
+        className={className}
+        style={style}
+        onClick={(e) => {
+          e.stopPropagation();
+          onUserClick(e);
+        }}
+      >
+        {children}
+      </button>
+    );
+  }
   return condition ? (
     <a
       href={href}
@@ -89,6 +106,9 @@ export const MessagingDisplayAvatar: FC<{
   showOnlineDot?: boolean;
   /** When true, render as a plain div instead of linking to profile */
   disableLink?: boolean;
+  /** When set, replaces the default profile link with a button that invokes this
+   *  callback (receives the click event so callers can read currentTarget rect). */
+  onUserClick?: (e: React.MouseEvent<HTMLElement>) => void;
 }> = ({
   publicKey,
   username,
@@ -100,6 +120,7 @@ export const MessagingDisplayAvatar: FC<{
   extraDataPicUrl,
   showOnlineDot = false,
   disableLink = false,
+  onUserClick,
 }) => {
   const colorIndex = useMemo(
     () => hashToColorIndex(publicKey || username || ""),
@@ -205,6 +226,7 @@ export const MessagingDisplayAvatar: FC<{
       condition={!!username && !disableLink}
       target="_blank"
       onClick={(e) => e.stopPropagation()}
+      onUserClick={onUserClick}
     >
       <div
         style={{

@@ -188,6 +188,7 @@ import {
 import { MessagingConversationAccount } from "./messaging-conversation-accounts";
 import { MessagingConversationButton } from "./messaging-conversation-button";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
+import { UserActionMenu } from "./user-action-menu";
 import { MessagingSetupButton } from "./messaging-setup-button";
 import { OnboardingWizard } from "./onboarding/onboarding-wizard";
 import {
@@ -4118,6 +4119,12 @@ export const MessagingApp: FC = () => {
   };
   return (
     <div className="h-full">
+      <UserActionMenu
+        onMessage={(pk) =>
+          rehydrateConversation(pk + DEFAULT_KEY_MESSAGING_GROUP_NAME, true)
+        }
+      />
+
       {/* Onboarding wizard for new users */}
       {showOnboarding &&
         appUser &&

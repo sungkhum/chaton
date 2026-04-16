@@ -140,6 +140,7 @@ src/components/sw-update-prompt.tsx  fn SwUpdatePrompt
 src/components/tip-confirm-dialog.tsx  TipConfirmDialog
 src/components/tip-currency-toggle.tsx  fn TipCurrencyToggle
 src/components/user-account-list.tsx
+src/components/user-action-menu.tsx  fn UserActionMenu
 
 ## Services
 src/services/cache.service.ts  fn checkCacheVersion, fn cacheUserProfile, fn getCachedUserProfile, fn cacheClassificationData, fn getCachedClassificationData, fn cachePrivacyMode, ... (43 exports)

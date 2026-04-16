@@ -567,6 +567,7 @@
       "src/components/messaging-conversation-accounts.tsx",
       "src/components/messaging-conversation-button.tsx",
       "src/components/messaging-display-avatar.tsx",
+      "src/components/user-action-menu.tsx",
       "src/components/messaging-setup-button.tsx",
       "src/components/onboarding/onboarding-wizard.tsx",
       "src/utils/onboarding.ts",
@@ -924,6 +925,16 @@
       "src/services/cache.service.ts"
     ],
     "exports": []
+  },
+  "src/components/user-action-menu.tsx": {
+    "imports": [
+      "src/store/index.ts",
+      "src/utils/helpers.ts",
+      "src/utils/search-helpers.ts"
+    ],
+    "exports": [
+      "UserActionMenu"
+    ]
   },
   "src/hooks/useAudioRecorder.ts": {
     "imports": [],

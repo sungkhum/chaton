@@ -175,6 +175,19 @@ interface ChatOnState {
   sessionTipTotalUsdCents: number;
   addSessionTipUsd: (usdAmount: number) => void;
 
+  // User action menu (triggered from avatars, sender names, @mentions)
+  userActionMenu: {
+    publicKey: string;
+    username?: string;
+    anchorRect: { top: number; left: number; right: number; bottom: number };
+  } | null;
+  openUserActionMenu: (
+    publicKey: string,
+    anchorRect: { top: number; left: number; right: number; bottom: number },
+    username?: string
+  ) => void;
+  closeUserActionMenu: () => void;
+
   // Bug report (ticket path)
   bugReportError: ErrorContext | null;
   openBugReport: (error: ErrorContext) => void;
@@ -881,6 +894,12 @@ export const useStore = create<ChatOnState>((set) => ({
       sessionTipTotalUsdCents:
         s.sessionTipTotalUsdCents + Math.round(usdAmount * 100),
     })),
+
+  // User action menu
+  userActionMenu: null,
+  openUserActionMenu: (publicKey, anchorRect, username) =>
+    set({ userActionMenu: { publicKey, anchorRect, username } }),
+  closeUserActionMenu: () => set({ userActionMenu: null }),
 
   // Bug report
   bugReportError: null,

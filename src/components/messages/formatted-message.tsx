@@ -108,7 +108,17 @@ function loadMarkdownPipeline(): Promise<void> {
             "th",
             "td",
           ],
-          ALLOWED_ATTR: ["href", "target", "rel", "class", "data-join-code"],
+          ALLOWED_ATTR: [
+            "href",
+            "target",
+            "rel",
+            "class",
+            "data-join-code",
+            "data-user-pk",
+            "data-user-un",
+            "role",
+            "tabindex",
+          ],
           ALLOW_DATA_ATTR: false,
         });
       };
@@ -122,13 +132,20 @@ function escapeRegex(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** Escape double-quotes for safe embedding in an HTML attribute. */
+function escapeAttr(s: string) {
+  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+}
+
 function highlightMentions(html: string, mentions: MentionEntry[]): string {
   if (mentions.length === 0) return html;
   for (const m of mentions) {
     const pattern = new RegExp(`(?<![\\w/])@${escapeRegex(m.un)}(?!\\w)`, "g");
+    const pkAttr = escapeAttr(m.pk);
+    const unAttr = escapeAttr(m.un);
     html = html.replace(
       pattern,
-      `<span class="mention-highlight">@${m.un}</span>`
+      `<span class="mention-highlight" role="button" tabindex="0" data-user-pk="${pkAttr}" data-user-un="${unAttr}">@${m.un}</span>`
     );
   }
   return html;
@@ -214,7 +231,8 @@ export function FormattedMessage({
     setIsOverflowing(el.scrollHeight > COLLAPSE_HEIGHT);
   }, [html]);
 
-  // Intercept clicks on internal join links — open as in-app modal
+  // Intercept clicks on internal join links — open as in-app modal.
+  // Also intercept clicks on @mention spans to open the user action menu.
   const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     const anchor = target.closest<HTMLAnchorElement>("a[data-join-code]");
@@ -223,6 +241,27 @@ export function FormattedMessage({
       const code = anchor.dataset.joinCode;
       if (code) {
         useStore.getState().setPendingJoinCode(code);
+      }
+      return;
+    }
+    const mention = target.closest<HTMLElement>("[data-user-pk]");
+    if (mention) {
+      e.preventDefault();
+      e.stopPropagation();
+      const pk = mention.dataset.userPk;
+      const un = mention.dataset.userUn;
+      if (pk) {
+        const rect = mention.getBoundingClientRect();
+        useStore.getState().openUserActionMenu(
+          pk,
+          {
+            top: rect.top,
+            left: rect.left,
+            right: rect.right,
+            bottom: rect.bottom,
+          },
+          un || undefined
+        );
       }
     }
   }, []);

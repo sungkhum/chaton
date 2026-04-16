@@ -366,6 +366,11 @@ body,
 .formatted-message .mention-highlight {
   color: #34F080;
   font-weight: 600;
+  cursor: pointer;
+}
+
+.formatted-message .mention-highlight:hover {
+  text-decoration: underline;
 }
 
 input::placeholder {
