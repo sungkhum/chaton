@@ -384,6 +384,70 @@ npx playwright test e2e/tests/logged-in-shell.spec.ts e2e/tests/landing-page.spe
 These catch the two most common regressions: (1) landing page shown during loading
 (black screen for logged-in users) and (2) landing page not shown for logged-out users.
 
+## iOS focus bugs and `suppressSelectionRef`
+
+The `selectionchange` listener in `messaging-bubbles.tsx` uses `suppressSelectionRef`
+to prevent iOS text selection during long-press gestures. This ref is a common source
+of iOS-only input bugs. **If any iOS input/keyboard issue is reported, check this
+ref first.**
+
+### The bug that took hours to find (2026-04-15)
+
+**Symptom**: Typing in the emoji search input on iOS only registered one character,
+then keystrokes stopped being delivered. The keyboard stayed visible,
+`document.activeElement` stayed on the INPUT, `keydown` events still fired — but
+`onInput` stopped firing. Fast typing lost characters; slow typing worked because
+blur+focus reconnect timers happened to fire between keystrokes.
+
+**Root cause**: `suppressSelectionRef` was set to `true` in `handleTouchStart`
+(line ~873) but never reset after the long-press timer fired. `clearLongPressTimer()`
+only resets it inside `if (longPressTimerRef.current)`, but the timer callback
+already set `longPressTimerRef.current = null`. So the ref stayed `true`
+permanently after every long press.
+
+With `suppressSelectionRef` stuck at `true`, the `selectionchange` listener called
+`window.getSelection()?.removeAllRanges()` on **every** `selectionchange` event —
+including those fired when typing in the emoji search input. On iOS WebKit,
+`removeAllRanges()` disconnects the text editing system from the focused input:
+the element retains `activeElement` status and receives `keydown` events, but the
+OS stops delivering characters to the input's value.
+
+**Fix**: Two changes in `messaging-bubbles.tsx`:
+1. Reset `suppressSelectionRef.current = false` inside the long-press timer callback
+   (after `removeAllRanges()`, before the menu opens).
+2. Skip `removeAllRanges()` when `document.activeElement` is an `HTMLInputElement`
+   or `HTMLTextAreaElement` (defensive guard).
+
+### Rules for `suppressSelectionRef`
+
+1. **Always reset it.** Every code path that sets `suppressSelectionRef = true` must
+   have a corresponding reset to `false`. Check that the reset actually executes —
+   don't rely on `clearLongPressTimer()` alone since it guards behind
+   `if (longPressTimerRef.current)`.
+
+2. **Never call `removeAllRanges()` while an input is focused.** The
+   `selectionchange` handler must check `document.activeElement` before clearing
+   the selection. `removeAllRanges()` on iOS disconnects the keyboard from focused
+   inputs — the element keeps `activeElement` but stops receiving characters.
+
+3. **Test on iOS after touching long-press or selection code.** The symptom is
+   invisible on desktop. On iOS: long-press a message → open emoji picker → type
+   in search → verify you can type multiple characters at full speed.
+
+### What didn't work (for future reference)
+
+These approaches were tried and **did not fix** the actual bug:
+- Replacing `useState` with `useRef` + direct DOM manipulation (avoided re-renders
+  but the `removeAllRanges()` was the real cause)
+- `visibility`/`z-index` toggling instead of `opacity`/`pointer-events` (caused
+  emoji overlap because both layers were visible)
+- `MutationObserver` on frimousse Viewport with synchronous blur+focus (fired too
+  early, before the DOM mutation was processed)
+- Timed blur+focus reconnect at rAF/200ms/500ms/1000ms (worked for slow typing but
+  not fast — the disconnect happened between reconnect timers)
+- Separate native `<input>` from frimousse `<EmojiPicker.Search>` (decoupled typing
+  from DOM mutations but `removeAllRanges()` still killed it)
+
 ## Debugging push notifications (live data)
 
 Push state lives in a Cloudflare D1 database (`chaton-push`) and the Durable Object's
