@@ -673,6 +673,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
           0,
           window.innerHeight - vv.height - vv.offsetTop
         );
+        const prevBottom = el.style.bottom;
         el.style.bottom = `${keyboardOffset}px`;
 
         // If picker + keyboard would overflow the screen, shrink the picker
@@ -685,19 +686,49 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
           el.style.overflow = "";
         }
 
+        if (prevBottom !== `${keyboardOffset}px`) {
+          console.log("[picker-reposition]", {
+            bottom: `${keyboardOffset}px`,
+            prevBottom,
+            focused: focused ? (focused as HTMLElement).tagName : null,
+            activeAfter: document.activeElement?.tagName,
+            focusLost:
+              focused instanceof HTMLElement &&
+              document.activeElement !== focused,
+          });
+        }
+
         // Synchronously restore focus if iOS dropped it during reposition
         if (
           focused instanceof HTMLElement &&
           document.activeElement !== focused
         ) {
+          console.log("[picker-reposition] RESTORING FOCUS");
           focused.focus({ preventScroll: true });
         }
       };
+
+      // Debug: log any focusout from the picker container
+      const onFocusOut = (e: FocusEvent) => {
+        const target = e.target as HTMLElement;
+        const related = e.relatedTarget as HTMLElement | null;
+        if (target.tagName === "INPUT") {
+          console.log("[picker-focusout]", {
+            from: target.tagName,
+            toTag: related?.tagName || "null",
+            toClass: related?.className?.slice(0, 60) || "null",
+            activeEl: document.activeElement?.tagName,
+            timestamp: Date.now(),
+          });
+        }
+      };
+      el.addEventListener("focusout", onFocusOut);
 
       reposition();
       vv.addEventListener("resize", reposition);
       vv.addEventListener("scroll", reposition);
       return () => {
+        el.removeEventListener("focusout", onFocusOut);
         vv.removeEventListener("resize", reposition);
         vv.removeEventListener("scroll", reposition);
         el.style.bottom = "0px";

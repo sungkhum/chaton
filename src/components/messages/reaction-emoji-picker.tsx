@@ -79,15 +79,19 @@ export function ReactionEmojiPicker({
   const popularRef = useRef<HTMLDivElement>(null);
 
   const handleInput = useCallback((e: React.FormEvent<HTMLInputElement>) => {
-    const hasText = (e.target as HTMLInputElement).value.length > 0;
+    const input = e.target as HTMLInputElement;
+    const hasText = input.value.length > 0;
+    console.log("[emoji-search] onInput", {
+      value: input.value,
+      hasText,
+      wasSearching: searchingRef.current,
+      activeEl: document.activeElement?.tagName,
+      activeIsSelf: document.activeElement === input,
+    });
     if (hasText === searchingRef.current) return;
     searchingRef.current = hasText;
     const vp = viewportRef.current;
     const pop = popularRef.current;
-    // Use visibility + z-index instead of opacity + pointer-events.
-    // Changing opacity creates/destroys stacking contexts, which triggers
-    // iOS WebKit to re-composite and drop focus from the search input.
-    // visibility changes don't affect stacking contexts.
     if (vp) {
       vp.style.visibility = hasText ? "visible" : "hidden";
       vp.style.zIndex = hasText ? "2" : "1";
@@ -96,23 +100,75 @@ export function ReactionEmojiPicker({
       pop.style.visibility = hasText ? "hidden" : "visible";
       pop.style.zIndex = hasText ? "2" : "1";
     }
+    console.log("[emoji-search] after DOM toggle", {
+      activeEl: document.activeElement?.tagName,
+      activeIsSelf: document.activeElement === input,
+    });
+    // Schedule checks at multiple timings to catch async focus theft
+    requestAnimationFrame(() => {
+      console.log("[emoji-search] rAF after input", {
+        activeEl: document.activeElement?.tagName,
+        activeIsSelf: document.activeElement === input,
+        activeClass: (document.activeElement as HTMLElement)?.className?.slice(
+          0,
+          60
+        ),
+      });
+    });
+    setTimeout(() => {
+      console.log("[emoji-search] 100ms after input", {
+        activeEl: document.activeElement?.tagName,
+        activeIsSelf: document.activeElement === input,
+        activeClass: (document.activeElement as HTMLElement)?.className?.slice(
+          0,
+          60
+        ),
+      });
+    }, 100);
+    setTimeout(() => {
+      console.log("[emoji-search] 300ms after input", {
+        activeEl: document.activeElement?.tagName,
+        activeIsSelf: document.activeElement === input,
+        activeClass: (document.activeElement as HTMLElement)?.className?.slice(
+          0,
+          60
+        ),
+      });
+    }, 300);
   }, []);
 
-  // iOS WebKit can drop focus from inputs inside position:fixed containers
-  // when the DOM mutates (frimousse filters emojis via requestIdleCallback).
-  // Restore focus if it falls to document.body — but respect deliberate
-  // focus moves like tapping an emoji button.
+  const handleFocus = useCallback(() => {
+    console.log("[emoji-search] onFocus fired");
+  }, []);
+
   const handleBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
     const input = e.currentTarget;
+    const related = e.relatedTarget as HTMLElement | null;
+    console.log("[emoji-search] onBlur", {
+      relatedTag: related?.tagName || "null",
+      relatedClass: related?.className?.slice(0, 60) || "null",
+      activeEl: document.activeElement?.tagName,
+    });
     requestAnimationFrame(() => {
-      if (!input.isConnected) return;
       const active = document.activeElement;
+      console.log("[emoji-search] onBlur rAF", {
+        inputConnected: input.isConnected,
+        activeEl: active?.tagName,
+        activeClass: (active as HTMLElement)?.className?.slice(0, 60),
+        isBody: active === document.body,
+      });
+      if (!input.isConnected) return;
       if (
         active === document.body ||
         active === document.documentElement ||
         active === null
       ) {
+        console.log("[emoji-search] RESTORING FOCUS");
         input.focus({ preventScroll: true });
+        console.log("[emoji-search] after restore", {
+          activeEl: document.activeElement?.tagName,
+          activeIsSelf: document.activeElement === input,
+        });
       }
     });
   }, []);
@@ -127,6 +183,7 @@ export function ReactionEmojiPicker({
         placeholder="Search emoji..."
         autoFocus={autoFocusSearch}
         onInput={handleInput}
+        onFocus={handleFocus}
         onBlur={handleBlur}
       />
       <div className="relative flex-1 min-h-0">
