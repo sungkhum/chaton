@@ -253,10 +253,13 @@ const GroupChatView = () => (
       <Users className="w-4 h-4 text-gray-400" />
     </div>
     <div className="px-4 py-5 space-y-3 bg-[#0F1520] min-h-[180px]">
-      <div className="text-center">
-        <span className="text-[10px] text-white/40 bg-white/5 rounded-full px-3 py-1">
-          DeSo Builders was created
-        </span>
+      <div className="flex justify-end">
+        <div className="max-w-[75%] rounded-2xl rounded-br-md px-3.5 py-2 bg-[#34F080]/15 border border-[#34F080]/20">
+          <div className="text-[13px] text-white">
+            Hi. This is my first message to &quot;DeSo Builders&quot;
+          </div>
+          <div className="text-[10px] text-white/40 text-right mt-0.5">now</div>
+        </div>
       </div>
       <div className="flex justify-end">
         <div className="max-w-[75%] rounded-2xl rounded-br-md px-3.5 py-2 bg-[#34F080]/15 border border-[#34F080]/20">
@@ -386,8 +389,10 @@ const HowToCreateAGroupChat = () => (
       <a href="https://deso.com" target="_blank" rel="noreferrer">
         DeSo blockchain
       </a>
-      , end-to-end encrypted, with no central admin who can read them, ban a
-      member, or shut the group down.
+      , end-to-end encrypted. The person who created the group is its admin —
+      they can add or remove members, rename it, and approve join requests — but
+      no platform, company, or moderator outside the group can read messages or
+      take it down.
     </p>
 
     <p>
@@ -433,11 +438,11 @@ const HowToCreateAGroupChat = () => (
         — there&apos;s no group database to maintain.
       </li>
       <li>
-        <strong>The owner has admin powers, but limited reach.</strong> The
-        person who created the group can rename it, change its photo, add or
-        remove members, and approve join requests. They cannot read messages
-        sent before they were a member, and they cannot delete the conversation
-        from the blockchain.
+        <strong>The owner has admin powers, but limited reach.</strong> They can
+        rename the group, change its photo, add or remove members, and approve
+        join requests. They cannot delete the conversation off the blockchain,
+        and — worth being honest about — removing a member doesn&apos;t
+        cryptographically lock them out (more on that below).
       </li>
     </ul>
 
@@ -496,9 +501,13 @@ const HowToCreateAGroupChat = () => (
     </Figure>
 
     <p>
-      Members you add here will see the group in their <strong>Chats</strong>{" "}
-      tab automatically — they don&apos;t have to accept anything. People who
-      arrive later through an invite link have a different flow (covered below).
+      Worth knowing: a member you add doesn&apos;t automatically land in their{" "}
+      <strong>Chats</strong> tab. Because you added them without their consent,
+      ChatOn drops the group into their <strong>Requests</strong> tab first —
+      the same way it handles unsolicited DMs. They move it to Chats either by
+      tapping <strong>Accept</strong> or by sending their first message in the
+      group (lazy acceptance). This is intentional: nobody gets pulled into a
+      group conversation without an explicit signal that they want to be there.
     </p>
 
     <h2>Step 4 — Decide how people can find your group</h2>
@@ -538,13 +547,14 @@ const HowToCreateAGroupChat = () => (
     <h2>Step 5 — Tap Create and send your first message</h2>
 
     <p>
-      Hit <strong>Create</strong>. The group appears in your conversation list
-      and opens to an empty chat with a system message announcing it was
-      created. Send something — a welcome, an agenda, a ground rule — so members
-      who open the group right away see the room is alive.
+      Hit <strong>Create</strong>. The group appears in your conversation list,
+      and ChatOn auto-sends an opening &quot;first message&quot; in your name so
+      the conversation isn&apos;t literally empty when members open it. Follow
+      up with something more useful — a welcome, an agenda, a ground rule — so
+      the room feels alive when members arrive.
     </p>
 
-    <Figure caption="The freshly created group. Send a first message before anyone else opens the chat — empty rooms feel awkward, and most members will arrive in the next few minutes.">
+    <Figure caption="The freshly created group. ChatOn posts an automatic opener; replace it (or add a real first message) before members start showing up.">
       <GroupChatView />
     </Figure>
 
@@ -580,7 +590,7 @@ const HowToCreateAGroupChat = () => (
       up in the <strong>Requests</strong> tab of the manage panel:
     </p>
 
-    <Figure caption="Approve adds the person as a member and posts a small system message announcing they joined. Decline blocks future requests from the same account.">
+    <Figure caption="Approve adds the person as a member and posts a 'member joined' system message. Decline removes them from your pending list and records the rejection on-chain so they don't reappear next time you open the panel.">
       <RequestsPanel />
     </Figure>
 
@@ -626,17 +636,29 @@ const HowToCreateAGroupChat = () => (
     <h2>What happens when someone leaves (or you remove them)</h2>
 
     <p>
-      Removing a member, or letting one leave, is straightforward but worth
-      explaining clearly because it works differently than centralized apps.
+      Worth being honest about, because this works differently than most people
+      assume from centralized apps: removing a member today is a{" "}
+      <strong>social and UX gate, not a cryptographic one</strong>.
     </p>
 
     <p>
-      The member loses the ability to decrypt new messages — they no longer hold
-      the active group key. They keep the messages they could already read
-      (those are decrypted on their device) but they won&apos;t see anything
-      posted after they left. There&apos;s no way to retroactively pull messages
-      out of someone&apos;s device once it&apos;s decrypted, the same as every
-      other E2E messenger.
+      On the UX side, the removed member no longer appears in the members list,
+      loses access to the group in their ChatOn sidebar, and can&apos;t send
+      messages to it. On the cryptography side, ChatOn doesn&apos;t currently
+      rotate the group key when a member is removed — which means someone who
+      already held the key could technically still decrypt future messages if
+      they reconstructed the conversation outside the app. This is the same
+      tradeoff Telegram&apos;s legacy supergroups had for years, and it&apos;s a
+      known limitation of DeSo access groups we&apos;re looking at for a future
+      release.
+    </p>
+
+    <p>
+      The practical advice: treat group removal the way you would in WhatsApp or
+      Telegram — useful for cleaning up the member list and reclaiming the
+      social space, but don&apos;t rely on it as a guarantee that a removed
+      member can never read anything posted later. For genuinely sensitive
+      conversations with someone you no longer trust, start a fresh group.
     </p>
 
     <h2>Common questions</h2>
