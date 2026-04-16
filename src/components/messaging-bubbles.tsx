@@ -665,31 +665,20 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       if (!el || !vv) return;
 
       const reposition = () => {
-        // Save focused element — iOS drops focus when fixed containers move
-        const focused =
-          el.contains(document.activeElement) && document.activeElement;
-
         const keyboardOffset = Math.max(
           0,
           window.innerHeight - vv.height - vv.offsetTop
         );
         el.style.bottom = `${keyboardOffset}px`;
 
-        // Shrink picker to fit between header and keyboard. The container
-        // uses flex-col so the inner picker (flex-1 min-h-0) adapts.
+        // If picker + keyboard would overflow the screen, shrink the picker
         const available = vv.height - 56; // 56px buffer for top header bar
         if (available < 360) {
-          el.style.height = `${Math.max(180, available)}px`;
+          el.style.maxHeight = `${Math.max(180, available)}px`;
+          el.style.overflow = "hidden";
         } else {
-          el.style.height = "360px";
-        }
-
-        // Synchronously restore focus if iOS dropped it during reposition
-        if (
-          focused instanceof HTMLElement &&
-          document.activeElement !== focused
-        ) {
-          focused.focus({ preventScroll: true });
+          el.style.maxHeight = "";
+          el.style.overflow = "";
         }
       };
 
@@ -700,7 +689,8 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
         vv.removeEventListener("resize", reposition);
         vv.removeEventListener("scroll", reposition);
         el.style.bottom = "0px";
-        el.style.height = "360px";
+        el.style.maxHeight = "";
+        el.style.overflow = "";
       };
     }, [isTouchDevice, reactionPickerFor]);
 
@@ -1443,14 +1433,13 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
             createPortal(
               <div
                 ref={pickerRef}
-                className="fixed inset-x-0 bottom-0 z-[65] bg-[#141c2b] rounded-t-2xl border-t border-white/10 pb-[env(safe-area-inset-bottom)] flex flex-col"
-                style={{ height: 360 }}
+                className="fixed inset-x-0 bottom-0 z-[65] bg-[#141c2b] rounded-t-2xl border-t border-white/10 pb-[env(safe-area-inset-bottom)]"
               >
-                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-2 mb-1 shrink-0" />
+                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-2 mb-1" />
                 <ChunkErrorBoundary>
                   <Suspense
                     fallback={
-                      <div className="w-full flex-1 flex items-center justify-center text-blue-400/40 text-sm">
+                      <div className="w-full h-[320px] flex items-center justify-center text-blue-400/40 text-sm">
                         Loading...
                       </div>
                     }
@@ -1460,7 +1449,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                         onReact?.(reactionPickerFor, emoji);
                         closeMobileAction();
                       }}
-                      className="w-full flex-1 min-h-0 flex flex-col overflow-hidden bg-transparent [--frimousse-bg:transparent] [--frimousse-border-color:theme(colors.white/10%)]"
+                      className="w-full h-[320px] flex flex-col overflow-hidden bg-transparent [--frimousse-bg:transparent] [--frimousse-border-color:theme(colors.white/10%)]"
                       searchClassName="mx-3 mt-1 mb-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-base placeholder:text-white/30 outline-none focus:border-[#34F080]/50"
                       emojiSize="w-11 h-11 text-2xl"
                       categoryBg="bg-[#141c2b]"

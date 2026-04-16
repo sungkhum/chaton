@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { EmojiPicker } from "frimousse";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 
 const POPULAR_EMOJI = [
   "😀",
@@ -70,63 +70,34 @@ export function ReactionEmojiPicker({
   categoryBg = "bg-[#141c2b]",
   autoFocusSearch = true,
 }: ReactionEmojiPickerProps) {
-  // Track searching state via ref + direct DOM manipulation instead of
-  // useState to avoid a React re-render on the first keystroke. On iOS,
-  // re-rendering sibling elements while the keyboard is open can cause
-  // WebKit to drop focus from the search input.
-  const searchingRef = useRef(false);
-  const viewportRef = useRef<HTMLDivElement>(null);
-  const popularRef = useRef<HTMLDivElement>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleInput = useCallback((e: React.FormEvent<HTMLInputElement>) => {
-    const hasText = (e.target as HTMLInputElement).value.length > 0;
-    if (hasText === searchingRef.current) return;
-    searchingRef.current = hasText;
-    const vp = viewportRef.current;
-    const pop = popularRef.current;
-    if (vp) {
-      vp.style.zIndex = hasText ? "2" : "1";
-    }
-    if (pop) {
-      pop.style.zIndex = hasText ? "1" : "2";
-    }
-  }, []);
-
-  // iOS WebKit "ghost focus" bug: when frimousse re-renders the emoji grid
-  // (async DOM mutations from search filtering), iOS disconnects the keyboard
-  // from the focused search input. activeElement stays INPUT but keystrokes
-  // stop being delivered. A synchronous blur+focus reconnects the keyboard.
+  // iOS WebKit "ghost focus" bug: frimousse processes each keystroke async
+  // (rAF store flush + requestIdleCallback emoji filtering) and mutates the
+  // emoji grid DOM. This causes iOS to disconnect the keyboard from the
+  // focused search input — activeElement stays INPUT but keystrokes stop
+  // being delivered. A blur+focus cycle reconnects the keyboard.
   //
-  // MutationObserver fires exactly when frimousse mutates the Viewport DOM,
-  // so we reconnect at the precise moment the disconnect would occur.
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  // Schedule a reconnect 300ms after EVERY keystroke (not just the first).
+  // Each frimousse processing cycle takes ~200ms, so 300ms ensures we
+  // reconnect after the DOM mutation settles.
+  const handleInput = useCallback((e: React.FormEvent<HTMLInputElement>) => {
+    const input = e.target as HTMLInputElement;
+    inputRef.current = input;
+    const hasText = input.value.length > 0;
+    setIsSearching(hasText);
 
-  useEffect(() => {
-    const vp = viewportRef.current;
-    if (!vp) return;
+    console.log("[emoji-search] onInput", { value: input.value, hasText });
 
-    const observer = new MutationObserver(() => {
-      const input = searchInputRef.current;
-      if (
-        input &&
-        input.isConnected &&
-        document.activeElement === input &&
-        input.value.length > 0
-      ) {
-        console.log("[emoji-search] DOM mutation → blur+focus reconnect");
+    // Reconnect keyboard after frimousse's async DOM mutation
+    setTimeout(() => {
+      if (input.isConnected && document.activeElement === input) {
+        console.log("[emoji-search] 300ms reconnect", { value: input.value });
         input.blur();
         input.focus({ preventScroll: true });
       }
-    });
-
-    observer.observe(vp, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, []);
-
-  // Capture the search input ref via onFocus (frimousse doesn't expose
-  // the input ref directly in a way we can combine with our other props)
-  const handleFocus = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
-    searchInputRef.current = e.currentTarget;
+    }, 300);
   }, []);
 
   return (
@@ -139,13 +110,26 @@ export function ReactionEmojiPicker({
         placeholder="Search emoji..."
         autoFocus={autoFocusSearch}
         onInput={handleInput}
-        onFocus={handleFocus}
+        onFocus={() => console.log("[emoji-search] onFocus")}
+        onBlur={() =>
+          console.log("[emoji-search] onBlur", {
+            activeEl: document.activeElement?.tagName,
+          })
+        }
+        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+          console.log("[emoji-search] keydown", {
+            key: e.key,
+            value: (e.target as HTMLInputElement).value,
+            activeIsSelf: document.activeElement === e.target,
+          });
+        }}
       />
       <div className="relative flex-1 min-h-0">
         {/* Frimousse search results — hidden until user types */}
         <EmojiPicker.Viewport
-          ref={viewportRef}
-          className="absolute inset-0 overflow-y-auto px-1 z-[1]"
+          className={`absolute inset-0 overflow-y-auto px-1 transition-opacity duration-150 ${
+            isSearching ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
         >
           <EmojiPicker.Loading className="flex items-center justify-center h-full text-blue-400/40 text-sm">
             Loading...
@@ -184,8 +168,9 @@ export function ReactionEmojiPicker({
 
         {/* Popular emojis — visible when search is empty */}
         <div
-          ref={popularRef}
-          className="absolute inset-0 overflow-y-auto px-2 z-[2]"
+          className={`absolute inset-0 overflow-y-auto px-2 transition-opacity duration-150 ${
+            isSearching ? "opacity-0 pointer-events-none" : "opacity-100"
+          }`}
         >
           <div
             className={`px-1 py-1.5 text-xs font-semibold text-white/40 sticky top-0 ${categoryBg} z-10`}
