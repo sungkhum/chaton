@@ -84,14 +84,37 @@ export function ReactionEmojiPicker({
     searchingRef.current = hasText;
     const vp = viewportRef.current;
     const pop = popularRef.current;
+    // Use visibility + z-index instead of opacity + pointer-events.
+    // Changing opacity creates/destroys stacking contexts, which triggers
+    // iOS WebKit to re-composite and drop focus from the search input.
+    // visibility changes don't affect stacking contexts.
     if (vp) {
-      vp.style.opacity = hasText ? "1" : "0";
-      vp.style.pointerEvents = hasText ? "auto" : "none";
+      vp.style.visibility = hasText ? "visible" : "hidden";
+      vp.style.zIndex = hasText ? "2" : "1";
     }
     if (pop) {
-      pop.style.opacity = hasText ? "0" : "1";
-      pop.style.pointerEvents = hasText ? "none" : "auto";
+      pop.style.visibility = hasText ? "hidden" : "visible";
+      pop.style.zIndex = hasText ? "2" : "1";
     }
+  }, []);
+
+  // iOS WebKit can drop focus from inputs inside position:fixed containers
+  // when the DOM mutates (frimousse filters emojis via requestIdleCallback).
+  // Restore focus if it falls to document.body — but respect deliberate
+  // focus moves like tapping an emoji button.
+  const handleBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+    const input = e.currentTarget;
+    requestAnimationFrame(() => {
+      if (!input.isConnected) return;
+      const active = document.activeElement;
+      if (
+        active === document.body ||
+        active === document.documentElement ||
+        active === null
+      ) {
+        input.focus({ preventScroll: true });
+      }
+    });
   }, []);
 
   return (
@@ -104,12 +127,13 @@ export function ReactionEmojiPicker({
         placeholder="Search emoji..."
         autoFocus={autoFocusSearch}
         onInput={handleInput}
+        onBlur={handleBlur}
       />
       <div className="relative flex-1 min-h-0">
         {/* Frimousse search results — hidden until user types */}
         <EmojiPicker.Viewport
           ref={viewportRef}
-          className="absolute inset-0 overflow-y-auto px-1 transition-opacity duration-150 opacity-0 pointer-events-none"
+          className="absolute inset-0 overflow-y-auto px-1 invisible z-[1]"
         >
           <EmojiPicker.Loading className="flex items-center justify-center h-full text-blue-400/40 text-sm">
             Loading...
@@ -149,7 +173,7 @@ export function ReactionEmojiPicker({
         {/* Popular emojis — visible when search is empty */}
         <div
           ref={popularRef}
-          className="absolute inset-0 overflow-y-auto px-2 transition-opacity duration-150 opacity-100"
+          className="absolute inset-0 overflow-y-auto px-2 visible z-[2]"
         >
           <div
             className={`px-1 py-1.5 text-xs font-semibold text-white/40 sticky top-0 ${categoryBg} z-10`}

@@ -665,6 +665,10 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       if (!el || !vv) return;
 
       const reposition = () => {
+        // Save focused element — iOS drops focus when fixed containers move
+        const focused =
+          el.contains(document.activeElement) && document.activeElement;
+
         const keyboardOffset = Math.max(
           0,
           window.innerHeight - vv.height - vv.offsetTop
@@ -679,6 +683,14 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
         } else {
           el.style.maxHeight = "";
           el.style.overflow = "";
+        }
+
+        // Synchronously restore focus if iOS dropped it during reposition
+        if (
+          focused instanceof HTMLElement &&
+          document.activeElement !== focused
+        ) {
+          focused.focus({ preventScroll: true });
         }
       };
 
