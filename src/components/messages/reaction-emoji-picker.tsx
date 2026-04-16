@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { EmojiPicker } from "frimousse";
-import { useState } from "react";
+import { useCallback, useRef } from "react";
 
 const POPULAR_EMOJI = [
   "😀",
@@ -70,7 +70,29 @@ export function ReactionEmojiPicker({
   categoryBg = "bg-[#141c2b]",
   autoFocusSearch = true,
 }: ReactionEmojiPickerProps) {
-  const [isSearching, setIsSearching] = useState(false);
+  // Track searching state via ref + direct DOM manipulation instead of
+  // useState to avoid a React re-render on the first keystroke. On iOS,
+  // re-rendering sibling elements while the keyboard is open can cause
+  // WebKit to drop focus from the search input.
+  const searchingRef = useRef(false);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const popularRef = useRef<HTMLDivElement>(null);
+
+  const handleInput = useCallback((e: React.FormEvent<HTMLInputElement>) => {
+    const hasText = (e.target as HTMLInputElement).value.length > 0;
+    if (hasText === searchingRef.current) return;
+    searchingRef.current = hasText;
+    const vp = viewportRef.current;
+    const pop = popularRef.current;
+    if (vp) {
+      vp.style.opacity = hasText ? "1" : "0";
+      vp.style.pointerEvents = hasText ? "auto" : "none";
+    }
+    if (pop) {
+      pop.style.opacity = hasText ? "0" : "1";
+      pop.style.pointerEvents = hasText ? "none" : "auto";
+    }
+  }, []);
 
   return (
     <EmojiPicker.Root
@@ -81,16 +103,13 @@ export function ReactionEmojiPicker({
         className={searchClassName}
         placeholder="Search emoji..."
         autoFocus={autoFocusSearch}
-        onInput={(e) =>
-          setIsSearching((e.target as HTMLInputElement).value.length > 0)
-        }
+        onInput={handleInput}
       />
       <div className="relative flex-1 min-h-0">
         {/* Frimousse search results — hidden until user types */}
         <EmojiPicker.Viewport
-          className={`absolute inset-0 overflow-y-auto px-1 transition-opacity duration-150 ${
-            isSearching ? "opacity-100" : "opacity-0 pointer-events-none"
-          }`}
+          ref={viewportRef}
+          className="absolute inset-0 overflow-y-auto px-1 transition-opacity duration-150 opacity-0 pointer-events-none"
         >
           <EmojiPicker.Loading className="flex items-center justify-center h-full text-blue-400/40 text-sm">
             Loading...
@@ -129,9 +148,8 @@ export function ReactionEmojiPicker({
 
         {/* Popular emojis — visible when search is empty */}
         <div
-          className={`absolute inset-0 overflow-y-auto px-2 transition-opacity duration-150 ${
-            isSearching ? "opacity-0 pointer-events-none" : "opacity-100"
-          }`}
+          ref={popularRef}
+          className="absolute inset-0 overflow-y-auto px-2 transition-opacity duration-150 opacity-100"
         >
           <div
             className={`px-1 py-1.5 text-xs font-semibold text-white/40 sticky top-0 ${categoryBg} z-10`}
