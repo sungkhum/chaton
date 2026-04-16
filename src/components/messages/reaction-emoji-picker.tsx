@@ -70,59 +70,52 @@ export function ReactionEmojiPicker({
   categoryBg = "bg-[#141c2b]",
   autoFocusSearch = true,
 }: ReactionEmojiPickerProps) {
-  const [isSearching, setIsSearching] = useState(false);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-
-  // iOS WebKit "ghost focus" bug: frimousse processes each keystroke async
-  // (rAF store flush + requestIdleCallback emoji filtering) and mutates the
-  // emoji grid DOM. This causes iOS to disconnect the keyboard from the
-  // focused search input — activeElement stays INPUT but keystrokes stop
-  // being delivered. A blur+focus cycle reconnects the keyboard.
+  // iOS WebKit disconnects the keyboard from inputs inside position:fixed
+  // containers when sibling DOM nodes mutate (frimousse re-renders the emoji
+  // grid on each keystroke via requestIdleCallback). The input retains
+  // document.activeElement but keystrokes stop being delivered.
   //
-  // Schedule a reconnect 300ms after EVERY keystroke (not just the first).
-  // Each frimousse processing cycle takes ~200ms, so 300ms ensures we
-  // reconnect after the DOM mutation settles.
-  const handleInput = useCallback((e: React.FormEvent<HTMLInputElement>) => {
-    const input = e.target as HTMLInputElement;
-    inputRef.current = input;
-    const hasText = input.value.length > 0;
-    setIsSearching(hasText);
+  // Fix: use a NATIVE input for typing (outside frimousse's mutating tree)
+  // and a hidden controlled EmojiPicker.Search to drive frimousse's filter.
+  // The native input never has DOM mutations near it, so iOS keeps the
+  // keyboard connected.
+  const [search, setSearch] = useState("");
+  const isSearching = search.length > 0;
+  const nativeInputRef = useRef<HTMLInputElement>(null);
 
-    console.log("[emoji-search] onInput", { value: input.value, hasText });
-
-    // Reconnect keyboard after frimousse's async DOM mutation
-    setTimeout(() => {
-      if (input.isConnected && document.activeElement === input) {
-        console.log("[emoji-search] 300ms reconnect", { value: input.value });
-        input.blur();
-        input.focus({ preventScroll: true });
-      }
-    }, 300);
-  }, []);
+  const handleNativeInput = useCallback(
+    (e: React.FormEvent<HTMLInputElement>) => {
+      setSearch((e.target as HTMLInputElement).value);
+    },
+    []
+  );
 
   return (
     <EmojiPicker.Root
       onEmojiSelect={(emoji: { emoji: string }) => onSelect(emoji.emoji)}
       className={className}
     >
-      <EmojiPicker.Search
+      {/* Native input for typing — immune to iOS keyboard disconnect */}
+      <input
+        ref={nativeInputRef}
         className={searchClassName}
         placeholder="Search emoji..."
         autoFocus={autoFocusSearch}
-        onInput={handleInput}
-        onFocus={() => console.log("[emoji-search] onFocus")}
-        onBlur={() =>
-          console.log("[emoji-search] onBlur", {
-            activeEl: document.activeElement?.tagName,
-          })
-        }
-        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-          console.log("[emoji-search] keydown", {
-            key: e.key,
-            value: (e.target as HTMLInputElement).value,
-            activeIsSelf: document.activeElement === e.target,
-          });
-        }}
+        onInput={handleNativeInput}
+        type="search"
+        autoCapitalize="off"
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
+        enterKeyHint="done"
+      />
+      {/* Hidden frimousse Search — controlled by native input value,
+          drives the emoji filtering without being focused */}
+      <EmojiPicker.Search
+        value={search}
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden
       />
       <div className="relative flex-1 min-h-0">
         {/* Frimousse search results — hidden until user types */}
