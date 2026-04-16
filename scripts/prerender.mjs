@@ -27,12 +27,20 @@ const ROUTES = [
   "/blog/chaton-vs-signal",
   "/blog/chaton-vs-telegram",
   "/blog/what-is-end-to-end-encryption",
+  "/blog/how-to-create-a-group-chat",
 ];
 
 const BASE_URL = "https://getchaton.com";
 
 /** Blog posts that need OG images. */
 const OG_POSTS = [
+  {
+    slug: "how-to-create-a-group-chat",
+    title: "How to Create a Group Chat in ChatOn (Step-by-Step)",
+    description:
+      "Step-by-step guide to creating an end-to-end encrypted group chat in ChatOn. Add members, generate invite links, and list your group in the public community directory.",
+    date: "April 16, 2026",
+  },
   {
     slug: "what-is-end-to-end-encryption",
     title: "What Is End-to-End Encryption? A Plain-Language Guide",

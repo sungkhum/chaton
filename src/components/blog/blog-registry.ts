@@ -19,6 +19,16 @@ export interface BlogPostMeta {
  */
 export const BLOG_POSTS: BlogPostMeta[] = [
   {
+    slug: "how-to-create-a-group-chat",
+    title: "How to Create a Group Chat in ChatOn (Step-by-Step)",
+    description:
+      "Step-by-step guide to creating an end-to-end encrypted group chat in ChatOn. Add members, generate invite links, and list your group in the public community directory.",
+    date: "2026-04-16",
+    readTime: "8 min read",
+    tags: ["groups", "tutorial", "community"],
+    component: () => import("./posts/how-to-create-a-group-chat"),
+  },
+  {
     slug: "what-is-end-to-end-encryption",
     title: "What Is End-to-End Encryption? A Plain-Language Guide",
     description:

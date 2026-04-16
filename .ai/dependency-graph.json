@@ -80,6 +80,12 @@
     ],
     "exports": []
   },
+  "src/components/blog/posts/how-to-create-a-group-chat.tsx": {
+    "imports": [
+      "src/components/blog/blog-post-layout.tsx"
+    ],
+    "exports": []
+  },
   "src/components/blog/posts/near-zero-infrastructure.tsx": {
     "imports": [
       "src/components/blog/blog-post-layout.tsx"
