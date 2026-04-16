@@ -81,19 +81,64 @@ export function ReactionEmojiPicker({
   const handleInput = useCallback((e: React.FormEvent<HTMLInputElement>) => {
     const input = e.target as HTMLInputElement;
     const hasText = input.value.length > 0;
+    console.log("[emoji-search] onInput", {
+      value: input.value,
+      hasText,
+      wasSearching: searchingRef.current,
+    });
     if (hasText === searchingRef.current) return;
     searchingRef.current = hasText;
     const vp = viewportRef.current;
     const pop = popularRef.current;
     // Only swap z-index — both layers stay visible at all times.
-    // Changing visibility/opacity triggers iOS WebKit to re-layout the
-    // Viewport contents, which disconnects the keyboard from the focused
-    // input (activeElement stays INPUT but keystrokes stop arriving).
     if (vp) {
       vp.style.zIndex = hasText ? "2" : "1";
     }
     if (pop) {
       pop.style.zIndex = hasText ? "1" : "2";
+    }
+
+    // iOS "ghost focus" bug: activeElement stays INPUT but the keyboard
+    // disconnects — keystrokes stop arriving after frimousse's async DOM
+    // mutations (requestIdleCallback emoji filtering). Force reconnect
+    // with blur+focus at multiple timings to find what works.
+    // The synchronous blur+focus keeps the keyboard open on iOS.
+    if (hasText) {
+      const reconnect = (label: string) => {
+        const isSelf = document.activeElement === input;
+        console.log(`[emoji-search] ${label}`, {
+          activeEl: document.activeElement?.tagName,
+          isSelf,
+          value: input.value,
+        });
+        if (isSelf && input.isConnected) {
+          input.blur();
+          input.focus({ preventScroll: true });
+          input.setSelectionRange(input.value.length, input.value.length);
+          console.log(`[emoji-search] ${label} blur+focus+sel done`);
+        }
+      };
+
+      requestAnimationFrame(() => reconnect("rAF"));
+      setTimeout(() => reconnect("200ms"), 200);
+      setTimeout(() => reconnect("500ms"), 500);
+      setTimeout(() => reconnect("1000ms"), 1000);
+
+      // Log ALL keydown events on the document to see where keystrokes go
+      const logKeys = (ev: KeyboardEvent) => {
+        console.log("[emoji-search] keydown", {
+          key: ev.key,
+          targetTag: (ev.target as HTMLElement)?.tagName,
+          targetIsSelf: ev.target === input,
+          activeEl: document.activeElement?.tagName,
+          activeIsSelf: document.activeElement === input,
+          inputValue: input.value,
+          timestamp: Date.now(),
+        });
+      };
+      document.addEventListener("keydown", logKeys);
+      // Clean up after 5 seconds
+      setTimeout(() => document.removeEventListener("keydown", logKeys), 5000);
     }
   }, []);
 
