@@ -81,96 +81,20 @@ export function ReactionEmojiPicker({
   const handleInput = useCallback((e: React.FormEvent<HTMLInputElement>) => {
     const input = e.target as HTMLInputElement;
     const hasText = input.value.length > 0;
-    console.log("[emoji-search] onInput", {
-      value: input.value,
-      hasText,
-      wasSearching: searchingRef.current,
-      activeEl: document.activeElement?.tagName,
-      activeIsSelf: document.activeElement === input,
-    });
     if (hasText === searchingRef.current) return;
     searchingRef.current = hasText;
     const vp = viewportRef.current;
     const pop = popularRef.current;
+    // Only swap z-index — both layers stay visible at all times.
+    // Changing visibility/opacity triggers iOS WebKit to re-layout the
+    // Viewport contents, which disconnects the keyboard from the focused
+    // input (activeElement stays INPUT but keystrokes stop arriving).
     if (vp) {
-      vp.style.visibility = hasText ? "visible" : "hidden";
       vp.style.zIndex = hasText ? "2" : "1";
     }
     if (pop) {
-      pop.style.visibility = hasText ? "hidden" : "visible";
-      pop.style.zIndex = hasText ? "2" : "1";
+      pop.style.zIndex = hasText ? "1" : "2";
     }
-    console.log("[emoji-search] after DOM toggle", {
-      activeEl: document.activeElement?.tagName,
-      activeIsSelf: document.activeElement === input,
-    });
-    // Schedule checks at multiple timings to catch async focus theft
-    requestAnimationFrame(() => {
-      console.log("[emoji-search] rAF after input", {
-        activeEl: document.activeElement?.tagName,
-        activeIsSelf: document.activeElement === input,
-        activeClass: (document.activeElement as HTMLElement)?.className?.slice(
-          0,
-          60
-        ),
-      });
-    });
-    setTimeout(() => {
-      console.log("[emoji-search] 100ms after input", {
-        activeEl: document.activeElement?.tagName,
-        activeIsSelf: document.activeElement === input,
-        activeClass: (document.activeElement as HTMLElement)?.className?.slice(
-          0,
-          60
-        ),
-      });
-    }, 100);
-    setTimeout(() => {
-      console.log("[emoji-search] 300ms after input", {
-        activeEl: document.activeElement?.tagName,
-        activeIsSelf: document.activeElement === input,
-        activeClass: (document.activeElement as HTMLElement)?.className?.slice(
-          0,
-          60
-        ),
-      });
-    }, 300);
-  }, []);
-
-  const handleFocus = useCallback(() => {
-    console.log("[emoji-search] onFocus fired");
-  }, []);
-
-  const handleBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
-    const input = e.currentTarget;
-    const related = e.relatedTarget as HTMLElement | null;
-    console.log("[emoji-search] onBlur", {
-      relatedTag: related?.tagName || "null",
-      relatedClass: related?.className?.slice(0, 60) || "null",
-      activeEl: document.activeElement?.tagName,
-    });
-    requestAnimationFrame(() => {
-      const active = document.activeElement;
-      console.log("[emoji-search] onBlur rAF", {
-        inputConnected: input.isConnected,
-        activeEl: active?.tagName,
-        activeClass: (active as HTMLElement)?.className?.slice(0, 60),
-        isBody: active === document.body,
-      });
-      if (!input.isConnected) return;
-      if (
-        active === document.body ||
-        active === document.documentElement ||
-        active === null
-      ) {
-        console.log("[emoji-search] RESTORING FOCUS");
-        input.focus({ preventScroll: true });
-        console.log("[emoji-search] after restore", {
-          activeEl: document.activeElement?.tagName,
-          activeIsSelf: document.activeElement === input,
-        });
-      }
-    });
   }, []);
 
   return (
@@ -183,14 +107,12 @@ export function ReactionEmojiPicker({
         placeholder="Search emoji..."
         autoFocus={autoFocusSearch}
         onInput={handleInput}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
       />
       <div className="relative flex-1 min-h-0">
         {/* Frimousse search results — hidden until user types */}
         <EmojiPicker.Viewport
           ref={viewportRef}
-          className="absolute inset-0 overflow-y-auto px-1 invisible z-[1]"
+          className="absolute inset-0 overflow-y-auto px-1 z-[1]"
         >
           <EmojiPicker.Loading className="flex items-center justify-center h-full text-blue-400/40 text-sm">
             Loading...
@@ -230,7 +152,7 @@ export function ReactionEmojiPicker({
         {/* Popular emojis — visible when search is empty */}
         <div
           ref={popularRef}
-          className="absolute inset-0 overflow-y-auto px-2 visible z-[2]"
+          className="absolute inset-0 overflow-y-auto px-2 z-[2]"
         >
           <div
             className={`px-1 py-1.5 text-xs font-semibold text-white/40 sticky top-0 ${categoryBg} z-10`}
