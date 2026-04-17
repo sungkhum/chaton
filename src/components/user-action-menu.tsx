@@ -1,9 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useShallow } from "zustand/react/shallow";
-import { MessageSquare, ExternalLink } from "lucide-react";
+import { MessageSquare, UserCircle2 } from "lucide-react";
 import { useStore } from "../store";
-import { getProfileURL } from "../utils/helpers";
 import { shortenLongWord } from "../utils/search-helpers";
 
 const MENU_WIDTH = 200;
@@ -11,8 +10,10 @@ const MENU_GAP = 8;
 
 export function UserActionMenu({
   onMessage,
+  onViewProfile,
 }: {
   onMessage: (publicKey: string) => void;
+  onViewProfile: (publicKey: string, username?: string) => void;
 }) {
   const { menu, close, appUser } = useStore(
     useShallow((s) => ({
@@ -71,10 +72,7 @@ export function UserActionMenu({
   };
 
   const handleViewProfile = () => {
-    const url = menu.username ? getProfileURL(menu.username) : null;
-    if (url) {
-      window.open(url, "_blank", "noopener,noreferrer");
-    }
+    onViewProfile(menu.publicKey, menu.username);
     close();
   };
 
@@ -113,16 +111,14 @@ export function UserActionMenu({
             Message
           </button>
         )}
-        {menu.username && (
-          <button
-            role="menuitem"
-            onClick={handleViewProfile}
-            className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-[14px] text-white hover:bg-white/5 transition-colors"
-          >
-            <ExternalLink className="w-4 h-4 text-white/60" />
-            View profile
-          </button>
-        )}
+        <button
+          role="menuitem"
+          onClick={handleViewProfile}
+          className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-[14px] text-white hover:bg-white/5 transition-colors"
+        >
+          <UserCircle2 className="w-4 h-4 text-white/60" />
+          View profile
+        </button>
       </div>
     </>,
     document.body

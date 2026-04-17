@@ -574,6 +574,7 @@
       "src/components/messaging-conversation-button.tsx",
       "src/components/messaging-display-avatar.tsx",
       "src/components/user-action-menu.tsx",
+      "src/components/profile-modal.tsx",
       "src/components/messaging-setup-button.tsx",
       "src/components/onboarding/onboarding-wizard.tsx",
       "src/utils/onboarding.ts",
@@ -710,6 +711,16 @@
     ],
     "exports": [
       "PrivacyToggle"
+    ]
+  },
+  "src/components/profile-modal.tsx": {
+    "imports": [
+      "src/components/messaging-display-avatar.tsx",
+      "src/utils/search-helpers.ts",
+      "src/utils/helpers.ts"
+    ],
+    "exports": [
+      "ProfileModal"
     ]
   },
   "src/components/public-layout.tsx": {
@@ -935,7 +946,6 @@
   "src/components/user-action-menu.tsx": {
     "imports": [
       "src/store/index.ts",
-      "src/utils/helpers.ts",
       "src/utils/search-helpers.ts"
     ],
     "exports": [

@@ -121,6 +121,7 @@ src/components/notification-toggle.tsx  fn NotificationToggle
 src/components/onboarding/onboarding-wizard.tsx  OnboardingWizard
 src/components/onboarding/pre-signup-tutorial.tsx  PreSignupTutorial
 src/components/privacy-toggle.tsx  fn PrivacyToggle
+src/components/profile-modal.tsx  fn ProfileModal
 src/components/public-layout.tsx  PublicNav, PublicFooter
 src/components/route-error-boundary.tsx  class RouteErrorBoundary
 src/components/search-message-results.tsx

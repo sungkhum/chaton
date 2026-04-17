@@ -190,6 +190,7 @@ import { MessagingConversationAccount } from "./messaging-conversation-accounts"
 import { MessagingConversationButton } from "./messaging-conversation-button";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { UserActionMenu } from "./user-action-menu";
+import { ProfileModal } from "./profile-modal";
 import { MessagingSetupButton } from "./messaging-setup-button";
 import { OnboardingWizard } from "./onboarding/onboarding-wizard";
 import {
@@ -396,6 +397,10 @@ export const MessagingApp: FC = () => {
   const [loadingConversation, setLoadingConversation] = useState(false);
   const [selectedConversationPublicKey, setSelectedConversationPublicKey] =
     useState("");
+  const [profileModal, setProfileModal] = useState<{
+    publicKey: string;
+    username?: string;
+  } | null>(null);
   const [conversations, setConversations] = useState<ConversationMap>({});
   const [membersByGroupKey, setMembersByGroupKey] = useState<{
     [groupKey: string]: PublicKeyToProfileEntryResponseMap;
@@ -4248,7 +4253,27 @@ export const MessagingApp: FC = () => {
         onMessage={(pk) =>
           rehydrateConversation(pk + DEFAULT_KEY_MESSAGING_GROUP_NAME, true)
         }
+        onViewProfile={(pk, un) =>
+          setProfileModal({ publicKey: pk, username: un })
+        }
       />
+
+      {profileModal && (
+        <ProfileModal
+          publicKey={profileModal.publicKey}
+          username={profileModal.username}
+          isSelf={
+            !!appUser && appUser.PublicKeyBase58Check === profileModal.publicKey
+          }
+          onClose={() => setProfileModal(null)}
+          onMessage={() =>
+            rehydrateConversation(
+              profileModal.publicKey + DEFAULT_KEY_MESSAGING_GROUP_NAME,
+              true
+            )
+          }
+        />
+      )}
 
       {/* Onboarding wizard for new users */}
       {showOnboarding &&
