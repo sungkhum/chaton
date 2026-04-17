@@ -152,7 +152,7 @@ function highlightMentions(html: string, mentions: MentionEntry[]): string {
 }
 
 /** Max collapsed height in px. Messages taller than this get a "Show more" button. */
-const COLLAPSE_HEIGHT = 220;
+const COLLAPSE_HEIGHT = 280;
 
 export function FormattedMessage({
   children,
