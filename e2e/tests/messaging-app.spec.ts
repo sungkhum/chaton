@@ -383,7 +383,7 @@ test.describe("Long message expand/collapse", () => {
     await waitForAppReady();
     await injectUser(page);
 
-    // Generate a message long enough to exceed 300px collapsed height
+    // Generate a message long enough to exceed the collapsed height threshold
     const longText = Array.from({ length: 40 }, (_, i) =>
       `Line ${i + 1}: This is a really long message that should cause the expand button to appear.`
     ).join("\n");
@@ -413,6 +413,31 @@ test.describe("Long message expand/collapse", () => {
 
     // "Show more" should no longer be present
     await expect(showMore).not.toBeVisible();
+  });
+
+  test("long unbroken string still shows 'Show more' button", async ({
+    page,
+    waitForAppReady,
+  }) => {
+    await page.goto("/");
+    await waitForAppReady();
+    await injectUser(page);
+
+    // Single unbroken token — word-break wraps it across many lines.
+    // Regression test: scrollHeight on the inline measurement wrapper used to
+    // return 0 in WebKit, so this case slipped past the collapse detection.
+    const longText = "testtest".repeat(100);
+    const dm = makeDmConversation();
+    dm.conversation.messages.push(makeMessage(longText, false, NOW + 1e12));
+    await injectConversation(page, dm);
+
+    const messages = page.locator("#scrollableArea");
+    await expect(messages.getByText("Hey, how are you?")).toBeVisible({
+      timeout: 10_000,
+    });
+
+    const showMore = messages.getByRole("button", { name: "Show more" });
+    await expect(showMore).toBeVisible({ timeout: 10_000 });
   });
 
   test("short messages do not show expand button", async ({

@@ -152,7 +152,7 @@ function highlightMentions(html: string, mentions: MentionEntry[]): string {
 }
 
 /** Max collapsed height in px. Messages taller than this get a "Show more" button. */
-const COLLAPSE_HEIGHT = 300;
+const COLLAPSE_HEIGHT = 220;
 
 export function FormattedMessage({
   children,
@@ -216,6 +216,7 @@ export function FormattedMessage({
   }, [html]);
 
   // ── Expand / collapse for long messages ──
+  const measureRef = useRef<HTMLDivElement>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
@@ -225,9 +226,10 @@ export function FormattedMessage({
   }, [html]);
 
   useLayoutEffect(() => {
-    const el = containerRef.current;
+    // Measure the block-level wrapper, not the inline content div — scrollHeight
+    // on inline elements returns 0 in WebKit, which silently disables collapse.
+    const el = measureRef.current;
     if (!el) return;
-    // scrollHeight returns full content height even when maxHeight/overflow:hidden is applied
     setIsOverflowing(el.scrollHeight > COLLAPSE_HEIGHT);
   }, [html]);
 
@@ -279,7 +281,7 @@ export function FormattedMessage({
 
   return (
     <div>
-      <div className={collapsed ? "relative" : undefined}>
+      <div ref={measureRef} className={collapsed ? "relative" : undefined}>
         <div
           ref={containerRef}
           className={baseClass}
