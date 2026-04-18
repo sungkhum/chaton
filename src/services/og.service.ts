@@ -3,7 +3,7 @@ export interface OgData {
   description?: string;
   image?: string;
   // Tweet-specific fields (from fxtwitter)
-  type?: "tweet" | "reddit";
+  type?: "tweet" | "reddit" | "youtube";
   author?: string;
   authorHandle?: string;
   authorAvatar?: string;
@@ -12,6 +12,8 @@ export interface OgData {
   subreddit?: string;
   score?: number;
   numComments?: number;
+  // YouTube-specific fields
+  videoId?: string;
 }
 
 const RELAY_URL = (import.meta.env.VITE_RELAY_URL || "").replace(

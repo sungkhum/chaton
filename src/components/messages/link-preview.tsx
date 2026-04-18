@@ -4,6 +4,7 @@ import {
   Heart,
   LinkIcon,
   MessageCircle,
+  Play,
   Repeat2,
 } from "lucide-react";
 import { lazy, Suspense, useState, useEffect } from "react";
@@ -22,9 +23,17 @@ const JOIN_URL_RE =
 /** Extract the first http/https URL from a string. Returns null if none found. */
 const URL_RE = /https?:\/\/[^\s<>"{}|\\^`[\]]+/;
 
+// Fallback: match bare YouTube URLs without a protocol (e.g. "youtu.be/abc",
+// "youtube.com/live/xyz"). Users often paste URLs this way from mobile clients.
+const BARE_YOUTUBE_RE =
+  /(?:^|\s)((?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/[^\s<>"{}|\\^`[\]]+)/i;
+
 export function extractFirstUrl(text: string): string | null {
   const match = text.match(URL_RE);
-  return match ? match[0] : null;
+  if (match) return match[0];
+  const bare = text.match(BARE_YOUTUBE_RE);
+  if (bare) return `https://${bare[1]}`;
+  return null;
 }
 
 function getDomain(url: string): string {
@@ -195,6 +204,77 @@ function RedditPreview({ og, url }: { og: OgData; url: string }) {
   );
 }
 
+function YouTubePreview({ og, url }: { og: OgData; url: string }) {
+  const [imageError, setImageError] = useState(false);
+  const service = detectLinkService(url);
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block rounded-lg overflow-hidden hover:brightness-110 transition group mt-1.5"
+    >
+      <div className="bg-gradient-to-br from-red-900/35 to-rose-900/20 border border-red-700/30 rounded-lg overflow-hidden">
+        {og.image && !imageError && (
+          <div className="relative">
+            <img
+              src={og.image}
+              alt={og.title || "YouTube video"}
+              className="w-full max-h-[300px] object-cover"
+              onError={() => setImageError(true)}
+            />
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="w-14 h-14 rounded-full bg-black/60 flex items-center justify-center group-hover:bg-red-600/90 transition-colors">
+                <Play
+                  className="w-6 h-6 text-white ml-0.5"
+                  fill="currentColor"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="p-2.5">
+          <div className="flex items-start gap-2.5">
+            {service && (
+              <div
+                className={`mt-0.5 w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${service.badgeBg}`}
+              >
+                {service.icon ? (
+                  <service.icon size={14} className={service.badgeText} />
+                ) : (
+                  <span
+                    className={`text-[10px] font-bold leading-none ${service.badgeText}`}
+                  >
+                    {service.badge}
+                  </span>
+                )}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              {og.title && (
+                <div className="text-[13px] text-blue-50 leading-snug mb-0.5 line-clamp-2 font-medium">
+                  {og.title}
+                </div>
+              )}
+              {og.author && (
+                <div className="text-[11px] text-gray-400 leading-snug mb-1 truncate">
+                  {og.author}
+                </div>
+              )}
+              <div className="text-[11px] text-red-400/70 truncate flex items-center gap-1">
+                <span className="truncate">YouTube</span>
+                <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </a>
+  );
+}
+
 export function LinkPreview({ url }: { url: string }) {
   // Render a rich in-app card for ChatOn join links instead of a generic OG preview
   const joinMatch = url.match(JOIN_URL_RE);
@@ -235,6 +315,9 @@ function GenericLinkPreview({ url }: { url: string }) {
 
   // Reddit-specific card
   if (og.type === "reddit") return <RedditPreview og={og} url={url} />;
+
+  // YouTube-specific card
+  if (og.type === "youtube") return <YouTubePreview og={og} url={url} />;
 
   const domain = getDomain(url);
   const service = detectLinkService(url);
