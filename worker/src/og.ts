@@ -301,13 +301,14 @@ function getYouTubeVideoId(url: string): string | null {
     const parsed = new URL(url);
     const host = parsed.hostname.replace(/^www\./, "").replace(/^m\./, "");
     if (host === "youtu.be") {
-      const id = parsed.pathname.slice(1).split("/")[0] ?? "";
-      return /^[\w-]{11}$/.test(id) ? id : null;
+      const m = parsed.pathname.match(/^\/([\w-]{11})/);
+      return m ? m[1] : null;
     }
     if (host === "youtube.com" || host === "music.youtube.com") {
       if (parsed.pathname === "/watch") {
-        const id = parsed.searchParams.get("v");
-        return id && /^[\w-]{11}$/.test(id) ? id : null;
+        const v = parsed.searchParams.get("v") ?? "";
+        const m = v.match(/^[\w-]{11}/);
+        return m ? m[0] : null;
       }
       const m = parsed.pathname.match(/^\/(?:live|shorts|embed)\/([\w-]{11})/);
       if (m) return m[1];
@@ -319,16 +320,14 @@ function getYouTubeVideoId(url: string): string | null {
 }
 
 /** Fetch YouTube video metadata via public oEmbed endpoint (no auth needed) */
-async function fetchYouTubeData(
-  videoId: string,
-  originalUrl: string
-): Promise<OgResult | null> {
+async function fetchYouTubeData(videoId: string): Promise<OgResult | null> {
   const image = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+  const canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
   try {
     const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(
-      originalUrl
+      canonicalUrl
     )}&format=json`;
     const res = await fetch(oembedUrl, {
       headers: { "User-Agent": "ChatOnBot/1.0" },
@@ -396,7 +395,7 @@ export async function handleOgFetch(request: Request): Promise<Response> {
   // YouTube: use public oEmbed API (works for watch, live, shorts, youtu.be)
   const youtubeId = getYouTubeVideoId(targetUrl);
   if (youtubeId) {
-    const ytData = await fetchYouTubeData(youtubeId, targetUrl);
+    const ytData = await fetchYouTubeData(youtubeId);
     if (ytData) return cacheAndReturn(cache, cacheKey, ytData);
     // Fall through to generic fetch if oEmbed fails
   }
