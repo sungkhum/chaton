@@ -4610,6 +4610,7 @@ export const MessagingApp: FC = () => {
                     getUsernameByPublicKeyBase58Check={
                       usernameByPublicKeyBase58Check
                     }
+                    profilePicByPublicKey={profilePicByPublicKey}
                     selectedConversationPublicKey={
                       selectedConversationPublicKey
                     }
