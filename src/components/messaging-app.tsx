@@ -3943,6 +3943,7 @@ export const MessagingApp: FC = () => {
     if (!appUser || !selectedConversation || !isGroupChat) return;
     const recipientInfo = selectedConversation.messages[0]?.RecipientInfo;
     if (!recipientInfo) return;
+    const convKey = selectedConversationPublicKeyRef.current;
     setLoadingPinnedMessage(true);
     try {
       const tsNanos = BigInt(pinnedMessageTimestamp);
@@ -3963,12 +3964,30 @@ export const MessagingApp: FC = () => {
           allAccessGroups
         );
       setAllAccessGroups(updatedAllAccessGroups);
-      setConversations((prev) =>
-        updateConv(prev, selectedConversationPublicKey, (c) => ({
+      // Snapshot the live tail so Jump-to-Latest can restore it. Guard against
+      // overwriting a prior snapshot from a search/reply jump in the same conv.
+      const currentConv = conversationsRef.current[convKey];
+      if (
+        currentConv &&
+        (!savedMessagesRef.current ||
+          savedMessagesRef.current.convKey !== convKey)
+      ) {
+        savedMessagesRef.current = {
+          messages: currentConv.messages,
+          convKey,
+        };
+      }
+      setConversations((prev) => {
+        const existing = prev[convKey];
+        if (!existing) return prev;
+        const optimistic = existing.messages.filter(
+          (m: any) => m._localId && m._status === "sending"
+        );
+        return updateConv(prev, convKey, (c) => ({
           ...c,
-          messages: decrypted,
-        }))
-      );
+          messages: [...decrypted, ...optimistic],
+        }));
+      });
       // Wait for re-render then scroll
       requestAnimationFrame(() => {
         bubblesRef.current?.scrollToMessage(pinnedMessageTimestamp);
@@ -3984,7 +4003,6 @@ export const MessagingApp: FC = () => {
     appUser,
     selectedConversation,
     isGroupChat,
-    selectedConversationPublicKey,
     allAccessGroups,
     setAllAccessGroups,
   ]);
