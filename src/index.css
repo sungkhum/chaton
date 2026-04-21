@@ -166,6 +166,15 @@ body {
   overscroll-behavior: none;
 }
 
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  text-wrap: balance;
+}
+
 .App {
   height: 100dvh;
   height: var(--app-height);
@@ -1099,6 +1108,7 @@ input::placeholder {
 
 .prose-chaton p {
   margin-bottom: 1.25rem;
+  text-wrap: pretty;
 }
 
 .prose-chaton a {
