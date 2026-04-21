@@ -303,7 +303,7 @@ export function JoinGroupModal({
               state !== "group-not-found" && (
                 <>
                   {/* Group avatar */}
-                  <div className="w-16 h-16 rounded-full overflow-hidden bg-[#1a2235] flex items-center justify-center border-2 border-[#34F080]/20 relative">
+                  <div className="w-16 h-16 rounded-full overflow-hidden bg-[#1a2235] flex items-center justify-center border border-white/10 relative">
                     <Users className="w-7 h-7 text-[#34F080]/60" />
                     {groupInfo.groupImageUrl && (
                       <img

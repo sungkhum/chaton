@@ -51,7 +51,7 @@ export function JoinConfirmationModal() {
         <div className="bg-[#0a1220] text-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border border-blue-900/50 modal-card-enter">
           <div className="p-8 flex flex-col items-center gap-5">
             {/* Group avatar */}
-            <div className="w-16 h-16 rounded-full overflow-hidden bg-[#1a2235] flex items-center justify-center border-2 border-[#34F080]/20 relative">
+            <div className="w-16 h-16 rounded-full overflow-hidden bg-[#1a2235] flex items-center justify-center border border-white/10 relative">
               <Users className="w-7 h-7 text-[#34F080]/60" />
               {info.groupImageUrl && (
                 <img

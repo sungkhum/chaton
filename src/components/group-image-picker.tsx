@@ -103,7 +103,7 @@ export const GroupImagePicker = ({
                 position: "absolute",
                 inset: 0,
               }}
-              className="rounded-full object-cover"
+              className="rounded-full object-cover outline outline-1 outline-white/10 [outline-offset:-1px]"
             />
           )}
         </div>

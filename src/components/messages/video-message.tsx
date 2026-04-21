@@ -21,7 +21,9 @@ function toStreamUrl(videoUrl: string): string {
   // → HLS: https://videodelivery.net/{videoId}/manifest/video.m3u8
   // Only convert if the ID is a 32-char hex string (CF Stream UID).
   // Livepeer playback IDs (alphanumeric, shorter) should not be sent to CF Stream.
-  const cfIframeMatch = videoUrl.match(/iframe\.videodelivery\.net\/([a-f0-9]{32})/);
+  const cfIframeMatch = videoUrl.match(
+    /iframe\.videodelivery\.net\/([a-f0-9]{32})/
+  );
   if (cfIframeMatch) {
     return `https://videodelivery.net/${cfIframeMatch[1]}/manifest/video.m3u8`;
   }
@@ -35,7 +37,9 @@ function getThumbnailUrl(videoUrl: string): string | undefined {
   if (cfMatch) {
     return `https://videodelivery.net/${cfMatch[1]}/thumbnails/thumbnail.jpg`;
   }
-  const cfCustomerMatch = videoUrl.match(/cloudflarestream\.com\/([a-f0-9]{32})/);
+  const cfCustomerMatch = videoUrl.match(
+    /cloudflarestream\.com\/([a-f0-9]{32})/
+  );
   if (cfCustomerMatch) {
     return `https://videodelivery.net/${cfCustomerMatch[1]}/thumbnails/thumbnail.jpg`;
   }
@@ -48,7 +52,13 @@ function getThumbnailUrl(videoUrl: string): string | undefined {
   return undefined;
 }
 
-export const VideoMessage = ({ videoUrl, width, height, duration, localThumbnail }: VideoMessageProps) => {
+export const VideoMessage = ({
+  videoUrl,
+  width,
+  height,
+  duration,
+  localThumbnail,
+}: VideoMessageProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [thumbnailError, setThumbnailError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -105,7 +115,7 @@ export const VideoMessage = ({ videoUrl, width, height, duration, localThumbnail
 
   return (
     <div
-      className="relative overflow-hidden w-full min-w-[180px] max-w-[400px] cursor-pointer"
+      className="relative overflow-hidden w-full min-w-[180px] max-w-[400px] cursor-pointer outline outline-1 outline-white/10 [outline-offset:-1px]"
       style={{ aspectRatio }}
       onClick={togglePlay}
     >
@@ -129,9 +139,11 @@ export const VideoMessage = ({ videoUrl, width, height, duration, localThumbnail
               onError={() => setThumbnailError(true)}
             />
           )}
-          <div className={`absolute inset-0 flex items-center justify-center ${
-            thumbnailUrl && !thumbnailError ? "bg-black/30" : "bg-[#0d1626]"
-          }`}>
+          <div
+            className={`absolute inset-0 flex items-center justify-center ${
+              thumbnailUrl && !thumbnailError ? "bg-black/30" : "bg-[#0d1626]"
+            }`}
+          >
             <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
               <Play className="w-6 h-6 text-white ml-1" />
             </div>

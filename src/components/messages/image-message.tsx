@@ -219,7 +219,7 @@ export const ImageMessage = ({
           <img
             src={imageUrl}
             alt={alt || "Image"}
-            className={`w-full h-auto object-cover transition-opacity duration-200 pointer-events-none ${
+            className={`w-full h-auto object-cover transition-opacity duration-200 pointer-events-none outline outline-1 outline-white/10 [outline-offset:-1px] ${
               loaded ? "opacity-100" : "opacity-0"
             }`}
             style={aspectRatio ? { aspectRatio } : undefined}
