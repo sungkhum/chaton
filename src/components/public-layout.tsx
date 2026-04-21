@@ -122,7 +122,7 @@ export const PublicNav = ({
               </button>
               <button
                 onClick={onSignUp}
-                className="px-4 sm:px-6 py-2 sm:py-2.5 landing-btn-vivid text-white text-[11px] sm:text-xs font-black rounded-full transition-all cursor-pointer"
+                className="px-4 sm:px-6 py-2 sm:py-2.5 landing-btn-vivid text-white text-[11px] sm:text-xs font-black rounded-full cursor-pointer active:scale-[0.96]"
               >
                 Sign up
               </button>
@@ -130,7 +130,7 @@ export const PublicNav = ({
           ) : (
             <button
               onClick={handleLaunchApp}
-              className="px-4 sm:px-6 py-2 landing-btn-vivid text-white text-[10px] sm:text-xs font-black rounded-full transition-all cursor-pointer"
+              className="px-4 sm:px-6 py-2 landing-btn-vivid text-white text-[10px] sm:text-xs font-black rounded-full cursor-pointer active:scale-[0.96]"
             >
               LAUNCH APP
             </button>

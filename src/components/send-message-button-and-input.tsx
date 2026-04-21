@@ -1186,7 +1186,7 @@ export const SendMessageButtonAndInput = forwardRef<
                     showMicButton ? setIsRecordingAudio(true) : handleSend()
                   }
                   disabled={isSending || isUploading}
-                  className={`shrink-0 cursor-pointer transition-all ${
+                  className={`shrink-0 cursor-pointer transition-[background-color,border-color,color,transform] active:scale-[0.96] ${
                     paidDmPriceCents &&
                     paidDmPriceCents > 0 &&
                     !editingMessage &&

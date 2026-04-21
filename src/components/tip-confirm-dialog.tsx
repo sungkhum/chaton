@@ -442,7 +442,7 @@ export const TipConfirmDialog = ({
       return `${base} bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30`;
     return `${base} ${gradientClasses} hover:shadow-[0_0_30px_rgba(${
       currency === "DESO" ? "39,117,202" : "52,240,128"
-    },0.3)] active:scale-[0.98]`;
+    },0.3)] active:scale-[0.96]`;
   };
 
   // HeroSwap full-screen modal

@@ -343,7 +343,7 @@ export const EditProfileDialog = ({
             disabled={!canSave}
             className={`w-full py-3.5 rounded-xl text-sm font-bold transition-[background-color,box-shadow,transform,opacity] cursor-pointer min-h-[48px] ${
               canSave
-                ? "bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black hover:shadow-[0_0_30px_rgba(52,240,128,0.3)] active:scale-[0.98]"
+                ? "bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black hover:shadow-[0_0_30px_rgba(52,240,128,0.3)] active:scale-[0.96]"
                 : "bg-white/5 text-gray-500 cursor-not-allowed"
             }`}
           >

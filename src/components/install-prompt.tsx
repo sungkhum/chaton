@@ -39,7 +39,7 @@ function NativeContent({ onInstall }: { onInstall: () => void }) {
         onClick={onInstall}
         className="w-full py-3 rounded-xl font-semibold text-[#34F080]
                    glass-btn-primary
-                   active:scale-[0.98] transition-transform"
+                   active:scale-[0.96] transition-transform"
       >
         <Download className="inline -mt-0.5 mr-2 h-4 w-4" />
         Install ChatOn

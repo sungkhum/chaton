@@ -317,7 +317,7 @@ export function ProfileModal({
                       onMessage();
                       onClose();
                     }}
-                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[14px] font-bold text-black bg-gradient-to-r from-[#34F080] to-[#20E0AA] hover:shadow-[0_0_30px_rgba(52,240,128,0.35)] active:scale-[0.985] transition-all cursor-pointer min-h-[48px]"
+                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[14px] font-bold text-black bg-gradient-to-r from-[#34F080] to-[#20E0AA] hover:shadow-[0_0_30px_rgba(52,240,128,0.35)] active:scale-[0.96] transition-all cursor-pointer min-h-[48px]"
                   >
                     <MessageSquare className="w-[18px] h-[18px]" />
                     Send Message

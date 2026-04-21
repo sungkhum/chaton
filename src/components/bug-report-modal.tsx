@@ -200,7 +200,7 @@ export function BugReportModal() {
                   if (description.trim()) setStep("frequency");
                 }}
                 disabled={!description.trim()}
-                className="mt-2 w-full rounded-xl bg-gradient-to-r from-[#34F080] to-[#20E0AA] px-4 py-2.5 text-sm font-semibold text-black transition-all hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] active:scale-[0.98] disabled:opacity-30 disabled:shadow-none"
+                className="mt-2 w-full rounded-xl bg-gradient-to-r from-[#34F080] to-[#20E0AA] px-4 py-2.5 text-sm font-semibold text-black transition-all hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] active:scale-[0.96] disabled:opacity-30 disabled:shadow-none"
               >
                 Continue
               </button>
@@ -227,7 +227,7 @@ export function BugReportModal() {
                       setFrequency(opt.value);
                       setStep("extra");
                     }}
-                    className={`rounded-xl border px-4 py-3 text-left text-sm transition-all active:scale-[0.98] ${
+                    className={`rounded-xl border px-4 py-3 text-left text-sm transition-all active:scale-[0.96] ${
                       frequency === opt.value
                         ? "border-[#34F080]/40 bg-[#34F080]/10 text-[#34F080]"
                         : "border-white/[0.06] bg-white/[0.02] text-white/70 hover:border-white/15 hover:bg-white/[0.04]"
@@ -268,7 +268,7 @@ export function BugReportModal() {
                 </button>
                 <button
                   onClick={() => setStep("confirm")}
-                  className="flex-1 rounded-xl bg-gradient-to-r from-[#34F080] to-[#20E0AA] px-4 py-2.5 text-sm font-semibold text-black transition-all hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] active:scale-[0.98]"
+                  className="flex-1 rounded-xl bg-gradient-to-r from-[#34F080] to-[#20E0AA] px-4 py-2.5 text-sm font-semibold text-black transition-all hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] active:scale-[0.96]"
                 >
                   Continue
                 </button>
@@ -337,7 +337,7 @@ export function BugReportModal() {
                 <button
                   onClick={handleSubmit}
                   disabled={submitting}
-                  className="flex-1 rounded-xl bg-gradient-to-r from-[#34F080] to-[#20E0AA] px-4 py-2.5 text-sm font-semibold text-black transition-all hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] active:scale-[0.98] disabled:opacity-30 disabled:shadow-none"
+                  className="flex-1 rounded-xl bg-gradient-to-r from-[#34F080] to-[#20E0AA] px-4 py-2.5 text-sm font-semibold text-black transition-all hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] active:scale-[0.96] disabled:opacity-30 disabled:shadow-none"
                 >
                   {submitting ? "Sending..." : "Submit"}
                 </button>

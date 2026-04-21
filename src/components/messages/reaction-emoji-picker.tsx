@@ -108,7 +108,7 @@ export function ReactionEmojiPicker({
                   {...props}
                   className={`${
                     cls || ""
-                  } flex items-center justify-center ${emojiSize} rounded-md hover:bg-white/10 cursor-pointer transition-colors`}
+                  } flex items-center justify-center ${emojiSize} rounded-md hover:bg-white/10 cursor-pointer transition-colors active:scale-[0.96]`}
                 >
                   {emojiData.emoji}
                 </button>

@@ -143,7 +143,7 @@ const LoggedOutCTA = () => (
     </p>
     <button
       onClick={() => safeLogin()}
-      className="inline-flex items-center gap-3 px-8 py-4 landing-btn-vivid text-white font-bold rounded-xl group cursor-pointer text-sm"
+      className="inline-flex items-center gap-3 px-8 py-4 landing-btn-vivid text-white font-bold rounded-xl group cursor-pointer text-sm active:scale-[0.96]"
     >
       Log In to Support ChatOn
       <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -325,7 +325,7 @@ const InlineDonationForm = ({ appUser }: { appUser: AppUser }) => {
         disabled={!canSend}
         className={`w-full py-3.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${
           canSend
-            ? "bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black hover:shadow-[0_0_30px_rgba(52,240,128,0.3)] active:scale-[0.98]"
+            ? "bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black hover:shadow-[0_0_30px_rgba(52,240,128,0.3)] active:scale-[0.96]"
             : "bg-white/5 text-gray-500 cursor-not-allowed"
         }`}
       >

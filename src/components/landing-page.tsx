@@ -491,7 +491,7 @@ export const LandingPage = () => {
             <div className="hero-cta flex flex-col sm:flex-row gap-5 md:gap-6">
               <button
                 onClick={() => setShowTutorial(true)}
-                className="px-8 py-4 md:px-10 md:py-5 landing-btn-vivid text-white font-black rounded-2xl flex items-center justify-center gap-3 text-lg md:text-xl group cursor-pointer"
+                className="px-8 py-4 md:px-10 md:py-5 landing-btn-vivid text-white font-black rounded-2xl flex items-center justify-center gap-3 text-lg md:text-xl group cursor-pointer active:scale-[0.96]"
               >
                 Start Messaging
                 <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
@@ -1495,7 +1495,7 @@ export const LandingPage = () => {
           <div className="flex flex-col items-center gap-8 md:gap-12">
             <button
               onClick={() => setShowTutorial(true)}
-              className="cta-button inline-flex items-center gap-4 md:gap-6 px-8 py-5 md:px-12 md:py-8 landing-btn-vivid text-white text-lg md:text-2xl font-black rounded-2xl md:rounded-[32px] group transition-all shadow-[0_0_80px_rgba(43,184,154,0.3)] cursor-pointer"
+              className="cta-button inline-flex items-center gap-4 md:gap-6 px-8 py-5 md:px-12 md:py-8 landing-btn-vivid text-white text-lg md:text-2xl font-black rounded-2xl md:rounded-[32px] group shadow-[0_0_80px_rgba(43,184,154,0.3)] cursor-pointer active:scale-[0.96]"
             >
               Start Messaging for Free
               <ArrowRight className="w-7 h-7 group-hover:translate-x-3 transition-transform" />

@@ -1545,7 +1545,7 @@ export const ManageMembersDialog = ({
                             return (
                               <div
                                 key={req.requesterPublicKey}
-                                className={`flex items-center p-2 md:p-3 rounded-xl border cursor-pointer transition-colors hover:bg-white/[0.06] ${
+                                className={`flex items-center p-2 md:p-3 rounded-xl border cursor-pointer transition-[background-color,border-color,transform] hover:bg-white/[0.06] active:scale-[0.96] ${
                                   isSelected
                                     ? "bg-[#34F080]/[0.06] border-[#34F080]/15"
                                     : "bg-white/[0.03] border-white/5"

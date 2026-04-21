@@ -558,7 +558,7 @@ export function InboxRules() {
             <button
               onClick={handleSave}
               disabled={loading}
-              className="flex-1 bg-[#34F080] text-black text-sm font-medium py-2 rounded-lg hover:bg-[#2dd06e] transition-colors disabled:opacity-50 active:scale-[0.98] outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
+              className="flex-1 bg-[#34F080] text-black text-sm font-medium py-2 rounded-lg hover:bg-[#2dd06e] transition-colors disabled:opacity-50 active:scale-[0.96] outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
             >
               {loading ? "Saving..." : "Save"}
             </button>

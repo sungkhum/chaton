@@ -305,7 +305,7 @@ export function FeedbackModal() {
                   <button
                     key={cat.value}
                     onClick={() => handleCategorySelect(cat.value)}
-                    className="flex items-center gap-3.5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-left transition-[border-color,background-color,transform] hover:border-[#34F080]/30 hover:bg-[#34F080]/5 active:scale-[0.98]"
+                    className="flex items-center gap-3.5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-left transition-[border-color,background-color,transform] hover:border-[#34F080]/30 hover:bg-[#34F080]/5 active:scale-[0.96]"
                   >
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.06] text-white/50">
                       <Icon size={18} />
@@ -438,7 +438,7 @@ export function FeedbackModal() {
                   if (whatWentWrong.trim()) setStep("bug-frequency");
                 }}
                 disabled={!whatWentWrong.trim()}
-                className="mt-4 w-full rounded-xl bg-gradient-to-r from-[#34F080] to-[#20E0AA] px-4 py-2.5 text-sm font-semibold text-black transition-[box-shadow,transform,opacity] hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] active:scale-[0.98] disabled:opacity-30 disabled:shadow-none"
+                className="mt-4 w-full rounded-xl bg-gradient-to-r from-[#34F080] to-[#20E0AA] px-4 py-2.5 text-sm font-semibold text-black transition-[box-shadow,transform,opacity] hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] active:scale-[0.96] disabled:opacity-30 disabled:shadow-none"
               >
                 Continue
               </button>
@@ -468,7 +468,7 @@ export function FeedbackModal() {
                       setFrequency(opt.value);
                       setStep("confirm");
                     }}
-                    className={`rounded-xl border px-4 py-3 text-left text-sm transition-[border-color,background-color,color,transform] active:scale-[0.98] ${
+                    className={`rounded-xl border px-4 py-3 text-left text-sm transition-[border-color,background-color,color,transform] active:scale-[0.96] ${
                       frequency === opt.value
                         ? "border-[#34F080]/40 bg-[#34F080]/10 text-[#34F080]"
                         : "border-white/[0.06] bg-white/[0.02] text-white/70 hover:border-white/15 hover:bg-white/[0.04]"
@@ -550,7 +550,7 @@ export function FeedbackModal() {
                 <button
                   onClick={handleSubmit}
                   disabled={submitting}
-                  className="flex-1 rounded-xl bg-gradient-to-r from-[#34F080] to-[#20E0AA] px-4 py-2.5 text-sm font-semibold text-black transition-[box-shadow,transform,opacity] hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] active:scale-[0.98] disabled:opacity-30 disabled:shadow-none"
+                  className="flex-1 rounded-xl bg-gradient-to-r from-[#34F080] to-[#20E0AA] px-4 py-2.5 text-sm font-semibold text-black transition-[box-shadow,transform,opacity] hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] active:scale-[0.96] disabled:opacity-30 disabled:shadow-none"
                 >
                   {submitting ? "Sending..." : "Submit"}
                 </button>
@@ -673,7 +673,7 @@ export function FeedbackModal() {
                 <button
                   onClick={handleSubmit}
                   disabled={!description.trim() || submitting}
-                  className="flex-1 rounded-xl bg-gradient-to-r from-[#34F080] to-[#20E0AA] px-4 py-2.5 text-sm font-semibold text-black transition-[box-shadow,transform,opacity] hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] active:scale-[0.98] disabled:opacity-30 disabled:shadow-none"
+                  className="flex-1 rounded-xl bg-gradient-to-r from-[#34F080] to-[#20E0AA] px-4 py-2.5 text-sm font-semibold text-black transition-[box-shadow,transform,opacity] hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] active:scale-[0.96] disabled:opacity-30 disabled:shadow-none"
                 >
                   {submitting ? "Sending..." : "Submit"}
                 </button>

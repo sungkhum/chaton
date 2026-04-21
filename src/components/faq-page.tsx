@@ -252,7 +252,7 @@ export const FaqPage = () => {
               </a>
               <button
                 onClick={() => safeLogin()}
-                className="px-6 py-3 rounded-xl landing-btn-vivid text-white text-sm font-bold cursor-pointer"
+                className="px-6 py-3 rounded-xl landing-btn-vivid text-white text-sm font-bold cursor-pointer active:scale-[0.96]"
               >
                 Start Messaging
               </button>
