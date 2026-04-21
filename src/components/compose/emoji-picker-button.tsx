@@ -169,7 +169,7 @@ export const EmojiPickerButton = ({
             </Suspense>
           </ChunkErrorBoundary>
         ) : (
-          <div className="bg-[#0a1628] rounded-xl border border-blue-800/40 p-2 w-[280px]">
+          <div className="bg-[#0a1628] rounded-xl border border-blue-800/40 p-2 w-[350px]">
             <div className="grid grid-cols-8 gap-0.5">
               {POPULAR_EMOJI.map((emoji) => (
                 <button
@@ -178,7 +178,7 @@ export const EmojiPickerButton = ({
                     onEmojiSelect(emoji);
                     setOpen(false);
                   }}
-                  className="flex items-center justify-center w-[33px] h-[33px] rounded-md hover:bg-white/10 cursor-pointer transition-colors active:scale-[0.96]"
+                  className="flex items-center justify-center w-10 h-10 rounded-md hover:bg-white/10 cursor-pointer transition-colors active:scale-[0.96]"
                 >
                   <AnimatedEmoji emoji={emoji} size={22} eager />
                 </button>

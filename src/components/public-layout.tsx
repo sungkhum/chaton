@@ -184,23 +184,41 @@ export const PublicFooter = () => (
       <p className="text-xs text-gray-600">
         &copy; {new Date().getFullYear()} ChatOn
       </p>
-      <div className="flex items-center gap-6 text-xs text-gray-600">
-        <a href="/about" className="hover:text-gray-400 transition-colors">
+      <div className="flex items-center gap-4 text-xs text-gray-600">
+        <a
+          href="/about"
+          className="inline-flex items-center min-h-10 px-1 hover:text-gray-400 transition-colors"
+        >
           About
         </a>
-        <a href="/faq" className="hover:text-gray-400 transition-colors">
+        <a
+          href="/faq"
+          className="inline-flex items-center min-h-10 px-1 hover:text-gray-400 transition-colors"
+        >
           FAQ
         </a>
-        <a href="/compare" className="hover:text-gray-400 transition-colors">
+        <a
+          href="/compare"
+          className="inline-flex items-center min-h-10 px-1 hover:text-gray-400 transition-colors"
+        >
           Compare
         </a>
-        <a href="/privacy" className="hover:text-gray-400 transition-colors">
+        <a
+          href="/privacy"
+          className="inline-flex items-center min-h-10 px-1 hover:text-gray-400 transition-colors"
+        >
           Privacy
         </a>
-        <a href="/terms" className="hover:text-gray-400 transition-colors">
+        <a
+          href="/terms"
+          className="inline-flex items-center min-h-10 px-1 hover:text-gray-400 transition-colors"
+        >
           Terms
         </a>
-        <a href="/donate" className="hover:text-gray-400 transition-colors">
+        <a
+          href="/donate"
+          className="inline-flex items-center min-h-10 px-1 hover:text-gray-400 transition-colors"
+        >
           Donate
         </a>
       </div>

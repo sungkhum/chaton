@@ -211,7 +211,7 @@ export const ReactionDetailView = ({
                 }}
                 className={`shrink-0 text-gray-500 hover:text-white transition-colors cursor-pointer ${
                   isMobile
-                    ? "p-1"
+                    ? "p-3"
                     : "p-0.5 opacity-0 group-hover/row:opacity-100"
                 }`}
                 aria-label={`Remove your ${
