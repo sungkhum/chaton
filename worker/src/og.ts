@@ -27,7 +27,7 @@ interface OgResult {
   image?: string;
   siteName?: string;
   // Tweet-specific fields (only set by fetchTweetData)
-  type?: "tweet" | "reddit";
+  type?: "tweet" | "reddit" | "youtube";
   author?: string;
   authorHandle?: string;
   authorAvatar?: string;
@@ -36,6 +36,8 @@ interface OgResult {
   subreddit?: string;
   score?: number;
   numComments?: number;
+  // YouTube-specific fields (only set by fetchYouTubeData)
+  videoId?: string;
   [key: string]: unknown;
 }
 
@@ -293,6 +295,63 @@ async function fetchTweetData(tweetPath: string): Promise<OgResult | null> {
   }
 }
 
+/** Detect YouTube URLs (watch, live, shorts, embed, youtu.be) and return the video ID */
+function getYouTubeVideoId(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "").replace(/^m\./, "");
+    if (host === "youtu.be") {
+      const m = parsed.pathname.match(/^\/([\w-]{11})/);
+      return m ? m[1] : null;
+    }
+    if (host === "youtube.com" || host === "music.youtube.com") {
+      if (parsed.pathname === "/watch") {
+        const v = parsed.searchParams.get("v") ?? "";
+        const m = v.match(/^[\w-]{11}/);
+        return m ? m[0] : null;
+      }
+      const m = parsed.pathname.match(/^\/(?:live|shorts|embed)\/([\w-]{11})/);
+      if (m) return m[1];
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** Fetch YouTube video metadata via public oEmbed endpoint (no auth needed) */
+async function fetchYouTubeData(videoId: string): Promise<OgResult | null> {
+  const image = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+  const canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(
+      canonicalUrl
+    )}&format=json`;
+    const res = await fetch(oembedUrl, {
+      headers: { "User-Agent": "ChatOnBot/1.0" },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      title?: string;
+      author_name?: string;
+    };
+    return {
+      type: "youtube",
+      title: data.title,
+      author: data.author_name,
+      image,
+      videoId,
+    };
+  } catch {
+    clearTimeout(timeout);
+    return null;
+  }
+}
+
 export async function handleOgFetch(request: Request): Promise<Response> {
   let body: { url?: string };
   try {
@@ -331,6 +390,14 @@ export async function handleOgFetch(request: Request): Promise<Response> {
     const tweetData = await fetchTweetData(tweetPath);
     if (tweetData) return cacheAndReturn(cache, cacheKey, tweetData);
     // Fall through to generic fetch if fxtwitter fails
+  }
+
+  // YouTube: use public oEmbed API (works for watch, live, shorts, youtu.be)
+  const youtubeId = getYouTubeVideoId(targetUrl);
+  if (youtubeId) {
+    const ytData = await fetchYouTubeData(youtubeId);
+    if (ytData) return cacheAndReturn(cache, cacheKey, ytData);
+    // Fall through to generic fetch if oEmbed fails
   }
 
   // Reddit: use public .json API (reddit.com blocks bot user agents)

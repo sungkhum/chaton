@@ -214,11 +214,11 @@ const ConversationRow = memo(function ConversationRow({
   highlights,
   onClick,
   getUsernameByPublicKeyBase58Check,
-  profilePicByPublicKey,
   allAccessGroups,
   appUser,
   joinRequestCounts,
   onlineUsers,
+  extraDataPicUrl,
 }: {
   convKey: string;
   conversation: Conversation;
@@ -228,11 +228,11 @@ const ConversationRow = memo(function ConversationRow({
   highlights?: { hasMention: boolean; hasReaction: boolean };
   onClick: (key: string) => void;
   getUsernameByPublicKeyBase58Check: { [key: string]: string };
-  profilePicByPublicKey?: { [key: string]: string };
   allAccessGroups: any[];
   appUser: any;
   joinRequestCounts: Map<string, number>;
   onlineUsers: Set<string>;
+  extraDataPicUrl?: string;
 }) {
   const isDM = conversation.ChatType === ChatType.DM;
   const isGroupChat = conversation.ChatType === ChatType.GROUPCHAT;
@@ -281,11 +281,7 @@ const ConversationRow = memo(function ConversationRow({
           publicKey={isDM ? conversation.firstMessagePublicKey : chatName || ""}
           groupChat={isGroupChat}
           groupImageUrl={groupImgUrl}
-          extraDataPicUrl={
-            isDM
-              ? profilePicByPublicKey?.[conversation.firstMessagePublicKey]
-              : undefined
-          }
+          extraDataPicUrl={isDM ? extraDataPicUrl : undefined}
           diameter={48}
           showOnlineDot={
             isDM &&
@@ -865,11 +861,15 @@ export const MessagingConversationAccount: FC<{
                                   getUsernameByPublicKeyBase58Check={
                                     getUsernameByPublicKeyBase58Check
                                   }
-                                  profilePicByPublicKey={profilePicByPublicKey}
                                   allAccessGroups={allAccessGroups}
                                   appUser={appUser}
                                   joinRequestCounts={joinRequestCounts}
                                   onlineUsers={onlineUsers}
+                                  extraDataPicUrl={
+                                    profilePicByPublicKey?.[
+                                      value.firstMessagePublicKey
+                                    ]
+                                  }
                                 />
                               </div>
                             );
@@ -1067,9 +1067,7 @@ export const MessagingConversationAccount: FC<{
                                         username={chatName}
                                         publicKey={publicKey}
                                         extraDataPicUrl={
-                                          !isGroup
-                                            ? profilePicByPublicKey?.[publicKey]
-                                            : undefined
+                                          profilePicByPublicKey?.[publicKey]
                                         }
                                         diameter={48}
                                       />
