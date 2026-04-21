@@ -4926,6 +4926,11 @@ export const MessagingApp: FC = () => {
                               publicKey={
                                 selectedConversation.firstMessagePublicKey
                               }
+                              extraDataPicUrl={
+                                profilePicByPublicKey[
+                                  selectedConversation.firstMessagePublicKey
+                                ]
+                              }
                               diameter={40}
                               classNames="shrink-0"
                             />
