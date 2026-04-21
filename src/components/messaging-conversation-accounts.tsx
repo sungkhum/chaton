@@ -309,7 +309,7 @@ const ConversationRow = memo(function ConversationRow({
             <div className="flex items-center gap-1 shrink-0 ml-2">
               {isMuted && <BellOff className="w-3.5 h-3.5 text-gray-500" />}
               <span
-                className={`text-xs ${
+                className={`text-xs tabular-nums ${
                   hasUnread ? "text-[#34F080] font-bold" : "text-gray-500"
                 }`}
               >
@@ -369,7 +369,7 @@ const ConversationRow = memo(function ConversationRow({
                 </span>
               )}
               {hasUnread && (
-                <span className="bg-[#34F080] text-black text-[11px] font-bold rounded-full min-w-[22px] h-[22px] flex items-center justify-center px-1.5">
+                <span className="bg-[#34F080] text-black text-[11px] font-bold rounded-full min-w-[22px] h-[22px] flex items-center justify-center px-1.5 tabular-nums">
                   {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
               )}

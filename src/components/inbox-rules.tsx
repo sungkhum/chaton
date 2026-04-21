@@ -340,7 +340,7 @@ export function InboxRules() {
           <div className="flex flex-col items-start">
             <span className="text-[14px]">Inbox Rules</span>
             {showToggleOn && !editing && !confirmDisable && (
-              <span className="text-[11px] text-[#34F080]/70">
+              <span className="text-[11px] text-[#34F080]/70 tabular-nums">
                 {isEnabled && dmPriceUsdCents && dmPriceUsdCents > 0
                   ? `${formatPriceCents(dmPriceUsdCents)}/msg`
                   : "Filtering active"}
@@ -525,7 +525,7 @@ export function InboxRules() {
                     <label className="text-[11px] text-gray-500 uppercase tracking-wide">
                       Min DESO balance
                     </label>
-                    <span className="text-sm font-medium text-[#34F080]">
+                    <span className="text-sm font-medium text-[#34F080] tabular-nums">
                       {formatBalanceNanos(BALANCE_STOPS[balanceStopIndex] ?? 0)}
                       {(BALANCE_STOPS[balanceStopIndex] ?? 0) > 0 && (
                         <span className="text-gray-500 font-normal"> DESO</span>

@@ -192,7 +192,7 @@ export function BugReportModal() {
                 autoFocus
                 className="w-full rounded-xl border border-white/10 bg-white/[0.03] p-3.5 text-sm text-white placeholder-white/35 transition-colors focus:border-white/20 focus:bg-white/[0.04] focus:outline-none"
               />
-              <div className="mt-1.5 text-right text-[11px] text-white/20">
+              <div className="mt-1.5 text-right text-[11px] text-white/20 tabular-nums">
                 {description.length}/500
               </div>
               <button

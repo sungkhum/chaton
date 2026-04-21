@@ -139,7 +139,7 @@ export const ReactionDetailView = ({
         >
           <AnimatedEmoji emoji={emoji} size={isMobile ? 16 : 14} />
           <span
-            className={`text-[10px] ${
+            className={`text-[10px] tabular-nums ${
               activeTab === emoji ? "text-[#34F080]" : "text-gray-400"
             }`}
           >

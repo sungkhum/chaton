@@ -85,7 +85,7 @@ export const TipMessage = ({
       )}
       <div className="flex items-center gap-1.5 mb-0.5">
         <CircleDollarSign className={`w-4 h-4 ${accentColor} shrink-0`} />
-        <span className={`${accentColor} font-bold text-base`}>
+        <span className={`${accentColor} font-bold text-base tabular-nums`}>
           {usdAmount ?? "..."}
         </span>
       </div>

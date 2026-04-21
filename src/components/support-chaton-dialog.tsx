@@ -191,7 +191,7 @@ export const SupportChatOnDialog = ({
               {/* Balance */}
               <div className="flex items-center justify-between text-xs text-gray-500 mb-5">
                 <span>Your balance</span>
-                <span className="font-semibold text-gray-400">
+                <span className="font-semibold text-gray-400 tabular-nums">
                   {balance.toFixed(4)} $DESO
                 </span>
               </div>

@@ -686,7 +686,7 @@ export const TipConfirmDialog = ({
 
               {/* Currency equivalent */}
               {activeAmount > 0 && (
-                <div className="text-xs text-gray-500 mb-3">
+                <div className="text-xs text-gray-500 mb-3 tabular-nums">
                   ≈ {currencyLabel}
                 </div>
               )}
@@ -704,14 +704,16 @@ export const TipConfirmDialog = ({
               {/* Balance info */}
               <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                 <span>Your balance</span>
-                <span className="font-semibold text-gray-400">
+                <span className="font-semibold text-gray-400 tabular-nums">
                   {balanceLabel}
                 </span>
               </div>
               {activeAmount > 0 && afterTipUsd != null && (
                 <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
                   <span>After tip</span>
-                  <span className={`font-semibold ${afterTipColor}`}>
+                  <span
+                    className={`font-semibold tabular-nums ${afterTipColor}`}
+                  >
                     {formatUsd(Math.max(0, afterTipUsd))}
                   </span>
                 </div>

@@ -140,7 +140,7 @@ export const TipPills = ({
         }`}
       >
         <span
-          className={`font-semibold text-[11px] ${
+          className={`font-semibold text-[11px] tabular-nums ${
             hasUsdc ? "text-[#34F080]" : "text-[#2775ca]"
           }`}
         >
