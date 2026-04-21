@@ -148,6 +148,14 @@ export const Header = () => {
             >
               <MessagingDisplayAvatar
                 publicKey={appUser?.PublicKeyBase58Check}
+                extraDataPicUrl={
+                  appUser?.ProfileEntryResponse?.ExtraData?.[
+                    "NFTProfilePictureUrl"
+                  ] ||
+                  appUser?.ProfileEntryResponse?.ExtraData?.[
+                    "LargeProfilePicURL"
+                  ]
+                }
                 diameter={35}
                 classNames="ml-1 md:ml-3"
               />
@@ -188,6 +196,14 @@ export const Header = () => {
                         >
                           <MessagingDisplayAvatar
                             publicKey={appUser.PublicKeyBase58Check}
+                            extraDataPicUrl={
+                              appUser.ProfileEntryResponse?.ExtraData?.[
+                                "NFTProfilePictureUrl"
+                              ] ||
+                              appUser.ProfileEntryResponse?.ExtraData?.[
+                                "LargeProfilePicURL"
+                              ]
+                            }
                             diameter={36}
                             classNames="shrink-0"
                           />
@@ -206,6 +222,14 @@ export const Header = () => {
                         <div className="flex items-center gap-2.5 px-3 py-2.5">
                           <MessagingDisplayAvatar
                             publicKey={appUser.PublicKeyBase58Check}
+                            extraDataPicUrl={
+                              appUser.ProfileEntryResponse?.ExtraData?.[
+                                "NFTProfilePictureUrl"
+                              ] ||
+                              appUser.ProfileEntryResponse?.ExtraData?.[
+                                "LargeProfilePicURL"
+                              ]
+                            }
                             diameter={36}
                             classNames="shrink-0"
                           />
