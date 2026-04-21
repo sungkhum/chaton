@@ -495,7 +495,10 @@ input::placeholder {
   box-shadow:
     0 12px 40px -8px rgba(32, 224, 170, 0.45),
     0 0 20px rgba(52, 240, 128, 0.15);
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   overflow: hidden;
 }
@@ -876,7 +879,9 @@ input::placeholder {
   border-radius: 8px !important;
   -webkit-backdrop-filter: blur(12px) !important;
   backdrop-filter: blur(12px) !important;
-  transition: all 0.2s ease !important;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease !important;
 }
 
 [data-sonner-toaster] [data-sonner-toast] [data-button]:hover {

@@ -229,7 +229,7 @@ export const EditProfileDialog = ({
               className="relative cursor-pointer group"
               onClick={() => !uploadingImage && fileInputRef.current?.click()}
             >
-              <div className="w-[88px] h-[88px] sm:w-24 sm:h-24 rounded-full bg-white/[0.04] border-2 border-white/10 group-hover:border-[#34F080]/40 flex items-center justify-center overflow-hidden transition-all duration-300">
+              <div className="w-[88px] h-[88px] sm:w-24 sm:h-24 rounded-full bg-white/[0.04] border-2 border-white/10 group-hover:border-[#34F080]/40 flex items-center justify-center overflow-hidden transition-[border-color] duration-300">
                 {displayPic ? (
                   <img
                     src={displayPic}
@@ -241,7 +241,7 @@ export const EditProfileDialog = ({
                 )}
               </div>
               {/* Edit overlay */}
-              <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-all duration-200">
+              <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-[background-color] duration-200">
                 {uploadingImage ? (
                   <Loader2 className="w-5 h-5 text-white animate-spin" />
                 ) : (
@@ -280,7 +280,7 @@ export const EditProfileDialog = ({
                 onChange={handleUsernameChange}
                 placeholder="yourname"
                 maxLength={26}
-                className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-[#34F080]/40 focus:bg-white/[0.06] rounded-xl pl-8 pr-10 py-3.5 text-white text-[15px] outline-none transition-all"
+                className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-[#34F080]/40 focus:bg-white/[0.06] rounded-xl pl-8 pr-10 py-3.5 text-white text-[15px] outline-none transition-[border-color,background-color]"
                 autoComplete="off"
                 autoCapitalize="off"
               />
@@ -333,7 +333,7 @@ export const EditProfileDialog = ({
               onChange={(e) => setBio(e.target.value.slice(0, MAX_BIO_LENGTH))}
               placeholder="Tell people about yourself..."
               rows={3}
-              className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-[#34F080]/40 focus:bg-white/[0.06] rounded-xl px-3.5 py-3 text-white text-[15px] outline-none transition-all resize-none leading-relaxed placeholder:text-gray-600"
+              className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-[#34F080]/40 focus:bg-white/[0.06] rounded-xl px-3.5 py-3 text-white text-[15px] outline-none transition-[border-color,background-color] resize-none leading-relaxed placeholder:text-gray-600"
             />
           </div>
 
@@ -341,7 +341,7 @@ export const EditProfileDialog = ({
           <button
             onClick={handleSave}
             disabled={!canSave}
-            className={`w-full py-3.5 rounded-xl text-sm font-bold transition-all cursor-pointer min-h-[48px] ${
+            className={`w-full py-3.5 rounded-xl text-sm font-bold transition-[background-color,box-shadow,transform,opacity] cursor-pointer min-h-[48px] ${
               canSave
                 ? "bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black hover:shadow-[0_0_30px_rgba(52,240,128,0.3)] active:scale-[0.98]"
                 : "bg-white/5 text-gray-500 cursor-not-allowed"

@@ -1222,7 +1222,7 @@ export const MessagingConversationAccount: FC<{
                 toast.success("Invite link copied!");
               }
             }}
-            className="pointer-events-auto flex items-center gap-2 px-4 py-3 rounded-full glass-invite hover:border-[#34F080]/40 hover:bg-[#34F080]/10 text-gray-400 hover:text-[#34F080] text-sm font-medium cursor-pointer transition-all active:scale-95"
+            className="pointer-events-auto flex items-center gap-2 px-4 py-3 rounded-full glass-invite hover:border-[#34F080]/40 hover:bg-[#34F080]/10 text-gray-400 hover:text-[#34F080] text-sm font-medium cursor-pointer transition-[border-color,background-color,color,transform] active:scale-95"
           >
             <Share2 className="w-4 h-4" />
             <span>Invite Friends</span>
@@ -1235,7 +1235,7 @@ export const MessagingConversationAccount: FC<{
                 ? setGroupChatOpen(true)
                 : setComposeOpen(true)
             }
-            className="pointer-events-auto flex items-center gap-1.5 px-5 py-3 rounded-full glass-fab cursor-pointer transition-all active:scale-95 hover:border-[#34F080]/60 hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] md:px-4 md:py-2.5"
+            className="pointer-events-auto flex items-center gap-1.5 px-5 py-3 rounded-full glass-fab cursor-pointer transition-[border-color,box-shadow,transform] active:scale-95 hover:border-[#34F080]/60 hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] md:px-4 md:py-2.5"
           >
             <Plus className="w-5 h-5 text-[#34F080]" strokeWidth={2.5} />
             <span className="text-[#34F080] font-semibold text-[15px]">

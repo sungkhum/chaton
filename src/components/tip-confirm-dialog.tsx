@@ -435,7 +435,7 @@ export const TipConfirmDialog = ({
 
   const getButtonClasses = () => {
     const base =
-      "w-full py-3 rounded-xl text-sm font-bold transition-all cursor-pointer relative overflow-hidden";
+      "w-full py-3 rounded-xl text-sm font-bold transition-[background-color,box-shadow,transform,opacity] cursor-pointer relative overflow-hidden";
     if (!canSend || (tier === "large" && !largeConfirmChecked))
       return `${base} bg-white/5 text-gray-500 cursor-not-allowed`;
     if (tier === "medium" && confirmArmed)
@@ -640,7 +640,7 @@ export const TipConfirmDialog = ({
                         setIsCustom(false);
                         setCustomAmount("");
                       }}
-                      className={`py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                      className={`py-2.5 rounded-lg text-sm font-semibold transition-[background-color,box-shadow,border-color,color] cursor-pointer ${
                         active
                           ? `${gradientClasses} shadow-[0_0_20px_rgba(${
                               currency === "DESO" ? "39,117,202" : "52,240,128"
