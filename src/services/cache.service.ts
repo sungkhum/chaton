@@ -135,6 +135,44 @@ export function getCachedUserProfile(publicKey: string): CachedProfile | null {
 }
 
 // ---------------------------------------------------------------------------
+// Profile picture URL map (localStorage — sync, bounded LRU)
+// Persists NFT/LargeProfilePicURL per public key so the chat list renders
+// the correct avatar on first render — no flash from the default endpoint
+// URL to the NFT URL after profile data loads.
+// ---------------------------------------------------------------------------
+
+const PROFILE_PICS_KEY = `${LS_PREFIX}:profile-pics:v1`;
+const PROFILE_PICS_MAX = 500;
+
+export function getCachedProfilePics(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(PROFILE_PICS_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
+let profilePicsPersistTimer: ReturnType<typeof setTimeout> | null = null;
+
+export function cacheProfilePics(pics: Record<string, string>): void {
+  if (profilePicsPersistTimer) clearTimeout(profilePicsPersistTimer);
+  profilePicsPersistTimer = setTimeout(() => {
+    profilePicsPersistTimer = null;
+    try {
+      const entries = Object.entries(pics);
+      const trimmed =
+        entries.length > PROFILE_PICS_MAX
+          ? Object.fromEntries(entries.slice(-PROFILE_PICS_MAX))
+          : pics;
+      localStorage.setItem(PROFILE_PICS_KEY, JSON.stringify(trimmed));
+    } catch {
+      // Storage full or unavailable — in-memory map still works
+    }
+  }, 2000);
+}
+
+// ---------------------------------------------------------------------------
 // Classification data (localStorage — sync)
 // ---------------------------------------------------------------------------
 

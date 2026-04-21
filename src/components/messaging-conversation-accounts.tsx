@@ -214,6 +214,7 @@ const ConversationRow = memo(function ConversationRow({
   highlights,
   onClick,
   getUsernameByPublicKeyBase58Check,
+  profilePicByPublicKey,
   allAccessGroups,
   appUser,
   joinRequestCounts,
@@ -227,6 +228,7 @@ const ConversationRow = memo(function ConversationRow({
   highlights?: { hasMention: boolean; hasReaction: boolean };
   onClick: (key: string) => void;
   getUsernameByPublicKeyBase58Check: { [key: string]: string };
+  profilePicByPublicKey?: { [key: string]: string };
   allAccessGroups: any[];
   appUser: any;
   joinRequestCounts: Map<string, number>;
@@ -279,6 +281,11 @@ const ConversationRow = memo(function ConversationRow({
           publicKey={isDM ? conversation.firstMessagePublicKey : chatName || ""}
           groupChat={isGroupChat}
           groupImageUrl={groupImgUrl}
+          extraDataPicUrl={
+            isDM
+              ? profilePicByPublicKey?.[conversation.firstMessagePublicKey]
+              : undefined
+          }
           diameter={48}
           showOnlineDot={
             isDM &&
@@ -387,6 +394,7 @@ export const MessagingConversationAccount: FC<{
   requestConversations: ConversationMap;
   archivedConversations: ConversationMap;
   getUsernameByPublicKeyBase58Check: { [key: string]: string };
+  profilePicByPublicKey?: { [key: string]: string };
   selectedConversationPublicKey: string;
   onClick: (publicKey: string) => void;
   rehydrateConversation: (publicKey?: string, autoScroll?: boolean) => void;
@@ -423,6 +431,7 @@ export const MessagingConversationAccount: FC<{
   requestConversations,
   archivedConversations,
   getUsernameByPublicKeyBase58Check,
+  profilePicByPublicKey,
   selectedConversationPublicKey,
   onClick,
   rehydrateConversation,
@@ -693,6 +702,13 @@ export const MessagingConversationAccount: FC<{
                                         }
                                         groupChat={isGroupChat}
                                         groupImageUrl={archivedGroupImgUrl}
+                                        extraDataPicUrl={
+                                          isDM
+                                            ? profilePicByPublicKey?.[
+                                                value.firstMessagePublicKey
+                                              ]
+                                            : undefined
+                                        }
                                         diameter={44}
                                       />
                                       <div className="flex-1 min-w-0">
@@ -849,6 +865,7 @@ export const MessagingConversationAccount: FC<{
                                   getUsernameByPublicKeyBase58Check={
                                     getUsernameByPublicKeyBase58Check
                                   }
+                                  profilePicByPublicKey={profilePicByPublicKey}
                                   allAccessGroups={allAccessGroups}
                                   appUser={appUser}
                                   joinRequestCounts={joinRequestCounts}
@@ -1049,6 +1066,11 @@ export const MessagingConversationAccount: FC<{
                                       <MessagingDisplayAvatar
                                         username={chatName}
                                         publicKey={publicKey}
+                                        extraDataPicUrl={
+                                          !isGroup
+                                            ? profilePicByPublicKey?.[publicKey]
+                                            : undefined
+                                        }
                                         diameter={48}
                                       />
                                     )}

@@ -110,6 +110,8 @@ import {
   getCachedSpamFilter,
   getCachedUsernameMap,
   getCachedUserProfile,
+  getCachedProfilePics,
+  cacheProfilePics,
   mergeReadCursors,
   consumePendingNotificationConversation,
 } from "../services/cache.service";
@@ -383,7 +385,7 @@ export const MessagingApp: FC = () => {
     useState<{ [key: string]: string }>({});
   const [profilePicByPublicKey, setProfilePicByPublicKey] = useState<{
     [key: string]: string;
-  }>({});
+  }>(() => getCachedProfilePics());
   const [senderProfiles, setSenderProfiles] = useState<
     Map<string, ProfileEntryResponse>
   >(new Map());
@@ -482,6 +484,14 @@ export const MessagingApp: FC = () => {
   useEffect(() => {
     setPollingDelay(isIdle ? null : baseDelay);
   }, [isIdle, baseDelay]);
+
+  // Persist NFT/LargeProfilePicURL map so chat-list avatars render correctly
+  // on the first render of the next session — no flash from the default pic
+  // endpoint to the NFT URL after profile data reloads. cacheProfilePics
+  // debounces internally so rapid updates coalesce into one localStorage write.
+  useEffect(() => {
+    cacheProfilePics(profilePicByPublicKey);
+  }, [profilePicByPublicKey]);
 
   // Debounce foreground resume to prevent bursty API calls on rapid tab switches
   const lastResumeRef = useRef(0);
@@ -4610,6 +4620,7 @@ export const MessagingApp: FC = () => {
                     getUsernameByPublicKeyBase58Check={
                       usernameByPublicKeyBase58Check
                     }
+                    profilePicByPublicKey={profilePicByPublicKey}
                     selectedConversationPublicKey={
                       selectedConversationPublicKey
                     }

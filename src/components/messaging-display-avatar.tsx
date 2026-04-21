@@ -15,7 +15,19 @@ const loadedUrlCache = new Set<string>(
   (() => {
     try {
       const raw = localStorage.getItem(CACHE_KEY);
-      return raw ? (JSON.parse(raw) as string[]) : [];
+      const urls = raw ? (JSON.parse(raw) as string[]) : [];
+      // Also seed with NFT/LargeProfilePicURL entries from the persisted
+      // profile-pic map. The service worker's CacheFirst route serves these
+      // offline, so treating them as pre-loaded avoids an initials flash on
+      // cold-load even before the image finishes decoding.
+      const picsRaw = localStorage.getItem("chattra:cache:profile-pics:v1");
+      if (picsRaw) {
+        const pics = JSON.parse(picsRaw) as Record<string, string>;
+        for (const url of Object.values(pics)) {
+          if (url && !urls.includes(url)) urls.push(url);
+        }
+      }
+      return urls;
     } catch {
       return [];
     }
@@ -264,6 +276,8 @@ export const MessagingDisplayAvatar: FC<{
               className={`rounded-full ${borderColor}`}
               alt={username || ""}
               title={username || undefined}
+              decoding="async"
+              fetchPriority="high"
               onLoad={handleImgLoad}
               onError={handleImgError}
             />

@@ -4,6 +4,7 @@ import {
   Serwist,
   NetworkOnly,
   StaleWhileRevalidate,
+  CacheFirst,
   ExpirationPlugin,
 } from "serwist";
 import { createStore, get, set } from "idb-keyval";
@@ -28,6 +29,23 @@ const serwist = new Serwist({
   navigationPreload: false,
   runtimeCaching: [
     ...defaultCache,
+    {
+      // DeSo profile picture endpoint — CacheFirst for instant avatar loads
+      // across sessions. MUST be registered before the node.deso.org
+      // NetworkOnly rule below so it takes precedence for this path.
+      matcher: ({ url }) =>
+        url.hostname === "node.deso.org" &&
+        url.pathname.startsWith("/api/v0/get-single-profile-picture/"),
+      handler: new CacheFirst({
+        cacheName: "profile-pictures",
+        plugins: [
+          new ExpirationPlugin({
+            maxEntries: 500,
+            maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+          }),
+        ],
+      }),
+    },
     {
       // DeSo API calls should always go to the network — never cache.
       // Registering an explicit NetworkOnly route silences the noisy
@@ -55,8 +73,8 @@ const serwist = new Serwist({
         cacheName: "profile-images",
         plugins: [
           new ExpirationPlugin({
-            maxEntries: 200,
-            maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+            maxEntries: 500,
+            maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
           }),
         ],
       }),
