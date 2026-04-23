@@ -663,6 +663,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       if (!mobileActionFor || !messageAreaRef.current) return;
       const scrollArea = messageAreaRef.current;
       const dismiss = () => {
+        suppressSelectionRef.current = false;
         setMobileActionFor(null);
         setReactionPickerFor(null);
       };
@@ -885,6 +886,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
 
     // Clear action state and reset scroll on conversation switch
     useEffect(() => {
+      suppressSelectionRef.current = false;
       setMobileActionFor(null);
       setReactionPickerFor(null);
       setDeleteMenuFor(null);
@@ -914,12 +916,12 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
           }
           // Clear any iOS text selection that started during the hold
           window.getSelection()?.removeAllRanges();
-          // Release selection suppression — the long press gesture is done.
-          // Without this, suppressSelectionRef stays true (clearLongPressTimer
-          // skips the reset because longPressTimerRef is already null),
-          // causing removeAllRanges() on every selectionchange event, which
-          // disconnects iOS keyboard from focused inputs (emoji search).
-          suppressSelectionRef.current = false;
+          // Keep suppressSelectionRef = true while the menu is open. iOS fires
+          // its own native long-press ~200ms after our 300ms timer, creating a
+          // selection inside the portaled menu (e.g. "Reply") and showing the
+          // system Copy/Look Up callout. The selectionchange handler's input-
+          // focus guard keeps emoji-search typing working; closeMobileAction
+          // resets this to false when the menu dismisses.
           if (navigator.vibrate) navigator.vibrate(20);
           setReactionPickerFor(null); // Close picker from previous message
           const bubble = target.querySelector<HTMLElement>(
@@ -2250,7 +2252,10 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                   isMobile
                                     ? "py-1.5 min-w-[200px]"
                                     : "py-1 min-w-[180px]"
-                                }`}
+                                } ${isTouchDevice ? "mobile-no-select" : ""}`}
+                                style={
+                                  isTouchDevice ? NO_CALLOUT_STYLE : undefined
+                                }
                                 onTouchStart={(e) => e.stopPropagation()}
                                 onTouchEnd={(e) => e.stopPropagation()}
                               >
