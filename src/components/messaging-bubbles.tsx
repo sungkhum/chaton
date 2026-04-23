@@ -663,6 +663,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       if (!mobileActionFor || !messageAreaRef.current) return;
       const scrollArea = messageAreaRef.current;
       const dismiss = () => {
+        suppressSelectionRef.current = false;
         setMobileActionFor(null);
         setReactionPickerFor(null);
       };
@@ -885,6 +886,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
 
     // Clear action state and reset scroll on conversation switch
     useEffect(() => {
+      suppressSelectionRef.current = false;
       setMobileActionFor(null);
       setReactionPickerFor(null);
       setDeleteMenuFor(null);
