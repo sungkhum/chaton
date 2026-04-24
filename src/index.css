@@ -1328,6 +1328,16 @@ input::placeholder {
   }
 }
 
+@keyframes ptr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.ptr-spin {
+  transform-origin: center;
+  animation: ptr-spin 780ms linear infinite;
+}
+
 /* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(*),
@@ -1349,5 +1359,9 @@ input::placeholder {
 
   .typing-indicator-bar {
     animation: none;
+  }
+
+  .ptr-spin {
+    animation: ptr-spin 2600ms linear infinite;
   }
 }

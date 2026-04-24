@@ -36,6 +36,12 @@ import {
 } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { toast } from "sonner";
+import { useMobile } from "../hooks/useMobile";
+import { usePullToRefresh } from "../hooks/usePullToRefresh";
+import {
+  PullToRefreshIndicator,
+  type PtrIndicatorHandle,
+} from "./shared/pull-to-refresh-indicator";
 import { useStore } from "../store";
 import { useShallow } from "zustand/react/shallow";
 import {
@@ -393,7 +399,10 @@ export const MessagingConversationAccount: FC<{
   profilePicByPublicKey?: { [key: string]: string };
   selectedConversationPublicKey: string;
   onClick: (publicKey: string) => void;
-  rehydrateConversation: (publicKey?: string, autoScroll?: boolean) => void;
+  rehydrateConversation: (
+    publicKey?: string,
+    autoScroll?: boolean
+  ) => void | Promise<void>;
   onAccept: (conversationKey: string, publicKey: string) => void;
   onBlock: (conversationKey: string, publicKey: string) => void;
   onDismiss: (conversationKey: string, publicKey: string) => void;
@@ -475,6 +484,8 @@ export const MessagingConversationAccount: FC<{
   >("list");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const ptrIndicatorRef = useRef<PtrIndicatorHandle>(null);
+  const { isTouchDevice } = useMobile();
   const requestCount = Object.keys(requestConversations).length;
   const archivedCount = Object.keys(archivedConversations).length;
   const chatCount = Object.keys(conversations).length;
@@ -511,6 +522,18 @@ export const MessagingConversationAccount: FC<{
   const handleComposeSelectUser = (publicKeyWithGroup: string) => {
     rehydrateConversation(publicKeyWithGroup, true);
   };
+
+  const { phase: ptrPhase } = usePullToRefresh({
+    scrollRef: chatScrollRef,
+    enabled:
+      isTouchDevice &&
+      activeTab === "chats" &&
+      searchQuery.trim().length < 2 &&
+      !conversationsLoading,
+    onProgress: (px, progress) =>
+      ptrIndicatorRef.current?.setPull(px, progress),
+    onRefresh: () => Promise.resolve(rehydrateConversation()),
+  });
 
   // Reset sub-view when switching tabs
   useEffect(() => {
@@ -611,6 +634,12 @@ export const MessagingConversationAccount: FC<{
 
             {/* Tab Content */}
             <div className="h-[calc(100%-46px)] relative">
+              {isTouchDevice && activeTab === "chats" && (
+                <PullToRefreshIndicator
+                  ref={ptrIndicatorRef}
+                  phase={ptrPhase}
+                />
+              )}
               {activeTab === "chats" && (
                 <ViewTransition
                   enter={{
@@ -627,7 +656,7 @@ export const MessagingConversationAccount: FC<{
                 >
                   <div
                     ref={chatScrollRef}
-                    className="conversations-list overflow-y-auto max-h-full custom-scrollbar pb-24"
+                    className="conversations-list overflow-y-auto max-h-full custom-scrollbar pb-24 overscroll-y-contain"
                   >
                     {/* Telegram-style collapsible archived section */}
                     {archivedCount > 0 && (
