@@ -655,13 +655,18 @@ export const MessagingApp: FC = () => {
   });
 
   const [searchClearTrigger, setSearchClearTrigger] = useState(0);
+  const [pendingSearchJump, setPendingSearchJump] = useState<{
+    convKey: string;
+    ts: string;
+  } | null>(null);
 
   const handleSearchResultClick = useCallback(
-    (conversationKey: string) => {
+    (conversationKey: string, timestampNanos: string) => {
       clearSearch();
       setSearchClearTrigger((n) => n + 1);
       setSelectedConversationPublicKey(conversationKey);
       setPubKeyPlusGroupName(conversationKey);
+      setPendingSearchJump({ convKey: conversationKey, ts: timestampNanos });
     },
     [clearSearch]
   );
@@ -4127,6 +4132,36 @@ export const MessagingApp: FC = () => {
     },
     [appUser, selectedConversation, isGroupChat, setAllAccessGroups]
   );
+
+  useEffect(() => {
+    if (!pendingSearchJump) return;
+    if (pendingSearchJump.convKey !== selectedConversationPublicKey) return;
+    if (loadingConversation) return;
+    if (!selectedConversation) return;
+
+    const target = pendingSearchJump;
+    setPendingSearchJump(null);
+    let cancelled = false;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (cancelled) return;
+        if (bubblesRef.current?.scrollToMessage(target.ts)) return;
+        void handleScrollToReply(target.ts);
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    pendingSearchJump,
+    selectedConversationPublicKey,
+    selectedConversation,
+    loadingConversation,
+    handleScrollToReply,
+  ]);
+
   const handlePinMessage = useCallback(
     async (timestampNanosString: string, preview?: string) => {
       if (!appUser || !selectedConversation || !isGroupChat) return;
