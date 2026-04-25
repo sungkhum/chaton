@@ -4135,25 +4135,23 @@ export const MessagingApp: FC = () => {
 
   useEffect(() => {
     if (!pendingSearchJump) return;
-    if (pendingSearchJump.convKey !== selectedConversationPublicKey) return;
+    if (pendingSearchJump.convKey !== selectedConversationPublicKey) {
+      setPendingSearchJump(null);
+      return;
+    }
     if (loadingConversation) return;
     if (!selectedConversation) return;
 
     const target = pendingSearchJump;
     setPendingSearchJump(null);
-    let cancelled = false;
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        if (cancelled) return;
+        if (selectedConversationPublicKeyRef.current !== target.convKey) return;
         if (bubblesRef.current?.scrollToMessage(target.ts)) return;
         void handleScrollToReply(target.ts);
       });
     });
-
-    return () => {
-      cancelled = true;
-    };
   }, [
     pendingSearchJump,
     selectedConversationPublicKey,
