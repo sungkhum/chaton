@@ -62,7 +62,7 @@ export const SearchMessageResults: FC<{
   isSearching: boolean;
   isDeepSearching: boolean;
   progress: SearchProgress | null;
-  onSelectResult: (conversationKey: string) => void;
+  onSelectResult: (conversationKey: string, timestampNanos: string) => void;
   userResults?: SearchMenuItem[];
   onUserSelected?: (item: SearchMenuItem) => void;
 }> = ({
@@ -101,7 +101,12 @@ export const SearchMessageResults: FC<{
         return (
           <div key={result.message.MessageInfo.TimestampNanosString}>
             <div
-              onClick={() => onSelectResult(result.conversationKey)}
+              onClick={() =>
+                onSelectResult(
+                  result.conversationKey,
+                  result.message.MessageInfo.TimestampNanosString
+                )
+              }
               className="px-4 py-3 hover:bg-white/5 cursor-pointer flex items-center gap-3"
             >
               <MessagingDisplayAvatar

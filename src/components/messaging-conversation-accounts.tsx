@@ -422,7 +422,10 @@ export const MessagingConversationAccount: FC<{
   isDeepSearching?: boolean;
   searchProgress?: SearchProgress | null;
   onSearchQueryChange?: (query: string) => void;
-  onSearchResultClick?: (conversationKey: string) => void;
+  onSearchResultClick?: (
+    conversationKey: string,
+    timestampNanos: string
+  ) => void;
   searchClearTrigger?: number;
   highlightsByConversation?: Map<
     string,
@@ -589,7 +592,7 @@ export const MessagingConversationAccount: FC<{
             isSearching={isSearching}
             isDeepSearching={isDeepSearching}
             progress={searchProgress}
-            onSelectResult={(key) => onSearchResultClick?.(key)}
+            onSelectResult={(key, ts) => onSearchResultClick?.(key, ts)}
           />
         ) : (
           <>
