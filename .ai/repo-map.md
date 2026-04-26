@@ -1,4 +1,4 @@
-# Repo Map (generated 2026-04-25)
+# Repo Map (generated 2026-04-26)
 # Compact codebase index for AI agents. Read this FIRST, then do targeted file reads.
 
 ## Routes
@@ -162,6 +162,7 @@ src/services/ticket.service.ts  fn submitBugReport, submitManualBugReport
 src/services/translate.service.ts  fn translateText, getCachedTranslation
 
 ## Hooks
+src/hooks/useAndroidBack.ts  fn useAndroidBack
 src/hooks/useAudioRecorder.ts  fn useAudioRecorder
 src/hooks/useDraftMessages.ts  fn useDraftMessages
 src/hooks/useFocusTrap.ts  fn useFocusTrap
