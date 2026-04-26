@@ -10,6 +10,16 @@ import { useEffect, useRef } from "react";
  * When `active` flips back to false via an in-app affordance (chevron, swipe),
  * the synthetic entry is removed via `history.back()` to keep the stack in sync.
  */
+const SYNTHETIC_STATE_KEY = "back";
+
+function isOurSyntheticEntry() {
+  return (
+    typeof window !== "undefined" &&
+    (window.history.state as { chaton?: string } | null)?.chaton ===
+      SYNTHETIC_STATE_KEY
+  );
+}
+
 export function useAndroidBack(active: boolean, onBack: () => void) {
   const didPushRef = useRef(false);
   // advanced-event-handler-refs: keep latest onBack in a ref so the popstate
@@ -19,17 +29,25 @@ export function useAndroidBack(active: boolean, onBack: () => void) {
 
   useEffect(() => {
     if (active && !didPushRef.current) {
-      window.history.pushState({ chaton: "back" }, "");
+      window.history.pushState({ chaton: SYNTHETIC_STATE_KEY }, "");
       didPushRef.current = true;
     } else if (!active && didPushRef.current) {
       didPushRef.current = false;
-      window.history.back();
+      // Only pop the entry if it's still our synthetic one. Guards against
+      // unrelated navigation (resize flipping isMobile, route changes, other
+      // history.pushState callers) accidentally popping a real prior entry.
+      if (isOurSyntheticEntry()) {
+        window.history.back();
+      }
     }
   }, [active]);
 
   useEffect(() => {
     const handler = () => {
       if (!didPushRef.current) return;
+      // If our synthetic entry is still the top of the stack, this popstate
+      // came from some other navigation — don't treat it as a back press.
+      if (isOurSyntheticEntry()) return;
       didPushRef.current = false;
       onBackRef.current();
     };
@@ -39,9 +57,11 @@ export function useAndroidBack(active: boolean, onBack: () => void) {
 
   useEffect(() => {
     return () => {
-      if (didPushRef.current) {
+      if (didPushRef.current && isOurSyntheticEntry()) {
         didPushRef.current = false;
         window.history.back();
+      } else {
+        didPushRef.current = false;
       }
     };
   }, []);
