@@ -1335,7 +1335,7 @@ input::placeholder {
 }
 .ptr-spin {
   transform-origin: center;
-  animation: ptr-spin 780ms linear infinite;
+  animation: ptr-spin 1100ms linear infinite;
 }
 
 /* Reduced Motion */
@@ -1362,6 +1362,6 @@ input::placeholder {
   }
 
   .ptr-spin {
-    animation: ptr-spin 2600ms linear infinite;
+    animation: ptr-spin 3400ms linear infinite;
   }
 }

@@ -33,7 +33,7 @@ export const PullToRefreshIndicator = forwardRef<PtrIndicatorHandle, Props>(
           const overpull = Math.min(0.06, Math.max(0, progress - 1) * 0.12);
           const scale = progress >= 1 ? 1 + overpull : 0.55 + 0.45 * progress;
           const opacity = Math.min(1, ringProgress * 1.25);
-          const drop = Math.min(px * 0.35, 20);
+          const drop = Math.min(px * 0.4, 28);
           w.style.transform = `translate3d(-50%, ${drop}px, 0) scale(${scale})`;
           w.style.opacity = String(opacity);
         }
@@ -55,18 +55,18 @@ export const PullToRefreshIndicator = forwardRef<PtrIndicatorHandle, Props>(
         role={refreshing ? "status" : undefined}
         aria-label={refreshing ? "Refreshing conversations" : undefined}
         data-phase={phase}
-        className="pull-to-refresh-indicator pointer-events-none absolute left-1/2 top-2 z-20 flex h-9 w-9 items-center justify-center rounded-full text-[#34F080]"
+        className="pull-to-refresh-indicator pointer-events-none absolute left-1/2 top-3 z-20 flex h-12 w-12 items-center justify-center rounded-full text-[#34F080]"
         style={{
           transform: idle
             ? "translate3d(-50%, 0px, 0) scale(0.55)"
             : refreshing
-            ? "translate3d(-50%, 20px, 0) scale(1)"
+            ? "translate3d(-50%, 28px, 0) scale(1)"
             : undefined,
           opacity: idle ? 0 : refreshing ? 1 : undefined,
           transition: idle
-            ? "transform 320ms cubic-bezier(0.2, 0, 0, 1), opacity 220ms ease-out"
+            ? "transform 420ms cubic-bezier(0.2, 0, 0, 1), opacity 280ms ease-out"
             : refreshing
-            ? "transform 260ms cubic-bezier(0.2, 0, 0, 1), opacity 180ms ease-out"
+            ? "transform 340ms cubic-bezier(0.2, 0, 0, 1), opacity 220ms ease-out"
             : "none",
           background: "rgba(10, 14, 18, 0.72)",
           WebkitBackdropFilter: "blur(18px) saturate(1.4)",
@@ -78,7 +78,7 @@ export const PullToRefreshIndicator = forwardRef<PtrIndicatorHandle, Props>(
       >
         <svg
           viewBox="0 0 28 28"
-          className={`h-5 w-5 ${refreshing ? "ptr-spin" : ""}`}
+          className={`h-7 w-7 ${refreshing ? "ptr-spin" : ""}`}
         >
           <circle
             cx="14"
@@ -86,7 +86,7 @@ export const PullToRefreshIndicator = forwardRef<PtrIndicatorHandle, Props>(
             r={RADIUS}
             fill="none"
             stroke="rgba(255, 255, 255, 0.10)"
-            strokeWidth="2.5"
+            strokeWidth="3"
           />
           <circle
             ref={ringRef}
@@ -95,7 +95,7 @@ export const PullToRefreshIndicator = forwardRef<PtrIndicatorHandle, Props>(
             r={RADIUS}
             fill="none"
             stroke="currentColor"
-            strokeWidth="2.5"
+            strokeWidth="3"
             strokeLinecap="round"
             transform="rotate(-90 14 14)"
             style={{
@@ -104,9 +104,9 @@ export const PullToRefreshIndicator = forwardRef<PtrIndicatorHandle, Props>(
                 : `${CIRC}`,
               strokeDashoffset: refreshing ? 0 : CIRC,
               transition: idle
-                ? "stroke-dashoffset 260ms cubic-bezier(0.2, 0, 0, 1)"
+                ? "stroke-dashoffset 360ms cubic-bezier(0.2, 0, 0, 1)"
                 : refreshing
-                ? "stroke-dasharray 220ms cubic-bezier(0.2, 0, 0, 1), stroke-dashoffset 220ms cubic-bezier(0.2, 0, 0, 1)"
+                ? "stroke-dasharray 320ms cubic-bezier(0.2, 0, 0, 1), stroke-dashoffset 320ms cubic-bezier(0.2, 0, 0, 1)"
                 : "none",
             }}
           />
