@@ -4065,49 +4065,23 @@ export const MessagingApp: FC = () => {
 
   const handleReloadLatest = useCallback(async (): Promise<boolean> => {
     const convKey = selectedConversationPublicKeyRef.current;
-    const saved = savedMessagesRef.current;
 
     const clearHistoricalState = () => {
       viewingHistoricalSliceRef.current = null;
       setViewingHistoricalSliceKey(null);
+      savedMessagesRef.current = null;
     };
 
-    if (saved && saved.convKey === convKey) {
-      savedMessagesRef.current = null;
-      setConversations((prev) => {
-        const existing = prev[convKey];
-        if (!existing) return prev;
-        const currentOptimistic = existing.messages.filter(
-          (m: any) =>
-            m._localId && (m._status === "sending" || m._status === "sent")
-        );
-        const savedTs = new Set(
-          saved.messages.map((m) => m.MessageInfo.TimestampNanosString)
-        );
-        const newOptimistic = currentOptimistic.filter(
-          (m: any) => !savedTs.has(m.MessageInfo.TimestampNanosString)
-        );
-        return updateConv(prev, convKey, (c) => ({
-          ...c,
-          messages: [...newOptimistic, ...saved.messages],
-        }));
-      });
-      clearHistoricalState();
-      return true;
-    }
-
-    // No usable snapshot — re-fetch the latest tail directly. Happens when the
-    // conversation was never opened in this session (only the shell loaded) or
-    // the snapshot was dropped before the user clicked Jump-to-Latest.
+    // Always re-fetch the latest tail. The previous snapshot-restore path
+    // could resurrect a thin snapshot (e.g. a 1-message preview from the
+    // initial conversation list) that left the user staring at one bubble.
     const conv = conversationsRef.current[convKey];
     if (!appUser || !conv) {
-      savedMessagesRef.current = null;
       clearHistoricalState();
       return false;
     }
     const firstMsg = conv.messages[0];
     if (!firstMsg) {
-      savedMessagesRef.current = null;
       clearHistoricalState();
       return false;
     }
@@ -4117,7 +4091,6 @@ export const MessagingApp: FC = () => {
       if (conv.ChatType === ChatType.GROUPCHAT) {
         const recipientInfo = firstMsg.RecipientInfo;
         if (!recipientInfo) {
-          savedMessagesRef.current = null;
           clearHistoricalState();
           return false;
         }
@@ -4179,7 +4152,6 @@ export const MessagingApp: FC = () => {
           messages: [...newOptimistic, ...decrypted],
         }));
       });
-      savedMessagesRef.current = null;
       clearHistoricalState();
       return true;
     } catch (e) {
@@ -4188,6 +4160,126 @@ export const MessagingApp: FC = () => {
       // and needs the Jump-to-Latest button to retry.
       toast.error("Failed to reload messages");
       return false;
+    }
+  }, [appUser, setAllAccessGroups]);
+
+  // Progressive forward-load. When the user is viewing a historical slice
+  // (jumped to a search/reply/pinned message) and scrolls toward the bottom
+  // of the slice, fetch the messages between the slice's newest and the
+  // present. DeSo only paginates backward, so we walk back from "now" until
+  // we close the gap or run out of newer messages.
+  const isLoadingNewerRef = useRef(false);
+  const handleLoadNewer = useCallback(async (): Promise<{ done: boolean }> => {
+    if (isLoadingNewerRef.current) return { done: false };
+    const convKey = selectedConversationPublicKeyRef.current;
+    const conv = conversationsRef.current[convKey];
+    if (!appUser || !conv || conv.messages.length === 0) return { done: true };
+
+    const newestVisible = conv.messages[0]!;
+    const newestVisibleNanos = BigInt(
+      newestVisible.MessageInfo.TimestampNanosString
+    );
+
+    isLoadingNewerRef.current = true;
+    try {
+      const fetchedNewer: any[] = [];
+      let cursorNanos = BigInt(Date.now()) * 1_000_000n + 1_000_000n;
+      let done = false;
+
+      // Safety cap — walking back 8 windows of 25 covers 200 newer messages.
+      // If the gap is larger, the user can click Jump-to-Latest to skip.
+      for (let i = 0; i < 8; i++) {
+        let raw: any[];
+        if (conv.ChatType === ChatType.GROUPCHAT) {
+          const recip = newestVisible.RecipientInfo;
+          if (!recip) {
+            done = true;
+            break;
+          }
+          const resp = await getPaginatedGroupChatThread({
+            UserPublicKeyBase58Check: recip.OwnerPublicKeyBase58Check,
+            AccessGroupKeyName: recip.AccessGroupKeyName,
+            StartTimeStampString: cursorNanos.toString(),
+            MaxMessagesToFetch: MESSAGES_ONE_REQUEST_LIMIT,
+          });
+          raw = resp.GroupChatMessages;
+        } else {
+          const resp = await getPaginatedDMThread({
+            UserGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+            UserGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
+            PartyGroupOwnerPublicKeyBase58Check: conv.firstMessagePublicKey,
+            PartyGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
+            StartTimeStampString: cursorNanos.toString(),
+            MaxMessagesToFetch: MESSAGES_ONE_REQUEST_LIMIT,
+          });
+          raw = resp.ThreadMessages;
+        }
+        if (selectedConversationPublicKeyRef.current !== convKey) {
+          return { done: true };
+        }
+        if (!raw || raw.length === 0) {
+          done = true;
+          break;
+        }
+        for (const m of raw) {
+          const ts = BigInt(m.MessageInfo.TimestampNanosString);
+          if (ts > newestVisibleNanos) fetchedNewer.push(m);
+        }
+        const oldestInBatch = BigInt(
+          raw[raw.length - 1]!.MessageInfo.TimestampNanosString
+        );
+        if (oldestInBatch <= newestVisibleNanos) {
+          done = true;
+          break;
+        }
+        if (raw.length < MESSAGES_ONE_REQUEST_LIMIT) {
+          done = true;
+          break;
+        }
+        cursorNanos = oldestInBatch;
+      }
+
+      if (fetchedNewer.length > 0) {
+        const { decrypted, updatedAllAccessGroups } =
+          await decryptAccessGroupMessagesWithRetry(
+            appUser.PublicKeyBase58Check,
+            fetchedNewer,
+            allAccessGroupsRef.current
+          );
+        if (selectedConversationPublicKeyRef.current !== convKey) {
+          return { done: true };
+        }
+        setAllAccessGroups(updatedAllAccessGroups);
+        setConversations((prev) => {
+          const existing = prev[convKey];
+          if (!existing) return prev;
+          const existingTs = new Set(
+            existing.messages.map(
+              (m: any) => m.MessageInfo.TimestampNanosString
+            )
+          );
+          const filtered = decrypted.filter(
+            (m) => !existingTs.has(m.MessageInfo.TimestampNanosString)
+          );
+          return updateConv(prev, convKey, (c) => ({
+            ...c,
+            messages: [...filtered, ...c.messages],
+          }));
+        });
+      }
+
+      if (done) {
+        viewingHistoricalSliceRef.current = null;
+        setViewingHistoricalSliceKey(null);
+        savedMessagesRef.current = null;
+      }
+      return { done };
+    } catch (e) {
+      console.error("Failed to load newer messages:", e);
+      toast.error("Failed to load newer messages");
+      return { done: false };
+    } finally {
+      isLoadingNewerRef.current = false;
     }
   }, [appUser, setAllAccessGroups]);
 
@@ -5238,6 +5330,7 @@ export const MessagingApp: FC = () => {
                             pinnedMessageTimestamp={pinnedMessageTimestamp}
                             onScrollToReply={handleScrollToReply}
                             onReloadLatest={handleReloadLatest}
+                            onLoadNewer={handleLoadNewer}
                             viewingHistoricalSlice={
                               viewingHistoricalSliceKey ===
                               selectedConversationPublicKey

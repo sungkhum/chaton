@@ -117,6 +117,11 @@ export interface MessagingBubblesProps {
   hiddenMessageIds?: Set<string>;
   onScrollToReply?: (ts: string) => void;
   onReloadLatest?: () => Promise<boolean>;
+  /** Progressive forward-load. Called when the user scrolls toward the bottom
+   *  of a historical slice — fetches the messages between the slice's newest
+   *  and the present and prepends them. Returns `done: true` when there are
+   *  no more newer messages left to fetch (caught up to live). */
+  onLoadNewer?: () => Promise<{ done: boolean }>;
   /** When true, the parent is showing a historical message slice (loaded by
    *  jumping to a search result, replied-to, or pinned message). The slice
    *  ends AT the target — there are no newer messages for the scroll-position
@@ -435,6 +440,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       hiddenMessageIds,
       onScrollToReply,
       onReloadLatest,
+      onLoadNewer,
       viewingHistoricalSlice,
     },
     ref
@@ -1251,6 +1257,34 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       return () => observer.disconnect();
     }, [allowScrolling, loadMore]);
 
+    // Forward-pagination sentinel: when viewing a historical slice, fire
+    // onLoadNewer as the user scrolls toward the newest end of the slice.
+    const newerSentinelRef = useRef<HTMLDivElement>(null);
+    const [isLoadingNewer, setIsLoadingNewer] = useState(false);
+    const loadingNewerRef = useRef(false);
+    const loadNewer = useCallback(async () => {
+      if (!onLoadNewer || loadingNewerRef.current) return;
+      loadingNewerRef.current = true;
+      setIsLoadingNewer(true);
+      try {
+        await onLoadNewer();
+      } finally {
+        loadingNewerRef.current = false;
+        setIsLoadingNewer(false);
+      }
+    }, [onLoadNewer]);
+    useEffect(() => {
+      if (!viewingHistoricalSlice || !newerSentinelRef.current) return;
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]!.isIntersecting) loadNewer();
+        },
+        { root: messageAreaRef.current, threshold: 0.1 }
+      );
+      observer.observe(newerSentinelRef.current);
+      return () => observer.disconnect();
+    }, [viewingHistoricalSlice, loadNewer]);
+
     if (
       Object.keys(conversations).length === 0 ||
       conversationPublicKey === ""
@@ -1521,6 +1555,24 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
 
           <div className="flex flex-col-reverse">
             <div className="scroller-end-stub"></div>
+
+            {/* Forward-pagination sentinel: visually sits just above the
+                newest message in a historical slice. Crossing it triggers
+                a fetch of newer messages so the user can scroll forward
+                toward the present without leaving the slice. */}
+            {viewingHistoricalSlice && (
+              <div
+                ref={newerSentinelRef}
+                className="py-4 flex items-center justify-center text-xs text-white/40"
+              >
+                {isLoadingNewer && (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin text-[#34F080]" />
+                    Loading newer messages...
+                  </>
+                )}
+              </div>
+            )}
 
             {displayMessages.map((message, i: number) => {
               // Render the "New messages" divider between read and unread messages.
