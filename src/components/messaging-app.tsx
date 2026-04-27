@@ -741,7 +741,13 @@ export const MessagingApp: FC = () => {
       }
 
       let hasNewlyConfirmed = false;
-      savedMessagesRef.current = null;
+      // Only invalidate the snapshot when the merge is actually for the
+      // conversation the snapshot belongs to. Otherwise an unrelated merge
+      // (e.g. runConfirmationCheck firing for a different conv) would wipe
+      // the slice's saved tail mid-view.
+      if (savedMessagesRef.current?.convKey === selectedKey) {
+        savedMessagesRef.current = null;
+      }
 
       setConversations((prev) => {
         const existing = prev[selectedKey];
@@ -4134,9 +4140,13 @@ export const MessagingApp: FC = () => {
         rawMessages = resp.ThreadMessages;
       }
 
+      // User may have switched conversations during the fetch.
+      if (selectedConversationPublicKeyRef.current !== convKey) return false;
+
       if (!rawMessages || rawMessages.length === 0) {
-        savedMessagesRef.current = null;
-        clearHistoricalState();
+        // Keep historical state so the user can retry — clearing it here
+        // would hide the Jump-to-Latest button and trap them.
+        toast.error("Failed to reload messages");
         return false;
       }
 
@@ -4146,6 +4156,9 @@ export const MessagingApp: FC = () => {
           rawMessages,
           allAccessGroupsRef.current
         );
+
+      if (selectedConversationPublicKeyRef.current !== convKey) return false;
+
       setAllAccessGroups(updatedAllAccessGroups);
 
       setConversations((prev) => {
@@ -4171,8 +4184,9 @@ export const MessagingApp: FC = () => {
       return true;
     } catch (e) {
       console.error("Failed to reload latest:", e);
-      savedMessagesRef.current = null;
-      clearHistoricalState();
+      // Don't clear historical state — the user is still viewing a slice
+      // and needs the Jump-to-Latest button to retry.
+      toast.error("Failed to reload messages");
       return false;
     }
   }, [appUser, setAllAccessGroups]);
