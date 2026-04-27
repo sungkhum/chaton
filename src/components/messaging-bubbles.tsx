@@ -1273,11 +1273,41 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
         setIsLoadingNewer(false);
       }
     }, [onLoadNewer]);
+
+    // Arm only after the user actively scrolls down toward the newest end.
+    // Without this guard, scrollIntoView({ block: "center" }) on the search
+    // target leaves the sentinel visible below it on first render, which
+    // would auto-fire loadNewer and yank the user to the present.
+    const newerArmedRef = useRef(false);
+    useEffect(() => {
+      // Reset on every entry into a historical slice (or exit).
+      newerArmedRef.current = false;
+      if (!viewingHistoricalSlice) return;
+      const el = messageAreaRef.current;
+      if (!el) return;
+      let lastTop = el.scrollTop;
+      const onScroll = () => {
+        // flex-col-reverse: scrollTop increases (toward 0) = scrolling down.
+        // Require a meaningful gesture (>4px) so passive layout shifts don't
+        // arm the sentinel.
+        if (el.scrollTop > lastTop + 4) {
+          newerArmedRef.current = true;
+          el.removeEventListener("scroll", onScroll);
+        } else {
+          lastTop = el.scrollTop;
+        }
+      };
+      el.addEventListener("scroll", onScroll, { passive: true });
+      return () => el.removeEventListener("scroll", onScroll);
+    }, [viewingHistoricalSlice]);
+
     useEffect(() => {
       if (!viewingHistoricalSlice || !newerSentinelRef.current) return;
       const observer = new IntersectionObserver(
         (entries) => {
-          if (entries[0]!.isIntersecting) loadNewer();
+          if (entries[0]!.isIntersecting && newerArmedRef.current) {
+            loadNewer();
+          }
         },
         { root: messageAreaRef.current, threshold: 0.1 }
       );
