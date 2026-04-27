@@ -566,8 +566,10 @@ function App() {
   const showLanding = !appUser && !isLoadingUser;
 
   if (showLanding) {
-    // Unknown path for logged-out users — show 404 instead of landing page
-    if (path !== "/") {
+    // Unknown path for logged-out users — show 404 instead of landing page.
+    // Allow /chat/<key> deep links to fall through to the landing page so
+    // shared chat links can prompt sign-in instead of dead-ending in 404.
+    if (path !== "/" && !path.startsWith("/chat/")) {
       return (
         <RouteErrorBoundary>
           <Suspense fallback={routeFallback}>

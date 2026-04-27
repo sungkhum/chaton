@@ -52,7 +52,6 @@ import {
 } from "../hooks/useTypingIndicator";
 import { usePresence } from "../hooks/usePresence";
 import { useSwipeBack } from "../hooks/useSwipeBack";
-import { useAndroidBack } from "../hooks/useAndroidBack";
 import {
   needsPermissionUpgrade,
   requestFullPermissions,
@@ -308,6 +307,24 @@ function msgDedupeKey(
   return key;
 }
 
+// URL routing for individual chats. /chat/<encoded conversation key> selects
+// a conversation; "/" deselects (chat list). Encoding handles `:` (group
+// chats use "<ownerPublicKey>:<groupKeyName>") and any non-ASCII keyNames.
+const CHAT_PATH_PREFIX = "/chat/";
+
+function conversationKeyFromPath(pathname: string): string {
+  if (!pathname.startsWith(CHAT_PATH_PREFIX)) return "";
+  try {
+    return decodeURIComponent(pathname.slice(CHAT_PATH_PREFIX.length));
+  } catch {
+    return "";
+  }
+}
+
+function chatPathFromKey(key: string): string {
+  return key ? `${CHAT_PATH_PREFIX}${encodeURIComponent(key)}` : "/";
+}
+
 export const MessagingApp: FC = () => {
   // State — only these cause re-renders (useShallow does shallow equality)
   const {
@@ -398,8 +415,15 @@ export const MessagingApp: FC = () => {
     null
   );
   const [loadingConversation, setLoadingConversation] = useState(false);
+  // Conversation selection lives in the URL (/chat/<encoded-key>) so the
+  // browser back button returns to the chat list instead of closing the
+  // app/site. Lazy-init from the URL on first mount so deep links work.
   const [selectedConversationPublicKey, setSelectedConversationPublicKey] =
-    useState("");
+    useState(() =>
+      typeof window === "undefined"
+        ? ""
+        : conversationKeyFromPath(window.location.pathname)
+    );
   const [profileModal, setProfileModal] = useState<{
     publicKey: string;
     username?: string;
@@ -3920,7 +3944,15 @@ export const MessagingApp: FC = () => {
     rehydrateConversation(pending || "", false, !isMobile || !!pending);
   }, [appUser, isMobile, rehydrateConversation]);
 
+  // In-app deselect (chevron, swipe-back). Pop the URL entry instead of
+  // calling setState directly — the popstate listener clears selection.
+  // Falling back to setState handles the rare case where there's no /chat/
+  // entry to pop (e.g. selection was set without going through the URL).
   const handleMobileBack = useCallback(() => {
+    if (window.location.pathname.startsWith(CHAT_PATH_PREFIX)) {
+      window.history.back();
+      return;
+    }
     startTransition(() => {
       setSelectedConversationPublicKey("");
       setEditingMessage(null);
@@ -3930,9 +3962,46 @@ export const MessagingApp: FC = () => {
 
   const swipeHandlers = useSwipeBack(handleMobileBack);
 
-  // Intercept the system/browser back button on mobile so it returns to the
-  // conversation list instead of closing the PWA (most noticeable on Android).
-  useAndroidBack(isMobile && !!selectedConversationPublicKey, handleMobileBack);
+  // ── URL ↔ selection sync ──────────────────────────────────────────────
+  // Each conversation gets its own URL (/chat/<encoded-key>) so the browser
+  // back button returns to the chat list (and another press exits) on every
+  // platform — desktop browsers, mobile web, and PWAs alike. This replaces
+  // the mobile-only synthetic-history-entry trick from useAndroidBack.
+  //
+  // History semantics: list → chat = push (so back returns to the list);
+  // chat → chat or chat → list (state-only) = replace (no deep stacks of
+  // recently-viewed chats, no clutter of "/" entries).
+  const skipUrlSyncRef = useRef(false);
+  useEffect(() => {
+    if (skipUrlSyncRef.current) {
+      skipUrlSyncRef.current = false;
+      return;
+    }
+    const desiredPath = chatPathFromKey(selectedConversationPublicKey);
+    if (window.location.pathname === desiredPath) return;
+    const wasOnChatPath = window.location.pathname.startsWith(CHAT_PATH_PREFIX);
+    const goingToChat = selectedConversationPublicKey !== "";
+    if (goingToChat && !wasOnChatPath) {
+      window.history.pushState({}, "", desiredPath);
+    } else {
+      window.history.replaceState({}, "", desiredPath);
+    }
+  }, [selectedConversationPublicKey]);
+
+  useEffect(() => {
+    const onPop = () => {
+      const fromUrl = conversationKeyFromPath(window.location.pathname);
+      if (fromUrl === selectedConversationPublicKeyRef.current) return;
+      skipUrlSyncRef.current = true;
+      startTransition(() => {
+        setSelectedConversationPublicKey(fromUrl);
+        setEditingMessage(null);
+        setReplyToMessage(null);
+      });
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   const conversationsReady = Object.keys(conversations).length > 0;
   // Guard: if the selected key doesn't match any conversation (e.g. stale
@@ -5311,9 +5380,15 @@ export const MessagingApp: FC = () => {
                   <div className="pr-2 rounded-none w-[100%] bg-transparent ml-[calc-340px] pb-0 flex-1 min-h-0">
                     <div className="border-none flex flex-col h-full">
                       <div className="overflow-hidden flex-1 min-h-0">
-                        {loadingConversation || !selectedConversation ? (
+                        {loadingConversation ? (
                           <div className="h-full flex items-center justify-center">
                             <Loader2 className="w-11 h-11 animate-spin text-[#34F080]" />
+                          </div>
+                        ) : !selectedConversation ? (
+                          <div className="h-full flex items-center justify-center text-center px-6">
+                            <p className="text-sm text-white/40">
+                              Select a conversation to start chatting.
+                            </p>
                           </div>
                         ) : (
                           <MessagingBubblesAndAvatar
