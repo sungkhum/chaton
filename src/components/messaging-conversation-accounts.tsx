@@ -403,6 +403,7 @@ export const MessagingConversationAccount: FC<{
     publicKey?: string,
     autoScroll?: boolean
   ) => void | Promise<void>;
+  refreshConversations: () => void | Promise<void>;
   onAccept: (conversationKey: string, publicKey: string) => void;
   onBlock: (conversationKey: string, publicKey: string) => void;
   onDismiss: (conversationKey: string, publicKey: string) => void;
@@ -443,6 +444,7 @@ export const MessagingConversationAccount: FC<{
   selectedConversationPublicKey,
   onClick,
   rehydrateConversation,
+  refreshConversations,
   onAccept,
   onBlock,
   onDismiss,
@@ -535,7 +537,7 @@ export const MessagingConversationAccount: FC<{
       !conversationsLoading,
     onProgress: (px, progress) =>
       ptrIndicatorRef.current?.setPull(px, progress),
-    onRefresh: () => Promise.resolve(rehydrateConversation()),
+    onRefresh: () => Promise.resolve(refreshConversations()),
   });
 
   // Reset sub-view when switching tabs

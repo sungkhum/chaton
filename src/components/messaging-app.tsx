@@ -4479,6 +4479,9 @@ export const MessagingApp: FC = () => {
                 <div className="w-full md:w-[340px] lg:w-[380px] xl:w-[420px] border-r border-white/5 bg-[#080d16] shrink-0">
                   <MessagingConversationAccount
                     rehydrateConversation={rehydrateConversation}
+                    refreshConversations={() =>
+                      rehydrateConversation("", false, false)
+                    }
                     conversationsLoading={conversationsLoading}
                     conversationsError={conversationsError}
                     onRetryLoad={() => {
