@@ -52,6 +52,7 @@ import {
 } from "../hooks/useTypingIndicator";
 import { usePresence } from "../hooks/usePresence";
 import { useSwipeBack } from "../hooks/useSwipeBack";
+import { useAndroidBack } from "../hooks/useAndroidBack";
 import {
   needsPermissionUpgrade,
   requestFullPermissions,
@@ -3889,6 +3890,10 @@ export const MessagingApp: FC = () => {
   }, []);
 
   const swipeHandlers = useSwipeBack(handleMobileBack);
+
+  // Intercept the system/browser back button on mobile so it returns to the
+  // conversation list instead of closing the PWA (most noticeable on Android).
+  useAndroidBack(isMobile && !!selectedConversationPublicKey, handleMobileBack);
 
   const conversationsReady = Object.keys(conversations).length > 0;
   // Guard: if the selected key doesn't match any conversation (e.g. stale
