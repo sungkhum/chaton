@@ -116,7 +116,12 @@ export interface MessagingBubblesProps {
   pendingTipTimestamps?: Set<string>;
   hiddenMessageIds?: Set<string>;
   onScrollToReply?: (ts: string) => void;
-  onReloadLatest?: () => boolean;
+  onReloadLatest?: () => Promise<boolean>;
+  /** When true, the parent is showing a historical message slice (loaded by
+   *  jumping to a search result, replied-to, or pinned message). The slice
+   *  ends AT the target — there are no newer messages for the scroll-position
+   *  heuristic to trip on, so force the Jump-to-Latest button visible. */
+  viewingHistoricalSlice?: boolean;
 }
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
@@ -430,6 +435,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       hiddenMessageIds,
       onScrollToReply,
       onReloadLatest,
+      viewingHistoricalSlice,
     },
     ref
   ) => {
@@ -1102,12 +1108,15 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
     // rerender-use-ref-transient-values: track scroll position in ref, only
     // setState when the boolean actually flips to avoid re-renders during momentum scroll.
     const showJumpRef = useRef(false);
+    const viewingHistoricalSliceRef = useRef(viewingHistoricalSlice);
+    viewingHistoricalSliceRef.current = viewingHistoricalSlice;
     useEffect(() => {
       const el = messageAreaRef.current;
       if (!el) return;
       const handleScroll = () => {
         // scrollTop is <= 0 in a flex-col-reverse container
-        const shouldShow = el.scrollTop < -300;
+        const shouldShow =
+          el.scrollTop < -300 || !!viewingHistoricalSliceRef.current;
         if (shouldShow !== showJumpRef.current) {
           showJumpRef.current = shouldShow;
           setShowJumpToLatest(shouldShow);
@@ -1117,8 +1126,20 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       return () => el.removeEventListener("scroll", handleScroll);
     }, []);
 
-    const scrollToLatest = useCallback(() => {
-      const didReload = onReloadLatest?.();
+    // The historical-slice flag flips without a scroll event, so reconcile
+    // the button visibility whenever the prop changes.
+    useEffect(() => {
+      const el = messageAreaRef.current;
+      const shouldShow =
+        !!viewingHistoricalSlice || (el ? el.scrollTop < -300 : false);
+      if (shouldShow !== showJumpRef.current) {
+        showJumpRef.current = shouldShow;
+        setShowJumpToLatest(shouldShow);
+      }
+    }, [viewingHistoricalSlice]);
+
+    const scrollToLatest = useCallback(async () => {
+      const didReload = (await onReloadLatest?.()) ?? false;
       if (didReload) {
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {

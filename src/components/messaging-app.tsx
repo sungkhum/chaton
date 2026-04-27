@@ -699,6 +699,16 @@ export const MessagingApp: FC = () => {
   const allAccessGroupsRef = useRef(allAccessGroups);
   allAccessGroupsRef.current = allAccessGroups;
 
+  // Tracks the conversation key that's currently displaying a historical
+  // slice (loaded by clicking a search result, replied-to, or pinned message).
+  // The slice ends AT the target message — there's nothing newer in it — so
+  // polling must NOT replace `messages` or wipe `savedMessagesRef` until the
+  // user explicitly returns to latest via the Jump-to-Latest button.
+  const viewingHistoricalSliceRef = useRef<string | null>(null);
+  const [viewingHistoricalSliceKey, setViewingHistoricalSliceKey] = useState<
+    string | null
+  >(null);
+
   // Shared merge logic: reconcile optimistic messages with blockchain-confirmed data.
   // Used by both the WebSocket handler and the polling interval.
   const mergeConversationUpdate = useCallback(
@@ -707,8 +717,37 @@ export const MessagingApp: FC = () => {
       selectedKey: string,
       updatedMessages: DecryptedMessageEntryResponse[]
     ) => {
+      // While viewing a historical slice for this conversation, don't overwrite
+      // the visible messages or wipe the saved-tail snapshot. Refresh the
+      // snapshot to the freshest tail so Jump-to-Latest restores up-to-date
+      // messages, and keep IndexedDB caches current.
+      if (viewingHistoricalSliceRef.current === selectedKey) {
+        savedMessagesRef.current = {
+          messages: updatedMessages,
+          convKey: selectedKey,
+        };
+        if (appUser) {
+          cacheConversations(
+            appUser.PublicKeyBase58Check,
+            updatedConversations
+          );
+          cacheConversationMessages(
+            appUser.PublicKeyBase58Check,
+            selectedKey,
+            updatedMessages
+          );
+        }
+        return;
+      }
+
       let hasNewlyConfirmed = false;
-      savedMessagesRef.current = null;
+      // Only invalidate the snapshot when the merge is actually for the
+      // conversation the snapshot belongs to. Otherwise an unrelated merge
+      // (e.g. runConfirmationCheck firing for a different conv) would wipe
+      // the slice's saved tail mid-view.
+      if (savedMessagesRef.current?.convKey === selectedKey) {
+        savedMessagesRef.current = null;
+      }
 
       setConversations((prev) => {
         const existing = prev[selectedKey];
@@ -3987,6 +4026,8 @@ export const MessagingApp: FC = () => {
           convKey,
         };
       }
+      viewingHistoricalSliceRef.current = convKey;
+      setViewingHistoricalSliceKey(convKey);
       setConversations((prev) => {
         const existing = prev[convKey];
         if (!existing) return prev;
@@ -4022,34 +4063,147 @@ export const MessagingApp: FC = () => {
     convKey: string;
   } | null>(null);
 
-  const handleReloadLatest = useCallback(() => {
-    const saved = savedMessagesRef.current;
+  const handleReloadLatest = useCallback(async (): Promise<boolean> => {
     const convKey = selectedConversationPublicKeyRef.current;
-    if (!saved || saved.convKey !== convKey) {
+    const saved = savedMessagesRef.current;
+
+    const clearHistoricalState = () => {
+      viewingHistoricalSliceRef.current = null;
+      setViewingHistoricalSliceKey(null);
+    };
+
+    if (saved && saved.convKey === convKey) {
       savedMessagesRef.current = null;
+      setConversations((prev) => {
+        const existing = prev[convKey];
+        if (!existing) return prev;
+        const currentOptimistic = existing.messages.filter(
+          (m: any) =>
+            m._localId && (m._status === "sending" || m._status === "sent")
+        );
+        const savedTs = new Set(
+          saved.messages.map((m) => m.MessageInfo.TimestampNanosString)
+        );
+        const newOptimistic = currentOptimistic.filter(
+          (m: any) => !savedTs.has(m.MessageInfo.TimestampNanosString)
+        );
+        return updateConv(prev, convKey, (c) => ({
+          ...c,
+          messages: [...newOptimistic, ...saved.messages],
+        }));
+      });
+      clearHistoricalState();
+      return true;
+    }
+
+    // No usable snapshot — re-fetch the latest tail directly. Happens when the
+    // conversation was never opened in this session (only the shell loaded) or
+    // the snapshot was dropped before the user clicked Jump-to-Latest.
+    const conv = conversationsRef.current[convKey];
+    if (!appUser || !conv) {
+      savedMessagesRef.current = null;
+      clearHistoricalState();
       return false;
     }
-    savedMessagesRef.current = null;
-    setConversations((prev) => {
-      const existing = prev[convKey];
-      if (!existing) return prev;
-      const currentOptimistic = existing.messages.filter(
-        (m: any) =>
-          m._localId && (m._status === "sending" || m._status === "sent")
-      );
-      const savedTs = new Set(
-        saved.messages.map((m) => m.MessageInfo.TimestampNanosString)
-      );
-      const newOptimistic = currentOptimistic.filter(
-        (m: any) => !savedTs.has(m.MessageInfo.TimestampNanosString)
-      );
-      return updateConv(prev, convKey, (c) => ({
-        ...c,
-        messages: [...newOptimistic, ...saved.messages],
-      }));
-    });
-    return true;
-  }, []);
+    const firstMsg = conv.messages[0];
+    if (!firstMsg) {
+      savedMessagesRef.current = null;
+      clearHistoricalState();
+      return false;
+    }
+
+    try {
+      let rawMessages;
+      if (conv.ChatType === ChatType.GROUPCHAT) {
+        const recipientInfo = firstMsg.RecipientInfo;
+        if (!recipientInfo) {
+          savedMessagesRef.current = null;
+          clearHistoricalState();
+          return false;
+        }
+        const resp = await getPaginatedGroupChatThread({
+          UserPublicKeyBase58Check: recipientInfo.OwnerPublicKeyBase58Check,
+          AccessGroupKeyName: recipientInfo.AccessGroupKeyName,
+          StartTimeStamp: new Date().valueOf() * 1e6,
+          MaxMessagesToFetch: MESSAGES_ONE_REQUEST_LIMIT,
+        });
+        rawMessages = resp.GroupChatMessages;
+      } else {
+        const resp = await getPaginatedDMThread({
+          UserGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
+          UserGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
+          PartyGroupOwnerPublicKeyBase58Check: conv.firstMessagePublicKey,
+          PartyGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
+          StartTimeStamp: new Date().valueOf() * 1e6,
+          MaxMessagesToFetch: MESSAGES_ONE_REQUEST_LIMIT,
+        });
+        rawMessages = resp.ThreadMessages;
+      }
+
+      // User may have switched conversations during the fetch.
+      if (selectedConversationPublicKeyRef.current !== convKey) return false;
+
+      if (!rawMessages || rawMessages.length === 0) {
+        // Keep historical state so the user can retry — clearing it here
+        // would hide the Jump-to-Latest button and trap them.
+        toast.error("Failed to reload messages");
+        return false;
+      }
+
+      const { decrypted, updatedAllAccessGroups } =
+        await decryptAccessGroupMessagesWithRetry(
+          appUser.PublicKeyBase58Check,
+          rawMessages,
+          allAccessGroupsRef.current
+        );
+
+      if (selectedConversationPublicKeyRef.current !== convKey) return false;
+
+      setAllAccessGroups(updatedAllAccessGroups);
+
+      setConversations((prev) => {
+        const existing = prev[convKey];
+        if (!existing) return prev;
+        const optimistic = existing.messages.filter(
+          (m: any) =>
+            m._localId && (m._status === "sending" || m._status === "sent")
+        );
+        const decryptedTs = new Set(
+          decrypted.map((m) => m.MessageInfo.TimestampNanosString)
+        );
+        const newOptimistic = optimistic.filter(
+          (m: any) => !decryptedTs.has(m.MessageInfo.TimestampNanosString)
+        );
+        return updateConv(prev, convKey, (c) => ({
+          ...c,
+          messages: [...newOptimistic, ...decrypted],
+        }));
+      });
+      savedMessagesRef.current = null;
+      clearHistoricalState();
+      return true;
+    } catch (e) {
+      console.error("Failed to reload latest:", e);
+      // Don't clear historical state — the user is still viewing a slice
+      // and needs the Jump-to-Latest button to retry.
+      toast.error("Failed to reload messages");
+      return false;
+    }
+  }, [appUser, setAllAccessGroups]);
+
+  // Clear the historical-slice state when the user switches conversations so
+  // the saved snapshot from the previous conv doesn't leak into the new one
+  // and the Jump-to-Latest button doesn't surface spuriously.
+  useEffect(() => {
+    if (
+      viewingHistoricalSliceRef.current &&
+      viewingHistoricalSliceRef.current !== selectedConversationPublicKey
+    ) {
+      viewingHistoricalSliceRef.current = null;
+      setViewingHistoricalSliceKey(null);
+      savedMessagesRef.current = null;
+    }
+  }, [selectedConversationPublicKey]);
 
   const handleScrollToReply = useCallback(
     async (ts: string) => {
@@ -4114,6 +4268,8 @@ export const MessagingApp: FC = () => {
             convKey,
           };
         }
+        viewingHistoricalSliceRef.current = convKey;
+        setViewingHistoricalSliceKey(convKey);
         setConversations((prev) => {
           const existing = prev[convKey];
           if (!existing) return prev;
@@ -5082,6 +5238,10 @@ export const MessagingApp: FC = () => {
                             pinnedMessageTimestamp={pinnedMessageTimestamp}
                             onScrollToReply={handleScrollToReply}
                             onReloadLatest={handleReloadLatest}
+                            viewingHistoricalSlice={
+                              viewingHistoricalSliceKey ===
+                              selectedConversationPublicKey
+                            }
                             onScroll={(
                               e: Array<DecryptedMessageEntryResponse>
                             ) => {
