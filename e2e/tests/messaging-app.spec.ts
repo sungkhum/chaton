@@ -462,3 +462,34 @@ test.describe("Long message expand/collapse", () => {
     ).not.toBeVisible();
   });
 });
+
+test.describe("Composer Enter key", () => {
+  test.setTimeout(60_000);
+
+  test("on touch devices Enter inserts a newline instead of sending", async ({
+    page,
+    waitForAppReady,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "mobile",
+      "Touch-only behavior — desktop still sends on Enter"
+    );
+    await page.goto("/");
+    await waitForAppReady();
+    await injectUser(page);
+
+    const dm = makeDmConversation();
+    await injectConversation(page, dm);
+
+    const composer = page.getByPlaceholder("Type a message...");
+    await expect(composer).toBeVisible({ timeout: 10_000 });
+
+    await composer.click();
+    await composer.fill("hello");
+    await composer.press("Enter");
+    await composer.pressSequentially("world");
+
+    // Textarea should retain text spanning two lines (Enter did not send)
+    await expect(composer).toHaveValue("hello\nworld");
+  });
+});
