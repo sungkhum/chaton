@@ -279,6 +279,9 @@ export const SendMessageButtonAndInput = forwardRef<
     };
 
     const canSend = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      // On touch devices, Enter should insert a newline so users can compose
+      // multi-line messages. Sending is done via the Send button tap.
+      if (isTouchDevice) return false;
       return e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing;
     };
 
@@ -1158,7 +1161,7 @@ export const SendMessageButtonAndInput = forwardRef<
                       }
                       if (
                         e.key === "Tab" ||
-                        (e.key === "Enter" && !e.shiftKey)
+                        (e.key === "Enter" && !e.shiftKey && !isTouchDevice)
                       ) {
                         e.preventDefault();
                         const selected = filteredMentions[mentionSelectedIdx];
