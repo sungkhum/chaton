@@ -933,6 +933,15 @@ export const MessagingApp: FC = () => {
     [appUser]
   );
 
+  // Expose the merge handler for Playwright tests (dev only). Declared here
+  // rather than alongside the other setters because it depends on
+  // mergeConversationUpdate, which is defined just above.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const hook = (window as any).__CHATON_MSG__;
+    if (hook) hook.mergeConversationUpdate = mergeConversationUpdate;
+  }, [mergeConversationUpdate]);
+
   // Lightweight merge for conversations we're not currently viewing:
   // keeps optimistic messages, layers in fresh blockchain data.
   // IMPORTANT: The `updated` map comes from getConversations() which only
