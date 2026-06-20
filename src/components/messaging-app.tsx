@@ -764,6 +764,35 @@ export const MessagingApp: FC = () => {
         return;
       }
 
+      // Preserve the user's reading position. When this refresh targets the
+      // conversation currently on screen and the user has scrolled away from
+      // the live tail to read older messages, don't overwrite the visible
+      // thread — replacing it with the latest tail discards the older messages
+      // they paged in and snaps the view to the present (e.g. on returning to
+      // the tab after opening a link in a new tab). Keep the caches fresh so
+      // Jump-to-Latest still restores up-to-date messages. Skip this guard
+      // while an optimistic send is pending so its confirmation still merges.
+      if (
+        selectedKey === selectedConversationPublicKeyRef.current &&
+        bubblesRef.current?.isScrolledAway() &&
+        !conversationsRef.current[selectedKey]?.messages.some(
+          (m: any) => m._localId
+        )
+      ) {
+        if (appUser) {
+          cacheConversations(
+            appUser.PublicKeyBase58Check,
+            updatedConversations
+          );
+          cacheConversationMessages(
+            appUser.PublicKeyBase58Check,
+            selectedKey,
+            updatedMessages
+          );
+        }
+        return;
+      }
+
       let hasNewlyConfirmed = false;
       // Only invalidate the snapshot when the merge is actually for the
       // conversation the snapshot belongs to. Otherwise an unrelated merge
