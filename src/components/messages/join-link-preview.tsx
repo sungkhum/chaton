@@ -144,7 +144,7 @@ export function JoinLinkPreview({ code }: { code: string }) {
   if (state === "invalid" || !groupInfo) {
     return (
       <div className="mt-1.5 rounded-lg overflow-hidden">
-        <div className="bg-gradient-to-br from-gray-800/40 to-gray-900/30 border border-gray-600/30 rounded-lg p-3 flex items-center gap-3">
+        <div className="bg-gradient-to-br from-gray-800/40 to-gray-900/30 border border-fg-600/30 rounded-lg p-3 flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-fg-500 shrink-0" />
           <span className="text-[13px] text-fg-500">
             Invalid or expired invite link

@@ -150,7 +150,7 @@ export const TipPills = ({
           {avatarKeys.map((pk) => (
             <div
               key={pk}
-              className="rounded-full ring-1 ring-[#141c2b] overflow-hidden"
+              className="rounded-full ring-1 ring-surface-raised overflow-hidden"
               title={getUsernameByPublicKey?.[pk] || pk.slice(0, 8)}
             >
               <MessagingDisplayAvatar

@@ -181,7 +181,7 @@ export const SupportChatOnDialog = ({
                     setIsCustom(true);
                     setCustomAmount(e.target.value);
                   }}
-                  className="flex-1 bg-transparent text-ink text-sm placeholder-gray-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="flex-1 bg-transparent text-ink text-sm placeholder-fg-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <span className="text-fg-500 text-xs font-semibold">
                   DESO

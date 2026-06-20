@@ -1352,7 +1352,7 @@ export const ManageMembersDialog = ({
                       type="button"
                       onClick={handleMembersCanShareToggle}
                       disabled={membersCanShareToggling}
-                      className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-[#34F080]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050e1d] ${
+                      className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-[#34F080]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-sheet ${
                         membersCanShare ? "bg-[#34F080]" : "bg-ink/10"
                       }`}
                       aria-label={
@@ -1394,7 +1394,7 @@ export const ManageMembersDialog = ({
                       type="button"
                       onClick={handleCommunityToggle}
                       disabled={communityToggling}
-                      className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-[#34F080]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050e1d] ${
+                      className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-[#34F080]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-sheet ${
                         isCommunityListed ? "bg-[#34F080]" : "bg-ink/10"
                       }`}
                       aria-label={

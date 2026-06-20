@@ -190,7 +190,7 @@ export function BugReportModal() {
                 maxLength={500}
                 rows={3}
                 autoFocus
-                className="w-full rounded-xl border border-ink/10 bg-ink/[0.03] p-3.5 text-sm text-ink placeholder-white/35 transition-colors focus:border-ink/20 focus:bg-ink/[0.04] focus:outline-none"
+                className="w-full rounded-xl border border-ink/10 bg-ink/[0.03] p-3.5 text-sm text-ink placeholder-ink/35 transition-colors focus:border-ink/20 focus:bg-ink/[0.04] focus:outline-none"
               />
               <div className="mt-1.5 text-right text-[11px] text-ink/20 tabular-nums">
                 {description.length}/500
@@ -257,7 +257,7 @@ export function BugReportModal() {
                 maxLength={300}
                 rows={2}
                 autoFocus
-                className="w-full rounded-xl border border-ink/10 bg-ink/[0.03] p-3.5 text-sm text-ink placeholder-white/35 transition-colors focus:border-ink/20 focus:bg-ink/[0.04] focus:outline-none"
+                className="w-full rounded-xl border border-ink/10 bg-ink/[0.03] p-3.5 text-sm text-ink placeholder-ink/35 transition-colors focus:border-ink/20 focus:bg-ink/[0.04] focus:outline-none"
               />
               <div className="mt-3 flex gap-2">
                 <button

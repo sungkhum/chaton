@@ -679,7 +679,7 @@ export const TipConfirmDialog = ({
                     setIsCustom(true);
                     setCustomAmount(e.target.value);
                   }}
-                  className="flex-1 bg-transparent text-ink text-sm placeholder-gray-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="flex-1 bg-transparent text-ink text-sm placeholder-fg-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <span className="text-fg-500 text-xs font-semibold">USD</span>
               </div>
@@ -698,7 +698,7 @@ export const TipConfirmDialog = ({
                 value={tipMessage}
                 onChange={(e) => setTipMessage(e.target.value)}
                 rows={2}
-                className="w-full bg-ink/[0.02] border border-ink/10 rounded-lg px-3 py-2 text-sm text-ink placeholder-gray-500 outline-none resize-none mb-4 focus:border-ink/30"
+                className="w-full bg-ink/[0.02] border border-ink/10 rounded-lg px-3 py-2 text-sm text-ink placeholder-fg-500 outline-none resize-none mb-4 focus:border-ink/30"
               />
 
               {/* Balance info */}

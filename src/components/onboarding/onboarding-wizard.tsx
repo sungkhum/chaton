@@ -678,7 +678,7 @@ function SetupRow({
             ? "text-brand"
             : status === "in-progress"
             ? "text-ink/70"
-            : "text-gray-700"
+            : "text-fg-600"
         }`}
       >
         {icon}
@@ -689,7 +689,7 @@ function SetupRow({
             ? "text-brand/90"
             : status === "in-progress"
             ? "text-ink/80"
-            : "text-gray-700"
+            : "text-fg-600"
         }`}
       >
         {label}
@@ -700,7 +700,7 @@ function SetupRow({
         )}
         {status === "complete" && <Check className="w-4 h-4 text-brand" />}
         {status === "pending" && (
-          <div className="w-3.5 h-3.5 rounded-full border border-gray-700/60" />
+          <div className="w-3.5 h-3.5 rounded-full border border-fg-600/60" />
         )}
       </div>
     </div>

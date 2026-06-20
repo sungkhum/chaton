@@ -364,7 +364,7 @@ export function FeedbackModal() {
                     maxLength={500}
                     rows={3}
                     autoFocus
-                    className="w-full rounded-xl border border-ink/10 bg-ink/[0.03] p-3.5 text-sm text-ink placeholder-white/35 transition-colors focus:border-ink/20 focus:bg-ink/[0.04] focus:outline-none"
+                    className="w-full rounded-xl border border-ink/10 bg-ink/[0.03] p-3.5 text-sm text-ink placeholder-ink/35 transition-colors focus:border-ink/20 focus:bg-ink/[0.04] focus:outline-none"
                   />
                 </div>
                 <div>
@@ -384,7 +384,7 @@ export function FeedbackModal() {
                     placeholder="e.g. I was trying to send a photo in a group chat..."
                     maxLength={500}
                     rows={2}
-                    className="w-full rounded-xl border border-ink/10 bg-ink/[0.03] p-3.5 text-sm text-ink placeholder-white/35 transition-colors focus:border-ink/20 focus:bg-ink/[0.04] focus:outline-none"
+                    className="w-full rounded-xl border border-ink/10 bg-ink/[0.03] p-3.5 text-sm text-ink placeholder-ink/35 transition-colors focus:border-ink/20 focus:bg-ink/[0.04] focus:outline-none"
                   />
                 </div>
 
@@ -614,7 +614,7 @@ export function FeedbackModal() {
                 maxLength={1000}
                 rows={5}
                 autoFocus
-                className="w-full rounded-xl border border-ink/10 bg-ink/[0.03] p-3.5 text-sm text-ink placeholder-white/35 transition-colors focus:border-ink/20 focus:bg-ink/[0.04] focus:outline-none"
+                className="w-full rounded-xl border border-ink/10 bg-ink/[0.03] p-3.5 text-sm text-ink placeholder-ink/35 transition-colors focus:border-ink/20 focus:bg-ink/[0.04] focus:outline-none"
               />
               <div className="mt-1.5 text-right text-[11px] text-ink/30">
                 {description.length}/1000
