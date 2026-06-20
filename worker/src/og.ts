@@ -89,8 +89,15 @@ function decodeHtmlEntities(str: string): string {
 
 const MAX_REDIRECTS = 5;
 const FETCH_HEADERS = {
-  "User-Agent": "Mozilla/5.0 (compatible; ChatOnBot/1.0; +https://chaton.app)",
+  // Identify as the Facebook/WhatsApp link crawler. Major publishers (Yahoo,
+  // NYT, Bloomberg, CNN, …) whitelist well-known social crawlers and return the
+  // real article OG tags, instead of the GDPR/cookie consent interstitial they
+  // serve to unknown bots. This is how WhatsApp gets rich previews for the same
+  // links that previously rendered an empty "Your privacy choices" card here.
+  "User-Agent":
+    "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
   Accept: "text/html,application/xhtml+xml",
+  "Accept-Language": "en-US,en;q=0.9",
 };
 
 /**
@@ -458,6 +465,23 @@ export async function handleOgFetch(request: Request): Promise<Response> {
         }
         clearTimeout(timeout2);
       }
+    }
+  }
+
+  // If a site still serves a GDPR/cookie consent or anti-bot interstitial
+  // (despite the crawler User-Agent), the whole page is junk — not the article.
+  // Drop the entire preview so no degraded card (e.g. "Your privacy choices")
+  // is shown. Matched as substrings because publishers phrase these differently.
+  const CONSENT_TITLE_SUBSTRINGS = [
+    "your privacy choices",
+    "before you continue",
+    "we value your privacy",
+    "just a moment", // Cloudflare challenge page
+  ];
+  if (result.title) {
+    const lowerTitle = result.title.toLowerCase().trim();
+    if (CONSENT_TITLE_SUBSTRINGS.some((s) => lowerTitle.includes(s))) {
+      return cacheAndReturn(cache, cacheKey, {});
     }
   }
 
