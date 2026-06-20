@@ -13,7 +13,8 @@
       "src/utils/constants.ts",
       "src/services/cache.service.ts",
       "src/services/conversations.service.tsx",
-      "src/utils/safe-login.ts"
+      "src/utils/safe-login.ts",
+      "src/utils/theme.ts"
     ],
     "exports": []
   },
@@ -818,6 +819,7 @@
       "src/components/messaging-display-avatar.tsx",
       "src/components/shared/save-to-clipboard.tsx",
       "src/components/privacy-toggle.tsx",
+      "src/components/theme-toggle.tsx",
       "src/components/tip-currency-toggle.tsx",
       "src/components/language-selector.tsx",
       "src/components/inbox-rules.tsx",
@@ -914,6 +916,14 @@
     ],
     "exports": [
       "SwUpdatePrompt"
+    ]
+  },
+  "src/components/theme-toggle.tsx": {
+    "imports": [
+      "src/store/index.ts"
+    ],
+    "exports": [
+      "ThemeToggle"
     ]
   },
   "src/components/tip-confirm-dialog.tsx": {
@@ -1335,6 +1345,7 @@
     "imports": [
       "src/services/cache.service.ts",
       "src/services/conversations.service.tsx",
+      "src/utils/theme.ts",
       "src/utils/spam-filter.ts"
     ],
     "exports": [
@@ -1623,6 +1634,16 @@
     "imports": [],
     "exports": [
       "passesSenderFilter"
+    ]
+  },
+  "src/utils/theme.ts": {
+    "imports": [],
+    "exports": [
+      "getStoredTheme",
+      "storeTheme",
+      "isAppThemePath",
+      "applyThemeClass",
+      "THEME_STORAGE_KEY"
     ]
   },
   "src/utils/tip-fees.ts": {

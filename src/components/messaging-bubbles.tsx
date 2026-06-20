@@ -179,9 +179,7 @@ function MessageContent({
       <span className="text-ink/30 italic text-[13px] select-text inline-flex items-center gap-1.5 py-0.5 px-1">
         <Ban className="w-3 h-3 shrink-0 opacity-40" />
         This message was deleted
-        <span className="text-[10px] not-italic text-ink/20 ml-1">
-          {time}
-        </span>
+        <span className="text-[10px] not-italic text-ink/20 ml-1">{time}</span>
       </span>
     );
   }
@@ -410,6 +408,11 @@ function MessageContent({
 
 export interface MessagingBubblesHandle {
   scrollToMessage: (ts: string) => boolean;
+  /** True when the user has scrolled away from the live tail (reading older
+   *  messages). The parent reads this before a background refresh so it can
+   *  avoid overwriting the visible thread and snapping the view to the present
+   *  (e.g. when returning to the tab after opening a link). */
+  isScrolledAway: () => boolean;
 }
 
 export const MessagingBubblesAndAvatar = React.forwardRef<
@@ -539,9 +542,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       : null;
     const microTipIsDeso = !tipCurrencyPref || tipCurrencyPref === "DESO";
     const microTipColor = microTipIsDeso ? "#2775ca" : "#34F080";
-    const microTipTextColor = microTipIsDeso
-      ? "text-[#2775ca]"
-      : "text-brand";
+    const microTipTextColor = microTipIsDeso ? "text-[#2775ca]" : "text-brand";
 
     // Auto-dismiss tip tooltip after 4 seconds
     useEffect(() => {
@@ -1504,9 +1505,19 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
       return false;
     }, []);
 
-    React.useImperativeHandle(ref, () => ({ scrollToMessage }), [
-      scrollToMessage,
-    ]);
+    // Live read of the scroll position (flex-col-reverse: scrollTop is <= 0,
+    // so the live tail sits at 0). Mirrors the -300 threshold that surfaces the
+    // Jump-to-Latest button so "scrolled away" means the same thing everywhere.
+    const isScrolledAway = useCallback((): boolean => {
+      const el = messageAreaRef.current;
+      return el ? el.scrollTop < -300 : false;
+    }, []);
+
+    React.useImperativeHandle(
+      ref,
+      () => ({ scrollToMessage, isScrolledAway }),
+      [scrollToMessage, isScrolledAway]
+    );
 
     const scrollToNextMention = useCallback(() => {
       if (unreadMentionTimestamps.length === 0) return;
@@ -1676,8 +1687,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                 (message.error && !message.DecryptedMessage) ||
                 looksLikeEncryptedHex(message.DecryptedMessage)
               ) {
-                senderStyles =
-                  "bg-ink/5 border border-ink/10 text-fg-500";
+                senderStyles = "bg-ink/5 border border-ink/10 text-fg-500";
               }
 
               // For media messages, keep glass style (overflow handled by media components)
@@ -2150,9 +2160,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                             return (
                               <div
                                 className={`text-[10px] mt-0.5 px-1 text-right ${
-                                  IsSender
-                                    ? "text-brand/50"
-                                    : "text-fg-500/80"
+                                  IsSender ? "text-brand/50" : "text-fg-500/80"
                                 }`}
                                 title={new Date(
                                   message.MessageInfo.TimestampNanos / 1e6

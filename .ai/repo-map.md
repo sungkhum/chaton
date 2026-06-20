@@ -1,4 +1,4 @@
-# Repo Map (generated 2026-06-19)
+# Repo Map (generated 2026-06-20)
 # Compact codebase index for AI agents. Read this FIRST, then do targeted file reads.
 
 ## Routes
@@ -140,6 +140,7 @@ src/components/start-group-chat.tsx  StartGroupChat
 src/components/support-chaton-dialog.tsx  SupportChatOnDialog
 src/components/support-page.tsx  SupportPage
 src/components/sw-update-prompt.tsx  fn SwUpdatePrompt
+src/components/theme-toggle.tsx  fn ThemeToggle
 src/components/tip-confirm-dialog.tsx  TipConfirmDialog
 src/components/tip-currency-toggle.tsx  fn TipCurrencyToggle
 src/components/user-account-list.tsx
@@ -207,6 +208,7 @@ src/utils/push-notifications.ts  fn requestPushPermission, subscribeToPush, getE
 src/utils/safe-login.ts  fn safeLogin, useRedirectFlow
 src/utils/search-helpers.ts  fn shortenLongWord, nameOrFormattedKey
 src/utils/spam-filter.ts  fn passesSenderFilter
+src/utils/theme.ts  THEME_STORAGE_KEY | fn getStoredTheme, storeTheme, isAppThemePath, applyThemeClass
 src/utils/tip-fees.ts  fn hasTipFee, tipFeeUsd, tipRecipientUsd, splitDesoTip, splitUsdcTip
 src/utils/types.ts  UNDECRYPTED_PLACEHOLDER | fn updateConv
 src/utils/usdc-balance.ts  fn fetchUsdcBalance, invalidateUsdcBalanceCache, usdcBaseUnitsToUsd, usdToUsdcBaseUnits, toHexUint256
