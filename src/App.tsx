@@ -71,6 +71,7 @@ import {
 } from "./services/cache.service";
 import { clearDecryptionCaches } from "./services/conversations.service";
 import { useRedirectFlow } from "./utils/safe-login";
+import { applyThemeClass, isAppThemePath } from "./utils/theme";
 
 configure({
   identityURI: import.meta.env.VITE_IDENTITY_URL,
@@ -379,17 +380,29 @@ function App() {
       });
   }, []);
 
-  const { appUser, isLoadingUser, bugReportError, feedbackModalOpen } =
+  const { appUser, isLoadingUser, bugReportError, feedbackModalOpen, theme } =
     useStore(
       useShallow((s) => ({
         appUser: s.appUser,
         isLoadingUser: s.isLoadingUser,
         bugReportError: s.bugReportError,
         feedbackModalOpen: s.feedbackModalOpen,
+        theme: s.theme,
       }))
     );
   const path = window.location.pathname;
   const splashRemovedRef = useRef(false);
+
+  // Keep <html> in sync with the saved theme. Only the in-app shell honors the
+  // preference; public/marketing routes always render dark (matching the brand
+  // site), so force dark unless a logged-in user is on an app route. The inline
+  // script in index.html handles the very first paint; this covers state
+  // changes (login, toggle) and corrects any direct deep-link into a route.
+  const appThemed = !!appUser && isAppThemePath(path);
+  const effectiveTheme = appThemed ? theme : "dark";
+  useEffect(() => {
+    applyThemeClass(effectiveTheme);
+  }, [effectiveTheme]);
 
   // Remove splash once content is ready (not during loading)
   const isJoinRoute = path === "/join" || path.startsWith("/join/");
@@ -440,7 +453,7 @@ function App() {
   // instead of flashing a blank white screen on slow connections.
   const routeFallback = (
     <div className="App flex items-center justify-center">
-      <Loader2 className="w-11 h-11 animate-spin text-[#34F080]" />
+      <Loader2 className="w-11 h-11 animate-spin text-brand" />
     </div>
   );
 
@@ -591,7 +604,7 @@ function App() {
   if (isLoadingUser && !appUser) {
     return (
       <div className="App flex items-center justify-center">
-        <Loader2 className="w-11 h-11 animate-spin text-[#34F080]" />
+        <Loader2 className="w-11 h-11 animate-spin text-brand" />
       </div>
     );
   }
@@ -606,7 +619,7 @@ function App() {
           </section>
           <InstallPrompt />
           <SwUpdatePrompt />
-          <Toaster position="top-right" theme="dark" />
+          <Toaster position="top-right" theme={effectiveTheme} />
           {feedbackModalOpen ? (
             <Suspense fallback={null}>
               <LazyFeedbackModal />

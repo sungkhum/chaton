@@ -141,7 +141,7 @@ export const TipPills = ({
       >
         <span
           className={`font-semibold text-[11px] tabular-nums ${
-            hasUsdc ? "text-[#34F080]" : "text-[#2775ca]"
+            hasUsdc ? "text-brand" : "text-[#2775ca]"
           }`}
         >
           {usdTotal ?? "..."}
@@ -166,7 +166,7 @@ export const TipPills = ({
         {tipperCount > 3 && (
           <span
             className={`text-[10px] ${
-              hasUsdc ? "text-[#34F080]/60" : "text-[#2775ca]/60"
+              hasUsdc ? "text-brand/60" : "text-[#2775ca]/60"
             }`}
           >
             +{tipperCount - 3}
@@ -193,12 +193,12 @@ export const TipPills = ({
           return (
             <div
               ref={popupRef}
-              className="absolute bottom-full mb-1 left-0 right-auto z-20 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg py-1.5 min-w-[180px] max-w-[calc(100vw-24px)] max-h-[200px] overflow-y-auto"
+              className="absolute bottom-full mb-1 left-0 right-auto z-20 bg-surface-raised border border-ink/10 rounded-xl shadow-lg py-1.5 min-w-[180px] max-w-[calc(100vw-24px)] max-h-[200px] overflow-y-auto"
             >
-              <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+              <div className="px-3 py-1 text-[10px] font-semibold text-fg-500 uppercase tracking-wider flex items-center gap-1">
                 <CircleDollarSign
                   className={`w-3 h-3 ${
-                    hasUsdc ? "text-[#34F080]" : "text-[#2775ca]"
+                    hasUsdc ? "text-brand" : "text-[#2775ca]"
                   }`}
                 />{" "}
                 Tips
@@ -217,7 +217,7 @@ export const TipPills = ({
                 return (
                   <div
                     key={pk}
-                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/5"
+                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-ink/5"
                   >
                     <MessagingDisplayAvatar
                       publicKey={pk}
@@ -226,18 +226,18 @@ export const TipPills = ({
                       diameter={24}
                       disableLink
                     />
-                    <span className="text-sm text-gray-200 truncate">
+                    <span className="text-sm text-fg-200 truncate">
                       {username || `${pk.slice(0, 8)}...`}
                     </span>
                     <span
                       className={`text-xs font-semibold ml-auto ${
-                        hasUsdc ? "text-[#34F080]" : "text-[#2775ca]"
+                        hasUsdc ? "text-brand" : "text-[#2775ca]"
                       }`}
                     >
                       {parts.join(" + ")}
                     </span>
                     {pk === currentUserKey && (
-                      <span className="text-[10px] text-[#34F080]">you</span>
+                      <span className="text-[10px] text-brand">you</span>
                     )}
                   </div>
                 );

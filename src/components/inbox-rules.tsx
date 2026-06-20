@@ -329,18 +329,18 @@ export function InboxRules() {
         role="switch"
         aria-checked={showToggleOn}
         aria-label="Inbox Rules"
-        className="flex items-center justify-between w-full py-3 px-3 rounded-lg transition-colors disabled:opacity-50 text-gray-400 hover:text-white hover:bg-white/[0.06] cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
+        className="flex items-center justify-between w-full py-3 px-3 rounded-lg transition-colors disabled:opacity-50 text-fg-400 hover:text-ink hover:bg-ink/[0.06] cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
       >
         <div className="flex items-center">
           <ShieldCheck
             className={`mr-3 w-[18px] h-[18px] ${
-              showToggleOn ? "text-[#34F080]" : ""
+              showToggleOn ? "text-brand" : ""
             }`}
           />
           <div className="flex flex-col items-start">
             <span className="text-[14px]">Inbox Rules</span>
             {showToggleOn && !editing && !confirmDisable && (
-              <span className="text-[11px] text-[#34F080]/70 tabular-nums">
+              <span className="text-[11px] text-brand/70 tabular-nums">
                 {isEnabled && dmPriceUsdCents && dmPriceUsdCents > 0
                   ? `${formatPriceCents(dmPriceUsdCents)}/msg`
                   : "Filtering active"}
@@ -350,11 +350,11 @@ export function InboxRules() {
         </div>
 
         {loading ? (
-          <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+          <Loader2 className="w-4 h-4 animate-spin text-fg-500" />
         ) : (
           <div
             className={`w-9 h-5 rounded-full transition-colors relative ${
-              showToggleOn ? "bg-[#34F080]" : "bg-white/20"
+              showToggleOn ? "bg-[#34F080]" : "bg-ink/20"
             }`}
           >
             <div
@@ -374,7 +374,7 @@ export function InboxRules() {
               syncFormFromState();
               setEditing(true);
             }}
-            className="flex items-center gap-1.5 text-[12px] text-gray-400 hover:text-white transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50 rounded"
+            className="flex items-center gap-1.5 text-[12px] text-fg-400 hover:text-ink transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50 rounded"
           >
             Edit rules
           </button>
@@ -385,7 +385,7 @@ export function InboxRules() {
       {confirmDisable && (
         <div className="px-3 pb-3">
           <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-            <p className="text-xs text-gray-300 mb-2">
+            <p className="text-xs text-fg-300 mb-2">
               Disable inbox rules? Anyone will be able to message you for free.
             </p>
             <div className="flex gap-2">
@@ -398,7 +398,7 @@ export function InboxRules() {
               </button>
               <button
                 onClick={() => setConfirmDisable(false)}
-                className="px-4 text-xs text-gray-500 hover:text-white transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50 rounded"
+                className="px-4 text-xs text-fg-500 hover:text-ink transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50 rounded"
               >
                 Keep
               </button>
@@ -410,19 +410,19 @@ export function InboxRules() {
       {/* Editing form */}
       {editing && (
         <div className="px-3 pb-3 space-y-4">
-          <p className="text-[11px] text-gray-500 leading-relaxed">
+          <p className="text-[11px] text-fg-500 leading-relaxed">
             These rules only apply to new conversations.
           </p>
 
           {/* Price slider */}
           <div>
             <div className="flex items-baseline justify-between mb-2">
-              <label className="text-[11px] text-gray-500 uppercase tracking-wide">
+              <label className="text-[11px] text-fg-500 uppercase tracking-wide">
                 Price for everyone else
               </label>
               {editingPrice ? (
                 <div className="flex items-baseline gap-0.5">
-                  <span className="text-sm text-gray-500">$</span>
+                  <span className="text-sm text-fg-500">$</span>
                   <input
                     ref={priceInputRef}
                     type="number"
@@ -436,21 +436,21 @@ export function InboxRules() {
                       if (e.key === "Enter") commitPriceInput();
                       if (e.key === "Escape") setEditingPrice(false);
                     }}
-                    className="w-16 bg-white/5 border border-[#34F080]/50 rounded px-1.5 py-0.5 text-sm text-[#34F080] font-medium outline-none text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-16 bg-ink/5 border border-[#34F080]/50 rounded px-1.5 py-0.5 text-sm text-brand font-medium outline-none text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     aria-label="Custom price in dollars"
                   />
-                  <span className="text-gray-500 text-xs">/msg</span>
+                  <span className="text-fg-500 text-xs">/msg</span>
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={startEditingPrice}
-                  className="text-sm font-medium text-[#34F080] hover:text-[#2dd06e] transition-colors border-b border-dashed border-[#34F080]/30 hover:border-[#34F080]/60 outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50 rounded-sm"
+                  className="text-sm font-medium text-brand hover:text-[#2dd06e] transition-colors border-b border-dashed border-[#34F080]/30 hover:border-[#34F080]/60 outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50 rounded-sm"
                   title="Click to enter a custom amount"
                 >
                   {formatPriceCents(priceCents)}
                   {priceCents > 0 && (
-                    <span className="text-gray-500 font-normal">/msg</span>
+                    <span className="text-fg-500 font-normal">/msg</span>
                   )}
                 </button>
               )}
@@ -469,7 +469,7 @@ export function InboxRules() {
           </div>
 
           {/* Free pass sub-section */}
-          <div className="border-t border-white/[0.06] pt-3">
+          <div className="border-t border-ink/[0.06] pt-3">
             <button
               type="button"
               onClick={() => setFreePassEnabled((v) => !v)}
@@ -478,10 +478,10 @@ export function InboxRules() {
               aria-label={freePassLabel}
               className="flex items-center justify-between w-full outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50 rounded"
             >
-              <span className="text-[13px] text-gray-300">{freePassLabel}</span>
+              <span className="text-[13px] text-fg-300">{freePassLabel}</span>
               <div
                 className={`w-9 h-5 rounded-full transition-colors relative ${
-                  freePassEnabled ? "bg-[#34F080]" : "bg-white/20"
+                  freePassEnabled ? "bg-[#34F080]" : "bg-ink/20"
                 }`}
               >
                 <div
@@ -503,12 +503,12 @@ export function InboxRules() {
                   aria-label="Require DeSo profile"
                   className="flex items-center justify-between w-full cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50 rounded"
                 >
-                  <span className="text-[13px] text-gray-300">
+                  <span className="text-[13px] text-fg-300">
                     Require DeSo profile
                   </span>
                   <div
                     className={`w-9 h-5 rounded-full transition-colors relative ${
-                      requireProfile ? "bg-[#34F080]" : "bg-white/20"
+                      requireProfile ? "bg-[#34F080]" : "bg-ink/20"
                     }`}
                   >
                     <div
@@ -522,13 +522,13 @@ export function InboxRules() {
                 {/* Balance slider */}
                 <div>
                   <div className="flex items-baseline justify-between mb-2">
-                    <label className="text-[11px] text-gray-500 uppercase tracking-wide">
+                    <label className="text-[11px] text-fg-500 uppercase tracking-wide">
                       Min DESO balance
                     </label>
-                    <span className="text-sm font-medium text-[#34F080] tabular-nums">
+                    <span className="text-sm font-medium text-brand tabular-nums">
                       {formatBalanceNanos(BALANCE_STOPS[balanceStopIndex] ?? 0)}
                       {(BALANCE_STOPS[balanceStopIndex] ?? 0) > 0 && (
-                        <span className="text-gray-500 font-normal"> DESO</span>
+                        <span className="text-fg-500 font-normal"> DESO</span>
                       )}
                     </span>
                   </div>
@@ -541,7 +541,7 @@ export function InboxRules() {
                   />
                 </div>
 
-                <p className="text-[10px] text-gray-500 leading-relaxed">
+                <p className="text-[10px] text-fg-500 leading-relaxed">
                   Senders must meet all enabled criteria.
                 </p>
               </div>
@@ -549,7 +549,7 @@ export function InboxRules() {
           </div>
 
           {/* Dynamic summary */}
-          <p className="text-[11px] text-gray-500 leading-relaxed">
+          <p className="text-[11px] text-fg-500 leading-relaxed">
             {summaryText}
           </p>
 
@@ -565,7 +565,7 @@ export function InboxRules() {
             <button
               onClick={handleCancel}
               disabled={loading}
-              className="px-4 text-sm text-gray-500 hover:text-white transition-colors disabled:opacity-50 outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50 rounded"
+              className="px-4 text-sm text-fg-500 hover:text-ink transition-colors disabled:opacity-50 outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50 rounded"
             >
               Cancel
             </button>

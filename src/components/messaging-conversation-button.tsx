@@ -7,17 +7,17 @@ export const MessagingConversationButton: FC<{
   const [isSending, setIsSending] = useState(false);
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-3 text-white">
+      <h2 className="text-2xl font-bold mb-3 text-ink">
         Awesome, we're ready!
       </h2>
-      <p className="text-lg mb-5 text-gray-400">
+      <p className="text-lg mb-5 text-fg-400">
         The app will generate a test conversation for you.
         <br />
         Just press the button below to continue.
       </p>
 
       <button
-        className="glass-btn-primary text-[#34F080] font-bold rounded-full text-lg px-6 py-3 cursor-pointer transition-colors"
+        className="glass-btn-primary text-brand font-bold rounded-full text-lg px-6 py-3 cursor-pointer transition-colors"
         onClick={async () => {
           setIsSending(true);
           try {

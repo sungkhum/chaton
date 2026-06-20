@@ -16,10 +16,10 @@ export function FullEmojiPicker({
         onEmojiSelect(emoji.emoji);
         onClose();
       }}
-      className="w-[352px] h-[435px] max-w-full max-h-full flex flex-col overflow-hidden bg-[#0a1628] rounded-xl md:border md:border-blue-800/40 [--frimousse-bg:transparent] [--frimousse-border-color:theme(colors.blue.800/40%)]"
+      className="w-[352px] h-[435px] max-w-full max-h-full flex flex-col overflow-hidden bg-surface-raised rounded-xl md:border md:border-ink/10 [--frimousse-bg:transparent] [--frimousse-border-color:theme(colors.blue.800/40%)]"
     >
       <EmojiPicker.Search
-        className="mx-2 mt-2 mb-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-white/30 outline-none focus:border-[#34F080]/50"
+        className="mx-2 mt-2 mb-1 px-3 py-2 bg-ink/5 border border-ink/10 rounded-lg text-ink text-sm placeholder:text-ink/30 outline-none focus:border-[#34F080]/50"
         placeholder="Search emoji..."
         autoFocus
       />
@@ -27,7 +27,7 @@ export function FullEmojiPicker({
         <EmojiPicker.Loading className="flex items-center justify-center h-full text-blue-400/40 text-sm">
           Loading...
         </EmojiPicker.Loading>
-        <EmojiPicker.Empty className="flex items-center justify-center h-full text-white/40 text-sm">
+        <EmojiPicker.Empty className="flex items-center justify-center h-full text-ink/40 text-sm">
           No emoji found
         </EmojiPicker.Empty>
         <EmojiPicker.List
@@ -40,7 +40,7 @@ export function FullEmojiPicker({
                 {...props}
                 className={`${
                   cls || ""
-                } flex items-center justify-center w-9 h-9 rounded-md text-xl hover:bg-white/10 cursor-pointer transition-colors`}
+                } flex items-center justify-center w-9 h-9 rounded-md text-xl hover:bg-ink/10 cursor-pointer transition-colors`}
               >
                 {emojiData.emoji}
               </button>
@@ -50,7 +50,7 @@ export function FullEmojiPicker({
                 {...props}
                 className={`${
                   cls || ""
-                } px-2 py-1.5 text-xs font-semibold text-white/40 sticky top-0 bg-[#0a1628] z-10`}
+                } px-2 py-1.5 text-xs font-semibold text-ink/40 sticky top-0 bg-surface-raised z-10`}
               >
                 {category.label}
               </div>

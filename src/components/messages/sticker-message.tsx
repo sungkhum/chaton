@@ -28,7 +28,7 @@ export const StickerMessage = ({
     >
       {!loaded && (
         <div
-          className="absolute inset-0 bg-white/10 animate-pulse rounded-lg"
+          className="absolute inset-0 bg-ink/10 animate-pulse rounded-lg"
           style={aspectRatio ? { aspectRatio } : { minHeight: 100 }}
         />
       )}

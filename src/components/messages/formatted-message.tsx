@@ -313,7 +313,7 @@ export function FormattedMessage({
             e.stopPropagation();
             setExpanded((v) => !v);
           }}
-          className="text-[12px] text-[#34F080] mt-1 cursor-pointer hover:text-[#34F080]/80 transition-colors"
+          className="text-[12px] text-brand mt-1 cursor-pointer hover:text-brand/80 transition-colors"
         >
           {expanded ? "Show less" : "Show more"}
         </button>

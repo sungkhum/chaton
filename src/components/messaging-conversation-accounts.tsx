@@ -77,7 +77,7 @@ const PreviewText = memo(function PreviewText({
 }) {
   if (msg.DecryptedMessage === UNDECRYPTED_PLACEHOLDER) {
     return (
-      <span className="inline-block h-3.5 w-32 rounded bg-white/[0.06] animate-pulse" />
+      <span className="inline-block h-3.5 w-32 rounded bg-ink/[0.06] animate-pulse" />
     );
   }
   if (
@@ -85,14 +85,14 @@ const PreviewText = memo(function PreviewText({
     (msg.DecryptedMessage.length >= 20 &&
       /^[0-9a-f]+$/i.test(msg.DecryptedMessage))
   ) {
-    return <span className="text-gray-600 italic">Unable to load</span>;
+    return <span className="text-fg-600 italic">Unable to load</span>;
   }
 
   const parsed = parseMessageType(msg);
   const text = parsed.text?.slice(0, 60);
   const iconClass = "inline-block size-3.5 mr-1 -mt-px opacity-60";
   const namePrefix = senderName ? (
-    <span className="text-white/60">{senderName}: </span>
+    <span className="text-ink/60">{senderName}: </span>
   ) : null;
 
   switch (parsed.type) {
@@ -163,7 +163,7 @@ const PreviewText = memo(function PreviewText({
     }
     case "system":
       return (
-        <span className="italic text-white/40">{text || "System message"}</span>
+        <span className="italic text-ink/40">{text || "System message"}</span>
       );
     default:
       return (
@@ -278,8 +278,8 @@ const ConversationRow = memo(function ConversationRow({
     <div>
       <div
         onClick={() => onClick(convKey)}
-        className={`px-4 py-3 ${selectedConversationStyle} hover:bg-white/[0.04] cursor-pointer flex items-center gap-3 transition-colors ${
-          hasUnread && !isSelected ? "bg-white/[0.03]" : ""
+        className={`px-4 py-3 ${selectedConversationStyle} hover:bg-ink/[0.04] cursor-pointer flex items-center gap-3 transition-colors ${
+          hasUnread && !isSelected ? "bg-ink/[0.03]" : ""
         }`}
       >
         <MessagingDisplayAvatar
@@ -301,25 +301,25 @@ const ConversationRow = memo(function ConversationRow({
               {isGroupChat && (
                 <Users
                   className={`w-3.5 h-3.5 shrink-0 ${
-                    hasUnread ? "text-gray-300" : "text-gray-400"
+                    hasUnread ? "text-fg-300" : "text-fg-400"
                   }`}
                 />
               )}
               <span
                 className={`truncate text-sm ${
                   hasUnread
-                    ? "text-white font-bold"
-                    : "text-gray-400 font-medium"
+                    ? "text-ink font-bold"
+                    : "text-fg-400 font-medium"
                 }`}
               >
                 {displayName}
               </span>
             </div>
             <div className="flex items-center gap-1 shrink-0 ml-2">
-              {isMuted && <BellOff className="w-3.5 h-3.5 text-gray-500" />}
+              {isMuted && <BellOff className="w-3.5 h-3.5 text-fg-500" />}
               <span
                 className={`text-xs tabular-nums ${
-                  hasUnread ? "text-[#34F080] font-bold" : "text-gray-500"
+                  hasUnread ? "text-brand font-bold" : "text-fg-500"
                 }`}
               >
                 {timestamp}
@@ -329,7 +329,7 @@ const ConversationRow = memo(function ConversationRow({
           <div className="flex items-center justify-between">
             <p
               className={`truncate text-sm ${
-                hasUnread ? "text-white/80 font-medium" : "text-gray-500"
+                hasUnread ? "text-ink/80 font-medium" : "text-fg-500"
               }`}
             >
               {conversation.messages[0] ? (
@@ -364,7 +364,7 @@ const ConversationRow = memo(function ConversationRow({
               {highlights?.hasReaction && (
                 <span className="leading-none" aria-label="New reactions">
                   <Heart
-                    className="w-4 h-4 text-[#34F080] drop-shadow-[0_0_6px_rgba(52,240,128,0.5)]"
+                    className="w-4 h-4 text-brand drop-shadow-[0_0_6px_rgba(52,240,128,0.5)]"
                     strokeWidth={2}
                   />
                 </span>
@@ -386,7 +386,7 @@ const ConversationRow = memo(function ConversationRow({
           </div>
         </div>
       </div>
-      <div className="ml-[76px] border-b border-white/5" />
+      <div className="ml-[76px] border-b border-ink/5" />
     </div>
   );
 });
@@ -564,7 +564,7 @@ export const MessagingConversationAccount: FC<{
       {/* Search bar for filtering existing conversations */}
       <div className="m-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg-500 pointer-events-none" />
           <input
             ref={searchInputRef}
             type="text"
@@ -572,14 +572,14 @@ export const MessagingConversationAccount: FC<{
             spellCheck={false}
             value={searchQuery}
             onChange={(e) => onSearchQueryChange?.(e.target.value)}
-            className="w-full rounded-xl py-2 pl-9 pr-3 text-sm text-white placeholder:text-gray-500 glass-search hover:border-[#34F080]/30 focus:border-[#34F080]/50 outline-none transition-colors"
+            className="w-full rounded-xl py-2 pl-9 pr-3 text-sm text-ink placeholder:text-fg-500 glass-search hover:border-[#34F080]/30 focus:border-[#34F080]/50 outline-none transition-colors"
           />
           {searchQuery && (
             <button
               onClick={() => onSearchQueryChange?.("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-white/10 cursor-pointer"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-ink/10 cursor-pointer"
             >
-              <X className="w-3.5 h-3.5 text-gray-400" />
+              <X className="w-3.5 h-3.5 text-fg-400" />
             </button>
           )}
         </div>
@@ -599,13 +599,13 @@ export const MessagingConversationAccount: FC<{
         ) : (
           <>
             {/* Tab Header */}
-            <div className="flex border-b border-white/10">
+            <div className="flex border-b border-ink/10">
               <button
                 onClick={() => switchTab("chats")}
                 className={`flex-1 py-3 text-sm font-bold transition-colors cursor-pointer border-b-2 ${
                   activeTab === "chats"
-                    ? "border-[#34F080] text-[#34F080]"
-                    : "border-transparent text-gray-400 hover:text-gray-200"
+                    ? "border-[#34F080] text-brand"
+                    : "border-transparent text-fg-400 hover:text-fg-200"
                 }`}
               >
                 Chats
@@ -614,8 +614,8 @@ export const MessagingConversationAccount: FC<{
                 onClick={() => switchTab("requests")}
                 className={`flex-1 py-3 text-sm font-bold transition-colors cursor-pointer border-b-2 relative ${
                   activeTab === "requests"
-                    ? "border-[#34F080] text-[#34F080]"
-                    : "border-transparent text-gray-400 hover:text-gray-200"
+                    ? "border-[#34F080] text-brand"
+                    : "border-transparent text-fg-400 hover:text-fg-200"
                 }`}
               >
                 Requests
@@ -629,8 +629,8 @@ export const MessagingConversationAccount: FC<{
                 onClick={() => switchTab("community")}
                 className={`flex-1 py-3 text-sm font-bold transition-colors cursor-pointer border-b-2 ${
                   activeTab === "community"
-                    ? "border-[#34F080] text-[#34F080]"
-                    : "border-transparent text-gray-400 hover:text-gray-200"
+                    ? "border-[#34F080] text-brand"
+                    : "border-transparent text-fg-400 hover:text-fg-200"
                 }`}
               >
                 Community
@@ -668,24 +668,24 @@ export const MessagingConversationAccount: FC<{
                       <div>
                         <button
                           onClick={() => setArchiveExpanded(!archiveExpanded)}
-                          className="w-full px-4 py-3 flex items-center gap-2.5 text-gray-400 hover:bg-white/[0.03] cursor-pointer transition-colors border-b border-white/5"
+                          className="w-full px-4 py-3 flex items-center gap-2.5 text-fg-400 hover:bg-ink/[0.03] cursor-pointer transition-colors border-b border-ink/5"
                         >
-                          <Archive className="w-4 h-4 text-gray-500" />
+                          <Archive className="w-4 h-4 text-fg-500" />
                           <span className="text-sm font-medium flex-1 text-left">
                             Archived Chats
                           </span>
-                          <span className="text-xs text-gray-500 mr-1">
+                          <span className="text-xs text-fg-500 mr-1">
                             {archivedCount}
                           </span>
                           {archiveExpanded ? (
-                            <ChevronDown className="w-4 h-4 text-gray-500" />
+                            <ChevronDown className="w-4 h-4 text-fg-500" />
                           ) : (
-                            <ChevronRight className="w-4 h-4 text-gray-500" />
+                            <ChevronRight className="w-4 h-4 text-fg-500" />
                           )}
                         </button>
 
                         {archiveExpanded && (
-                          <div className="bg-white/[0.01] border-b border-white/5 max-h-[280px] overflow-y-auto custom-scrollbar">
+                          <div className="bg-ink/[0.01] border-b border-ink/5 max-h-[280px] overflow-y-auto custom-scrollbar">
                             {sortConversations(
                               Object.entries(archivedConversations),
                               selectedConversationPublicKey
@@ -718,7 +718,7 @@ export const MessagingConversationAccount: FC<{
 
                               return (
                                 <div key={`archived-thread-${key}`}>
-                                  <div className="px-4 py-3 hover:bg-white/5 transition-colors">
+                                  <div className="px-4 py-3 hover:bg-ink/5 transition-colors">
                                     <div
                                       onClick={() => onClick(key)}
                                       className="flex items-center gap-3 cursor-pointer"
@@ -745,18 +745,18 @@ export const MessagingConversationAccount: FC<{
                                         <div className="flex items-center justify-between mb-0.5">
                                           <div className="flex items-center gap-1 min-w-0">
                                             {isGroupChat && (
-                                              <Users className="w-3.5 h-3.5 shrink-0 text-gray-500" />
+                                              <Users className="w-3.5 h-3.5 shrink-0 text-fg-500" />
                                             )}
-                                            <span className="truncate text-sm text-gray-400 font-medium">
+                                            <span className="truncate text-sm text-fg-400 font-medium">
                                               {displayName}
                                             </span>
                                           </div>
-                                          <span className="text-xs text-gray-500 shrink-0 ml-2">
+                                          <span className="text-xs text-fg-500 shrink-0 ml-2">
                                             {timestamp}
                                           </span>
                                         </div>
                                         {value.messages[0] && (
-                                          <p className="truncate text-sm text-gray-500">
+                                          <p className="truncate text-sm text-fg-500">
                                             <PreviewText
                                               msg={value.messages[0]}
                                               senderName={
@@ -788,14 +788,14 @@ export const MessagingConversationAccount: FC<{
                                             );
                                           }
                                         }}
-                                        className="flex items-center gap-1 min-h-[36px] px-3 py-1.5 rounded-lg bg-[#34F080]/15 text-[#34F080] text-xs font-bold hover:bg-[#34F080]/25 cursor-pointer transition-colors"
+                                        className="flex items-center gap-1 min-h-[36px] px-3 py-1.5 rounded-lg bg-[#34F080]/15 text-brand text-xs font-bold hover:bg-[#34F080]/25 cursor-pointer transition-colors"
                                       >
                                         <RotateCcw className="w-3.5 h-3.5" />
                                         {isGroupChat ? "Rejoin" : "Unarchive"}
                                       </button>
                                     </div>
                                   </div>
-                                  <div className="ml-[72px] border-b border-white/5" />
+                                  <div className="ml-[72px] border-b border-ink/5" />
                                 </div>
                               );
                             })}
@@ -807,7 +807,7 @@ export const MessagingConversationAccount: FC<{
                     {/* Regular chat list */}
                     {conversationsLoading && chatCount === 0 ? (
                       <div className="px-4 pt-4">
-                        <p className="text-gray-500 text-sm mb-3 text-center">
+                        <p className="text-fg-500 text-sm mb-3 text-center">
                           Loading conversations...
                         </p>
                         {Array.from({ length: 8 }).map((_, i) => (
@@ -816,22 +816,22 @@ export const MessagingConversationAccount: FC<{
                             className="flex items-center gap-3 py-3"
                             style={{ height: 73 }}
                           >
-                            <span className="w-11 h-11 rounded-full bg-white/[0.06] animate-pulse shrink-0" />
+                            <span className="w-11 h-11 rounded-full bg-ink/[0.06] animate-pulse shrink-0" />
                             <div className="flex-1 min-w-0">
-                              <span className="block h-3.5 w-24 rounded bg-white/[0.06] animate-pulse mb-2" />
-                              <span className="block h-3 w-40 rounded bg-white/[0.06] animate-pulse" />
+                              <span className="block h-3.5 w-24 rounded bg-ink/[0.06] animate-pulse mb-2" />
+                              <span className="block h-3 w-40 rounded bg-ink/[0.06] animate-pulse" />
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : conversationsError ? (
                       <div className="flex flex-col items-center justify-center px-6 pt-16 text-center">
-                        <p className="text-gray-400 text-sm mb-4">
+                        <p className="text-fg-400 text-sm mb-4">
                           {conversationsError}
                         </p>
                         <button
                           onClick={onRetryLoad}
-                          className="glass-btn-primary text-[#34F080] font-bold rounded-full py-2.5 px-6 text-sm cursor-pointer transition-colors"
+                          className="glass-btn-primary text-brand font-bold rounded-full py-2.5 px-6 text-sm cursor-pointer transition-colors"
                         >
                           Retry
                         </button>
@@ -839,17 +839,17 @@ export const MessagingConversationAccount: FC<{
                     ) : chatCount === 0 && archivedCount === 0 ? (
                       <div className="flex flex-col items-center justify-center px-6 pt-16 text-center">
                         <div className="w-16 h-16 rounded-full bg-[#34F080]/10 flex items-center justify-center mb-4">
-                          <MessageSquarePlus className="w-8 h-8 text-[#34F080]" />
+                          <MessageSquarePlus className="w-8 h-8 text-brand" />
                         </div>
-                        <h3 className="text-white font-semibold text-base mb-1.5">
+                        <h3 className="text-ink font-semibold text-base mb-1.5">
                           No conversations yet
                         </h3>
-                        <p className="text-gray-500 text-sm mb-5 max-w-[220px]">
+                        <p className="text-fg-500 text-sm mb-5 max-w-[220px]">
                           Start chatting with someone on DeSo or Ethereum
                         </p>
                         <button
                           onClick={() => setComposeOpen(true)}
-                          className="glass-btn-primary text-[#34F080] font-bold rounded-full py-2.5 px-6 text-sm cursor-pointer transition-colors"
+                          className="glass-btn-primary text-brand font-bold rounded-full py-2.5 px-6 text-sm cursor-pointer transition-colors"
                         >
                           Start a conversation
                         </button>
@@ -934,7 +934,7 @@ export const MessagingConversationAccount: FC<{
                       <div>
                         <button
                           onClick={() => setRequestSubView("list")}
-                          className="w-full px-4 py-3 flex items-center gap-2 text-gray-300 hover:bg-white/5 cursor-pointer transition-colors border-b border-white/10"
+                          className="w-full px-4 py-3 flex items-center gap-2 text-fg-300 hover:bg-ink/5 cursor-pointer transition-colors border-b border-ink/10"
                         >
                           <ArrowLeft className="w-4 h-4" />
                           <span className="text-sm font-bold">
@@ -942,7 +942,7 @@ export const MessagingConversationAccount: FC<{
                           </span>
                         </button>
                         {blockedCount === 0 ? (
-                          <div className="text-gray-500 text-sm text-center mt-8 px-6">
+                          <div className="text-fg-500 text-sm text-center mt-8 px-6">
                             No blocked users
                           </div>
                         ) : (
@@ -961,22 +961,22 @@ export const MessagingConversationAccount: FC<{
                                       publicKey={pubKey}
                                       diameter={44}
                                     />
-                                    <span className="flex-1 truncate text-sm text-gray-300 font-medium">
+                                    <span className="flex-1 truncate text-sm text-fg-300 font-medium">
                                       {displayName}
                                     </span>
                                     <button
                                       onClick={() => onUnblock(pubKey)}
-                                      className="flex items-center gap-1 min-h-[36px] px-3 py-1.5 rounded-lg bg-white/5 text-gray-400 text-xs font-bold hover:bg-white/10 hover:text-white cursor-pointer transition-colors shrink-0"
+                                      className="flex items-center gap-1 min-h-[36px] px-3 py-1.5 rounded-lg bg-ink/5 text-fg-400 text-xs font-bold hover:bg-ink/10 hover:text-ink cursor-pointer transition-colors shrink-0"
                                     >
                                       <ShieldOff className="w-3.5 h-3.5" />
                                       Unblock
                                     </button>
                                   </div>
-                                  <div className="ml-[68px] border-b border-white/5" />
+                                  <div className="ml-[68px] border-b border-ink/5" />
                                 </div>
                               );
                             })}
-                            <p className="text-gray-600 text-xs text-center mt-4 px-6">
+                            <p className="text-fg-600 text-xs text-center mt-4 px-6">
                               Unblocking lets them message you again.
                             </p>
                           </>
@@ -988,7 +988,7 @@ export const MessagingConversationAccount: FC<{
                       <div>
                         <button
                           onClick={() => setRequestSubView("list")}
-                          className="w-full px-4 py-3 flex items-center gap-2 text-gray-300 hover:bg-white/5 cursor-pointer transition-colors border-b border-white/10"
+                          className="w-full px-4 py-3 flex items-center gap-2 text-fg-300 hover:bg-ink/5 cursor-pointer transition-colors border-b border-ink/10"
                         >
                           <ArrowLeft className="w-4 h-4" />
                           <span className="text-sm font-bold">
@@ -996,7 +996,7 @@ export const MessagingConversationAccount: FC<{
                           </span>
                         </button>
                         {dismissedCount === 0 ? (
-                          <div className="text-gray-500 text-sm text-center mt-8 px-6">
+                          <div className="text-fg-500 text-sm text-center mt-8 px-6">
                             No dismissed requests
                           </div>
                         ) : (
@@ -1015,22 +1015,22 @@ export const MessagingConversationAccount: FC<{
                                       publicKey={pubKey}
                                       diameter={44}
                                     />
-                                    <span className="flex-1 truncate text-sm text-gray-300 font-medium">
+                                    <span className="flex-1 truncate text-sm text-fg-300 font-medium">
                                       {displayName}
                                     </span>
                                     <button
                                       onClick={() => onUndismiss(pubKey)}
-                                      className="flex items-center gap-1 min-h-[36px] px-3 py-1.5 rounded-lg bg-[#34F080]/15 text-[#34F080] text-xs font-bold hover:bg-[#34F080]/25 cursor-pointer transition-colors shrink-0"
+                                      className="flex items-center gap-1 min-h-[36px] px-3 py-1.5 rounded-lg bg-[#34F080]/15 text-brand text-xs font-bold hover:bg-[#34F080]/25 cursor-pointer transition-colors shrink-0"
                                     >
                                       <RotateCcw className="w-3.5 h-3.5" />
                                       Undo
                                     </button>
                                   </div>
-                                  <div className="ml-[68px] border-b border-white/5" />
+                                  <div className="ml-[68px] border-b border-ink/5" />
                                 </div>
                               );
                             })}
-                            <p className="text-gray-600 text-xs text-center mt-4 px-6">
+                            <p className="text-fg-600 text-xs text-center mt-4 px-6">
                               Undoing moves the request back to your Requests
                               list.
                             </p>
@@ -1042,7 +1042,7 @@ export const MessagingConversationAccount: FC<{
                     {requestSubView === "list" && (
                       <>
                         {requestCount === 0 ? (
-                          <div className="text-gray-500 text-sm text-center mt-8 px-6">
+                          <div className="text-fg-500 text-sm text-center mt-8 px-6">
                             No message requests
                           </div>
                         ) : (
@@ -1084,7 +1084,7 @@ export const MessagingConversationAccount: FC<{
                             return (
                               <div key={`request-thread-${key}`}>
                                 <div
-                                  className={`px-4 py-3 ${selectedConversationStyle} hover:bg-white/[0.04] transition-colors`}
+                                  className={`px-4 py-3 ${selectedConversationStyle} hover:bg-ink/[0.04] transition-colors`}
                                 >
                                   <div
                                     onClick={() => onClick(key)}
@@ -1108,20 +1108,20 @@ export const MessagingConversationAccount: FC<{
                                     )}
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center justify-between mb-0.5">
-                                        <span className="truncate text-sm text-white font-semibold">
+                                        <span className="truncate text-sm text-ink font-semibold">
                                           {displayName}
                                         </span>
-                                        <span className="text-xs text-gray-500 shrink-0 ml-2">
+                                        <span className="text-xs text-fg-500 shrink-0 ml-2">
                                           {timestamp}
                                         </span>
                                       </div>
                                       {isGroup && ownerUsername ? (
-                                        <p className="truncate text-sm text-gray-500">
+                                        <p className="truncate text-sm text-fg-500">
                                           Added by @{ownerUsername}
                                         </p>
                                       ) : (
                                         value.messages[0] && (
-                                          <p className="truncate text-sm text-gray-500">
+                                          <p className="truncate text-sm text-fg-500">
                                             <PreviewText
                                               msg={value.messages[0]}
                                               usernameMap={
@@ -1141,7 +1141,7 @@ export const MessagingConversationAccount: FC<{
                                           e.stopPropagation();
                                           onAcceptGroup(key);
                                         }}
-                                        className="flex-1 flex items-center justify-center gap-1 min-h-[36px] py-1.5 rounded-lg bg-[#34F080]/15 text-[#34F080] text-xs font-bold hover:bg-[#34F080]/25 cursor-pointer transition-colors"
+                                        className="flex-1 flex items-center justify-center gap-1 min-h-[36px] py-1.5 rounded-lg bg-[#34F080]/15 text-brand text-xs font-bold hover:bg-[#34F080]/25 cursor-pointer transition-colors"
                                       >
                                         <Check className="w-3.5 h-3.5" />
                                         Accept
@@ -1151,7 +1151,7 @@ export const MessagingConversationAccount: FC<{
                                           e.stopPropagation();
                                           onLeaveGroup(key);
                                         }}
-                                        className="flex-1 flex items-center justify-center gap-1 min-h-[36px] py-1.5 rounded-lg bg-white/[0.03] text-gray-500 text-xs font-medium hover:bg-white/5 hover:text-gray-300 cursor-pointer transition-colors"
+                                        className="flex-1 flex items-center justify-center gap-1 min-h-[36px] py-1.5 rounded-lg bg-ink/[0.03] text-fg-500 text-xs font-medium hover:bg-ink/5 hover:text-fg-300 cursor-pointer transition-colors"
                                       >
                                         <LogOut className="w-3.5 h-3.5" />
                                         Leave
@@ -1164,7 +1164,7 @@ export const MessagingConversationAccount: FC<{
                                           e.stopPropagation();
                                           onAccept(key, publicKey);
                                         }}
-                                        className="flex-1 flex items-center justify-center gap-1 min-h-[36px] py-1.5 rounded-lg bg-[#34F080]/15 text-[#34F080] text-xs font-bold hover:bg-[#34F080]/25 cursor-pointer transition-colors"
+                                        className="flex-1 flex items-center justify-center gap-1 min-h-[36px] py-1.5 rounded-lg bg-[#34F080]/15 text-brand text-xs font-bold hover:bg-[#34F080]/25 cursor-pointer transition-colors"
                                       >
                                         <Check className="w-3.5 h-3.5" />
                                         Accept
@@ -1184,14 +1184,14 @@ export const MessagingConversationAccount: FC<{
                                           e.stopPropagation();
                                           onDismiss(key, publicKey);
                                         }}
-                                        className="flex-1 flex items-center justify-center min-h-[36px] py-1.5 rounded-lg bg-white/[0.03] text-gray-500 text-xs font-medium hover:bg-white/5 hover:text-gray-300 cursor-pointer transition-colors"
+                                        className="flex-1 flex items-center justify-center min-h-[36px] py-1.5 rounded-lg bg-ink/[0.03] text-fg-500 text-xs font-medium hover:bg-ink/5 hover:text-fg-300 cursor-pointer transition-colors"
                                       >
                                         Dismiss
                                       </button>
                                     </div>
                                   )}
                                 </div>
-                                <div className="ml-[76px] border-b border-white/5" />
+                                <div className="ml-[76px] border-b border-ink/5" />
                               </div>
                             );
                           })
@@ -1199,11 +1199,11 @@ export const MessagingConversationAccount: FC<{
 
                         {/* Footer links for blocked/dismissed */}
                         {(blockedCount > 0 || dismissedCount > 0) && (
-                          <div className="mt-4 mx-4 pt-4 border-t border-white/5 space-y-1 mb-4">
+                          <div className="mt-4 mx-4 pt-4 border-t border-ink/5 space-y-1 mb-4">
                             {blockedCount > 0 && (
                               <button
                                 onClick={() => setRequestSubView("blocked")}
-                                className="w-full flex items-center justify-between px-3 min-h-[44px] py-2.5 rounded-lg text-gray-500 text-sm hover:bg-white/5 hover:text-gray-300 cursor-pointer transition-colors"
+                                className="w-full flex items-center justify-between px-3 min-h-[44px] py-2.5 rounded-lg text-fg-500 text-sm hover:bg-ink/5 hover:text-fg-300 cursor-pointer transition-colors"
                               >
                                 <span>Blocked users ({blockedCount})</span>
                                 <ChevronRight className="w-4 h-4" />
@@ -1212,7 +1212,7 @@ export const MessagingConversationAccount: FC<{
                             {dismissedCount > 0 && (
                               <button
                                 onClick={() => setRequestSubView("dismissed")}
-                                className="w-full flex items-center justify-between px-3 min-h-[44px] py-2.5 rounded-lg text-gray-500 text-sm hover:bg-white/5 hover:text-gray-300 cursor-pointer transition-colors"
+                                className="w-full flex items-center justify-between px-3 min-h-[44px] py-2.5 rounded-lg text-fg-500 text-sm hover:bg-ink/5 hover:text-fg-300 cursor-pointer transition-colors"
                               >
                                 <span>
                                   Dismissed requests ({dismissedCount})
@@ -1276,7 +1276,7 @@ export const MessagingConversationAccount: FC<{
                 toast.success("Invite link copied!");
               }
             }}
-            className="pointer-events-auto flex items-center gap-2 px-4 py-3 rounded-full glass-invite hover:border-[#34F080]/40 hover:bg-[#34F080]/10 text-gray-400 hover:text-[#34F080] text-sm font-medium cursor-pointer transition-[border-color,background-color,color,transform] active:scale-[0.96]"
+            className="pointer-events-auto flex items-center gap-2 px-4 py-3 rounded-full glass-invite hover:border-[#34F080]/40 hover:bg-[#34F080]/10 text-fg-400 hover:text-brand text-sm font-medium cursor-pointer transition-[border-color,background-color,color,transform] active:scale-[0.96]"
           >
             <Share2 className="w-4 h-4" />
             <span>Invite Friends</span>
@@ -1291,8 +1291,8 @@ export const MessagingConversationAccount: FC<{
             }
             className="pointer-events-auto flex items-center gap-1.5 px-5 py-3 rounded-full glass-fab cursor-pointer transition-[border-color,box-shadow,transform] active:scale-[0.96] hover:border-[#34F080]/60 hover:shadow-[0_0_20px_rgba(52,240,128,0.2)] md:px-4 md:py-2.5"
           >
-            <Plus className="w-5 h-5 text-[#34F080]" strokeWidth={2.5} />
-            <span className="text-[#34F080] font-semibold text-[15px]">
+            <Plus className="w-5 h-5 text-brand" strokeWidth={2.5} />
+            <span className="text-brand font-semibold text-[15px]">
               New
             </span>
           </button>
@@ -1334,7 +1334,7 @@ export const MessagingGroupMembers: FC<{
 
       {hiddenMembersNum > 0 && (
         <div
-          className="-ml-2 rounded-full bg-[#141c2b] border border-white/10 text-gray-400 w-[25px] h-[25px] text-center text-[10px] font-black flex items-center justify-center"
+          className="-ml-2 rounded-full bg-surface-raised border border-ink/10 text-fg-400 w-[25px] h-[25px] text-center text-[10px] font-black flex items-center justify-center"
           title={`${hiddenMembersNum} members more in this group`}
         >
           +{hiddenMembersNum}
@@ -1350,7 +1350,7 @@ export const ETHSection: FC<{
   const ethAddress = identity.desoAddressToEthereumAddress(desoPublicKey);
 
   return (
-    <div className="relative inline-flex align-baseline font-sans text-[10px] font-bold uppercase center leading-none whitespace-nowrap py-1 px-2 rounded-lg select-none bg-white/5 text-gray-400 border border-white/10">
+    <div className="relative inline-flex align-baseline font-sans text-[10px] font-bold uppercase center leading-none whitespace-nowrap py-1 px-2 rounded-lg select-none bg-ink/5 text-fg-400 border border-ink/10">
       <span>
         ETH
         <i className="ml-1">{shortenLongWord(ethAddress, 3, 3)}</i>

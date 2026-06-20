@@ -183,7 +183,7 @@ export const CommunityTab: FC<{
       {/* Search bar */}
       <div className={fullPage ? "px-4 sm:px-6 pt-4 pb-3" : "px-4 pt-2 pb-3"}>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg-500 pointer-events-none" />
           <input
             type="text"
             placeholder="Search communities..."
@@ -191,17 +191,17 @@ export const CommunityTab: FC<{
             spellCheck={false}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={`w-full rounded-xl py-2 pl-9 pr-3 text-sm text-white placeholder:text-gray-500 bg-white/5 border border-white/8 hover:border-[#34F080]/30 focus:border-[#34F080]/50 outline-none transition-colors ${
+            className={`w-full rounded-xl py-2 pl-9 pr-3 text-sm text-ink placeholder:text-fg-500 bg-ink/5 border border-ink/8 hover:border-[#34F080]/30 focus:border-[#34F080]/50 outline-none transition-colors ${
               fullPage ? "sm:max-w-md" : ""
             }`}
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-white/10 cursor-pointer"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-ink/10 cursor-pointer"
               aria-label="Clear search"
             >
-              <X className="w-3.5 h-3.5 text-gray-400" />
+              <X className="w-3.5 h-3.5 text-fg-400" />
             </button>
           )}
         </div>
@@ -221,10 +221,10 @@ export const CommunityTab: FC<{
                 key={i}
                 className="flex items-center gap-3 py-3 animate-pulse"
               >
-                <div className="w-12 h-12 rounded-full bg-white/5 shrink-0" />
+                <div className="w-12 h-12 rounded-full bg-ink/5 shrink-0" />
                 <div className="flex-1 min-w-0 space-y-2">
-                  <div className="h-4 bg-white/5 rounded w-2/3" />
-                  <div className="h-3 bg-white/5 rounded w-1/2" />
+                  <div className="h-4 bg-ink/5 rounded w-2/3" />
+                  <div className="h-3 bg-ink/5 rounded w-1/2" />
                 </div>
               </div>
             ))}
@@ -234,10 +234,10 @@ export const CommunityTab: FC<{
         {/* Error state */}
         {!loading && error && (
           <div className="flex flex-col items-center justify-center px-6 pt-16 text-center">
-            <p className="text-gray-400 text-sm mb-3">{error}</p>
+            <p className="text-fg-400 text-sm mb-3">{error}</p>
             <button
               onClick={() => loadListings(false)}
-              className="flex items-center gap-1.5 text-[#34F080] text-sm font-medium hover:brightness-110 cursor-pointer"
+              className="flex items-center gap-1.5 text-brand text-sm font-medium hover:brightness-110 cursor-pointer"
             >
               <RefreshCw className="w-4 h-4" />
               Try again
@@ -249,12 +249,12 @@ export const CommunityTab: FC<{
         {!loading && !error && filteredListings.length === 0 && (
           <div className="flex flex-col items-center justify-center px-6 pt-16 text-center">
             <div className="w-16 h-16 rounded-full bg-[#34F080]/10 flex items-center justify-center mb-4">
-              <Users className="w-8 h-8 text-[#34F080]" />
+              <Users className="w-8 h-8 text-brand" />
             </div>
-            <h3 className="text-white font-semibold text-base mb-1.5">
+            <h3 className="text-ink font-semibold text-base mb-1.5">
               {searchQuery ? "No matches" : "No communities yet"}
             </h3>
-            <p className="text-gray-500 text-sm max-w-[280px]">
+            <p className="text-fg-500 text-sm max-w-[280px]">
               {searchQuery
                 ? "Try a different search term"
                 : "Group owners can list their chats here for others to discover and join"}
@@ -277,7 +277,7 @@ export const CommunityTab: FC<{
                   tabIndex={0}
                   onClick={() => handleCardClick(listing, isMember)}
                   onKeyDown={(e) => handleCardKeyDown(e, listing, isMember)}
-                  className="px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer focus-visible:bg-white/5 outline-none"
+                  className="px-4 py-3 hover:bg-ink/5 transition-colors cursor-pointer focus-visible:bg-ink/5 outline-none"
                 >
                   <div className="flex items-center gap-3">
                     <MessagingDisplayAvatar
@@ -287,15 +287,15 @@ export const CommunityTab: FC<{
                       diameter={48}
                     />
                     <div className="flex-1 min-w-0 text-left">
-                      <span className="truncate text-sm text-white font-medium block">
+                      <span className="truncate text-sm text-ink font-medium block">
                         {listing.groupDisplayName ?? listing.groupKeyName}
                       </span>
                       {listing.description && (
-                        <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
+                        <p className="text-xs text-fg-400 mt-0.5 line-clamp-2">
                           {listing.description}
                         </p>
                       )}
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p className="text-xs text-fg-500 mt-0.5">
                         {ownerUsername ? `@${ownerUsername}` : ""}
                         {ownerUsername && " · "}
                         {listing.memberCount}
@@ -306,13 +306,13 @@ export const CommunityTab: FC<{
                       </p>
                     </div>
                     {!isMember && (
-                      <span className="text-[#34F080] text-xs font-bold shrink-0 self-center">
+                      <span className="text-brand text-xs font-bold shrink-0 self-center">
                         Join
                       </span>
                     )}
                   </div>
                 </div>
-                <div className="ml-[76px] border-b border-white/5" />
+                <div className="ml-[76px] border-b border-ink/5" />
               </div>
             );
           })}

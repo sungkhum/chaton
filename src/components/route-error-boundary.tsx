@@ -71,7 +71,7 @@ export class RouteErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#0F1520] text-white flex items-center justify-center p-6">
+        <div className="min-h-screen bg-surface-deep text-ink flex items-center justify-center p-6">
           <div className="text-center max-w-sm">
             <img
               src="/ChatOn-Logo-Small.png"
@@ -79,13 +79,13 @@ export class RouteErrorBoundary extends Component<Props, State> {
               className="w-16 h-16 rounded-[20px] mx-auto mb-6"
             />
             <h1 className="text-lg font-bold mb-2">Something went wrong</h1>
-            <p className="text-gray-400 text-sm mb-6">
+            <p className="text-fg-400 text-sm mb-6">
               This page failed to load. This can happen after an update.
             </p>
             <div className="flex gap-3 justify-center">
               <button
                 onClick={this.handleRetry}
-                className="px-6 py-3 bg-white/10 hover:bg-white/15 border border-white/10 text-white font-semibold rounded-xl text-sm transition-colors cursor-pointer"
+                className="px-6 py-3 bg-ink/10 hover:bg-ink/15 border border-ink/10 text-ink font-semibold rounded-xl text-sm transition-colors cursor-pointer"
               >
                 Reload Page
               </button>
@@ -98,10 +98,10 @@ export class RouteErrorBoundary extends Component<Props, State> {
             </div>
             {this.state.error && (
               <details className="mt-6 text-left">
-                <summary className="text-xs text-white/40 cursor-pointer hover:text-white/60">
+                <summary className="text-xs text-ink/40 cursor-pointer hover:text-ink/60">
                   Error details (tap to expand)
                 </summary>
-                <pre className="mt-2 p-3 rounded-lg bg-black/40 border border-white/5 text-[10px] text-white/50 overflow-auto max-h-48 whitespace-pre-wrap break-all">
+                <pre className="mt-2 p-3 rounded-lg bg-black/40 border border-ink/5 text-[10px] text-ink/50 overflow-auto max-h-48 whitespace-pre-wrap break-all">
                   {this.state.error.name}: {this.state.error.message}
                   {this.state.error.stack && `\n\n${this.state.error.stack}`}
                   {this.state.errorInfo?.componentStack &&

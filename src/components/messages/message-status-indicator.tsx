@@ -16,19 +16,19 @@ export const MessageStatusIndicator = ({
 
   switch (status) {
     case "processing":
-      return <Loader2 className="w-3 h-3 text-gray-400 animate-spin" />;
+      return <Loader2 className="w-3 h-3 text-fg-400 animate-spin" />;
     case "sending":
-      return <Loader2 className="w-3 h-3 text-[#34F080] animate-spin" />;
+      return <Loader2 className="w-3 h-3 text-brand animate-spin" />;
     case "sent":
       return (
         <span className="status-check-enter inline-flex">
-          <Check className="w-3 h-3 text-[#34F080]" />
+          <Check className="w-3 h-3 text-brand" />
         </span>
       );
     case "confirmed":
       return (
         <span className="status-confirm-enter inline-flex">
-          <CheckCheck className="w-3 h-3 text-[#34F080]" />
+          <CheckCheck className="w-3 h-3 text-brand" />
         </span>
       );
     case "failed":

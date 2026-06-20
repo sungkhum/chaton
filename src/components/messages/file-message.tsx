@@ -113,12 +113,12 @@ export const FileMessage = ({
                 )}
                 <div className="flex-1 min-w-0">
                   {displayTitle && (
-                    <div className="text-sm text-blue-50 leading-snug mb-0.5 line-clamp-2">
+                    <div className="text-sm text-ink leading-snug mb-0.5 line-clamp-2">
                       {displayTitle}
                     </div>
                   )}
                   {ogDescription && (
-                    <div className="text-xs text-gray-500 leading-snug mb-1 line-clamp-2">
+                    <div className="text-xs text-fg-500 leading-snug mb-1 line-clamp-2">
                       {ogDescription}
                     </div>
                   )}
@@ -134,7 +134,7 @@ export const FileMessage = ({
           </div>
         </a>
         {description && (
-          <p className="text-sm text-white mt-2 px-1 whitespace-pre-wrap break-words select-text">
+          <p className="text-sm text-ink mt-2 px-1 whitespace-pre-wrap break-words select-text">
             {description}
           </p>
         )}
@@ -155,7 +155,7 @@ export const FileMessage = ({
     >
       <FileText className={`w-8 h-8 shrink-0 ${iconColor}`} />
       <div className="flex-1 min-w-0">
-        <div className="text-sm text-blue-100 truncate">{fileName}</div>
+        <div className="text-sm text-ink truncate">{fileName}</div>
         <div className="text-xs text-blue-300/50 flex items-center gap-2">
           {fileSize && <span>{formatFileSize(fileSize)}</span>}
           {fileType && <span>{fileType}</span>}

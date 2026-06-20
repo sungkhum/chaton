@@ -24,9 +24,9 @@ export const SpeedDialFab: FC<{
                 setExpanded(false);
                 onNewGroup();
               }}
-              className="flex items-center gap-2.5 pl-4 pr-5 py-2.5 rounded-full bg-[#141c2b]/90 backdrop-blur-xl border border-white/10 text-white text-sm font-semibold shadow-lg cursor-pointer animate-[fab-expand_0.2s_ease-out]"
+              className="flex items-center gap-2.5 pl-4 pr-5 py-2.5 rounded-full bg-surface-raised/90 backdrop-blur-xl border border-ink/10 text-ink text-sm font-semibold shadow-lg cursor-pointer animate-[fab-expand_0.2s_ease-out]"
             >
-              <Users className="w-4.5 h-4.5 text-[#34F080]" />
+              <Users className="w-4.5 h-4.5 text-brand" />
               New Group
             </button>
             <button
@@ -34,9 +34,9 @@ export const SpeedDialFab: FC<{
                 setExpanded(false);
                 onNewMessage();
               }}
-              className="flex items-center gap-2.5 pl-4 pr-5 py-2.5 rounded-full bg-[#141c2b]/90 backdrop-blur-xl border border-white/10 text-white text-sm font-semibold shadow-lg cursor-pointer animate-[fab-expand_0.15s_ease-out]"
+              className="flex items-center gap-2.5 pl-4 pr-5 py-2.5 rounded-full bg-surface-raised/90 backdrop-blur-xl border border-ink/10 text-ink text-sm font-semibold shadow-lg cursor-pointer animate-[fab-expand_0.15s_ease-out]"
             >
-              <MessageSquarePlus className="w-4.5 h-4.5 text-[#34F080]" />
+              <MessageSquarePlus className="w-4.5 h-4.5 text-brand" />
               New Message
             </button>
           </>
@@ -47,9 +47,9 @@ export const SpeedDialFab: FC<{
           className="w-14 h-14 rounded-full glass-fab flex items-center justify-center shadow-lg cursor-pointer transition-transform active:scale-[0.96]"
         >
           {expanded ? (
-            <X className="w-6 h-6 text-[#34F080]" />
+            <X className="w-6 h-6 text-brand" />
           ) : (
-            <Plus className="w-6 h-6 text-[#34F080]" />
+            <Plus className="w-6 h-6 text-brand" />
           )}
         </button>
       </div>

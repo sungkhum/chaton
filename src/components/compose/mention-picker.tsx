@@ -35,7 +35,7 @@ export const MentionPicker = ({
   return (
     <div
       ref={listRef}
-      className="absolute bottom-full left-0 right-0 mb-1 bg-[#141c2b] border border-white/10 rounded-xl shadow-lg max-h-[200px] overflow-y-auto z-50"
+      className="absolute bottom-full left-0 right-0 mb-1 bg-surface-raised border border-ink/10 rounded-xl shadow-lg max-h-[200px] overflow-y-auto z-50"
     >
       {filtered.map((c, i) => (
         <button
@@ -46,8 +46,8 @@ export const MentionPicker = ({
           }}
           className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer transition-colors ${
             i === selectedIndex
-              ? "bg-white/10 text-white"
-              : "text-gray-300 hover:bg-white/5"
+              ? "bg-ink/10 text-ink"
+              : "text-fg-300 hover:bg-ink/5"
           }`}
         >
           <MessagingDisplayAvatar

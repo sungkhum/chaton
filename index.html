@@ -42,6 +42,39 @@
         }, true);
       }();
     </script>
+    <!-- Theme init: apply the saved light/dark preference before first paint so
+         there's no flash. Only logged-in users on the app shell honor the
+         preference; marketing/public routes and logged-out users stay dark
+         (the brand default). Mirrors src/utils/theme.ts. -->
+    <script>
+      !function () {
+        try {
+          var pk = localStorage.getItem("desoActivePublicKey");
+          var stored = localStorage.getItem("chaton:theme");
+          var p = location.pathname;
+          var isAppPath = p === "/" || p.indexOf("/chat/") === 0;
+          var light = pk && isAppPath && stored === "light";
+          document.documentElement.classList.add(light ? "light" : "dark");
+        } catch (e) {
+          document.documentElement.classList.add("dark");
+        }
+      }();
+    </script>
+    <!-- Light-theme splash/body background (overrides the inline dark defaults
+         below the moment the `light` class is on <html>). -->
+    <style>
+      html.light body,
+      html.light #splash {
+        background-color: #eef2f8 !important;
+        background-image: linear-gradient(
+          0deg,
+          #e6ecf5,
+          #e9eff7 12%,
+          #eef3f9 45%,
+          #f3f7fb
+        ) !important;
+      }
+    </style>
     <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content" />
     <title>ChatOn — Messaging that no one can shut down</title>
 

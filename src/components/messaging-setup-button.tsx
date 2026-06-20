@@ -31,7 +31,7 @@ export const MessagingSetupButton = () => {
   if (isLoadingUser) {
     return (
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-10">
-        <Loader2 className="w-11 h-11 animate-spin text-[#34F080]" />
+        <Loader2 className="w-11 h-11 animate-spin text-brand" />
       </div>
     );
   }
@@ -39,7 +39,7 @@ export const MessagingSetupButton = () => {
   if (!appUser) {
     return (
       <button
-        className="glass-btn-primary text-[#34F080] font-bold rounded-full text-lg px-6 py-3 cursor-pointer transition-colors"
+        className="glass-btn-primary text-brand font-bold rounded-full text-lg px-6 py-3 cursor-pointer transition-colors"
         onClick={() => safeLogin()}
       >
         Login with DeSo or Ethereum
@@ -51,7 +51,7 @@ export const MessagingSetupButton = () => {
     return (
       <>
         <button
-          className="glass-btn-primary text-[#34F080] font-bold rounded-xl text-lg px-6 py-3 cursor-pointer transition-colors"
+          className="glass-btn-primary text-brand font-bold rounded-xl text-lg px-6 py-3 cursor-pointer transition-colors"
           onClick={() => setOpenDialog(true)}
         >
           Get $DESO to get started

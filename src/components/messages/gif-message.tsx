@@ -32,7 +32,7 @@ export const GifMessage = ({
       >
         {!loaded && (
           <div
-            className="absolute inset-0 bg-white/10 animate-pulse rounded-lg"
+            className="absolute inset-0 bg-ink/10 animate-pulse rounded-lg"
             style={aspectRatio ? { aspectRatio } : { minHeight: 150 }}
           />
         )}
@@ -49,7 +49,7 @@ export const GifMessage = ({
         />
       </div>
       {caption && (
-        <div className="text-sm text-white mt-1.5 px-3 pb-1 whitespace-pre-wrap break-words select-text">
+        <div className="text-sm text-ink mt-1.5 px-3 pb-1 whitespace-pre-wrap break-words select-text">
           {caption}
         </div>
       )}

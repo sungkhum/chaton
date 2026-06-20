@@ -21,8 +21,8 @@ export const SendFundsDialog = ({ appUser, onClose }: StartGroupChatProps) => {
       />
       {/* Dialog */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-[#0c1220] text-white border border-white/8 w-[min(95vw,440px)] max-h-[95%] overflow-y-auto custom-scrollbar rounded-2xl shadow-2xl shadow-black/40 modal-card-enter">
-          <div className="text-white text-xl font-semibold p-5 border-b border-white/8">
+        <div className="bg-surface-deep text-ink border border-ink/8 w-[min(95vw,440px)] max-h-[95%] overflow-y-auto custom-scrollbar rounded-2xl shadow-2xl shadow-black/40 modal-card-enter">
+          <div className="text-ink text-xl font-semibold p-5 border-b border-ink/8">
             Get $DESO to get started
           </div>
 
@@ -31,7 +31,7 @@ export const SendFundsDialog = ({ appUser, onClose }: StartGroupChatProps) => {
               <div className="break-words text-black text-center">
                 No deso funds found for your address:
                 <div>
-                  <div className="bg-gray-700 text-white px-2 md:px-4 py-2 my-2 md:my-3 rounded mx-auto inline-block">
+                  <div className="bg-gray-700 text-ink px-2 md:px-4 py-2 my-2 md:my-3 rounded mx-auto inline-block">
                     <SaveToClipboard text={appUser.PublicKeyBase58Check}>
                       {shortenLongWord(appUser.PublicKeyBase58Check, 8, 8)}
                     </SaveToClipboard>
@@ -43,7 +43,7 @@ export const SendFundsDialog = ({ appUser, onClose }: StartGroupChatProps) => {
               </div>
             </AlertNotification>
 
-            <div className="text-[24px] text-center my-2 md:my-8 text-white">
+            <div className="text-[24px] text-center my-2 md:my-8 text-ink">
               <span>
                 Your Balance:{" "}
                 <b>{desoNanosToDeso(appUser.BalanceNanos)} $DESO</b>
@@ -55,7 +55,7 @@ export const SendFundsDialog = ({ appUser, onClose }: StartGroupChatProps) => {
 
               <div className="mt-1 md:mt-2">
                 <button
-                  className="glass-btn-primary text-[#34F080] font-semibold rounded-lg text-sm px-4 py-2 cursor-pointer transition-colors"
+                  className="glass-btn-primary text-brand font-semibold rounded-lg text-sm px-4 py-2 cursor-pointer transition-colors"
                   onClick={() => identity.verifyPhoneNumber()}
                 >
                   Get $DESO

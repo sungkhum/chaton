@@ -71,7 +71,7 @@ export const AudioRecorderPanel = ({
       {/* Cancel */}
       <button
         onClick={handleCancel}
-        className="p-1.5 text-gray-400 hover:text-red-400 cursor-pointer transition-colors rounded-full hover:bg-white/[0.04]"
+        className="p-1.5 text-fg-400 hover:text-red-400 cursor-pointer transition-colors rounded-full hover:bg-ink/[0.04]"
         type="button"
         aria-label="Cancel recording"
       >
@@ -103,7 +103,7 @@ export const AudioRecorderPanel = ({
       {/* Stop & Send */}
       <button
         onClick={stopRecording}
-        className="p-2 glass-fab text-[#34F080] hover:border-[#34F080]/60 rounded-full cursor-pointer transition-all"
+        className="p-2 glass-fab text-brand hover:border-[#34F080]/60 rounded-full cursor-pointer transition-all"
         type="button"
         aria-label="Stop and send audio"
       >

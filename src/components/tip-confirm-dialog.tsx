@@ -164,10 +164,10 @@ export const TipConfirmDialog = ({
   // Color theme based on currency: DESO = blue, USDC = green
   const accentColor = currency === "DESO" ? "#2775ca" : "#34F080";
   const accentTextClass =
-    currency === "DESO" ? "text-[#2775ca]" : "text-[#34F080]";
+    currency === "DESO" ? "text-[#2775ca]" : "text-brand";
   const gradientClasses =
     currency === "DESO"
-      ? "bg-gradient-to-r from-[#2775ca] to-[#4a9aea] text-white"
+      ? "bg-gradient-to-r from-[#2775ca] to-[#4a9aea] text-ink"
       : "bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black";
 
   const handleCurrencyChange = (c: TipCurrency) => {
@@ -411,7 +411,7 @@ export const TipConfirmDialog = ({
     : `${recipientPublicKey.slice(0, 8)}...`;
   const afterTipColor =
     afterTipUsd == null
-      ? "text-gray-400"
+      ? "text-fg-400"
       : afterTipUsd > 1
       ? accentTextClass
       : afterTipUsd > 0.1
@@ -437,7 +437,7 @@ export const TipConfirmDialog = ({
     const base =
       "w-full py-3 rounded-xl text-sm font-bold transition-[background-color,box-shadow,transform,opacity] cursor-pointer relative overflow-hidden";
     if (!canSend || (tier === "large" && !largeConfirmChecked))
-      return `${base} bg-white/5 text-gray-500 cursor-not-allowed`;
+      return `${base} bg-ink/5 text-fg-500 cursor-not-allowed`;
     if (tier === "medium" && confirmArmed)
       return `${base} bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30`;
     return `${base} ${gradientClasses} hover:shadow-[0_0_30px_rgba(${
@@ -452,8 +452,8 @@ export const TipConfirmDialog = ({
       ? "https://heroswap.com/widget?affiliateName=ChatOn&theme=dark-blue&depositTicker=USDC&depositTickers=USDT%2CUSDC%2CUSDC-SOL&destinationTickers=DESO"
       : "https://heroswap.com/widget?affiliateName=ChatOn&theme=dark-blue&depositTicker=USDC&depositTickers=USDT%2CUSDC%2CUSDC-SOL&destinationTickers=DESO%2CDUSD";
     return createPortal(
-      <div className="fixed inset-0 z-[10000] bg-[#050e1d] flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10">
+      <div className="fixed inset-0 z-[10000] bg-surface-sheet flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-ink/10">
           <button
             onClick={() => {
               setShowHeroSwap(false);
@@ -464,12 +464,12 @@ export const TipConfirmDialog = ({
                 .catch(() => {});
               fetchExchangeRate().catch(() => {}); // refresh DESO rate too
             }}
-            className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+            className="text-fg-400 hover:text-ink transition-colors cursor-pointer"
             aria-label="Go back"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h2 className="text-white font-semibold text-sm">Add Funds</h2>
+          <h2 className="text-ink font-semibold text-sm">Add Funds</h2>
         </div>
         <div className="px-4 py-2 bg-[#3b82f6]/10 border-b border-[#3b82f6]/20">
           <p className="text-xs text-[#93c5fd]">
@@ -498,10 +498,10 @@ export const TipConfirmDialog = ({
           role="dialog"
           aria-modal="true"
           aria-label="Loading tip dialog"
-          className="bg-[#050e1d] text-blue-100 border border-blue-900/60 w-[92%] max-w-[420px] rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] p-8 flex flex-col items-center justify-center gap-3"
+          className="bg-surface-sheet text-ink border border-ink/10 w-[92%] max-w-[420px] rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] p-8 flex flex-col items-center justify-center gap-3"
         >
-          <Loader2 className="w-6 h-6 animate-spin text-[#34F080]" />
-          <span className="text-gray-500 text-xs">
+          <Loader2 className="w-6 h-6 animate-spin text-brand" />
+          <span className="text-fg-500 text-xs">
             Loading exchange rate...
           </span>
         </div>
@@ -536,7 +536,7 @@ export const TipConfirmDialog = ({
         aria-modal="true"
         aria-label={`Send tip to ${displayName}`}
         tabIndex={-1}
-        className="bg-[#050e1d] text-blue-100 border border-blue-900/60 w-[92%] max-w-[420px] max-h-[90vh] rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-y-auto overflow-x-hidden outline-none modal-card-enter"
+        className="bg-surface-sheet text-ink border border-ink/10 w-[92%] max-w-[420px] max-h-[90vh] rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-y-auto overflow-x-hidden outline-none modal-card-enter"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header gradient bar — themed per currency */}
@@ -561,15 +561,15 @@ export const TipConfirmDialog = ({
             >
               <Sparkles className="w-8 h-8" style={{ color: accentColor }} />
             </div>
-            <h3 className="text-2xl font-bold text-white mb-2">Tip sent!</h3>
-            <p className="text-gray-400 text-sm mb-1">
+            <h3 className="text-2xl font-bold text-ink mb-2">Tip sent!</h3>
+            <p className="text-fg-400 text-sm mb-1">
               You tipped{" "}
               <span className={`${accentTextClass} font-semibold`}>
                 {formatUsd(activeAmount)}
               </span>{" "}
               to {displayName}
             </p>
-            <p className="text-gray-600 text-xs mb-6">
+            <p className="text-fg-600 text-xs mb-6">
               {currencyLabel} sent on-chain
             </p>
             <button
@@ -594,12 +594,12 @@ export const TipConfirmDialog = ({
                   className="w-5 h-5"
                   style={{ color: accentColor }}
                 />
-                <h3 className="text-lg font-bold text-white">Send Tip</h3>
+                <h3 className="text-lg font-bold text-ink">Send Tip</h3>
               </div>
               <button
                 onClick={onClose}
                 aria-label="Close tip dialog"
-                className="text-gray-500 hover:text-white transition-colors p-1 cursor-pointer"
+                className="text-fg-500 hover:text-ink transition-colors p-1 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -614,10 +614,10 @@ export const TipConfirmDialog = ({
                   diameter={40}
                 />
                 <div>
-                  <p className="text-white font-semibold text-sm">
+                  <p className="text-ink font-semibold text-sm">
                     {displayName}
                   </p>
-                  <p className="text-gray-500 text-xs">Tip recipient</p>
+                  <p className="text-fg-500 text-xs">Tip recipient</p>
                 </div>
               </div>
 
@@ -645,7 +645,7 @@ export const TipConfirmDialog = ({
                           ? `${gradientClasses} shadow-[0_0_20px_rgba(${
                               currency === "DESO" ? "39,117,202" : "52,240,128"
                             },0.2)]`
-                          : "bg-white/5 text-gray-300 border border-white/10 hover:text-white"
+                          : "bg-ink/5 text-fg-300 border border-ink/10 hover:text-ink"
                       }`}
                       style={active ? undefined : { borderColor: undefined }}
                     >
@@ -662,10 +662,10 @@ export const TipConfirmDialog = ({
                     ? currency === "DESO"
                       ? "border-[#2775ca]/50 bg-[#2775ca]/5"
                       : "border-[#34F080]/50 bg-[#34F080]/5"
-                    : "border-white/10 bg-white/[0.02]"
+                    : "border-ink/10 bg-ink/[0.02]"
                 }`}
               >
-                <span className="text-gray-400 text-sm font-semibold">$</span>
+                <span className="text-fg-400 text-sm font-semibold">$</span>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -679,14 +679,14 @@ export const TipConfirmDialog = ({
                     setIsCustom(true);
                     setCustomAmount(e.target.value);
                   }}
-                  className="flex-1 bg-transparent text-white text-sm placeholder-gray-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="flex-1 bg-transparent text-ink text-sm placeholder-gray-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
-                <span className="text-gray-500 text-xs font-semibold">USD</span>
+                <span className="text-fg-500 text-xs font-semibold">USD</span>
               </div>
 
               {/* Currency equivalent */}
               {activeAmount > 0 && (
-                <div className="text-xs text-gray-500 mb-3 tabular-nums">
+                <div className="text-xs text-fg-500 mb-3 tabular-nums">
                   ≈ {currencyLabel}
                 </div>
               )}
@@ -698,18 +698,18 @@ export const TipConfirmDialog = ({
                 value={tipMessage}
                 onChange={(e) => setTipMessage(e.target.value)}
                 rows={2}
-                className="w-full bg-white/[0.02] border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 outline-none resize-none mb-4 focus:border-white/30"
+                className="w-full bg-ink/[0.02] border border-ink/10 rounded-lg px-3 py-2 text-sm text-ink placeholder-gray-500 outline-none resize-none mb-4 focus:border-ink/30"
               />
 
               {/* Balance info */}
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+              <div className="flex items-center justify-between text-xs text-fg-500 mb-1">
                 <span>Your balance</span>
-                <span className="font-semibold text-gray-400 tabular-nums">
+                <span className="font-semibold text-fg-400 tabular-nums">
                   {balanceLabel}
                 </span>
               </div>
               {activeAmount > 0 && afterTipUsd != null && (
-                <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                <div className="flex items-center justify-between text-xs text-fg-500 mb-4">
                   <span>After tip</span>
                   <span
                     className={`font-semibold tabular-nums ${afterTipColor}`}
@@ -721,11 +721,11 @@ export const TipConfirmDialog = ({
 
               {/* Platform fee disclosure */}
               {feeApplies && activeAmount > 0 && (
-                <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                <div className="flex items-center justify-between text-xs text-fg-500 mb-4">
                   <span>
                     Includes {Math.round(TIP_FEE_RATE * 100)}% ChatOn fee
                   </span>
-                  <span className="font-semibold text-gray-400">
+                  <span className="font-semibold text-fg-400">
                     {formatUsd(recipientUsd)} to {displayName} ·{" "}
                     {formatUsd(feeUsd)} to ChatOn
                   </span>
@@ -795,7 +795,7 @@ export const TipConfirmDialog = ({
                 <span className="relative z-10">{getButtonContent()}</span>
               </button>
 
-              <p className="text-[10px] text-gray-600 text-center mt-3">
+              <p className="text-[10px] text-fg-600 text-center mt-3">
                 Sent on-chain via DeSo {currency === "USDC" ? "(USDC) " : ""}+
                 tiny network fee
                 {feeApplies && " · 10% supports ChatOn development"}

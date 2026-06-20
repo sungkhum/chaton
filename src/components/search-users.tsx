@@ -178,7 +178,7 @@ export const SearchUsers = ({
           type="text"
           placeholder={placeholder}
           spellCheck={false}
-          className={`w-full rounded-md py-2 px-3 ${className} text-blue-100 bg-blue-900/20 ${
+          className={`w-full rounded-md py-2 px-3 ${className} text-ink bg-blue-900/20 ${
             error
               ? "border border-red-500"
               : "border border-transparent focus:border-blue-600"
@@ -215,7 +215,7 @@ export const SearchUsers = ({
       </div>
 
       {!onUserResults && isOpen && (loading || shownItems.length > 0) && (
-        <div className="absolute z-10 w-full bg-[#050e1d] text-blue-100 max-h-80 mt-1 rounded-md overflow-y-scroll custom-scrollbar border border-blue-900">
+        <div className="absolute z-10 w-full bg-surface-sheet text-ink max-h-80 mt-1 rounded-md overflow-y-scroll custom-scrollbar border border-blue-900">
           {loading && (
             <div className="flex justify-center py-4">
               <Loader2 className="w-7 h-7 animate-spin text-blue-600" />
@@ -225,7 +225,7 @@ export const SearchUsers = ({
             shownItems.map(({ id, profile, text }) => (
               <div
                 key={id}
-                className="bg-[#050e1d] text-blue-100 hover:bg-blue-800 cursor-pointer"
+                className="bg-surface-sheet text-ink hover:bg-blue-800 cursor-pointer"
                 onClick={() => {
                   if (hasPersistentDisplayValue) {
                     setInputValue(id);

@@ -187,7 +187,7 @@ export function ProfileModal({
           role="dialog"
           aria-modal="true"
           aria-label={handle ? `Profile of ${handle}` : "Profile"}
-          className="pointer-events-auto relative w-full sm:max-w-[440px] bg-[#070e1b] text-white border-t border-x sm:border border-white/[0.07] rounded-t-3xl sm:rounded-3xl shadow-[0_32px_80px_rgba(0,0,0,0.7)] overflow-hidden max-h-[92vh] flex flex-col modal-card-enter"
+          className="pointer-events-auto relative w-full sm:max-w-[440px] bg-surface-deep text-ink border-t border-x sm:border border-ink/[0.07] rounded-t-3xl sm:rounded-3xl shadow-[0_32px_80px_rgba(0,0,0,0.7)] overflow-hidden max-h-[92vh] flex flex-col modal-card-enter"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Gradient accent bar — always at top */}
@@ -201,7 +201,7 @@ export function ProfileModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="absolute top-3 right-3 z-20 w-9 h-9 rounded-full flex items-center justify-center bg-black/30 hover:bg-black/50 text-white/70 hover:text-white transition-colors cursor-pointer backdrop-blur-sm"
+            className="absolute top-3 right-3 z-20 w-9 h-9 rounded-full flex items-center justify-center bg-black/30 hover:bg-black/50 text-ink/70 hover:text-ink transition-colors cursor-pointer backdrop-blur-sm"
           >
             <X className="w-[18px] h-[18px]" />
           </button>
@@ -245,11 +245,11 @@ export function ProfileModal({
                 {/* Identity */}
                 <div className="mt-4 flex flex-col items-center gap-1 min-w-0 w-full">
                   {handle ? (
-                    <h2 className="text-[22px] leading-tight font-bold text-white truncate max-w-full">
+                    <h2 className="text-[22px] leading-tight font-bold text-ink truncate max-w-full">
                       @{handle}
                     </h2>
                   ) : (
-                    <h2 className="text-[18px] leading-tight font-bold text-white/80">
+                    <h2 className="text-[18px] leading-tight font-bold text-ink/80">
                       Unnamed wallet
                     </h2>
                   )}
@@ -258,16 +258,16 @@ export function ProfileModal({
                   <button
                     type="button"
                     onClick={handleCopyKey}
-                    className="group inline-flex items-center gap-1.5 mt-1 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.07] hover:border-white/[0.12] transition-colors cursor-pointer"
+                    className="group inline-flex items-center gap-1.5 mt-1 px-2.5 py-1 rounded-full bg-ink/[0.04] border border-ink/[0.06] hover:bg-ink/[0.07] hover:border-ink/[0.12] transition-colors cursor-pointer"
                     title="Copy public key"
                   >
-                    <span className="text-[11.5px] font-mono text-white/60 tabular-nums tracking-tight">
+                    <span className="text-[11.5px] font-mono text-ink/60 tabular-nums tracking-tight">
                       {shortKey}
                     </span>
                     {copied ? (
-                      <Check className="w-3 h-3 text-[#34F080]" />
+                      <Check className="w-3 h-3 text-brand" />
                     ) : (
-                      <Copy className="w-3 h-3 text-white/40 group-hover:text-white/70 transition-colors" />
+                      <Copy className="w-3 h-3 text-ink/40 group-hover:text-ink/70 transition-colors" />
                     )}
                   </button>
                 </div>
@@ -276,14 +276,14 @@ export function ProfileModal({
               {/* Bio */}
               {loading && !profile.description ? (
                 <div className="mt-5 flex justify-center">
-                  <Loader2 className="w-4 h-4 text-white/30 animate-spin" />
+                  <Loader2 className="w-4 h-4 text-ink/30 animate-spin" />
                 </div>
               ) : profile.description ? (
-                <p className="mt-5 text-[14px] leading-relaxed text-white/75 text-center whitespace-pre-wrap break-words max-w-[40ch] mx-auto">
+                <p className="mt-5 text-[14px] leading-relaxed text-ink/75 text-center whitespace-pre-wrap break-words max-w-[40ch] mx-auto">
                   {profile.description}
                 </p>
               ) : (
-                <p className="mt-5 text-[13px] text-white/35 text-center italic">
+                <p className="mt-5 text-[13px] text-ink/35 text-center italic">
                   No bio yet
                 </p>
               )}
@@ -327,10 +327,10 @@ export function ProfileModal({
                 {(focusUrl || desoSocialUrl) && (
                   <div className="pt-1">
                     <div className="flex items-center gap-2.5 mb-2.5 px-0.5">
-                      <span className="text-[10.5px] font-semibold tracking-[0.14em] uppercase text-white/35">
+                      <span className="text-[10.5px] font-semibold tracking-[0.14em] uppercase text-ink/35">
                         View posts on
                       </span>
-                      <span className="flex-1 h-px bg-white/[0.06]" />
+                      <span className="flex-1 h-px bg-ink/[0.06]" />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       {focusUrl && (
@@ -347,7 +347,7 @@ export function ProfileModal({
                 )}
 
                 {!handle && (
-                  <p className="text-[11.5px] text-white/35 text-center pt-1">
+                  <p className="text-[11.5px] text-ink/35 text-center pt-1">
                     This wallet has no username yet — social profiles aren't
                     available.
                   </p>
@@ -375,20 +375,20 @@ function Stat({
 }) {
   const hasValue = typeof value === "number";
   return (
-    <div className="flex flex-col items-center justify-center py-3 px-2 rounded-xl bg-white/[0.03] border border-white/[0.05] min-h-[68px]">
-      <span className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/40">
+    <div className="flex flex-col items-center justify-center py-3 px-2 rounded-xl bg-ink/[0.03] border border-ink/[0.05] min-h-[68px]">
+      <span className="text-[10px] font-semibold tracking-[0.12em] uppercase text-ink/40">
         {label}
       </span>
-      <span className="mt-1 text-white tabular-nums">
+      <span className="mt-1 text-ink tabular-nums">
         {loading && !hasValue ? (
-          <span className="inline-block w-8 h-[6px] rounded-full bg-white/10 animate-pulse" />
+          <span className="inline-block w-8 h-[6px] rounded-full bg-ink/10 animate-pulse" />
         ) : hasValue ? (
           <span className="text-[18px] font-bold leading-none">
             {formatCount(value!)}
             {suffix ?? ""}
           </span>
         ) : (
-          <span className="text-[16px] font-bold leading-none text-white/30">
+          <span className="text-[16px] font-bold leading-none text-ink/30">
             —
           </span>
         )}
@@ -403,12 +403,12 @@ function ExternalLinkButton({ href, label }: { href: string; label: string }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex items-center justify-center gap-2 py-3 px-3.5 rounded-xl bg-white/[0.035] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/[0.12] transition-all min-h-[44px]"
+      className="group flex items-center justify-center gap-2 py-3 px-3.5 rounded-xl bg-ink/[0.035] border border-ink/[0.06] hover:bg-ink/[0.06] hover:border-ink/[0.12] transition-all min-h-[44px]"
     >
-      <span className="text-[13px] font-semibold text-white/85 group-hover:text-white truncate">
+      <span className="text-[13px] font-semibold text-ink/85 group-hover:text-ink truncate">
         {label}
       </span>
-      <ExternalLink className="w-3.5 h-3.5 shrink-0 text-white/35 group-hover:text-white/65 transition-colors" />
+      <ExternalLink className="w-3.5 h-3.5 shrink-0 text-ink/35 group-hover:text-ink/65 transition-colors" />
     </a>
   );
 }

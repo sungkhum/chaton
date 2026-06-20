@@ -72,7 +72,7 @@ export const TipMessage = ({
     amountUsdcBaseUnits,
     currency
   );
-  const accentColor = isUsdc ? "text-[#34F080]" : "text-[#2775ca]";
+  const accentColor = isUsdc ? "text-brand" : "text-[#2775ca]";
 
   return (
     <div className="select-text">
@@ -89,7 +89,7 @@ export const TipMessage = ({
           {usdAmount ?? "..."}
         </span>
       </div>
-      <div className="text-gray-400 text-[10px] mb-0.5">{subLabel}</div>
+      <div className="text-fg-400 text-[10px] mb-0.5">{subLabel}</div>
       {message && (
         <div className="mt-1">
           <FormattedMessage mentions={mentions}>{message}</FormattedMessage>
@@ -123,7 +123,7 @@ export const TipFooter = ({
     currency
   );
   const glassClass = isUsdc ? "glass-tip-badge-usdc" : "glass-tip-badge-deso";
-  const textColor = isUsdc ? "text-[#34F080]" : "text-[#2775ca]";
+  const textColor = isUsdc ? "text-brand" : "text-[#2775ca]";
   const glowColor = isUsdc ? "#34F080" : "#2775ca";
   const recipient = recipientUsername || recipientPublicKey?.slice(0, 8);
 
@@ -140,7 +140,7 @@ export const TipFooter = ({
       </span>
       {recipient && (
         <>
-          <span className="text-white/25 text-xs shrink-0">to</span>
+          <span className="text-ink/25 text-xs shrink-0">to</span>
           {recipientPublicKey && (
             <MessagingDisplayAvatar
               publicKey={recipientPublicKey}
@@ -150,7 +150,7 @@ export const TipFooter = ({
               disableLink
             />
           )}
-          <span className="text-xs text-gray-200 font-medium truncate min-w-0">
+          <span className="text-xs text-fg-200 font-medium truncate min-w-0">
             {recipientUsername ? `@${recipientUsername}` : `${recipient}...`}
           </span>
         </>

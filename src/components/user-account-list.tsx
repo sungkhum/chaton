@@ -129,13 +129,13 @@ const UserAccountList = ({ onSwitch }: { onSwitch?: () => void }) => {
     <div
       className={`mb-0 ${
         loading || visibleAccounts.length > 0
-          ? "border-b border-white/[0.06]"
+          ? "border-b border-ink/[0.06]"
           : ""
       }`}
     >
       {loading ? (
         <div className="flex justify-center my-2 h-[29px]">
-          <Loader2 className="w-6 h-6 animate-spin text-[#34F080]" />
+          <Loader2 className="w-6 h-6 animate-spin text-brand" />
         </div>
       ) : (
         <>
@@ -157,11 +157,11 @@ const UserAccountList = ({ onSwitch }: { onSwitch?: () => void }) => {
               <div
                 key={option.key}
                 onClick={() => option.onclick(option.key)}
-                className="cursor-pointer text-md pl-2 py-1.5 hover:bg-white/[0.06] rounded-lg transition-colors"
+                className="cursor-pointer text-md pl-2 py-1.5 hover:bg-ink/[0.06] rounded-lg transition-colors"
               >
                 <div
                   className={`flex items-center ${
-                    option.isActive ? "font-bold text-white" : "text-gray-300"
+                    option.isActive ? "font-bold text-ink" : "text-fg-300"
                   }`}
                 >
                   <MessagingDisplayAvatar
@@ -178,7 +178,7 @@ const UserAccountList = ({ onSwitch }: { onSwitch?: () => void }) => {
 
           {!showMore && allAccounts.length > COLLAPSED_ACCOUNTS_NUM && (
             <span
-              className="text-[#34F080] text-sm text-left mx-3 mt-2 mb-3 block cursor-pointer hover:text-[#34F080]/80 transition-colors"
+              className="text-brand text-sm text-left mx-3 mt-2 mb-3 block cursor-pointer hover:text-brand/80 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowMore(true);

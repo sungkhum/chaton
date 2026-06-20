@@ -132,19 +132,19 @@ export const ComposePanel: FC<ComposePanelProps> = ({
 
   return (
     <div
-      className={`absolute inset-0 z-30 bg-[#080d16] transition-transform duration-200 ease-out ${
+      className={`absolute inset-0 z-30 bg-surface-deep transition-transform duration-200 ease-out ${
         open ? "translate-x-0" : "-translate-x-full"
       }`}
     >
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 h-[60px] border-b border-white/10">
+      <div className="flex items-center gap-3 px-4 h-[60px] border-b border-ink/10">
         <button
           onClick={onClose}
-          className="p-1.5 -ml-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+          className="p-1.5 -ml-1 rounded-full hover:bg-ink/10 transition-colors cursor-pointer"
         >
-          <ArrowLeft className="w-5 h-5 text-gray-300" />
+          <ArrowLeft className="w-5 h-5 text-fg-300" />
         </button>
-        <h2 className="text-white font-semibold text-base">New Message</h2>
+        <h2 className="text-ink font-semibold text-base">New Message</h2>
       </div>
 
       {/* Search input */}
@@ -156,7 +156,7 @@ export const ComposePanel: FC<ComposePanelProps> = ({
           spellCheck={false}
           value={query}
           onChange={(e) => handleInputChange(e.target.value)}
-          className="w-full rounded-xl py-2.5 px-3.5 text-white placeholder:text-gray-500 bg-white/5 border border-white/8 hover:border-[#34F080]/30 focus:border-[#34F080]/50 outline-none text-sm transition-colors"
+          className="w-full rounded-xl py-2.5 px-3.5 text-ink placeholder:text-fg-500 bg-ink/5 border border-ink/8 hover:border-[#34F080]/30 focus:border-[#34F080]/50 outline-none text-sm transition-colors"
         />
       </div>
 
@@ -168,12 +168,12 @@ export const ComposePanel: FC<ComposePanelProps> = ({
               onNewGroup();
               onClose();
             }}
-            className="flex items-center gap-3 w-full px-3 py-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+            className="flex items-center gap-3 w-full px-3 py-3 rounded-xl hover:bg-ink/5 transition-colors cursor-pointer"
           >
             <div className="w-10 h-10 rounded-full bg-[#34F080]/15 flex items-center justify-center">
-              <Users className="w-5 h-5 text-[#34F080]" />
+              <Users className="w-5 h-5 text-brand" />
             </div>
-            <span className="text-white font-medium text-sm">New Group</span>
+            <span className="text-ink font-medium text-sm">New Group</span>
           </button>
         </div>
       )}
@@ -185,12 +185,12 @@ export const ComposePanel: FC<ComposePanelProps> = ({
       >
         {loading && (
           <div className="flex justify-center py-6">
-            <Loader2 className="w-6 h-6 animate-spin text-[#34F080]" />
+            <Loader2 className="w-6 h-6 animate-spin text-brand" />
           </div>
         )}
 
         {!loading && query.trim() && results.length === 0 && (
-          <div className="text-gray-500 text-sm text-center mt-6 px-6">
+          <div className="text-fg-500 text-sm text-center mt-6 px-6">
             No users found
           </div>
         )}
@@ -202,7 +202,7 @@ export const ComposePanel: FC<ComposePanelProps> = ({
               onClick={() =>
                 handleSelectUser({ id, profile: profile ?? null, text })
               }
-              className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-white/5 transition-colors cursor-pointer"
+              className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-ink/5 transition-colors cursor-pointer"
             >
               <MessagingDisplayAvatar
                 username={profile?.Username}
@@ -211,11 +211,11 @@ export const ComposePanel: FC<ComposePanelProps> = ({
                 classNames="mx-0"
               />
               <div className="flex flex-col items-start min-w-0">
-                <span className="text-white text-sm font-medium truncate">
+                <span className="text-ink text-sm font-medium truncate">
                   {text}
                 </span>
                 {profile?.Description && (
-                  <span className="text-gray-500 text-xs truncate max-w-[200px]">
+                  <span className="text-fg-500 text-xs truncate max-w-[200px]">
                     {profile.Description.slice(0, 60)}
                   </span>
                 )}

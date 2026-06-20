@@ -13,6 +13,12 @@ import { clearDmPriceLookupCache } from "../services/conversations.service";
 import type { PrivacyMode } from "../utils/extra-data";
 import type { ErrorContext } from "../utils/error-capture";
 import {
+  applyThemeClass,
+  getStoredTheme,
+  storeTheme,
+  type Theme,
+} from "../utils/theme";
+import {
   DEFAULT_SPAM_FILTER,
   type SpamFilterConfig,
 } from "../utils/spam-filter";
@@ -40,6 +46,8 @@ interface ChatOnState {
   setAllAccessGroups: (newGroups: AccessGroupEntryResponse[]) => void;
 
   // UI
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
   lockRefresh: boolean;
   setLockRefresh: (lock: boolean) => void;
   pendingConversationKey: string | null;
@@ -296,6 +304,16 @@ export const useStore = create<ChatOnState>((set) => ({
     }),
 
   // UI
+  // Theme is a per-device preference (not on-chain) and survives logout, so it
+  // lives outside resetChatRequestState. The toggle only renders in-app, so
+  // applying the chosen theme here is always correct for instant feedback;
+  // App.tsx keeps <html> in sync on load and forces dark on public routes.
+  theme: getStoredTheme(),
+  setTheme: (theme) => {
+    storeTheme(theme);
+    applyThemeClass(theme);
+    set({ theme });
+  },
   lockRefresh: false,
   setLockRefresh: (lockRefresh) => set({ lockRefresh }),
   pendingConversationKey: null,

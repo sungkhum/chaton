@@ -31,19 +31,19 @@ export function TipCurrencyToggle() {
   return (
     <button
       onClick={toggle}
-      className="flex items-center justify-between w-full py-3 px-3 rounded-lg transition-colors text-gray-400 hover:text-white hover:bg-white/[0.06] cursor-pointer"
+      className="flex items-center justify-between w-full py-3 px-3 rounded-lg transition-colors text-fg-400 hover:text-ink hover:bg-ink/[0.06] cursor-pointer"
     >
       <div className="flex items-center">
         <Coins className="mr-3 w-[18px] h-[18px]" />
         <span className="text-[14px]">Tip Currency</span>
       </div>
 
-      <div className="flex bg-white/5 border border-white/10 rounded-full p-0.5 text-[11px] font-semibold">
+      <div className="flex bg-ink/5 border border-ink/10 rounded-full p-0.5 text-[11px] font-semibold">
         <span
           className={`px-2 py-0.5 rounded-full transition-all ${
             isDeso
-              ? "bg-[#2775ca] text-white shadow-[0_0_8px_rgba(39,117,202,0.3)]"
-              : "text-gray-500"
+              ? "bg-[#2775ca] text-ink shadow-[0_0_8px_rgba(39,117,202,0.3)]"
+              : "text-fg-500"
           }`}
         >
           DESO
@@ -52,7 +52,7 @@ export function TipCurrencyToggle() {
           className={`px-2 py-0.5 rounded-full transition-all ${
             !isDeso
               ? "bg-[#34F080] text-black shadow-[0_0_8px_rgba(52,240,128,0.2)]"
-              : "text-gray-500"
+              : "text-fg-500"
           }`}
         >
           USDC

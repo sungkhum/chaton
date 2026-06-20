@@ -151,7 +151,7 @@ function ImageLightbox({
       onClick={handleOverlayClick}
     >
       <button
-        className="absolute top-4 right-4 text-white cursor-pointer z-10"
+        className="absolute top-4 right-4 text-ink cursor-pointer z-10"
         onClick={(e) => {
           e.stopPropagation();
           resetZoom();
@@ -212,7 +212,7 @@ export const ImageMessage = ({
         >
           {!loaded && (
             <div
-              className="absolute inset-0 bg-white/10 animate-pulse rounded-lg"
+              className="absolute inset-0 bg-ink/10 animate-pulse rounded-lg"
               style={aspectRatio ? { aspectRatio } : SKELETON_MIN_HEIGHT}
             />
           )}
@@ -230,7 +230,7 @@ export const ImageMessage = ({
           />
         </div>
         {caption && (
-          <div className="text-sm text-white mt-1.5 px-3 pb-1 whitespace-pre-wrap break-words select-text">
+          <div className="text-sm text-ink mt-1.5 px-3 pb-1 whitespace-pre-wrap break-words select-text">
             {caption}
           </div>
         )}

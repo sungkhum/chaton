@@ -304,7 +304,7 @@ export const AudioMessage = ({
       </div>
 
       {/* Duration / time */}
-      <span className="text-[11px] text-gray-400 font-mono tabular-nums min-w-[28px] text-right shrink-0">
+      <span className="text-[11px] text-fg-400 font-mono tabular-nums min-w-[28px] text-right shrink-0">
         {isProcessing
           ? formatTime(displayDuration)
           : isPlaying

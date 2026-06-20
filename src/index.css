@@ -5,9 +5,83 @@
   --breakpoint-md: 768px;
 }
 
+/* ── Semantic theme tokens ────────────────────────────────────────────────────
+   `inline` makes Tailwind reference the raw CSS variable (e.g. var(--ink))
+   directly in every utility — INCLUDING opacity modifiers, which compile to
+   `color-mix(in oklab, var(--ink) N%, transparent)`. That's what lets a single
+   redefinition of the raw variables under `html.light` re-theme the whole app.
+   (A plain hex in @theme would bake static rgba into the /opacity utilities and
+   they'd never flip.) The raw values live in :root / html.light below. */
+@theme inline {
+  --color-ink: var(--ink); /* primary text + white-based overlays */
+  --color-fg-200: var(--fg-200);
+  --color-fg-300: var(--fg-300);
+  --color-fg-400: var(--fg-400);
+  --color-fg-500: var(--fg-500);
+  --color-fg-600: var(--fg-600);
+  --color-surface-deep: var(--surface-deep); /* header, conversation rail */
+  --color-surface: var(--surface); /* chat pane */
+  --color-surface-raised: var(--surface-raised); /* cards, menus, inputs */
+  --color-surface-sheet: var(--surface-sheet); /* modal sheets */
+  /* Brand accent for TEXT/ICONS — vivid green on dark, deeper emerald on light
+     so labels stay legible. Solid green FILLS keep the literal #34F080. */
+  --color-brand: var(--brand);
+}
+
+/* Dark is the default (the brand identity). These raw values match the colors
+   that used to be hardcoded throughout the UI, so dark mode is unchanged. */
 :root {
   --app-height: 100%;
   --app-offset: 0px;
+
+  color-scheme: dark;
+
+  --ink: #ffffff;
+  --fg-200: #e5e7eb;
+  --fg-300: #d1d5db;
+  --fg-400: #9ca3af;
+  --fg-500: #6b7280;
+  --fg-600: #4b5563;
+  --surface-deep: #080d16;
+  --surface: #0a1019;
+  --surface-raised: #141c2b;
+  --surface-sheet: #050e1d;
+  --brand: #34f080;
+
+  /* Neutral overlay tint for glassmorphism surfaces (rgb triplet → rgb()/α). */
+  --glass-tint: 255 255 255;
+  /* Near-opaque panel color for dropdown menus / popovers. */
+  --surface-overlay: 12 18 30;
+  --surface-overlay-alpha: 0.82;
+  /* App base background (body + .App). */
+  --app-bg: #040609;
+  --app-bg-image: linear-gradient(0deg, #040609, #040609 10%, #050e1d 40%, #050e1d);
+}
+
+/* ── Light theme ────────────────────────────────────────────────────────────
+   Applied via the `light` class on <html> (see src/utils/theme.ts). Redefining
+   the raw variables flips every token-based utility automatically. Keeps the
+   green brand accent and glass aesthetic, on a cool off-white. */
+html.light {
+  color-scheme: light;
+
+  --ink: #0b1220;
+  --fg-200: #1f2937;
+  --fg-300: #334155;
+  --fg-400: #475569;
+  --fg-500: #64748b;
+  --fg-600: #94a3b8;
+  --surface-deep: #f6f8fc;
+  --surface: #e9eef5;
+  --surface-raised: #ffffff;
+  --surface-sheet: #ffffff;
+  --brand: #0c9b66;
+
+  --glass-tint: 15 23 42;
+  --surface-overlay: 255 255 255;
+  --surface-overlay-alpha: 0.9;
+  --app-bg: #eef2f8;
+  --app-bg-image: linear-gradient(0deg, #e6ecf5, #e9eff7 12%, #eef3f9 45%, #f3f7fb);
 }
 
 /* Discrete slider — cross-browser range input styling */
@@ -198,8 +272,8 @@ h6 {
 body,
 .App {
   width: 100%;
-  background-color: #040609;
-  background-image: linear-gradient(0deg, #040609, #040609 10%, #050e1d 40%, #050e1d);
+  background-color: var(--app-bg);
+  background-image: var(--app-bg-image);
 }
 
 .App {
@@ -899,6 +973,96 @@ input::placeholder {
 [data-sonner-toaster] [data-sonner-toast] [data-close-button]:hover {
   background: rgba(255, 255, 255, 0.12) !important;
   color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* ── Light theme surface overrides ──────────────────────────────────────────
+   The dark rules above are the source of truth. These only re-tint the neutral,
+   white-based glass surfaces (and a few brand accents) so they read correctly
+   on a light background. Brand-tinted green/blue glass already works on light
+   and is intentionally left untouched. */
+html.light .glass-received,
+html.light .glass-search,
+html.light .glass-invite,
+html.light .glass-pill,
+html.light .glass-btn-secondary {
+  background: rgb(var(--glass-tint) / 0.04);
+  border-color: rgb(var(--glass-tint) / 0.1);
+}
+html.light .glass-btn-secondary:hover {
+  background: rgb(var(--glass-tint) / 0.08);
+  border-color: rgb(var(--glass-tint) / 0.16);
+}
+html.light .glass-compose {
+  background: rgb(var(--glass-tint) / 0.05);
+  border-color: rgb(var(--glass-tint) / 0.12);
+}
+html.light .glass-menu {
+  background: rgb(var(--surface-overlay) / var(--surface-overlay-alpha));
+  border-color: rgb(var(--glass-tint) / 0.1);
+  box-shadow:
+    0 24px 80px rgba(15, 23, 42, 0.18),
+    0 8px 24px rgba(15, 23, 42, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+/* Lift the brand-tinted bubbles a touch so they stay legible on white. */
+html.light .glass-sent {
+  background: rgba(52, 240, 128, 0.16);
+  border-color: rgba(52, 240, 128, 0.32);
+}
+html.light .glass-conversation-active {
+  background: rgba(52, 240, 128, 0.1);
+}
+
+/* Formatted (markdown) message surfaces */
+html.light .formatted-message code {
+  background: rgb(var(--glass-tint) / 0.08);
+}
+html.light .formatted-message pre {
+  background: rgb(var(--glass-tint) / 0.05);
+  border-color: rgb(var(--glass-tint) / 0.1);
+}
+html.light .formatted-message hr {
+  border-top-color: rgb(var(--glass-tint) / 0.12);
+}
+html.light .formatted-message th,
+html.light .formatted-message td {
+  border-color: rgb(var(--glass-tint) / 0.14);
+}
+html.light .formatted-message th {
+  background: rgb(var(--glass-tint) / 0.06);
+}
+/* Brand-colored links/mentions need a deeper green to stay legible on white. */
+html.light .formatted-message a {
+  color: #0c9b66;
+}
+html.light .formatted-message .mention-highlight {
+  color: #0c9b66;
+}
+
+/* Sonner toasts — neutral toast only; success/error keep their brand tint. */
+html.light [data-sonner-toaster] [data-sonner-toast] {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgb(var(--glass-tint) / 0.1) !important;
+  box-shadow:
+    0 8px 32px rgba(15, 23, 42, 0.12),
+    0 0 0 0.5px rgba(15, 23, 42, 0.04) !important;
+  color: #0b1220 !important;
+}
+html.light [data-sonner-toaster] [data-sonner-toast] [data-title] {
+  color: #0b1220 !important;
+}
+html.light [data-sonner-toaster] [data-sonner-toast] [data-description] {
+  color: rgba(15, 23, 42, 0.6) !important;
+}
+html.light [data-sonner-toaster] [data-sonner-toast] [data-close-button] {
+  background: rgb(var(--glass-tint) / 0.06) !important;
+  border-color: rgb(var(--glass-tint) / 0.12) !important;
+  color: rgba(15, 23, 42, 0.5) !important;
+}
+
+/* Custom scrollbar reads better dark-on-light */
+html.light .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.25);
 }
 
 /* ─── View Transition Animation Recipes ─── */

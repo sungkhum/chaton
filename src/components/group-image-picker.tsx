@@ -111,9 +111,9 @@ export const GroupImagePicker = ({
         {/* Hover/upload overlay */}
         <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
           {uploading ? (
-            <Loader2 className="w-5 h-5 text-white animate-spin" />
+            <Loader2 className="w-5 h-5 text-ink animate-spin" />
           ) : (
-            <Camera className="w-5 h-5 text-white" />
+            <Camera className="w-5 h-5 text-ink" />
           )}
         </div>
 
@@ -128,7 +128,7 @@ export const GroupImagePicker = ({
             }}
             className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-400 transition-colors cursor-pointer"
           >
-            <X className="w-3 h-3 text-white" />
+            <X className="w-3 h-3 text-ink" />
           </button>
         )}
 
@@ -140,7 +140,7 @@ export const GroupImagePicker = ({
           onChange={handleFileSelect}
         />
       </div>
-      <span className="text-xs text-gray-400">
+      <span className="text-xs text-fg-400">
         {imageUrl ? "Change photo" : "Add photo"}
       </span>
     </div>

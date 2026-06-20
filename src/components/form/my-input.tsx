@@ -19,10 +19,10 @@ export const MyInput = ({
 }: MyInputProps) => {
   return (
     <>
-      <div className="text-lg font-semibold mb-2 text-blue-100">{label}</div>
+      <div className="text-lg font-semibold mb-2 text-ink">{label}</div>
 
       <input
-        className={`w-full border outline-none rounded-md text-blue-100 bg-blue-900/20 py-2 px-3 ${
+        className={`w-full border outline-none rounded-md text-ink bg-blue-900/20 py-2 px-3 ${
           error ? "border-red-500" : "border-transparent"
         }`}
         type="text"
