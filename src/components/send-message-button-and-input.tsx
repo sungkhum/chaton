@@ -806,7 +806,7 @@ export const SendMessageButtonAndInput = forwardRef<
     return (
       <div
         ref={inputBarRef}
-        className="w-full px-3 pb-3 pt-2 md:px-6 md:pb-4 md:pt-3 border-t border-white/[0.06] bg-white/[0.02] relative"
+        className="w-full px-3 pb-3 pt-2 md:px-6 md:pb-4 md:pt-3 border-t border-ink/[0.06] bg-ink/[0.02] relative"
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
@@ -814,7 +814,7 @@ export const SendMessageButtonAndInput = forwardRef<
       >
         {isDragging && (
           <div className="absolute inset-0 z-50 flex items-center justify-center rounded-2xl border-2 border-dashed border-[#34F080]/60 bg-[#34F080]/10 pointer-events-none">
-            <span className="text-sm font-medium text-[#34F080]">
+            <span className="text-sm font-medium text-brand">
               Drop image or video
             </span>
           </div>
@@ -844,11 +844,11 @@ export const SendMessageButtonAndInput = forwardRef<
         {editingMessage && (
           <ViewTransition enter="slide-up" exit="fade-out" default="none">
             <div className="flex items-center justify-between bg-blue-500/10 border-l-2 border-blue-400 px-3 py-2 mb-2 rounded-r-lg">
-              <div className="text-xs text-gray-400 truncate flex-1 flex items-center gap-1.5">
+              <div className="text-xs text-fg-400 truncate flex-1 flex items-center gap-1.5">
                 <Pencil className="w-3 h-3 shrink-0" />
                 <span>
                   Editing:{" "}
-                  <span className="text-gray-200">
+                  <span className="text-fg-200">
                     {editingMessage.text.slice(0, 80)}
                   </span>
                 </span>
@@ -860,7 +860,7 @@ export const SendMessageButtonAndInput = forwardRef<
                     conversationKey ? getDraft(conversationKey) : ""
                   );
                 }}
-                className="ml-2 text-gray-500 hover:text-white cursor-pointer"
+                className="ml-2 text-fg-500 hover:text-ink cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -871,7 +871,7 @@ export const SendMessageButtonAndInput = forwardRef<
         <div
           className={`relative flex flex-col glass-compose rounded-2xl px-3 py-2 transition-[border-color,box-shadow] duration-200 ${
             isExpanded
-              ? "border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+              ? "border-ink/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
               : ""
           }`}
         >
@@ -923,7 +923,7 @@ export const SendMessageButtonAndInput = forwardRef<
                 (() => {
                   const preview = getDisplayUrl(pendingGif, "md");
                   return (
-                    <div className="w-full pb-2 mb-1 border-b border-white/[0.06]">
+                    <div className="w-full pb-2 mb-1 border-b border-ink/[0.06]">
                       <div className="relative inline-block">
                         {preview && (
                           <img
@@ -934,12 +934,12 @@ export const SendMessageButtonAndInput = forwardRef<
                         )}
                         <button
                           onClick={cancelGif}
-                          className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-black/70 border border-white/20 text-gray-300 hover:text-white hover:bg-black/90 cursor-pointer transition-colors"
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-black/70 border border-ink/20 text-fg-300 hover:text-ink hover:bg-black/90 cursor-pointer transition-colors"
                         >
                           <X className="w-3 h-3" />
                         </button>
                       </div>
-                      <p className="text-[11px] text-gray-500 mt-1">
+                      <p className="text-[11px] text-fg-500 mt-1">
                         {pendingGif.title || "GIF"}
                       </p>
                     </div>
@@ -975,7 +975,7 @@ export const SendMessageButtonAndInput = forwardRef<
           ) : (
             <>
               {/* Action buttons — compact toolbar row on mobile, inline on desktop */}
-              <div className="flex items-center gap-1 md:hidden pb-1.5 mb-0.5 border-b border-white/[0.06]">
+              <div className="flex items-center gap-1 md:hidden pb-1.5 mb-0.5 border-b border-ink/[0.06]">
                 <button
                   onClick={() =>
                     startTransition(() => {
@@ -987,14 +987,14 @@ export const SendMessageButtonAndInput = forwardRef<
                   }
                   aria-label="Attach a link"
                   title="Share a link"
-                  className="p-1.5 text-gray-500 hover:text-[#34F080] active:text-[#34F080] cursor-pointer shrink-0 transition-colors rounded-lg hover:bg-white/[0.04] active:bg-white/[0.06]"
+                  className="p-1.5 text-fg-500 hover:text-brand active:text-brand cursor-pointer shrink-0 transition-colors rounded-lg hover:bg-ink/[0.04] active:bg-ink/[0.06]"
                   type="button"
                 >
                   <Paperclip className="w-4 h-4" />
                 </button>
 
                 <label
-                  className={`p-1.5 text-gray-500 hover:text-[#34F080] active:text-[#34F080] cursor-pointer shrink-0 transition-colors rounded-lg hover:bg-white/[0.04] active:bg-white/[0.06] ${
+                  className={`p-1.5 text-fg-500 hover:text-brand active:text-brand cursor-pointer shrink-0 transition-colors rounded-lg hover:bg-ink/[0.04] active:bg-ink/[0.06] ${
                     isUploading ? "opacity-50 pointer-events-none" : ""
                   }`}
                 >
@@ -1023,7 +1023,7 @@ export const SendMessageButtonAndInput = forwardRef<
                     });
                     if (opening) textareaRef.current?.blur();
                   }}
-                  className="px-1.5 py-1.5 text-gray-500 hover:text-[#34F080] active:text-[#34F080] cursor-pointer font-bold text-[10px] tracking-wide transition-colors shrink-0 rounded-lg hover:bg-white/[0.04] active:bg-white/[0.06]"
+                  className="px-1.5 py-1.5 text-fg-500 hover:text-brand active:text-brand cursor-pointer font-bold text-[10px] tracking-wide transition-colors shrink-0 rounded-lg hover:bg-ink/[0.04] active:bg-ink/[0.06]"
                   type="button"
                 >
                   GIF
@@ -1042,7 +1042,7 @@ export const SendMessageButtonAndInput = forwardRef<
                     }}
                     aria-label="Send a tip"
                     title="Send a tip"
-                    className="p-1.5 text-gray-500 hover:text-white active:text-white cursor-pointer shrink-0 transition-colors rounded-lg hover:bg-white/[0.04] active:bg-white/[0.06]"
+                    className="p-1.5 text-fg-500 hover:text-ink active:text-ink cursor-pointer shrink-0 transition-colors rounded-lg hover:bg-ink/[0.04] active:bg-ink/[0.06]"
                     type="button"
                   >
                     <CircleDollarSign className="w-4 h-4" />
@@ -1064,14 +1064,14 @@ export const SendMessageButtonAndInput = forwardRef<
                     }
                     aria-label="Attach a link"
                     title="Share a link"
-                    className="p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors"
+                    className="p-2 text-fg-500 hover:text-brand cursor-pointer shrink-0 transition-colors"
                     type="button"
                   >
                     <Paperclip className="w-[18px] h-[18px]" />
                   </button>
 
                   <label
-                    className={`p-2 text-gray-500 hover:text-[#34F080] cursor-pointer shrink-0 transition-colors ${
+                    className={`p-2 text-fg-500 hover:text-brand cursor-pointer shrink-0 transition-colors ${
                       isUploading ? "opacity-50 pointer-events-none" : ""
                     }`}
                   >
@@ -1100,7 +1100,7 @@ export const SendMessageButtonAndInput = forwardRef<
                       });
                       if (opening) textareaRef.current?.blur();
                     }}
-                    className="px-1.5 py-2 text-gray-500 hover:text-[#34F080] cursor-pointer font-extrabold text-[11px] tracking-wide transition-colors shrink-0"
+                    className="px-1.5 py-2 text-fg-500 hover:text-brand cursor-pointer font-extrabold text-[11px] tracking-wide transition-colors shrink-0"
                     type="button"
                   >
                     GIF
@@ -1119,7 +1119,7 @@ export const SendMessageButtonAndInput = forwardRef<
                       }}
                       aria-label="Send a tip"
                       title="Send a tip"
-                      className="p-2 text-gray-500 hover:text-white cursor-pointer shrink-0 transition-colors"
+                      className="p-2 text-fg-500 hover:text-ink cursor-pointer shrink-0 transition-colors"
                       type="button"
                     >
                       <CircleDollarSign className="w-[18px] h-[18px]" />
@@ -1129,7 +1129,7 @@ export const SendMessageButtonAndInput = forwardRef<
 
                 <textarea
                   ref={textareaRef}
-                  className="flex-1 min-w-0 bg-transparent text-white text-[15px] outline-none resize-none min-h-[36px] max-h-[150px] py-[7px] placeholder:text-gray-500 leading-snug"
+                  className="flex-1 min-w-0 bg-transparent text-ink text-[15px] outline-none resize-none min-h-[36px] max-h-[150px] py-[7px] placeholder:text-fg-500 leading-snug"
                   placeholder="Type a message..."
                   value={messageToSend}
                   onChange={handleTextareaChange}
@@ -1194,11 +1194,11 @@ export const SendMessageButtonAndInput = forwardRef<
                     paidDmPriceCents > 0 &&
                     !editingMessage &&
                     !showMicButton
-                      ? "px-3 py-1.5 rounded-full glass-fab text-[#34F080] hover:border-[#34F080]/60"
+                      ? "px-3 py-1.5 rounded-full glass-fab text-brand hover:border-[#34F080]/60"
                       : `p-2 rounded-full ${
                           editingMessage
                             ? "glass-send-edit text-blue-300 hover:border-blue-400/60"
-                            : "glass-fab text-[#34F080] hover:border-[#34F080]/60"
+                            : "glass-fab text-brand hover:border-[#34F080]/60"
                         }`
                   }`}
                   type="button"
@@ -1210,7 +1210,7 @@ export const SendMessageButtonAndInput = forwardRef<
                   ) : showMicButton ? (
                     <Mic className="w-5 h-5" />
                   ) : paidDmPriceCents && paidDmPriceCents > 0 ? (
-                    <span className="flex items-center gap-1.5 text-[#34F080]">
+                    <span className="flex items-center gap-1.5 text-brand">
                       <Send className="w-4 h-4" />
                       <span className="text-[11px] font-bold tracking-tight">
                         ${(paidDmPriceCents / 100).toFixed(2)}
@@ -1225,8 +1225,8 @@ export const SendMessageButtonAndInput = forwardRef<
           )}
         </div>
 
-        <p className="text-gray-600 text-[10px] mt-1 ml-2 hidden md:block">
-          <kbd className="text-gray-500">Shift+Enter</kbd> for new line
+        <p className="text-fg-600 text-[10px] mt-1 ml-2 hidden md:block">
+          <kbd className="text-fg-500">Shift+Enter</kbd> for new line
         </p>
       </div>
     );

@@ -55,7 +55,7 @@ export const PullToRefreshIndicator = forwardRef<PtrIndicatorHandle, Props>(
         role={refreshing ? "status" : undefined}
         aria-label={refreshing ? "Refreshing conversations" : undefined}
         data-phase={phase}
-        className="pull-to-refresh-indicator pointer-events-none absolute left-1/2 top-3 z-20 flex h-12 w-12 items-center justify-center rounded-full text-[#34F080]"
+        className="pull-to-refresh-indicator pointer-events-none absolute left-1/2 top-3 z-20 flex h-12 w-12 items-center justify-center rounded-full text-brand"
         style={{
           transform: idle
             ? "translate3d(-50%, 0px, 0) scale(0.55)"

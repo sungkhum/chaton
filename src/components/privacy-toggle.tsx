@@ -58,11 +58,11 @@ export function PrivacyToggle() {
     <button
       onClick={toggle}
       disabled={loading}
-      className="flex items-center justify-between w-full py-3 px-3 rounded-lg transition-colors disabled:opacity-50 text-gray-400 hover:text-white hover:bg-white/[0.06] cursor-pointer"
+      className="flex items-center justify-between w-full py-3 px-3 rounded-lg transition-colors disabled:opacity-50 text-fg-400 hover:text-ink hover:bg-ink/[0.06] cursor-pointer"
     >
       <div className="flex items-center">
         {isFull ? (
-          <ShieldCheck className="mr-3 w-[18px] h-[18px] text-[#34F080]" />
+          <ShieldCheck className="mr-3 w-[18px] h-[18px] text-brand" />
         ) : (
           <Shield className="mr-3 w-[18px] h-[18px]" />
         )}
@@ -71,7 +71,7 @@ export function PrivacyToggle() {
 
       <div
         className={`w-9 h-5 rounded-full transition-colors relative ${
-          isFull ? "bg-[#34F080]" : "bg-white/20"
+          isFull ? "bg-[#34F080]" : "bg-ink/20"
         }`}
       >
         <div

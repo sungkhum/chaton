@@ -303,7 +303,7 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
 
       {/* Card */}
       <div
-        className="relative w-full max-w-[460px] rounded-2xl border border-white/[0.06] p-6 sm:p-8 animate-[fadeIn_0.3s_ease-out]"
+        className="relative w-full max-w-[460px] rounded-2xl border border-ink/[0.06] p-6 sm:p-8 animate-[fadeIn_0.3s_ease-out]"
         style={{
           background:
             "linear-gradient(170deg, rgba(20,28,43,0.85) 0%, rgba(10,16,28,0.92) 100%)",
@@ -324,11 +324,11 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
           />
           <div className="flex-1">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-bold text-gray-500 tracking-[0.2em] uppercase">
+              <span className="text-[10px] font-bold text-fg-500 tracking-[0.2em] uppercase">
                 Step {step} of {TOTAL_STEPS}
               </span>
             </div>
-            <div className="h-[3px] bg-white/[0.04] rounded-full overflow-hidden">
+            <div className="h-[3px] bg-ink/[0.04] rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-700 ease-out"
                 style={{
@@ -347,10 +347,10 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
           {step === 1 && (
             <div className="space-y-5">
               <div>
-                <h2 className="text-[22px] sm:text-2xl font-bold text-white mb-1.5 leading-tight">
+                <h2 className="text-[22px] sm:text-2xl font-bold text-ink mb-1.5 leading-tight">
                   Set up your profile
                 </h2>
-                <p className="text-sm text-gray-400 leading-relaxed">
+                <p className="text-sm text-fg-400 leading-relaxed">
                   Choose a username and photo so friends can find you.
                 </p>
               </div>
@@ -363,7 +363,7 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
                     !uploadingImage && fileInputRef.current?.click()
                   }
                 >
-                  <div className="w-[88px] h-[88px] sm:w-24 sm:h-24 rounded-full bg-white/[0.04] border-2 border-dashed border-white/15 group-hover:border-[#34F080]/40 flex items-center justify-center overflow-hidden transition-all duration-300">
+                  <div className="w-[88px] h-[88px] sm:w-24 sm:h-24 rounded-full bg-ink/[0.04] border-2 border-dashed border-ink/15 group-hover:border-[#34F080]/40 flex items-center justify-center overflow-hidden transition-all duration-300">
                     {profileImagePreview ? (
                       <img
                         src={profileImagePreview}
@@ -371,12 +371,12 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <Camera className="w-7 h-7 text-gray-600 group-hover:text-[#34F080]/70 transition-colors" />
+                      <Camera className="w-7 h-7 text-fg-600 group-hover:text-brand/70 transition-colors" />
                     )}
                   </div>
                   {uploadingImage && (
                     <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
-                      <Loader2 className="w-5 h-5 text-white animate-spin" />
+                      <Loader2 className="w-5 h-5 text-ink animate-spin" />
                     </div>
                   )}
                   <input
@@ -388,7 +388,7 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
                   />
                 </div>
               </div>
-              <p className="text-[11px] text-gray-600 text-center -mt-1">
+              <p className="text-[11px] text-fg-600 text-center -mt-1">
                 {profileImagePreview ? "Tap to change" : "Tap to add a photo"}
               </p>
 
@@ -396,12 +396,12 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
               <div>
                 <label
                   htmlFor="onboard-username"
-                  className="block text-xs font-semibold text-gray-400 mb-2 tracking-wide uppercase"
+                  className="block text-xs font-semibold text-fg-400 mb-2 tracking-wide uppercase"
                 >
                   Username
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fg-500 text-sm">
                     @
                   </span>
                   <input
@@ -411,22 +411,22 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
                     onChange={handleUsernameChange}
                     placeholder="yourname"
                     maxLength={26}
-                    className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-[#34F080]/40 focus:bg-white/[0.06] rounded-xl pl-8 pr-10 py-3.5 text-white text-[15px] outline-none transition-all"
+                    className="w-full bg-ink/[0.04] border border-ink/[0.08] focus:border-[#34F080]/40 focus:bg-ink/[0.06] rounded-xl pl-8 pr-10 py-3.5 text-ink text-[15px] outline-none transition-all"
                     autoComplete="off"
                     autoCapitalize="off"
                   />
                   <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
                     {usernameStatus === "checking" && (
-                      <Loader2 className="w-4 h-4 text-gray-500 animate-spin" />
+                      <Loader2 className="w-4 h-4 text-fg-500 animate-spin" />
                     )}
                     {usernameStatus === "available" && (
-                      <Check className="w-4 h-4 text-[#34F080]" />
+                      <Check className="w-4 h-4 text-brand" />
                     )}
                   </div>
                 </div>
                 <div className="mt-1.5 text-xs min-h-[1rem]" aria-live="polite">
                   {usernameStatus === "available" && (
-                    <span className="text-[#34F080]">
+                    <span className="text-brand">
                       Username is available
                     </span>
                   )}
@@ -448,14 +448,14 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
                 <div className="flex items-center justify-between mb-2">
                   <label
                     htmlFor="onboard-bio"
-                    className="block text-xs font-semibold text-gray-400 tracking-wide uppercase"
+                    className="block text-xs font-semibold text-fg-400 tracking-wide uppercase"
                   >
                     Bio{" "}
-                    <span className="text-gray-600 normal-case font-normal">
+                    <span className="text-fg-600 normal-case font-normal">
                       (optional)
                     </span>
                   </label>
-                  <span className="text-[11px] text-gray-600 tabular-nums">
+                  <span className="text-[11px] text-fg-600 tabular-nums">
                     {bio.length}/160
                   </span>
                 </div>
@@ -465,7 +465,7 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
                   onChange={(e) => setBio(e.target.value.slice(0, 160))}
                   placeholder="A short bio so people know who you are"
                   rows={2}
-                  className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-[#34F080]/40 focus:bg-white/[0.06] rounded-xl px-3.5 py-3 text-white text-[15px] outline-none transition-all resize-none leading-relaxed placeholder:text-gray-600"
+                  className="w-full bg-ink/[0.04] border border-ink/[0.08] focus:border-[#34F080]/40 focus:bg-ink/[0.06] rounded-xl px-3.5 py-3 text-ink text-[15px] outline-none transition-all resize-none leading-relaxed placeholder:text-fg-600"
                 />
               </div>
 
@@ -478,7 +478,7 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
                     usernameStatus !== "available" ||
                     uploadingImage
                   }
-                  className="w-full landing-btn-vivid flex items-center justify-center gap-2 px-6 py-3.5 text-white font-bold rounded-xl text-sm cursor-pointer min-h-[48px] disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none"
+                  className="w-full landing-btn-vivid flex items-center justify-center gap-2 px-6 py-3.5 text-ink font-bold rounded-xl text-sm cursor-pointer min-h-[48px] disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none"
                 >
                   {savingProfile ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -491,7 +491,7 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
                 </button>
                 <button
                   onClick={() => setStep(2)}
-                  className="w-full text-center text-sm text-gray-600 hover:text-gray-400 transition-colors py-2 cursor-pointer"
+                  className="w-full text-center text-sm text-fg-600 hover:text-fg-400 transition-colors py-2 cursor-pointer"
                 >
                   Skip for now
                 </button>
@@ -503,10 +503,10 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
           {step === 2 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-[22px] sm:text-2xl font-bold text-white mb-1.5 leading-tight">
+                <h2 className="text-[22px] sm:text-2xl font-bold text-ink mb-1.5 leading-tight">
                   Securing your account
                 </h2>
-                <p className="text-sm text-gray-400 leading-relaxed">
+                <p className="text-sm text-fg-400 leading-relaxed">
                   Setting up end-to-end encryption and connecting you with the
                   community.
                 </p>
@@ -531,9 +531,9 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
                     }}
                   >
                     {setupStatus === "done" ? (
-                      <Check className="w-8 h-8 text-[#34F080]" />
+                      <Check className="w-8 h-8 text-brand" />
                     ) : (
-                      <Lock className="w-8 h-8 text-gray-500" />
+                      <Lock className="w-8 h-8 text-fg-500" />
                     )}
                   </div>
                   {setupStatus !== "done" && (
@@ -574,7 +574,7 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
                   Something went wrong.{" "}
                   <button
                     onClick={() => setStep(3)}
-                    className="text-[#34F080] hover:underline cursor-pointer"
+                    className="text-brand hover:underline cursor-pointer"
                   >
                     Continue anyway
                   </button>
@@ -595,12 +595,12 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
                     border: "1px solid rgba(52,240,128,0.15)",
                   }}
                 >
-                  <MessageCircle className="w-7 h-7 text-[#34F080]" />
+                  <MessageCircle className="w-7 h-7 text-brand" />
                 </div>
-                <h2 className="text-[22px] sm:text-2xl font-bold text-white mb-1.5 leading-tight">
+                <h2 className="text-[22px] sm:text-2xl font-bold text-ink mb-1.5 leading-tight">
                   You're all set!
                 </h2>
-                <p className="text-sm text-gray-400 leading-relaxed">
+                <p className="text-sm text-fg-400 leading-relaxed">
                   Invite friends so you have someone to chat with.
                 </p>
               </div>
@@ -608,19 +608,19 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
               <div className="space-y-2.5">
                 <button
                   onClick={handleShare}
-                  className="w-full flex items-center justify-center gap-2.5 px-6 py-3.5 bg-white/[0.04] border border-white/[0.08] hover:border-[#34F080]/25 hover:bg-white/[0.06] text-white font-semibold rounded-xl transition-all text-sm cursor-pointer min-h-[48px]"
+                  className="w-full flex items-center justify-center gap-2.5 px-6 py-3.5 bg-ink/[0.04] border border-ink/[0.08] hover:border-[#34F080]/25 hover:bg-ink/[0.06] text-ink font-semibold rounded-xl transition-all text-sm cursor-pointer min-h-[48px]"
                 >
                   <Share2 className="w-4 h-4" />
                   Share Invite Link
                 </button>
                 <button
                   onClick={handleCopyLink}
-                  className="w-full flex items-center justify-center gap-2.5 px-6 py-3.5 bg-white/[0.04] border border-white/[0.08] hover:border-white/15 text-gray-400 font-semibold rounded-xl transition-all text-sm cursor-pointer min-h-[48px]"
+                  className="w-full flex items-center justify-center gap-2.5 px-6 py-3.5 bg-ink/[0.04] border border-ink/[0.08] hover:border-ink/15 text-fg-400 font-semibold rounded-xl transition-all text-sm cursor-pointer min-h-[48px]"
                 >
                   {copied ? (
                     <>
-                      <Check className="w-4 h-4 text-[#34F080]" />
-                      <span className="text-[#34F080]">Copied!</span>
+                      <Check className="w-4 h-4 text-brand" />
+                      <span className="text-brand">Copied!</span>
                     </>
                   ) : (
                     <>
@@ -633,7 +633,7 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
 
               <button
                 onClick={handleFinish}
-                className="w-full landing-btn-vivid flex items-center justify-center gap-2 px-6 py-3.5 text-white font-bold rounded-xl text-sm cursor-pointer min-h-[48px]"
+                className="w-full landing-btn-vivid flex items-center justify-center gap-2 px-6 py-3.5 text-ink font-bold rounded-xl text-sm cursor-pointer min-h-[48px]"
               >
                 Start Chatting
                 <ArrowRight className="w-4 h-4" />
@@ -675,10 +675,10 @@ function SetupRow({
       <div
         className={`flex-shrink-0 transition-colors duration-300 ${
           status === "complete"
-            ? "text-[#34F080]"
+            ? "text-brand"
             : status === "in-progress"
-            ? "text-white/70"
-            : "text-gray-700"
+            ? "text-ink/70"
+            : "text-fg-600"
         }`}
       >
         {icon}
@@ -686,21 +686,21 @@ function SetupRow({
       <span
         className={`flex-1 text-[13px] font-medium transition-colors duration-300 ${
           status === "complete"
-            ? "text-[#34F080]/90"
+            ? "text-brand/90"
             : status === "in-progress"
-            ? "text-white/80"
-            : "text-gray-700"
+            ? "text-ink/80"
+            : "text-fg-600"
         }`}
       >
         {label}
       </span>
       <div className="flex-shrink-0">
         {status === "in-progress" && (
-          <Loader2 className="w-4 h-4 text-[#34F080]/70 animate-spin" />
+          <Loader2 className="w-4 h-4 text-brand/70 animate-spin" />
         )}
-        {status === "complete" && <Check className="w-4 h-4 text-[#34F080]" />}
+        {status === "complete" && <Check className="w-4 h-4 text-brand" />}
         {status === "pending" && (
-          <div className="w-3.5 h-3.5 rounded-full border border-gray-700/60" />
+          <div className="w-3.5 h-3.5 rounded-full border border-fg-600/60" />
         )}
       </div>
     </div>

@@ -176,10 +176,10 @@ function MessageContent({
   if (parsed.deleted) {
     const time = convertTstampToDateTime(message.MessageInfo.TimestampNanos);
     return (
-      <span className="text-white/30 italic text-[13px] select-text inline-flex items-center gap-1.5 py-0.5 px-1">
+      <span className="text-ink/30 italic text-[13px] select-text inline-flex items-center gap-1.5 py-0.5 px-1">
         <Ban className="w-3 h-3 shrink-0 opacity-40" />
         This message was deleted
-        <span className="text-[10px] not-italic text-white/20 ml-1">
+        <span className="text-[10px] not-italic text-ink/20 ml-1">
           {time}
         </span>
       </span>
@@ -191,7 +191,7 @@ function MessageContent({
     looksLikeEncryptedHex(message.DecryptedMessage)
   ) {
     return (
-      <span className="text-gray-500 italic text-sm select-text flex items-center gap-1.5">
+      <span className="text-fg-500 italic text-sm select-text flex items-center gap-1.5">
         <Lock className="w-3 h-3 shrink-0" />
         Unable to decrypt this message
       </span>
@@ -392,7 +392,7 @@ function MessageContent({
                 e.stopPropagation();
                 onToggleOriginal();
               }}
-              className="block text-[10px] text-white/30 mt-0.5 italic cursor-pointer hover:text-white/50 transition-colors"
+              className="block text-[10px] text-ink/30 mt-0.5 italic cursor-pointer hover:text-ink/50 transition-colors"
             >
               {showingOriginal
                 ? "🌐 See translation"
@@ -541,7 +541,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
     const microTipColor = microTipIsDeso ? "#2775ca" : "#34F080";
     const microTipTextColor = microTipIsDeso
       ? "text-[#2775ca]"
-      : "text-[#34F080]";
+      : "text-brand";
 
     // Auto-dismiss tip tooltip after 4 seconds
     useEffect(() => {
@@ -1555,9 +1555,9 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
             createPortal(
               <div
                 ref={pickerRef}
-                className="fixed inset-x-0 bottom-0 z-[65] bg-[#141c2b] rounded-t-2xl border-t border-white/10 pb-[env(safe-area-inset-bottom)]"
+                className="fixed inset-x-0 bottom-0 z-[65] bg-surface-raised rounded-t-2xl border-t border-ink/10 pb-[env(safe-area-inset-bottom)]"
               >
-                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-2 mb-1" />
+                <div className="w-10 h-1 bg-ink/20 rounded-full mx-auto mt-2 mb-1" />
                 <ChunkErrorBoundary>
                   <Suspense
                     fallback={
@@ -1572,9 +1572,9 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                         closeMobileAction();
                       }}
                       className="w-full h-[320px] flex flex-col overflow-hidden bg-transparent [--frimousse-bg:transparent] [--frimousse-border-color:theme(colors.white/10%)]"
-                      searchClassName="mx-3 mt-1 mb-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-base placeholder:text-white/30 outline-none focus:border-[#34F080]/50"
+                      searchClassName="mx-3 mt-1 mb-1 px-3 py-2.5 bg-ink/5 border border-ink/10 rounded-lg text-ink text-base placeholder:text-ink/30 outline-none focus:border-[#34F080]/50"
                       emojiSize="w-11 h-11 text-2xl"
-                      categoryBg="bg-[#141c2b]"
+                      categoryBg="bg-surface-raised"
                       autoFocusSearch={false}
                     />
                   </Suspense>
@@ -1593,11 +1593,11 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
             {viewingHistoricalSlice && (
               <div
                 ref={newerSentinelRef}
-                className="py-4 flex items-center justify-center text-xs text-white/40"
+                className="py-4 flex items-center justify-center text-xs text-ink/40"
               >
                 {isLoadingNewer && (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin text-[#34F080]" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin text-brand" />
                     Loading newer messages...
                   </>
                 )}
@@ -1616,7 +1616,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                     className="flex items-center gap-3 my-3 px-2"
                   >
                     <div className="flex-1 h-px bg-[#34F080]/40" />
-                    <span className="text-xs font-semibold text-[#34F080] whitespace-nowrap">
+                    <span className="text-xs font-semibold text-brand whitespace-nowrap">
                       {unreadCount === 1
                         ? "1 new message"
                         : `${unreadCount} new messages`}
@@ -1641,7 +1641,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                   <React.Fragment key={messageKey}>
                     {divider}
                     <div className="flex justify-center my-2 px-4">
-                      <span className="text-xs text-gray-500 bg-white/5 rounded-full px-3 py-1 text-center">
+                      <span className="text-xs text-fg-500 bg-ink/5 rounded-full px-3 py-1 text-center">
                         {parsed.systemMembers?.length
                           ? parsed.systemMembers
                               .map((m, j) => (
@@ -1650,7 +1650,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                     (j === parsed.systemMembers!.length - 1
                                       ? " and "
                                       : ", ")}
-                                  <span className="text-[#34F080] font-medium">
+                                  <span className="text-brand font-medium">
                                     {m.un || m.pk.slice(0, 8)}
                                   </span>
                                 </span>
@@ -1668,16 +1668,16 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                 message.SenderInfo.OwnerPublicKeyBase58Check ===
                   appUser?.PublicKeyBase58Check;
 
-              let senderStyles = "glass-received text-gray-200";
+              let senderStyles = "glass-received text-fg-200";
               if (IsSender) {
-                senderStyles = "glass-sent text-white";
+                senderStyles = "glass-sent text-ink";
               }
               if (
                 (message.error && !message.DecryptedMessage) ||
                 looksLikeEncryptedHex(message.DecryptedMessage)
               ) {
                 senderStyles =
-                  "bg-white/5 border border-white/10 text-gray-500";
+                  "bg-ink/5 border border-ink/10 text-fg-500";
               }
 
               // For media messages, keep glass style (overflow handled by media components)
@@ -1699,8 +1699,8 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                 senderStyles = "bg-transparent";
               } else if (isMedia) {
                 senderStyles = IsSender
-                  ? "glass-sent text-white"
-                  : "glass-received text-gray-200";
+                  ? "glass-sent text-ink"
+                  : "glass-received text-fg-200";
               }
 
               // Tip messages use glassmorphism bubbles with colored glow (DESO = blue, USDC = green)
@@ -1708,11 +1708,11 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                 const isUsdc = parsed.tipCurrency === "USDC";
                 senderStyles = isUsdc
                   ? IsSender
-                    ? "glass-tip-usdc-sent text-white"
-                    : "glass-tip-usdc-received text-gray-200"
+                    ? "glass-tip-usdc-sent text-ink"
+                    : "glass-tip-usdc-received text-fg-200"
                   : IsSender
-                  ? "glass-tip-deso-sent text-white"
-                  : "glass-tip-deso-received text-gray-200";
+                  ? "glass-tip-deso-sent text-ink"
+                  : "glass-tip-deso-received text-fg-200";
               }
 
               // Emoji-only messages float without a bubble
@@ -1728,7 +1728,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
               // Deleted messages get a muted, dashed-border bubble
               if (parsed.deleted) {
                 senderStyles =
-                  "bg-white/[0.02] border border-dashed border-white/10 text-gray-500";
+                  "bg-ink/[0.02] border border-dashed border-ink/10 text-fg-500";
               }
 
               const messageKey =
@@ -1965,7 +1965,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                     message.SenderInfo.OwnerPublicKeyBase58Check
                                   ]
                                 )}
-                                className="text-[#34F080] text-[11px] font-semibold hover:underline cursor-pointer"
+                                className="text-brand text-[11px] font-semibold hover:underline cursor-pointer"
                               >
                                 {getUsernameByPublicKey[
                                   message.SenderInfo.OwnerPublicKeyBase58Check
@@ -2075,10 +2075,10 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                               message.MessageInfo.TimestampNanos
                             )}`;
                             const timeColor = parsed.deleted
-                              ? "text-white/25"
+                              ? "text-ink/25"
                               : IsSender
-                              ? "text-[#34F080]/50"
-                              : "text-gray-500/80";
+                              ? "text-brand/50"
+                              : "text-fg-500/80";
 
                             const isPinnedMsg =
                               pinnedMessageTimestamp ===
@@ -2151,8 +2151,8 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                               <div
                                 className={`text-[10px] mt-0.5 px-1 text-right ${
                                   IsSender
-                                    ? "text-[#34F080]/50"
-                                    : "text-gray-500/80"
+                                    ? "text-brand/50"
+                                    : "text-fg-500/80"
                                 }`}
                                 title={new Date(
                                   message.MessageInfo.TimestampNanos / 1e6
@@ -2224,7 +2224,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                     onTouchEnd={(e) => e.stopPropagation()}
                                   >
                                     <div
-                                      className={`flex items-center gap-0.5 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg ${
+                                      className={`flex items-center gap-0.5 bg-surface-raised border border-ink/10 rounded-xl shadow-lg ${
                                         isMobile ? "px-1.5 py-1.5" : "px-1 py-1"
                                       }`}
                                     >
@@ -2281,7 +2281,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                             </button>
                                             {showTipTooltip && (
                                               <div
-                                                className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-max max-w-[180px] px-3 py-2 bg-[#1a2436] rounded-lg shadow-lg text-[11px] text-gray-300 text-center z-50 pointer-events-none"
+                                                className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-max max-w-[180px] px-3 py-2 bg-surface-raised rounded-lg shadow-lg text-[11px] text-fg-300 text-center z-50 pointer-events-none"
                                                 style={{
                                                   border: `1px solid ${microTipColor}50`,
                                                 }}
@@ -2296,7 +2296,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                               </div>
                                             )}
                                           </div>
-                                          <div className="w-px self-stretch my-1.5 mx-1 bg-white/10" />
+                                          <div className="w-px self-stretch my-1.5 mx-1 bg-ink/10" />
                                         </>
                                       )}
                                       {QUICK_REACTIONS.map((emoji) => (
@@ -2313,7 +2313,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                           }}
                                           className={`${
                                             isMobile ? "w-11 h-11" : "w-9 h-9"
-                                          } flex items-center justify-center hover:bg-white/10 rounded-lg cursor-pointer transition-colors leading-none`}
+                                          } flex items-center justify-center hover:bg-ink/10 rounded-lg cursor-pointer transition-colors leading-none`}
                                         >
                                           <AnimatedEmoji
                                             emoji={emoji}
@@ -2332,13 +2332,13 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                         }
                                         className={`${
                                           isMobile ? "w-11 h-11" : "w-9 h-9"
-                                        } flex items-center justify-center hover:bg-white/10 rounded-lg cursor-pointer transition-colors`}
+                                        } flex items-center justify-center hover:bg-ink/10 rounded-lg cursor-pointer transition-colors`}
                                         title="More reactions"
                                       >
                                         <Plus
                                           className={`${
                                             isMobile ? "w-5 h-5" : "w-4 h-4"
-                                          } text-gray-400`}
+                                          } text-fg-400`}
                                         />
                                       </button>
                                     </div>
@@ -2351,7 +2351,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                             const actionMenu = createPortal(
                               <div
                                 ref={actionMenuRef}
-                                className={`fixed z-50 bg-[#1a2436] border border-white/10 rounded-xl shadow-lg overscroll-contain ${
+                                className={`fixed z-50 bg-surface-raised border border-ink/10 rounded-xl shadow-lg overscroll-contain ${
                                   isMobile
                                     ? "py-1.5 min-w-[200px]"
                                     : "py-1 min-w-[180px]"
@@ -2376,9 +2376,9 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                       }}
                                       className={`w-full flex items-center gap-3 ${
                                         isMobile ? "px-4 py-3" : "px-3 py-2"
-                                      } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
+                                      } text-sm text-fg-200 hover:bg-ink/8 cursor-pointer transition-colors`}
                                     >
-                                      <Reply className="w-4 h-4 text-gray-400 shrink-0" />
+                                      <Reply className="w-4 h-4 text-fg-400 shrink-0" />
                                       Reply
                                     </button>
                                   )}
@@ -2393,9 +2393,9 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                       }}
                                       className={`w-full flex items-center gap-3 ${
                                         isMobile ? "px-4 py-3" : "px-3 py-2"
-                                      } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
+                                      } text-sm text-fg-200 hover:bg-ink/8 cursor-pointer transition-colors`}
                                     >
-                                      <Copy className="w-4 h-4 text-gray-400 shrink-0" />
+                                      <Copy className="w-4 h-4 text-fg-400 shrink-0" />
                                       Copy
                                     </button>
                                   )}
@@ -2422,12 +2422,12 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                         }}
                                         className={`w-full flex items-center gap-3 ${
                                           isMobile ? "px-4 py-3" : "px-3 py-2"
-                                        } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
+                                        } text-sm text-fg-200 hover:bg-ink/8 cursor-pointer transition-colors`}
                                       >
                                         {isPinned ? (
-                                          <PinOff className="w-4 h-4 text-gray-400 shrink-0" />
+                                          <PinOff className="w-4 h-4 text-fg-400 shrink-0" />
                                         ) : (
-                                          <Pin className="w-4 h-4 text-gray-400 shrink-0" />
+                                          <Pin className="w-4 h-4 text-fg-400 shrink-0" />
                                         )}
                                         {isPinned
                                           ? "Unpin Message"
@@ -2446,12 +2446,12 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                       disabled={translatingKeys.has(messageKey)}
                                       className={`w-full flex items-center gap-3 ${
                                         isMobile ? "px-4 py-3" : "px-3 py-2"
-                                      } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors disabled:opacity-50`}
+                                      } text-sm text-fg-200 hover:bg-ink/8 cursor-pointer transition-colors disabled:opacity-50`}
                                     >
                                       {translatingKeys.has(messageKey) ? (
-                                        <Loader2 className="w-4 h-4 text-gray-400 shrink-0 animate-spin" />
+                                        <Loader2 className="w-4 h-4 text-fg-400 shrink-0 animate-spin" />
                                       ) : (
-                                        <Languages className="w-4 h-4 text-gray-400 shrink-0" />
+                                        <Languages className="w-4 h-4 text-fg-400 shrink-0" />
                                       )}
                                       {translations.has(messageKey)
                                         ? "Show Original"
@@ -2472,9 +2472,9 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                       }}
                                       className={`w-full flex items-center gap-3 min-w-0 ${
                                         isMobile ? "px-4 py-3" : "px-3 py-2"
-                                      } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
+                                      } text-sm text-fg-200 hover:bg-ink/8 cursor-pointer transition-colors`}
                                     >
-                                      <MessageSquare className="w-4 h-4 text-gray-400 shrink-0" />
+                                      <MessageSquare className="w-4 h-4 text-fg-400 shrink-0" />
                                       <span className="truncate">
                                         Message{" "}
                                         {getUsernameByPublicKey[
@@ -2495,7 +2495,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                   !IsSender &&
                                   !(message as any)._localId && (
                                     <>
-                                      <div className="mx-3 my-1 h-px bg-white/8" />
+                                      <div className="mx-3 my-1 h-px bg-ink/8" />
                                       <div
                                         className={`${
                                           isMobile ? "px-4 py-2" : "px-3 py-1.5"
@@ -2549,7 +2549,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                           Custom Amount
                                         </button>
                                       </div>
-                                      <div className="mx-3 my-1 h-px bg-white/8" />
+                                      <div className="mx-3 my-1 h-px bg-ink/8" />
                                     </>
                                   )}
                                 {onEdit &&
@@ -2563,9 +2563,9 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                       }}
                                       className={`w-full flex items-center gap-3 ${
                                         isMobile ? "px-4 py-3" : "px-3 py-2"
-                                      } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
+                                      } text-sm text-fg-200 hover:bg-ink/8 cursor-pointer transition-colors`}
                                     >
-                                      <Pencil className="w-4 h-4 text-gray-400 shrink-0" />
+                                      <Pencil className="w-4 h-4 text-fg-400 shrink-0" />
                                       Edit
                                     </button>
                                   )}
@@ -2581,9 +2581,9 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                       }}
                                       className={`w-full flex items-center gap-3 ${
                                         isMobile ? "px-4 py-3" : "px-3 py-2"
-                                      } text-sm text-gray-200 hover:bg-white/8 cursor-pointer transition-colors`}
+                                      } text-sm text-fg-200 hover:bg-ink/8 cursor-pointer transition-colors`}
                                     >
-                                      <Trash2 className="w-4 h-4 text-gray-400 shrink-0" />
+                                      <Trash2 className="w-4 h-4 text-fg-400 shrink-0" />
                                       Delete for me
                                     </button>
                                   )}
@@ -2597,7 +2597,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                                       }}
                                       className={`w-full flex items-center gap-3 ${
                                         isMobile ? "px-4 py-3" : "px-3 py-2"
-                                      } text-sm text-red-400 hover:bg-white/8 cursor-pointer transition-colors`}
+                                      } text-sm text-red-400 hover:bg-ink/8 cursor-pointer transition-colors`}
                                     >
                                       <Trash2 className="w-4 h-4 text-red-400 shrink-0" />
                                       Delete for everyone
@@ -2623,7 +2623,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                               <ChunkErrorBoundary>
                                 <Suspense
                                   fallback={
-                                    <div className="w-[352px] h-[300px] flex items-center justify-center bg-[#141c2b] rounded-xl border border-white/10 text-blue-400/40 text-sm">
+                                    <div className="w-[352px] h-[300px] flex items-center justify-center bg-surface-raised rounded-xl border border-ink/10 text-blue-400/40 text-sm">
                                       Loading...
                                     </div>
                                   }
@@ -2685,9 +2685,9 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                             {pendingTipTimestamps?.has(
                               message.MessageInfo.TimestampNanosString
                             ) && (
-                              <div className="flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-full text-xs bg-white/5 border border-white/10 animate-pulse">
-                                <Loader2 className="w-3.5 h-3.5 text-gray-400 animate-spin" />
-                                <span className="text-gray-400 text-[11px] font-semibold">
+                              <div className="flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-full text-xs bg-ink/5 border border-ink/10 animate-pulse">
+                                <Loader2 className="w-3.5 h-3.5 text-fg-400 animate-spin" />
+                                <span className="text-fg-400 text-[11px] font-semibold">
                                   Tipping...
                                 </span>
                               </div>
@@ -2710,7 +2710,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
                   className="flex items-center gap-3 my-3 px-2"
                 >
                   <div className="flex-1 h-px bg-[#34F080]/40" />
-                  <span className="text-xs font-semibold text-[#34F080] whitespace-nowrap">
+                  <span className="text-xs font-semibold text-brand whitespace-nowrap">
                     {unreadCount === 1
                       ? "1 new message"
                       : `${unreadCount} new messages`}
@@ -2727,7 +2727,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
               >
                 {isLoadingMore && (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin text-[#34F080]" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin text-brand" />
                     Loading...
                   </>
                 )}
@@ -2749,7 +2749,7 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
               }`}
             >
               <Heart
-                className="w-5 h-5 text-[#34F080] drop-shadow-[0_0_6px_rgba(52,240,128,0.5)]"
+                className="w-5 h-5 text-brand drop-shadow-[0_0_6px_rgba(52,240,128,0.5)]"
                 strokeWidth={2}
               />
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[#34F080] text-[10px] font-bold text-[#0d1520] px-1 shadow-md">
@@ -2761,14 +2761,14 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
           {unreadMentionTimestamps.length > 0 && (
             <button
               onClick={scrollToNextMention}
-              className={`pointer-events-auto relative flex items-center justify-center bg-[#141c2b] hover:bg-[#1a2538] border border-[#34F080]/30 rounded-full shadow-lg cursor-pointer transition-all ${
+              className={`pointer-events-auto relative flex items-center justify-center bg-surface-raised hover:bg-surface-raised border border-[#34F080]/30 rounded-full shadow-lg cursor-pointer transition-all ${
                 isMobile ? "w-11 h-11" : "w-10 h-10"
               }`}
               aria-label={`${unreadMentionTimestamps.length} unread mention${
                 unreadMentionTimestamps.length === 1 ? "" : "s"
               }`}
             >
-              <span className="text-[#34F080] text-sm font-bold">@</span>
+              <span className="text-brand text-sm font-bold">@</span>
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[#34F080] text-[10px] font-bold text-[#0d1520] px-1 shadow-md">
                 {unreadMentionTimestamps.length}
               </span>
@@ -2778,12 +2778,12 @@ export const MessagingBubblesAndAvatar = React.forwardRef<
           {showJumpToLatest && (
             <button
               onClick={scrollToLatest}
-              className={`pointer-events-auto flex items-center justify-center bg-[#141c2b] hover:bg-[#1a2538] border border-white/10 rounded-full shadow-lg cursor-pointer transition-all ${
+              className={`pointer-events-auto flex items-center justify-center bg-surface-raised hover:bg-surface-raised border border-ink/10 rounded-full shadow-lg cursor-pointer transition-all ${
                 isMobile ? "w-11 h-11" : "w-10 h-10"
               }`}
               aria-label="Jump to latest"
             >
-              <ArrowDown className="w-4 h-4 text-gray-300" />
+              <ArrowDown className="w-4 h-4 text-fg-300" />
             </button>
           )}
         </div>

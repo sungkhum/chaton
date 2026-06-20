@@ -85,7 +85,7 @@ export const SupportChatOnDialog = ({
       onClick={onClose}
     >
       <div
-        className="bg-[#050e1d] text-blue-100 border border-blue-900/60 w-[92%] max-w-[420px] rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-hidden"
+        className="bg-surface-sheet text-ink border border-ink/10 w-[92%] max-w-[420px] rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header gradient bar */}
@@ -95,22 +95,22 @@ export const SupportChatOnDialog = ({
           /* ── Success state ── */
           <div className="p-8 text-center">
             <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-[#34F080]/10 border border-[#34F080]/20 flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-[#34F080]" />
+              <Sparkles className="w-8 h-8 text-brand" />
             </div>
-            <h3 className="text-2xl font-bold text-white mb-2">Thank you!</h3>
-            <p className="text-gray-400 text-sm mb-1">
+            <h3 className="text-2xl font-bold text-ink mb-2">Thank you!</h3>
+            <p className="text-fg-400 text-sm mb-1">
               You sent{" "}
-              <span className="text-[#34F080] font-semibold">
+              <span className="text-brand font-semibold">
                 {activeAmount} $DESO
               </span>{" "}
               to ChatOn.
             </p>
-            <p className="text-gray-500 text-xs mb-6">
+            <p className="text-fg-500 text-xs mb-6">
               Your support keeps decentralized messaging alive.
             </p>
             <button
               onClick={onClose}
-              className="px-8 py-2.5 bg-[#34F080]/10 border border-[#34F080]/30 text-[#34F080] font-semibold rounded-lg hover:bg-[#34F080]/20 transition-colors cursor-pointer"
+              className="px-8 py-2.5 bg-[#34F080]/10 border border-[#34F080]/30 text-brand font-semibold rounded-lg hover:bg-[#34F080]/20 transition-colors cursor-pointer"
             >
               Close
             </button>
@@ -120,19 +120,19 @@ export const SupportChatOnDialog = ({
           <>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <div className="flex items-center gap-2.5">
-                <Heart className="w-5 h-5 text-[#34F080]" />
-                <h3 className="text-lg font-bold text-white">Support ChatOn</h3>
+                <Heart className="w-5 h-5 text-brand" />
+                <h3 className="text-lg font-bold text-ink">Support ChatOn</h3>
               </div>
               <button
                 onClick={onClose}
-                className="text-gray-500 hover:text-white transition-colors p-1 cursor-pointer"
+                className="text-fg-500 hover:text-ink transition-colors p-1 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="px-5 pb-5">
-              <p className="text-gray-400 text-sm mb-5 leading-relaxed">
+              <p className="text-fg-400 text-sm mb-5 leading-relaxed">
                 ChatOn is free, open-source, and runs at $0/month. If you enjoy
                 it, a small tip helps fund development.
               </p>
@@ -152,7 +152,7 @@ export const SupportChatOnDialog = ({
                       className={`py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
                         active
                           ? "bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black shadow-[0_0_20px_rgba(52,240,128,0.2)]"
-                          : "bg-white/5 text-gray-300 border border-white/10 hover:border-[#34F080]/40 hover:text-white"
+                          : "bg-ink/5 text-fg-300 border border-ink/10 hover:border-[#34F080]/40 hover:text-ink"
                       }`}
                     >
                       {amount} DESO
@@ -166,7 +166,7 @@ export const SupportChatOnDialog = ({
                 className={`flex items-center gap-2 rounded-lg border px-3 py-2 mb-4 transition-colors ${
                   isCustom
                     ? "border-[#34F080]/50 bg-[#34F080]/5"
-                    : "border-white/10 bg-white/[0.02]"
+                    : "border-ink/10 bg-ink/[0.02]"
                 }`}
               >
                 <input
@@ -181,17 +181,17 @@ export const SupportChatOnDialog = ({
                     setIsCustom(true);
                     setCustomAmount(e.target.value);
                   }}
-                  className="flex-1 bg-transparent text-white text-sm placeholder-gray-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="flex-1 bg-transparent text-ink text-sm placeholder-fg-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
-                <span className="text-gray-500 text-xs font-semibold">
+                <span className="text-fg-500 text-xs font-semibold">
                   DESO
                 </span>
               </div>
 
               {/* Balance */}
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-5">
+              <div className="flex items-center justify-between text-xs text-fg-500 mb-5">
                 <span>Your balance</span>
-                <span className="font-semibold text-gray-400 tabular-nums">
+                <span className="font-semibold text-fg-400 tabular-nums">
                   {balance.toFixed(4)} $DESO
                 </span>
               </div>
@@ -210,7 +210,7 @@ export const SupportChatOnDialog = ({
                 className={`w-full py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
                   canSend
                     ? "bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black hover:shadow-[0_0_30px_rgba(52,240,128,0.3)] active:scale-[0.96]"
-                    : "bg-white/5 text-gray-500 cursor-not-allowed"
+                    : "bg-ink/5 text-fg-500 cursor-not-allowed"
                 }`}
               >
                 {sending ? (
@@ -223,7 +223,7 @@ export const SupportChatOnDialog = ({
                 )}
               </button>
 
-              <p className="text-[10px] text-gray-600 text-center mt-3">
+              <p className="text-[10px] text-fg-600 text-center mt-3">
                 Sent directly on-chain to @GetChatOn
               </p>
             </div>

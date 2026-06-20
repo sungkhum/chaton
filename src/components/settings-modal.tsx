@@ -7,6 +7,7 @@ import { formatDisplayName, getProfileURL } from "../utils/helpers";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 import { SaveToClipboard } from "./shared/save-to-clipboard";
 import { PrivacyToggle } from "./privacy-toggle";
+import { ThemeToggle } from "./theme-toggle";
 import { TipCurrencyToggle } from "./tip-currency-toggle";
 import { LanguageSelector } from "./language-selector";
 import { InboxRules } from "./inbox-rules";
@@ -46,7 +47,7 @@ export const SettingsModal = ({ onClose }: SettingsModalProps) => {
     >
       <div
         ref={modalRef}
-        className="bg-[#050e1d] text-blue-100 border border-blue-900/60 w-full sm:w-[92%] max-w-[460px] rounded-t-2xl sm:rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-hidden max-h-[90vh] sm:max-h-[80vh] flex flex-col modal-card-enter"
+        className="bg-surface-sheet text-ink border border-ink/10 w-full sm:w-[92%] max-w-[460px] rounded-t-2xl sm:rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-hidden max-h-[90vh] sm:max-h-[80vh] flex flex-col modal-card-enter"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header gradient bar */}
@@ -54,11 +55,11 @@ export const SettingsModal = ({ onClose }: SettingsModalProps) => {
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
-          <h2 className="text-lg font-bold text-white">Settings</h2>
+          <h2 className="text-lg font-bold text-ink">Settings</h2>
           <button
             ref={closeButtonRef}
             onClick={onClose}
-            className="text-gray-500 hover:text-white transition-colors p-1 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50 rounded"
+            className="text-fg-500 hover:text-ink transition-colors p-1 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50 rounded"
             aria-label="Close settings"
           >
             <X className="w-5 h-5" />
@@ -71,13 +72,13 @@ export const SettingsModal = ({ onClose }: SettingsModalProps) => {
           <SectionHeader label="Account" />
 
           {/* Profile card */}
-          <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] overflow-hidden mb-1.5">
+          <div className="rounded-xl bg-ink/[0.03] border border-ink/[0.06] overflow-hidden mb-1.5">
             {profileUrl ? (
               <a
                 href={profileUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-3 px-3 py-3 hover:bg-white/[0.04] transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
+                className="flex items-center gap-3 px-3 py-3 hover:bg-ink/[0.04] transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
               >
                 <MessagingDisplayAvatar
                   publicKey={appUser.PublicKeyBase58Check}
@@ -85,16 +86,16 @@ export const SettingsModal = ({ onClose }: SettingsModalProps) => {
                   classNames="shrink-0"
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="text-[14px] font-semibold text-white truncate">
+                  <div className="text-[14px] font-semibold text-ink truncate">
                     {formatDisplayName(appUser)}
                   </div>
                   {appUser.ProfileEntryResponse?.Username && (
-                    <div className="text-[12px] text-gray-500 truncate">
+                    <div className="text-[12px] text-fg-500 truncate">
                       @{appUser.ProfileEntryResponse.Username}
                     </div>
                   )}
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-gray-600 shrink-0" />
+                <ArrowUpRight className="w-4 h-4 text-fg-600 shrink-0" />
               </a>
             ) : (
               <div className="flex items-center gap-3 px-3 py-3">
@@ -103,21 +104,21 @@ export const SettingsModal = ({ onClose }: SettingsModalProps) => {
                   diameter={38}
                   classNames="shrink-0"
                 />
-                <div className="text-[14px] font-semibold text-white truncate">
+                <div className="text-[14px] font-semibold text-ink truncate">
                   {formatDisplayName(appUser)}
                 </div>
               </div>
             )}
 
-            <div className="border-t border-white/[0.06]" />
+            <div className="border-t border-ink/[0.06]" />
 
             {/* Copy Public Key */}
-            <div className="flex items-center py-3 px-3 text-gray-400 hover:text-white hover:bg-white/[0.04] cursor-pointer transition-colors">
+            <div className="flex items-center py-3 px-3 text-fg-400 hover:text-ink hover:bg-ink/[0.04] cursor-pointer transition-colors">
               <SaveToClipboard
                 text={appUser.PublicKeyBase58Check}
                 copyIcon={<Copy className="w-[18px] h-[18px] mr-3" />}
                 copiedIcon={
-                  <Copy className="w-[18px] h-[18px] mr-3 text-[#34F080]" />
+                  <Copy className="w-[18px] h-[18px] mr-3 text-brand" />
                 }
               >
                 <span className="text-[14px]">Copy Public Key</span>
@@ -128,42 +129,49 @@ export const SettingsModal = ({ onClose }: SettingsModalProps) => {
           {/* ── Chat ── */}
           <SectionHeader label="Chat" />
 
-          <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] overflow-hidden mb-1.5">
+          <div className="rounded-xl bg-ink/[0.03] border border-ink/[0.06] overflow-hidden mb-1.5">
             <PrivacyToggle />
-            <div className="border-t border-white/[0.06]" />
+            <div className="border-t border-ink/[0.06]" />
             <TipCurrencyToggle />
-            <div className="border-t border-white/[0.06]" />
+            <div className="border-t border-ink/[0.06]" />
             <InboxRules />
+          </div>
+
+          {/* ── Appearance ── */}
+          <SectionHeader label="Appearance" />
+
+          <div className="rounded-xl bg-ink/[0.03] border border-ink/[0.06] overflow-hidden mb-1.5">
+            <ThemeToggle />
           </div>
 
           {/* ── Language ── */}
           <SectionHeader label="Language" />
 
-          <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] overflow-hidden mb-1.5">
+          <div className="rounded-xl bg-ink/[0.03] border border-ink/[0.06] overflow-hidden mb-1.5">
             <LanguageSelector />
           </div>
 
           {/* ── Links ── */}
           <SectionHeader label="More" />
 
-          <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] overflow-hidden mb-1.5">
+          <div className="rounded-xl bg-ink/[0.03] border border-ink/[0.06] overflow-hidden mb-1.5">
             <a
               href="https://wallet.deso.com"
               target="_blank"
               rel="noreferrer"
-              className="flex items-center justify-between py-3 px-3 text-gray-400 hover:text-white hover:bg-white/[0.04] transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
+              className="flex items-center justify-between py-3 px-3 text-fg-400 hover:text-ink hover:bg-ink/[0.04] transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
             >
               <div className="flex items-center">
                 <Wallet className="mr-3 w-[18px] h-[18px]" />
                 <span className="text-[14px]">DeSo Wallet</span>
               </div>
-              <ArrowUpRight className="w-4 h-4 text-gray-600" />
+              <ArrowUpRight className="w-4 h-4 text-fg-600" />
             </a>
 
-            <div className="border-t border-white/[0.06]" />
+            <div className="border-t border-ink/[0.06]" />
 
             <button
-              className="flex items-center w-full py-3 px-3 text-gray-400 hover:text-white hover:bg-white/[0.04] cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
+              className="flex items-center w-full py-3 px-3 text-fg-400 hover:text-ink hover:bg-ink/[0.04] cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
               onClick={async () => {
                 const shareData = {
                   title: "ChatOn",
@@ -198,7 +206,7 @@ export const SettingsModal = ({ onClose }: SettingsModalProps) => {
 function SectionHeader({ label }: { label: string }) {
   return (
     <div className="px-1 pt-4 pb-1.5">
-      <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+      <span className="text-[11px] font-semibold text-fg-500 uppercase tracking-wider">
         {label}
       </span>
     </div>

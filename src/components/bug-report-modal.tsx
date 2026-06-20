@@ -90,7 +90,7 @@ export function BugReportModal() {
       className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60 sm:items-center"
       onClick={handleBackdropClick}
     >
-      <div className="flex max-h-[100dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-[#0a1628] shadow-2xl shadow-black/50 sm:max-h-[90vh] sm:rounded-2xl">
+      <div className="flex max-h-[100dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-surface-raised shadow-2xl shadow-black/50 sm:max-h-[90vh] sm:rounded-2xl">
         {/* Amber accent bar for error-triggered reports */}
         <div className="h-[2px] bg-gradient-to-r from-amber-500 via-amber-400 to-orange-400" />
 
@@ -102,7 +102,7 @@ export function BugReportModal() {
                 <button
                   onClick={goBack}
                   aria-label="Go back"
-                  className="-ml-2 mr-0.5 rounded-lg p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white/70"
+                  className="-ml-2 mr-0.5 rounded-lg p-2 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink/70"
                 >
                   <svg
                     width="18"
@@ -118,7 +118,7 @@ export function BugReportModal() {
                   </svg>
                 </button>
               ) : null}
-              <h3 className="text-[15px] font-semibold text-white">
+              <h3 className="text-[15px] font-semibold text-ink">
                 {step === "done" ? "Bug Reported" : "Report a Bug"}
               </h3>
             </div>
@@ -131,7 +131,7 @@ export function BugReportModal() {
                 handleClose();
               }}
               aria-label="Close"
-              className="rounded-lg p-2 text-white/30 transition-colors hover:bg-white/5 hover:text-white/60"
+              className="rounded-lg p-2 text-ink/30 transition-colors hover:bg-ink/5 hover:text-ink/60"
             >
               <X size={18} />
             </button>
@@ -139,7 +139,7 @@ export function BugReportModal() {
 
           {/* Auto-captured context pill + empathetic message */}
           <div className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
-            <p className="text-xs text-white/60">
+            <p className="text-xs text-ink/60">
               Sorry about that. We captured the error details — a few quick
               answers will help us fix this.
             </p>
@@ -164,7 +164,7 @@ export function BugReportModal() {
                 <div
                   key={i}
                   className={`h-[3px] flex-1 rounded-full transition-colors ${
-                    i < stepNumber ? "bg-amber-400" : "bg-white/10"
+                    i < stepNumber ? "bg-amber-400" : "bg-ink/10"
                   }`}
                 />
               ))}
@@ -175,11 +175,11 @@ export function BugReportModal() {
             <div>
               <label
                 htmlFor="bug-describe"
-                className="mb-1 block text-sm font-medium text-white/80"
+                className="mb-1 block text-sm font-medium text-ink/80"
               >
                 What were you doing when this happened?
               </label>
-              <p className="mb-3 text-xs text-white/35">
+              <p className="mb-3 text-xs text-ink/35">
                 Help us understand the context
               </p>
               <textarea
@@ -190,9 +190,9 @@ export function BugReportModal() {
                 maxLength={500}
                 rows={3}
                 autoFocus
-                className="w-full rounded-xl border border-white/10 bg-white/[0.03] p-3.5 text-sm text-white placeholder-white/35 transition-colors focus:border-white/20 focus:bg-white/[0.04] focus:outline-none"
+                className="w-full rounded-xl border border-ink/10 bg-ink/[0.03] p-3.5 text-sm text-ink placeholder-ink/35 transition-colors focus:border-ink/20 focus:bg-ink/[0.04] focus:outline-none"
               />
-              <div className="mt-1.5 text-right text-[11px] text-white/20 tabular-nums">
+              <div className="mt-1.5 text-right text-[11px] text-ink/20 tabular-nums">
                 {description.length}/500
               </div>
               <button
@@ -207,10 +207,10 @@ export function BugReportModal() {
             </div>
           ) : step === "frequency" ? (
             <div>
-              <p className="mb-1 text-sm font-medium text-white/80">
+              <p className="mb-1 text-sm font-medium text-ink/80">
                 Has this happened before?
               </p>
-              <p className="mb-3 text-xs text-white/35">
+              <p className="mb-3 text-xs text-ink/35">
                 Helps us understand how urgent this is
               </p>
               <div
@@ -229,8 +229,8 @@ export function BugReportModal() {
                     }}
                     className={`rounded-xl border px-4 py-3 text-left text-sm transition-all active:scale-[0.96] ${
                       frequency === opt.value
-                        ? "border-[#34F080]/40 bg-[#34F080]/10 text-[#34F080]"
-                        : "border-white/[0.06] bg-white/[0.02] text-white/70 hover:border-white/15 hover:bg-white/[0.04]"
+                        ? "border-[#34F080]/40 bg-[#34F080]/10 text-brand"
+                        : "border-ink/[0.06] bg-ink/[0.02] text-ink/70 hover:border-ink/15 hover:bg-ink/[0.04]"
                     }`}
                   >
                     {opt.label}
@@ -242,11 +242,11 @@ export function BugReportModal() {
             <div>
               <label
                 htmlFor="bug-extra"
-                className="mb-1 block text-sm font-medium text-white/80"
+                className="mb-1 block text-sm font-medium text-ink/80"
               >
                 Anything else we should know?
               </label>
-              <p className="mb-3 text-xs text-white/35">
+              <p className="mb-3 text-xs text-ink/35">
                 Optional — skip if nothing comes to mind
               </p>
               <textarea
@@ -257,12 +257,12 @@ export function BugReportModal() {
                 maxLength={300}
                 rows={2}
                 autoFocus
-                className="w-full rounded-xl border border-white/10 bg-white/[0.03] p-3.5 text-sm text-white placeholder-white/35 transition-colors focus:border-white/20 focus:bg-white/[0.04] focus:outline-none"
+                className="w-full rounded-xl border border-ink/10 bg-ink/[0.03] p-3.5 text-sm text-ink placeholder-ink/35 transition-colors focus:border-ink/20 focus:bg-ink/[0.04] focus:outline-none"
               />
               <div className="mt-3 flex gap-2">
                 <button
                   onClick={() => setStep("confirm")}
-                  className="flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/50 transition-colors hover:bg-white/[0.06]"
+                  className="flex-1 rounded-xl border border-ink/10 bg-ink/[0.03] px-4 py-2.5 text-sm text-ink/50 transition-colors hover:bg-ink/[0.06]"
                 >
                   Skip
                 </button>
@@ -276,33 +276,33 @@ export function BugReportModal() {
             </div>
           ) : step === "confirm" ? (
             <div>
-              <p className="mb-3 text-xs text-white/40">
+              <p className="mb-3 text-xs text-ink/40">
                 Here's what we'll send along with the auto-captured error data:
               </p>
-              <div className="space-y-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm">
+              <div className="space-y-2.5 rounded-xl border border-ink/[0.06] bg-ink/[0.02] p-4 text-sm">
                 <div>
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-white/40">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-ink/40">
                     Error
                   </p>
                   <p className="mt-0.5 font-mono text-xs text-amber-400/70">
                     {bugReportError.code}
                   </p>
                 </div>
-                <div className="border-t border-white/[0.04]" />
+                <div className="border-t border-ink/[0.04]" />
                 <div>
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-white/40">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-ink/40">
                     What happened
                   </p>
-                  <p className="mt-0.5 break-words text-white/70">
+                  <p className="mt-0.5 break-words text-ink/70">
                     {description}
                   </p>
                 </div>
-                <div className="border-t border-white/[0.04]" />
+                <div className="border-t border-ink/[0.04]" />
                 <div>
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-white/40">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-ink/40">
                     Frequency
                   </p>
-                  <p className="mt-0.5 text-white/70">
+                  <p className="mt-0.5 text-ink/70">
                     {
                       FREQUENCY_OPTIONS.find((o) => o.value === frequency)
                         ?.label
@@ -311,12 +311,12 @@ export function BugReportModal() {
                 </div>
                 {extra ? (
                   <>
-                    <div className="border-t border-white/[0.04]" />
+                    <div className="border-t border-ink/[0.04]" />
                     <div>
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-white/40">
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-ink/40">
                         Extra
                       </p>
-                      <p className="mt-0.5 text-white/70">{extra}</p>
+                      <p className="mt-0.5 text-ink/70">{extra}</p>
                     </div>
                   </>
                 ) : null}
@@ -330,7 +330,7 @@ export function BugReportModal() {
                     }
                     handleClose();
                   }}
-                  className="flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/50 transition-colors hover:bg-white/[0.06]"
+                  className="flex-1 rounded-xl border border-ink/10 bg-ink/[0.03] px-4 py-2.5 text-sm text-ink/50 transition-colors hover:bg-ink/[0.06]"
                 >
                   Cancel
                 </button>
@@ -359,15 +359,15 @@ export function BugReportModal() {
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
-              <p className="text-sm font-medium text-white/80">
+              <p className="text-sm font-medium text-ink/80">
                 Thanks for reporting this!
               </p>
-              <p className="mt-1 text-xs text-white/35">
+              <p className="mt-1 text-xs text-ink/35">
                 We'll investigate and work on a fix. We read every report.
               </p>
               <button
                 onClick={handleClose}
-                className="mt-5 rounded-xl border border-white/10 bg-white/[0.03] px-8 py-2 text-sm text-white/50 transition-colors hover:bg-white/[0.06]"
+                className="mt-5 rounded-xl border border-ink/10 bg-ink/[0.03] px-8 py-2 text-sm text-ink/50 transition-colors hover:bg-ink/[0.06]"
               >
                 Close
               </button>

@@ -252,8 +252,8 @@ export function NotificationToggle({
       {...(menuItemRole ? { role: "menuitem" as const } : {})}
       className={`flex items-center justify-between w-full py-3 px-3 rounded-lg transition-colors disabled:opacity-50 outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50 ${
         isDenied
-          ? "text-gray-500 cursor-not-allowed"
-          : "text-gray-400 hover:text-white hover:bg-white/[0.06] cursor-pointer"
+          ? "text-fg-500 cursor-not-allowed"
+          : "text-fg-400 hover:text-ink hover:bg-ink/[0.06] cursor-pointer"
       }`}
       title={
         isDenied
@@ -263,7 +263,7 @@ export function NotificationToggle({
     >
       <div className="flex items-center">
         {pushState === "enabled" ? (
-          <BellRing className="mr-3 w-[18px] h-[18px] text-[#34F080]" />
+          <BellRing className="mr-3 w-[18px] h-[18px] text-brand" />
         ) : pushState === "denied" ? (
           <BellOff className="mr-3 w-[18px] h-[18px] text-red-400" />
         ) : (
@@ -277,7 +277,7 @@ export function NotificationToggle({
       ) : (
         <div
           className={`w-9 h-5 rounded-full transition-colors relative ${
-            pushState === "enabled" ? "bg-[#34F080]" : "bg-white/20"
+            pushState === "enabled" ? "bg-[#34F080]" : "bg-ink/20"
           }`}
         >
           <div

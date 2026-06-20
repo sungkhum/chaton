@@ -37,7 +37,7 @@ export function ArchiveConfirmModal({
       />
       {/* Modal */}
       <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4">
-        <div className="bg-[#0a1220] text-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border border-white/8 modal-card-enter overflow-hidden">
+        <div className="bg-surface text-ink w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border border-ink/8 modal-card-enter overflow-hidden">
           {/* Accent bar */}
           {isGroup ? (
             <div className="h-0.5 bg-gradient-to-r from-red-500/80 via-red-400/60 to-red-500/30" />
@@ -58,24 +58,24 @@ export function ArchiveConfirmModal({
                 {isGroup ? (
                   <LogOut className="w-5 h-5 text-red-400" />
                 ) : (
-                  <Archive className="w-5 h-5 text-[#34F080]" />
+                  <Archive className="w-5 h-5 text-brand" />
                 )}
               </div>
               <div className="min-w-0">
-                <h3 className="text-[15px] font-bold text-white">
+                <h3 className="text-[15px] font-bold text-ink">
                   {isGroup ? "Leave group?" : "Archive chat?"}
                 </h3>
-                <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
+                <p className="text-[13px] text-fg-400 mt-1 leading-relaxed">
                   {isGroup ? (
                     <>
                       Other members will see that you left{" "}
-                      <span className="text-gray-300 font-medium">{name}</span>.
+                      <span className="text-fg-300 font-medium">{name}</span>.
                       You can rejoin later from Archived Chats.
                     </>
                   ) : (
                     <>
                       Your conversation with{" "}
-                      <span className="text-gray-300 font-medium">{name}</span>{" "}
+                      <span className="text-fg-300 font-medium">{name}</span>{" "}
                       will move to Archived Chats.
                     </>
                   )}
@@ -87,7 +87,7 @@ export function ArchiveConfirmModal({
             <div className="flex gap-2.5 justify-end pt-1">
               <button
                 onClick={onCancel}
-                className="rounded-full py-2 px-4 glass-btn-secondary text-sm text-gray-300 cursor-pointer"
+                className="rounded-full py-2 px-4 glass-btn-secondary text-sm text-fg-300 cursor-pointer"
               >
                 Cancel
               </button>
@@ -96,7 +96,7 @@ export function ArchiveConfirmModal({
                 className={`rounded-full py-2 px-4 text-sm font-semibold cursor-pointer ${
                   isGroup
                     ? "glass-btn-danger text-red-400"
-                    : "glass-btn-primary text-[#34F080]"
+                    : "glass-btn-primary text-brand"
                 }`}
               >
                 {isGroup ? "Leave" : "Archive"}

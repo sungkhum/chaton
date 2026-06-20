@@ -141,14 +141,14 @@ export const VideoMessage = ({
           )}
           <div
             className={`absolute inset-0 flex items-center justify-center ${
-              thumbnailUrl && !thumbnailError ? "bg-black/30" : "bg-[#0d1626]"
+              thumbnailUrl && !thumbnailError ? "bg-black/30" : "bg-surface-deep"
             }`}
           >
-            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <Play className="w-6 h-6 text-white ml-1" />
+            <div className="w-12 h-12 rounded-full bg-ink/20 backdrop-blur-sm flex items-center justify-center">
+              <Play className="w-6 h-6 text-ink ml-1" />
             </div>
             {duration !== undefined && duration > 0 && (
-              <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
+              <div className="absolute bottom-2 right-2 bg-black/60 text-ink text-xs px-2 py-0.5 rounded">
                 {formatTime(duration)}
               </div>
             )}

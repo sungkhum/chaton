@@ -122,7 +122,7 @@ export const ReactionPills = ({
               className={`flex items-center gap-1 pl-1.5 pr-2 h-[26px] rounded-full text-xs cursor-pointer transition-colors ${
                 isOwnReaction
                   ? "glass-pill-active"
-                  : "glass-pill hover:bg-white/[0.08]"
+                  : "glass-pill hover:bg-ink/[0.08]"
               }`}
             >
               <AnimatedEmoji emoji={emoji} size={18} />
@@ -131,7 +131,7 @@ export const ReactionPills = ({
                 {avatarKeys.map((pk) => (
                   <div
                     key={pk}
-                    className="rounded-full ring-1 ring-[#141c2b] overflow-hidden"
+                    className="rounded-full ring-1 ring-surface-raised overflow-hidden"
                     title={getUsernameByPublicKey?.[pk] || undefined}
                   >
                     <MessagingDisplayAvatar
@@ -145,7 +145,7 @@ export const ReactionPills = ({
                 ))}
               </div>
               {keys.length > 3 && (
-                <span className="text-gray-400 text-[10px]">
+                <span className="text-fg-400 text-[10px]">
                   +{keys.length - 3}
                 </span>
               )}
@@ -168,7 +168,7 @@ export const ReactionPills = ({
                 if (tooltipNames.length === 0 && extraCount === 0) return null;
                 return (
                   <div
-                    className={`absolute bottom-full mb-1.5 z-20 bg-[#0d1520] border border-white/[0.08] rounded-lg px-2.5 py-1.5 shadow-lg pointer-events-none animate-[fadeIn_100ms_ease-out] ${
+                    className={`absolute bottom-full mb-1.5 z-20 bg-surface border border-ink/[0.08] rounded-lg px-2.5 py-1.5 shadow-lg pointer-events-none animate-[fadeIn_100ms_ease-out] ${
                       isSender ? "right-0" : "left-0"
                     }`}
                   >
@@ -176,14 +176,14 @@ export const ReactionPills = ({
                       {tooltipNames.map((name) => (
                         <div
                           key={name}
-                          className="flex items-center gap-1.5 text-xs text-gray-300 whitespace-nowrap"
+                          className="flex items-center gap-1.5 text-xs text-fg-300 whitespace-nowrap"
                         >
                           <span className="truncate max-w-[140px]">{name}</span>
                           <AnimatedEmoji emoji={emoji} size={13} />
                         </div>
                       ))}
                       {extraCount > 0 && (
-                        <span className="text-[10px] text-gray-500">
+                        <span className="text-[10px] text-fg-500">
                           +{extraCount} more
                         </span>
                       )}

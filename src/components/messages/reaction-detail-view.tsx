@@ -116,8 +116,8 @@ export const ReactionDetailView = ({
           isMobile ? "h-[30px]" : "h-[26px]"
         } ${
           activeTab === null
-            ? "glass-pill-active text-[#34F080]"
-            : "glass-pill text-gray-400 hover:bg-white/[0.08]"
+            ? "glass-pill-active text-brand"
+            : "glass-pill text-fg-400 hover:bg-ink/[0.08]"
         }`}
       >
         All
@@ -134,13 +134,13 @@ export const ReactionDetailView = ({
           } ${
             activeTab === emoji
               ? "glass-pill-active"
-              : "glass-pill hover:bg-white/[0.08]"
+              : "glass-pill hover:bg-ink/[0.08]"
           }`}
         >
           <AnimatedEmoji emoji={emoji} size={isMobile ? 16 : 14} />
           <span
             className={`text-[10px] tabular-nums ${
-              activeTab === emoji ? "text-[#34F080]" : "text-gray-400"
+              activeTab === emoji ? "text-brand" : "text-fg-400"
             }`}
           >
             {reactions[emoji]!.length}
@@ -165,7 +165,7 @@ export const ReactionDetailView = ({
             key={publicKey + (activeTab || "all")}
             className={`group/row flex items-center gap-2.5 ${
               isMobile ? "px-4 py-2.5" : "px-3 py-1.5"
-            } ${!isMobile ? "hover:bg-white/5" : ""} transition-colors`}
+            } ${!isMobile ? "hover:bg-ink/5" : ""} transition-colors`}
           >
             <MessagingDisplayAvatar
               publicKey={publicKey}
@@ -175,7 +175,7 @@ export const ReactionDetailView = ({
               disableLink
             />
             <span
-              className={`text-sm text-gray-200 truncate ${
+              className={`text-sm text-fg-200 truncate ${
                 isMe ? "flex-1 min-w-0" : "flex-1"
               }`}
             >
@@ -194,7 +194,7 @@ export const ReactionDetailView = ({
               </div>
             )}
             {isMe && (
-              <span className="text-[10px] text-[#34F080] shrink-0">you</span>
+              <span className="text-[10px] text-brand shrink-0">you</span>
             )}
             {isMe && onRemoveReaction && (
               <button
@@ -209,7 +209,7 @@ export const ReactionDetailView = ({
                     }
                   }
                 }}
-                className={`shrink-0 text-gray-500 hover:text-white transition-colors cursor-pointer ${
+                className={`shrink-0 text-fg-500 hover:text-ink transition-colors cursor-pointer ${
                   isMobile
                     ? "p-3"
                     : "p-0.5 opacity-0 group-hover/row:opacity-100"
@@ -232,14 +232,14 @@ export const ReactionDetailView = ({
     return (
       <div
         ref={popoverRef}
-        className={`absolute bottom-full mb-2 z-20 bg-[#1a2436] border border-white/10 rounded-xl shadow-xl shadow-black/30 py-2 min-w-[220px] max-w-[320px] ${
+        className={`absolute bottom-full mb-2 z-20 bg-surface-raised border border-ink/10 rounded-xl shadow-xl shadow-black/30 py-2 min-w-[220px] max-w-[320px] ${
           isSender ? "right-0" : "left-0"
         } ${closing ? "reaction-detail-out" : "reaction-detail-in"}`}
       >
         {tabBar}
-        {showTabs && <div className="h-px bg-white/5 mx-2 mb-1" />}
+        {showTabs && <div className="h-px bg-ink/5 mx-2 mb-1" />}
         {!showTabs && (
-          <div className="px-3 pb-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+          <div className="px-3 pb-1.5 text-[10px] font-semibold text-fg-500 uppercase tracking-wider flex items-center gap-1">
             Reacted with <AnimatedEmoji emoji={emojis[0]!} size={12} />
           </div>
         )}
@@ -266,7 +266,7 @@ export const ReactionDetailView = ({
       {/* Sheet */}
       <div className="fixed inset-0 z-[60] flex items-end justify-center pointer-events-none">
         <div
-          className={`pointer-events-auto bg-[#0a1220] text-white w-full rounded-t-2xl border-t border-white/10 max-h-[50vh] flex flex-col ${
+          className={`pointer-events-auto bg-surface text-ink w-full rounded-t-2xl border-t border-ink/10 max-h-[50vh] flex flex-col ${
             closing
               ? "animate-[slideDown_200ms_ease-in_both]"
               : "animate-[slideUp_300ms_cubic-bezier(0.16,1,0.3,1)]"
@@ -277,25 +277,25 @@ export const ReactionDetailView = ({
         >
           {/* Drag indicator */}
           <div className="flex justify-center pt-2.5 pb-1">
-            <div className="w-8 h-1 rounded-full bg-white/20" />
+            <div className="w-8 h-1 rounded-full bg-ink/20" />
           </div>
           {/* Header */}
           <div className="flex items-center justify-between px-4 pb-2">
-            <span className="text-sm font-semibold text-gray-400">
+            <span className="text-sm font-semibold text-fg-400">
               Reactions
             </span>
             <button
               onClick={animateClose}
-              className="p-1 text-gray-400 hover:text-white cursor-pointer"
+              className="p-1 text-fg-400 hover:text-ink cursor-pointer"
               aria-label="Close"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
           {tabBar}
-          {showTabs && <div className="h-px bg-white/5 mx-3" />}
+          {showTabs && <div className="h-px bg-ink/5 mx-3" />}
           {!showTabs && (
-            <div className="px-4 pb-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+            <div className="px-4 pb-1.5 text-[10px] font-semibold text-fg-500 uppercase tracking-wider flex items-center gap-1">
               Reacted with <AnimatedEmoji emoji={emojis[0]!} size={12} />
             </div>
           )}

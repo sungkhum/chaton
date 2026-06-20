@@ -291,7 +291,7 @@ export const MessagingDisplayAvatar: FC<{
               bottom: "0px",
               right: "0px",
             }}
-            className="absolute rounded-full bg-[#34F080] border-2 border-[#0a1019]"
+            className="absolute rounded-full bg-[#34F080] border-2 border-surface"
           />
         )}
       </div>

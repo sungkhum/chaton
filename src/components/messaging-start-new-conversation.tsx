@@ -32,7 +32,7 @@ export const MessagingStartNewConversation: FC<{
           clearTrigger={clearTrigger}
           onUserResults={onUserResults}
           placeholder="Search conversations..."
-          className="search-conversations-input text-white placeholder:text-gray-500 bg-white/5 border border-white/8 hover:border-[#34F080]/30 rounded-xl"
+          className="search-conversations-input text-ink placeholder:text-fg-500 bg-ink/5 border border-ink/8 hover:border-[#34F080]/30 rounded-xl"
         />
       </div>
     </div>

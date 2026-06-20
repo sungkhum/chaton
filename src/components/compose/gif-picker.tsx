@@ -53,8 +53,8 @@ export const GifPicker = ({
   // the primary UI — search stays visible even when the keyboard opens.
   // On desktop: absolute popover above the compose bar.
   const PICKER_CONTAINER = isMobile
-    ? "fixed inset-x-0 top-14 bottom-0 bg-[#0a1628] z-50 flex flex-col"
-    : "absolute bottom-full mb-2 left-0 w-[400px] bg-[#0a1628] border border-blue-800/40 rounded-xl shadow-xl z-50 overflow-hidden";
+    ? "fixed inset-x-0 top-14 bottom-0 bg-surface-raised z-50 flex flex-col"
+    : "absolute bottom-full mb-2 left-0 w-[400px] bg-surface-raised border border-ink/10 rounded-xl shadow-xl z-50 overflow-hidden";
 
   // Click-outside to close (desktop only — mobile is full-screen with close button)
   useEffect(() => {
@@ -215,7 +215,7 @@ export const GifPicker = ({
     const preview = getDisplayUrl(selectedGif, "md");
     return wrap(
       <div ref={pickerRef} className={PICKER_CONTAINER}>
-        <div className="flex items-center gap-2 p-3 border-b border-blue-800/30">
+        <div className="flex items-center gap-2 p-3 border-b border-ink/[0.08]">
           <button
             onClick={handleBack}
             aria-label="Back to search"
@@ -223,7 +223,7 @@ export const GifPicker = ({
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <span className="text-sm text-blue-100 font-medium">Send GIF</span>
+          <span className="text-sm text-ink font-medium">Send GIF</span>
           <div className="flex-1" />
           <button onClick={onClose} aria-label="Close" className="cursor-pointer">
             <X className="w-4 h-4 text-blue-400/60" />
@@ -240,19 +240,19 @@ export const GifPicker = ({
           )}
         </div>
 
-        <div className="flex items-center gap-2 px-3 py-2.5 border-t border-blue-800/30">
+        <div className="flex items-center gap-2 px-3 py-2.5 border-t border-ink/[0.08]">
           <input
             ref={captionRef}
             type="text"
             placeholder="Add a message..."
-            className="flex-1 bg-[#0a1019] text-white text-sm outline-none placeholder:text-gray-600 rounded-lg px-3 py-2 border border-white/8"
+            className="flex-1 bg-surface text-ink text-sm outline-none placeholder:text-fg-600 rounded-lg px-3 py-2 border border-ink/8"
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
             onKeyDown={handleCaptionKeyDown}
           />
           <button
             onClick={handleSend}
-            className="p-2 rounded-full glass-fab text-[#34F080] cursor-pointer transition-colors shrink-0"
+            className="p-2 rounded-full glass-fab text-brand cursor-pointer transition-colors shrink-0"
           >
             <Send className="w-4 h-4" />
           </button>
@@ -267,7 +267,7 @@ export const GifPicker = ({
   return wrap(
     <div ref={pickerRef} className={PICKER_CONTAINER}>
       {/* Tabs */}
-      <div className="flex border-b border-blue-800/30">
+      <div className="flex border-b border-ink/[0.08]">
         <TabButton
           label="GIFs"
           active={tab === "gifs"}
@@ -286,13 +286,13 @@ export const GifPicker = ({
 
       {/* Search */}
       <div className="px-3 pt-3 pb-1">
-        <div className="flex items-center gap-2 bg-[#0a1019] rounded-lg border border-white/8 px-3 py-2">
+        <div className="flex items-center gap-2 bg-surface rounded-lg border border-ink/8 px-3 py-2">
           <Search className="w-4 h-4 text-blue-400/60 shrink-0" />
           <input
             ref={inputRef}
             type="text"
             placeholder="Search KLIPY"
-            className="flex-1 bg-transparent text-blue-100 text-sm outline-none placeholder:text-blue-400/40"
+            className="flex-1 bg-transparent text-ink text-sm outline-none placeholder:text-blue-400/40"
             value={query}
             onChange={(e) => handleSearch(e.target.value)}
             onKeyDown={handleSearchKeyDown}
@@ -321,7 +321,7 @@ export const GifPicker = ({
             <button
               key={s}
               onClick={() => applySuggestion(s)}
-              className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#34F080]/10 text-[#34F080]/80 hover:bg-[#34F080]/20 hover:text-[#34F080] cursor-pointer transition-colors"
+              className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#34F080]/10 text-brand/80 hover:bg-[#34F080]/20 hover:text-brand cursor-pointer transition-colors"
             >
               {s}
             </button>
@@ -333,7 +333,7 @@ export const GifPicker = ({
             <button
               key={cat.slug}
               onClick={() => handleCategoryClick(cat)}
-              className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium glass-pill text-gray-400 hover:text-white cursor-pointer transition-colors"
+              className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium glass-pill text-fg-400 hover:text-ink cursor-pointer transition-colors"
             >
               {cat.title}
             </button>
@@ -388,7 +388,7 @@ function TabButton({
       onClick={onClick}
       className={`px-4 py-2.5 text-sm font-medium cursor-pointer transition-colors relative ${
         active
-          ? "text-blue-100"
+          ? "text-ink"
           : "text-blue-400/50 hover:text-blue-300/70"
       }`}
     >
@@ -444,7 +444,7 @@ function ContentThumbnail({
 
 function KlipyAttribution() {
   return (
-    <div className="flex items-center justify-end px-3 py-1.5 border-t border-blue-800/30">
+    <div className="flex items-center justify-end px-3 py-1.5 border-t border-ink/[0.08]">
       <a
         href="https://klipy.com"
         target="_blank"

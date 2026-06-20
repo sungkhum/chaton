@@ -232,22 +232,22 @@ export function JoinGroupModal({
         onClick={onClose}
       />
       <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4">
-        <div className="bg-[#0a1220] text-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl max-h-[85vh] overflow-y-auto border border-blue-900/50 modal-card-enter">
+        <div className="bg-surface text-ink w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl max-h-[85vh] overflow-y-auto border border-blue-900/50 modal-card-enter">
           {/* Header with close */}
-          <div className="flex items-center justify-between p-4 border-b border-white/5">
+          <div className="flex items-center justify-between p-4 border-b border-ink/5">
             <button
               onClick={onClose}
-              className="p-1 text-gray-400 hover:text-white cursor-pointer"
+              className="p-1 text-fg-400 hover:text-ink cursor-pointer"
               aria-label="Back to chat"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <span className="text-sm font-semibold text-gray-400">
+            <span className="text-sm font-semibold text-fg-400">
               Join Group
             </span>
             <button
               onClick={onClose}
-              className="p-1 text-gray-400 hover:text-white cursor-pointer"
+              className="p-1 text-fg-400 hover:text-ink cursor-pointer"
               aria-label="Close"
             >
               <X className="w-5 h-5" />
@@ -260,8 +260,8 @@ export function JoinGroupModal({
                 className="flex flex-col items-center gap-3 py-8"
                 role="status"
               >
-                <Loader2 className="w-8 h-8 text-[#34F080] animate-spin" />
-                <p className="text-gray-400 text-sm">Loading group info...</p>
+                <Loader2 className="w-8 h-8 text-brand animate-spin" />
+                <p className="text-fg-400 text-sm">Loading group info...</p>
               </div>
             )}
 
@@ -269,12 +269,12 @@ export function JoinGroupModal({
               <div className="flex flex-col items-center gap-3 py-6 text-center">
                 <AlertCircle className="w-10 h-10 text-red-400" />
                 <p className="text-base font-bold">Invalid invite link</p>
-                <p className="text-gray-400 text-sm">
+                <p className="text-fg-400 text-sm">
                   This link is invalid or has expired.
                 </p>
                 <button
                   onClick={onClose}
-                  className="mt-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold rounded-xl text-sm transition-colors cursor-pointer"
+                  className="mt-2 px-5 py-2.5 bg-ink/5 hover:bg-ink/10 border border-ink/10 text-ink font-semibold rounded-xl text-sm transition-colors cursor-pointer"
                 >
                   Back to Chat
                 </button>
@@ -285,12 +285,12 @@ export function JoinGroupModal({
               <div className="flex flex-col items-center gap-3 py-6 text-center">
                 <AlertCircle className="w-10 h-10 text-red-400" />
                 <p className="text-base font-bold">Group not found</p>
-                <p className="text-gray-400 text-sm">
+                <p className="text-fg-400 text-sm">
                   This group no longer exists.
                 </p>
                 <button
                   onClick={onClose}
-                  className="mt-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold rounded-xl text-sm transition-colors cursor-pointer"
+                  className="mt-2 px-5 py-2.5 bg-ink/5 hover:bg-ink/10 border border-ink/10 text-ink font-semibold rounded-xl text-sm transition-colors cursor-pointer"
                 >
                   Back to Chat
                 </button>
@@ -303,8 +303,8 @@ export function JoinGroupModal({
               state !== "group-not-found" && (
                 <>
                   {/* Group avatar */}
-                  <div className="w-16 h-16 rounded-full overflow-hidden bg-[#1a2235] flex items-center justify-center border border-white/10 relative">
-                    <Users className="w-7 h-7 text-[#34F080]/60" />
+                  <div className="w-16 h-16 rounded-full overflow-hidden bg-surface-raised flex items-center justify-center border border-ink/10 relative">
+                    <Users className="w-7 h-7 text-brand/60" />
                     {groupInfo.groupImageUrl && (
                       <img
                         src={groupInfo.groupImageUrl}
@@ -317,12 +317,12 @@ export function JoinGroupModal({
                   </div>
 
                   <div className="text-center">
-                    <h2 className="text-lg font-bold text-white mb-0.5 break-words line-clamp-2">
+                    <h2 className="text-lg font-bold text-ink mb-0.5 break-words line-clamp-2">
                       {groupName}
                     </h2>
-                    <p className="text-gray-400 text-xs">
+                    <p className="text-fg-400 text-xs">
                       Created by{" "}
-                      <span className="text-[#34F080]">@{ownerUsername}</span>
+                      <span className="text-brand">@{ownerUsername}</span>
                       {" \u00b7 "}
                       {groupInfo.memberCount}{" "}
                       {groupInfo.memberCount === 1 ? "member" : "members"}
@@ -333,13 +333,13 @@ export function JoinGroupModal({
                     <div className="w-full flex flex-col gap-3">
                       <button
                         onClick={handleRequestJoin}
-                        className="w-full px-5 py-3 landing-btn-vivid text-white font-black rounded-xl flex items-center justify-center gap-2 cursor-pointer text-sm"
+                        className="w-full px-5 py-3 landing-btn-vivid text-ink font-black rounded-xl flex items-center justify-center gap-2 cursor-pointer text-sm"
                       >
                         <UserPlus className="w-4 h-4" />
                         Request to Join
                       </button>
-                      <div className="bg-white/5 rounded-lg px-3 py-2.5">
-                        <p className="text-gray-400 text-xs text-center leading-relaxed">
+                      <div className="bg-ink/5 rounded-lg px-3 py-2.5">
+                        <p className="text-fg-400 text-xs text-center leading-relaxed">
                           The group owner will be notified and can approve your
                           request. You'll see this group in your chats once
                           approved.
@@ -353,8 +353,8 @@ export function JoinGroupModal({
                       className="flex flex-col items-center gap-2 py-2"
                       role="status"
                     >
-                      <Loader2 className="w-5 h-5 text-[#34F080] animate-spin" />
-                      <p className="text-gray-400 text-sm">
+                      <Loader2 className="w-5 h-5 text-brand animate-spin" />
+                      <p className="text-fg-400 text-sm">
                         Sending request...
                       </p>
                     </div>
@@ -362,12 +362,12 @@ export function JoinGroupModal({
 
                   {state === "submitted" && (
                     <div className="w-full flex flex-col items-center gap-4">
-                      <CheckCircle2 className="w-8 h-8 text-[#34F080]" />
+                      <CheckCircle2 className="w-8 h-8 text-brand" />
                       <div className="text-center">
-                        <p className="text-white text-sm font-semibold mb-1">
+                        <p className="text-ink text-sm font-semibold mb-1">
                           Request sent!
                         </p>
-                        <p className="text-gray-400 text-xs leading-relaxed">
+                        <p className="text-fg-400 text-xs leading-relaxed">
                           The group owner has been notified. Once they approve
                           your request, this group will appear in your chats
                           automatically.
@@ -375,7 +375,7 @@ export function JoinGroupModal({
                       </div>
                       <button
                         onClick={onClose}
-                        className="px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold rounded-xl text-sm transition-colors cursor-pointer"
+                        className="px-5 py-2.5 bg-ink/5 hover:bg-ink/10 border border-ink/10 text-ink font-semibold rounded-xl text-sm transition-colors cursor-pointer"
                       >
                         Back to Chat
                       </button>
@@ -383,20 +383,20 @@ export function JoinGroupModal({
                   )}
 
                   {state === "request-pending" && (
-                    <div className="w-full flex flex-col items-center gap-3 bg-white/5 rounded-xl p-4">
+                    <div className="w-full flex flex-col items-center gap-3 bg-ink/5 rounded-xl p-4">
                       <Clock className="w-7 h-7 text-yellow-400/80" />
                       <div className="text-center">
-                        <p className="text-gray-300 text-sm font-medium mb-1">
+                        <p className="text-fg-300 text-sm font-medium mb-1">
                           Waiting for approval
                         </p>
-                        <p className="text-gray-500 text-xs leading-relaxed">
+                        <p className="text-fg-500 text-xs leading-relaxed">
                           The group owner has your request. This group will
                           appear in your chats once they approve it.
                         </p>
                       </div>
                       <button
                         onClick={onClose}
-                        className="text-gray-500 hover:text-gray-300 text-xs cursor-pointer transition-colors"
+                        className="text-fg-500 hover:text-fg-300 text-xs cursor-pointer transition-colors"
                       >
                         Back to Chat
                       </button>
@@ -405,13 +405,13 @@ export function JoinGroupModal({
 
                   {state === "already-member" && (
                     <div className="w-full flex flex-col gap-3">
-                      <div className="flex items-center justify-center gap-2 text-[#34F080] text-sm font-semibold">
+                      <div className="flex items-center justify-center gap-2 text-brand text-sm font-semibold">
                         <CheckCircle2 className="w-5 h-5" />
                         You're already a member
                       </div>
                       <button
                         onClick={handleOpenChat}
-                        className="w-full px-5 py-3 landing-btn-vivid text-white font-black rounded-xl flex items-center justify-center gap-2 cursor-pointer text-sm"
+                        className="w-full px-5 py-3 landing-btn-vivid text-ink font-black rounded-xl flex items-center justify-center gap-2 cursor-pointer text-sm"
                       >
                         <MessageSquare className="w-4 h-4" />
                         Open Chat

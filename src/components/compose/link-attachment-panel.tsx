@@ -190,7 +190,7 @@ export const LinkAttachmentPanel = forwardRef<
     <div
       role="region"
       aria-label="Share a link"
-      className="w-full pb-2 mb-1 border-b border-white/[0.06]"
+      className="w-full pb-2 mb-1 border-b border-ink/[0.06]"
     >
       {/* Header label + dismiss */}
       <div className="flex items-center justify-between mb-2">
@@ -203,7 +203,7 @@ export const LinkAttachmentPanel = forwardRef<
         <button
           onClick={onCancel}
           aria-label="Cancel"
-          className="p-1 text-gray-500 hover:text-white cursor-pointer transition-colors shrink-0"
+          className="p-1 text-fg-500 hover:text-ink cursor-pointer transition-colors shrink-0"
         >
           <X className="w-3.5 h-3.5" />
         </button>
@@ -217,7 +217,7 @@ export const LinkAttachmentPanel = forwardRef<
           placeholder="Paste a URL..."
           aria-describedby={showError ? errorId : undefined}
           aria-invalid={showError || undefined}
-          className="w-full bg-white/[0.04] text-white text-sm outline-none placeholder:text-gray-500 rounded-lg px-3 py-2 border border-white/8 focus:border-blue-500/40 transition-colors"
+          className="w-full bg-ink/[0.04] text-ink text-sm outline-none placeholder:text-fg-500 rounded-lg px-3 py-2 border border-ink/8 focus:border-blue-500/40 transition-colors"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           onBlur={handleUrlBlur}
@@ -231,13 +231,13 @@ export const LinkAttachmentPanel = forwardRef<
         )}
         {!validUrl && !showError && (
           <div className="flex items-center gap-3 mt-1.5 ml-1">
-            <SiGoogledrive size={12} className="text-gray-600" />
-            <SiDropbox size={12} className="text-gray-600" />
-            <SiFigma size={12} className="text-gray-600" />
-            <SiNotion size={12} className="text-gray-600" />
-            <SiGithub size={12} className="text-gray-600" />
-            <SiYoutube size={12} className="text-gray-600" />
-            <span className="text-[10px] text-gray-600">and any URL</span>
+            <SiGoogledrive size={12} className="text-fg-600" />
+            <SiDropbox size={12} className="text-fg-600" />
+            <SiFigma size={12} className="text-fg-600" />
+            <SiNotion size={12} className="text-fg-600" />
+            <SiGithub size={12} className="text-fg-600" />
+            <SiYoutube size={12} className="text-fg-600" />
+            <span className="text-[10px] text-fg-600">and any URL</span>
           </div>
         )}
       </div>
@@ -248,7 +248,7 @@ export const LinkAttachmentPanel = forwardRef<
           <input
             type="text"
             placeholder="Add a description (optional)..."
-            className="w-full bg-white/[0.04] text-white text-sm outline-none placeholder:text-gray-500 rounded-lg px-3 py-2 border border-white/8 focus:border-blue-500/40 transition-colors"
+            className="w-full bg-ink/[0.04] text-ink text-sm outline-none placeholder:text-fg-500 rounded-lg px-3 py-2 border border-ink/8 focus:border-blue-500/40 transition-colors"
             value={description}
             onChange={handleDescriptionChange}
             onKeyDown={handleKeyDown}
@@ -261,16 +261,16 @@ export const LinkAttachmentPanel = forwardRef<
       <div aria-live="polite">
         {ogLoading && validUrl && (
           <div className="mt-1">
-            <div className="rounded-lg border border-white/5 bg-white/[0.03] p-2.5 animate-pulse">
-              <div className="h-3 bg-white/8 rounded w-3/4 mb-1.5" />
-              <div className="h-2.5 bg-white/5 rounded w-2/3" />
+            <div className="rounded-lg border border-ink/5 bg-ink/[0.03] p-2.5 animate-pulse">
+              <div className="h-3 bg-ink/8 rounded w-3/4 mb-1.5" />
+              <div className="h-2.5 bg-ink/5 rounded w-2/3" />
             </div>
           </div>
         )}
 
         {!ogLoading && hasOgPreview && (
           <div className="mt-1">
-            <div className="rounded-lg border border-white/5 bg-white/[0.03] overflow-hidden">
+            <div className="rounded-lg border border-ink/5 bg-ink/[0.03] overflow-hidden">
               {ogData.image && !ogImageError && (
                 <img
                   src={ogData.image}
@@ -301,12 +301,12 @@ export const LinkAttachmentPanel = forwardRef<
                 )}
                 <div className="flex-1 min-w-0">
                   {ogDisplayTitle && (
-                    <div className="text-xs font-medium text-blue-100 leading-snug truncate">
+                    <div className="text-xs font-medium text-ink leading-snug truncate">
                       {ogDisplayTitle}
                     </div>
                   )}
                   {ogData.description && (
-                    <div className="text-[11px] text-gray-500 leading-snug mt-0.5 line-clamp-2">
+                    <div className="text-[11px] text-fg-500 leading-snug mt-0.5 line-clamp-2">
                       {ogData.description}
                     </div>
                   )}
@@ -320,7 +320,7 @@ export const LinkAttachmentPanel = forwardRef<
         )}
 
         {showNoPreview && (
-          <p className="text-gray-600 text-[11px] mt-1.5 ml-1">
+          <p className="text-fg-600 text-[11px] mt-1.5 ml-1">
             No preview available for this link
           </p>
         )}

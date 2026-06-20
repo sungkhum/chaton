@@ -88,10 +88,10 @@ export const EmojiPickerButton = ({
       ? createPortal(
           <div
             ref={mobilePickerRef}
-            className="fixed inset-x-0 top-14 bottom-0 bg-[#0a1628] z-50 flex flex-col"
+            className="fixed inset-x-0 top-14 bottom-0 bg-surface-raised z-50 flex flex-col"
           >
-            <div className="flex items-center justify-between px-3 py-2.5 border-b border-blue-800/30">
-              <span className="text-sm text-blue-100 font-medium">Emoji</span>
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-ink/[0.08]">
+              <span className="text-sm text-ink font-medium">Emoji</span>
               <button
                 onClick={() => setOpen(false)}
                 aria-label="Close"
@@ -130,7 +130,7 @@ export const EmojiPickerButton = ({
                         onEmojiSelect(emoji);
                         setOpen(false);
                       }}
-                      className="flex items-center justify-center w-10 h-10 rounded-md hover:bg-white/10 active:bg-white/15 cursor-pointer transition-colors active:scale-[0.96]"
+                      className="flex items-center justify-center w-10 h-10 rounded-md hover:bg-ink/10 active:bg-ink/15 cursor-pointer transition-colors active:scale-[0.96]"
                     >
                       <AnimatedEmoji emoji={emoji} size={26} eager />
                     </button>
@@ -138,7 +138,7 @@ export const EmojiPickerButton = ({
                 </div>
                 <button
                   onClick={() => setShowAll(true)}
-                  className="w-full mt-3 py-2.5 text-sm text-gray-400 hover:text-white transition-colors text-center cursor-pointer border border-white/8 rounded-lg"
+                  className="w-full mt-3 py-2.5 text-sm text-fg-400 hover:text-ink transition-colors text-center cursor-pointer border border-ink/8 rounded-lg"
                 >
                   Search all emoji...
                 </button>
@@ -157,7 +157,7 @@ export const EmojiPickerButton = ({
           <ChunkErrorBoundary>
             <Suspense
               fallback={
-                <div className="w-[352px] h-[435px] flex items-center justify-center bg-[#0a1628] rounded-xl border border-blue-800/40 text-blue-400/40 text-sm">
+                <div className="w-[352px] h-[435px] flex items-center justify-center bg-surface-raised rounded-xl border border-ink/10 text-blue-400/40 text-sm">
                   Loading...
                 </div>
               }
@@ -169,7 +169,7 @@ export const EmojiPickerButton = ({
             </Suspense>
           </ChunkErrorBoundary>
         ) : (
-          <div className="bg-[#0a1628] rounded-xl border border-blue-800/40 p-2 w-[350px]">
+          <div className="bg-surface-raised rounded-xl border border-ink/10 p-2 w-[350px]">
             <div className="grid grid-cols-8 gap-0.5">
               {POPULAR_EMOJI.map((emoji) => (
                 <button
@@ -178,7 +178,7 @@ export const EmojiPickerButton = ({
                     onEmojiSelect(emoji);
                     setOpen(false);
                   }}
-                  className="flex items-center justify-center w-10 h-10 rounded-md hover:bg-white/10 cursor-pointer transition-colors active:scale-[0.96]"
+                  className="flex items-center justify-center w-10 h-10 rounded-md hover:bg-ink/10 cursor-pointer transition-colors active:scale-[0.96]"
                 >
                   <AnimatedEmoji emoji={emoji} size={22} eager />
                 </button>
@@ -186,7 +186,7 @@ export const EmojiPickerButton = ({
             </div>
             <button
               onClick={() => setShowAll(true)}
-              className="w-full mt-1.5 py-1.5 text-xs text-gray-400 hover:text-white transition-colors text-center cursor-pointer"
+              className="w-full mt-1.5 py-1.5 text-xs text-fg-400 hover:text-ink transition-colors text-center cursor-pointer"
             >
               Search all emoji...
             </button>
@@ -205,7 +205,7 @@ export const EmojiPickerButton = ({
           if (opening && isMobile)
             (document.activeElement as HTMLElement)?.blur();
         }}
-        className="p-2 text-gray-500 hover:text-[#34F080] transition-colors cursor-pointer"
+        className="p-2 text-fg-500 hover:text-brand transition-colors cursor-pointer"
         title="Emoji"
         type="button"
       >

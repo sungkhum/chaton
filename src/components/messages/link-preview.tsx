@@ -74,11 +74,11 @@ function TweetPreview({ og, url }: { og: OgData; url: string }) {
           ) : (
             <div className="w-5 h-5 rounded-full bg-gray-600 shrink-0" />
           )}
-          <span className="text-[13px] font-medium text-gray-100 truncate">
+          <span className="text-[13px] font-medium text-ink truncate">
             {og.author}
           </span>
           {og.authorHandle && (
-            <span className="text-[12px] text-gray-500 truncate">
+            <span className="text-[12px] text-fg-500 truncate">
               @{og.authorHandle}
             </span>
           )}
@@ -86,7 +86,7 @@ function TweetPreview({ og, url }: { og: OgData; url: string }) {
 
         {/* Tweet text */}
         {og.description && (
-          <div className="px-3 pb-1.5 text-[13px] text-gray-300 leading-snug line-clamp-4 whitespace-pre-line">
+          <div className="px-3 pb-1.5 text-[13px] text-fg-300 leading-snug line-clamp-4 whitespace-pre-line">
             {og.description}
           </div>
         )}
@@ -105,7 +105,7 @@ function TweetPreview({ og, url }: { og: OgData; url: string }) {
 
         {/* Metrics bar */}
         {og.metrics && (
-          <div className="flex items-center gap-4 px-3 pb-2.5 text-[11px] text-gray-500">
+          <div className="flex items-center gap-4 px-3 pb-2.5 text-[11px] text-fg-500">
             <span className="flex items-center gap-1">
               <MessageCircle className="w-3 h-3" />
               {formatCount(og.metrics.replies)}
@@ -118,7 +118,7 @@ function TweetPreview({ og, url }: { og: OgData; url: string }) {
               <Heart className="w-3 h-3" />
               {formatCount(og.metrics.likes)}
             </span>
-            <span className="ml-auto flex items-center gap-1 text-gray-600">
+            <span className="ml-auto flex items-center gap-1 text-fg-600">
               X
               <ExternalLink className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
             </span>
@@ -148,7 +148,7 @@ function RedditPreview({ og, url }: { og: OgData; url: string }) {
             </span>
           )}
           {og.author && (
-            <span className="text-[12px] text-gray-500 truncate">
+            <span className="text-[12px] text-fg-500 truncate">
               u/{og.author}
             </span>
           )}
@@ -156,14 +156,14 @@ function RedditPreview({ og, url }: { og: OgData; url: string }) {
 
         {/* Post title */}
         {og.title && (
-          <div className="px-3 pb-1.5 text-[13px] text-gray-200 leading-snug line-clamp-3 font-medium">
+          <div className="px-3 pb-1.5 text-[13px] text-fg-200 leading-snug line-clamp-3 font-medium">
             {og.title}
           </div>
         )}
 
         {/* Self text preview */}
         {og.description && (
-          <div className="px-3 pb-1.5 text-[12px] text-gray-400 leading-snug line-clamp-2">
+          <div className="px-3 pb-1.5 text-[12px] text-fg-400 leading-snug line-clamp-2">
             {og.description}
           </div>
         )}
@@ -181,7 +181,7 @@ function RedditPreview({ og, url }: { og: OgData; url: string }) {
         )}
 
         {/* Metrics bar */}
-        <div className="flex items-center gap-4 px-3 pb-2.5 text-[11px] text-gray-500">
+        <div className="flex items-center gap-4 px-3 pb-2.5 text-[11px] text-fg-500">
           {og.score != null && (
             <span className="flex items-center gap-1">
               <ArrowBigUp className="w-3.5 h-3.5" />
@@ -194,7 +194,7 @@ function RedditPreview({ og, url }: { og: OgData; url: string }) {
               {formatCount(og.numComments)}
             </span>
           )}
-          <span className="ml-auto flex items-center gap-1 text-gray-600">
+          <span className="ml-auto flex items-center gap-1 text-fg-600">
             Reddit
             <ExternalLink className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
           </span>
@@ -227,7 +227,7 @@ function YouTubePreview({ og, url }: { og: OgData; url: string }) {
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="w-14 h-14 rounded-full bg-black/60 flex items-center justify-center group-hover:bg-red-600/90 transition-colors">
                 <Play
-                  className="w-6 h-6 text-white ml-0.5"
+                  className="w-6 h-6 text-ink ml-0.5"
                   fill="currentColor"
                 />
               </div>
@@ -254,12 +254,12 @@ function YouTubePreview({ og, url }: { og: OgData; url: string }) {
             )}
             <div className="flex-1 min-w-0">
               {og.title && (
-                <div className="text-[13px] text-blue-50 leading-snug mb-0.5 line-clamp-2 font-medium">
+                <div className="text-[13px] text-ink leading-snug mb-0.5 line-clamp-2 font-medium">
                   {og.title}
                 </div>
               )}
               {og.author && (
-                <div className="text-[11px] text-gray-400 leading-snug mb-1 truncate">
+                <div className="text-[11px] text-fg-400 leading-snug mb-1 truncate">
                   {og.author}
                 </div>
               )}
@@ -367,12 +367,12 @@ function GenericLinkPreview({ url }: { url: string }) {
             )}
             <div className="flex-1 min-w-0">
               {og.title && (
-                <div className="text-[13px] text-blue-50 leading-snug mb-0.5 line-clamp-2">
+                <div className="text-[13px] text-ink leading-snug mb-0.5 line-clamp-2">
                   {og.title}
                 </div>
               )}
               {og.description && (
-                <div className="text-[11px] text-gray-500 leading-snug mb-1 line-clamp-2">
+                <div className="text-[11px] text-fg-500 leading-snug mb-1 line-clamp-2">
                   {og.description}
                 </div>
               )}

@@ -31,13 +31,13 @@ function IosShareIcon({ className }: { className?: string }) {
 function NativeContent({ onInstall }: { onInstall: () => void }) {
   return (
     <>
-      <p className="text-sm text-gray-300 mb-4">
+      <p className="text-sm text-fg-300 mb-4">
         Install ChatOn for a faster, native-like experience with push
         notifications and offline access.
       </p>
       <button
         onClick={onInstall}
-        className="w-full py-3 rounded-xl font-semibold text-[#34F080]
+        className="w-full py-3 rounded-xl font-semibold text-brand
                    glass-btn-primary
                    active:scale-[0.96] transition-transform"
       >
@@ -51,11 +51,11 @@ function NativeContent({ onInstall }: { onInstall: () => void }) {
 function ManualIosContent() {
   return (
     <>
-      <p className="text-sm text-gray-300 mb-4">
+      <p className="text-sm text-fg-300 mb-4">
         Add ChatOn to your home screen for a full-screen app experience with
         push notifications.
       </p>
-      <ol className="space-y-3 text-sm text-gray-200">
+      <ol className="space-y-3 text-sm text-fg-200">
         <Step n={1}>
           Tap the <strong>Share</strong> button{" "}
           <IosShareIcon className="inline h-5 w-5 -mt-0.5 text-[#40B8E0]" /> in
@@ -63,7 +63,7 @@ function ManualIosContent() {
         </Step>
         <Step n={2}>
           Scroll down and tap{" "}
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/10 text-white text-xs font-medium">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-ink/10 text-ink text-xs font-medium">
             <Plus className="h-3 w-3" /> Add to Home Screen
           </span>
         </Step>
@@ -78,11 +78,11 @@ function ManualIosContent() {
 function ManualIosOtherContent() {
   return (
     <>
-      <p className="text-sm text-gray-300 mb-4">
+      <p className="text-sm text-fg-300 mb-4">
         To install ChatOn and enable push notifications, open this page in{" "}
         <strong>Safari</strong>.
       </p>
-      <ol className="space-y-3 text-sm text-gray-200">
+      <ol className="space-y-3 text-sm text-fg-200">
         <Step n={1}>
           Copy this URL or open <strong>Safari</strong>
         </Step>
@@ -99,10 +99,10 @@ function ManualIosOtherContent() {
 function ManualFirefoxContent() {
   return (
     <>
-      <p className="text-sm text-gray-300 mb-4">
+      <p className="text-sm text-fg-300 mb-4">
         Install ChatOn for a full-screen app experience with push notifications.
       </p>
-      <ol className="space-y-3 text-sm text-gray-200">
+      <ol className="space-y-3 text-sm text-fg-200">
         <Step n={1}>
           Tap the menu{" "}
           <MoreVertical className="inline h-4 w-4 -mt-0.5 text-[#40B8E0]" /> in
@@ -122,11 +122,11 @@ function ManualFirefoxContent() {
 function ManualSamsungContent() {
   return (
     <>
-      <p className="text-sm text-gray-300 mb-4">
+      <p className="text-sm text-fg-300 mb-4">
         Add ChatOn to your home screen for a full-screen app experience with
         push notifications.
       </p>
-      <ol className="space-y-3 text-sm text-gray-200">
+      <ol className="space-y-3 text-sm text-fg-200">
         <Step n={1}>
           Tap the menu{" "}
           <span className="inline-flex items-center justify-center w-5 h-5 -mt-0.5 text-[#40B8E0]">
@@ -136,7 +136,7 @@ function ManualSamsungContent() {
         </Step>
         <Step n={2}>
           Tap{" "}
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/10 text-white text-xs font-medium">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-ink/10 text-ink text-xs font-medium">
             <Plus className="h-3 w-3" /> Add page to
           </span>{" "}
           then <strong>&ldquo;Home screen&rdquo;</strong>
@@ -152,11 +152,11 @@ function ManualSamsungContent() {
 function ManualMacosContent() {
   return (
     <>
-      <p className="text-sm text-gray-300 mb-4">
+      <p className="text-sm text-fg-300 mb-4">
         Add ChatOn to your Dock for a native app experience with push
         notifications.
       </p>
-      <ol className="space-y-3 text-sm text-gray-200">
+      <ol className="space-y-3 text-sm text-fg-200">
         <Step n={1}>
           Click <strong>File</strong> in the Safari menu bar (or use the{" "}
           <IosShareIcon className="inline h-4 w-4 -mt-0.5 text-[#40B8E0]" />{" "}
@@ -181,8 +181,8 @@ function Step({ n, children }: { n: number; children: React.ReactNode }) {
   return (
     <li className="flex gap-3 items-start">
       <span
-        className="flex-shrink-0 w-6 h-6 rounded-full bg-white/10
-                    flex items-center justify-center text-xs font-bold text-[#34F080]"
+        className="flex-shrink-0 w-6 h-6 rounded-full bg-ink/10
+                    flex items-center justify-center text-xs font-bold text-brand"
       >
         {n}
       </span>
@@ -205,7 +205,7 @@ const CONTENT: Record<
 > = {
   native: {
     title: "Get the ChatOn app",
-    icon: <Download className="h-5 w-5 text-[#34F080]" />,
+    icon: <Download className="h-5 w-5 text-brand" />,
     Body: NativeContent,
   },
   "manual-ios": {
@@ -220,12 +220,12 @@ const CONTENT: Record<
   },
   "manual-firefox": {
     title: "Install ChatOn",
-    icon: <Download className="h-5 w-5 text-[#34F080]" />,
+    icon: <Download className="h-5 w-5 text-brand" />,
     Body: ManualFirefoxContent,
   },
   "manual-samsung": {
     title: "Add ChatOn to Home Screen",
-    icon: <Download className="h-5 w-5 text-[#34F080]" />,
+    icon: <Download className="h-5 w-5 text-brand" />,
     Body: ManualSamsungContent,
   },
   "manual-macos": {
@@ -263,8 +263,8 @@ export function InstallPrompt() {
       {/* Bottom sheet */}
       <div
         className="fixed bottom-0 left-0 right-0 z-[70] mx-auto max-w-lg
-                    rounded-t-2xl border border-white/10
-                    bg-[#0F1520]/95 backdrop-blur-xl
+                    rounded-t-2xl border border-ink/10
+                    bg-surface-raised/95 backdrop-blur-xl
                     p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]
                     shadow-[0_-8px_40px_rgba(0,0,0,0.5)]
                     animate-[slideUp_300ms_cubic-bezier(0.16,1,0.3,1)]"
@@ -278,16 +278,16 @@ export function InstallPrompt() {
               className="h-10 w-10 rounded-xl"
             />
             <div>
-              <h3 className="text-white font-semibold text-base leading-tight">
+              <h3 className="text-ink font-semibold text-base leading-tight">
                 {title}
               </h3>
-              <span className="text-xs text-gray-500">chaton.chat</span>
+              <span className="text-xs text-fg-500">chaton.chat</span>
             </div>
           </div>
 
           <button
             onClick={dismiss}
-            className="p-1.5 rounded-full hover:bg-white/10 text-gray-400
+            className="p-1.5 rounded-full hover:bg-ink/10 text-fg-400
                         transition-colors"
             aria-label="Dismiss"
           >
@@ -302,8 +302,8 @@ export function InstallPrompt() {
         {installType !== "native" && (
           <button
             onClick={dismiss}
-            className="w-full mt-4 py-2.5 rounded-xl text-sm text-gray-400
-                        hover:text-gray-200 hover:bg-white/5 transition-colors"
+            className="w-full mt-4 py-2.5 rounded-xl text-sm text-fg-400
+                        hover:text-fg-200 hover:bg-ink/5 transition-colors"
           >
             Maybe later
           </button>

@@ -257,7 +257,7 @@ export const AudioMessage = ({
         {isProcessing || isLoading ? (
           <Loader2
             className="w-[18px] h-[18px] animate-spin"
-            style={{ color: isProcessing ? "#9ca3af" : accentColor }}
+            style={{ color: isProcessing ? "var(--fg-400)" : accentColor }}
           />
         ) : isPlaying ? (
           <Pause
@@ -304,7 +304,7 @@ export const AudioMessage = ({
       </div>
 
       {/* Duration / time */}
-      <span className="text-[11px] text-gray-400 font-mono tabular-nums min-w-[28px] text-right shrink-0">
+      <span className="text-[11px] text-fg-400 font-mono tabular-nums min-w-[28px] text-right shrink-0">
         {isProcessing
           ? formatTime(displayDuration)
           : isPlaying

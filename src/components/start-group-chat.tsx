@@ -212,18 +212,18 @@ export const StartGroupChat = ({
           />
           {/* Dialog */}
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <div className="bg-[#0c1220] text-white border border-white/8 w-[min(95vw,440px)] rounded-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl shadow-black/40 modal-card-enter">
+            <div className="bg-surface-deep text-ink border border-ink/8 w-[min(95vw,440px)] rounded-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl shadow-black/40 modal-card-enter">
               {/* Header */}
-              <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/8 shrink-0">
-                <span className="text-[15px] font-semibold text-white">
+              <div className="flex items-center justify-between px-4 py-3.5 border-b border-ink/8 shrink-0">
+                <span className="text-[15px] font-semibold text-ink">
                   New Group
                 </span>
                 <button
                   type="button"
                   onClick={handleOpen}
-                  className="p-1 -mr-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                  className="p-1 -mr-1 rounded-full hover:bg-ink/10 transition-colors cursor-pointer"
                 >
-                  <X className="w-4.5 h-4.5 text-gray-400" />
+                  <X className="w-4.5 h-4.5 text-fg-400" />
                 </button>
               </div>
 
@@ -249,10 +249,10 @@ export const StartGroupChat = ({
                         onChange={(e) => setChatName(e.target.value)}
                         placeholder="Group name"
                         autoFocus
-                        className={`w-full bg-white/5 text-white text-sm placeholder:text-gray-500 rounded-xl px-3.5 py-2.5 outline-none border transition-colors ${
+                        className={`w-full bg-ink/5 text-ink text-sm placeholder:text-fg-500 rounded-xl px-3.5 py-2.5 outline-none border transition-colors ${
                           formTouched && !isNameValid()
                             ? "border-red-500/60"
-                            : "border-white/8 focus:border-[#34F080]/40"
+                            : "border-ink/8 focus:border-[#34F080]/40"
                         }`}
                       />
                       {formTouched && !isNameValid() && (
@@ -265,11 +265,11 @@ export const StartGroupChat = ({
 
                   {/* Members */}
                   <div>
-                    <div className="text-xs font-medium uppercase tracking-wider text-white/30 mb-2">
+                    <div className="text-xs font-medium uppercase tracking-wider text-ink/30 mb-2">
                       Members
                     </div>
                     <SearchUsers
-                      className="text-white placeholder:text-gray-500 bg-white/5 border-white/8"
+                      className="text-ink placeholder:text-fg-500 bg-ink/5 border-ink/8"
                       onSelected={(member) =>
                         addMember(member, () => {
                           setTimeout(() => {
@@ -293,7 +293,7 @@ export const StartGroupChat = ({
                     >
                       {members.map((member) => (
                         <div
-                          className="flex items-center gap-2.5 px-2.5 py-2 bg-white/[0.03] border border-white/5 rounded-xl group"
+                          className="flex items-center gap-2.5 px-2.5 py-2 bg-ink/[0.03] border border-ink/5 rounded-xl group"
                           key={member.id}
                         >
                           <MessagingDisplayAvatar
@@ -302,13 +302,13 @@ export const StartGroupChat = ({
                             diameter={isMobile ? 32 : 34}
                             classNames="mx-0"
                           />
-                          <span className="text-sm text-white font-medium truncate flex-1">
+                          <span className="text-sm text-ink font-medium truncate flex-1">
                             {member.text}
                           </span>
                           <button
                             type="button"
                             onClick={() => removeMember(member.id)}
-                            className="p-1 rounded-full text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer opacity-0 group-hover:opacity-100 shrink-0"
+                            className="p-1 rounded-full text-fg-500 hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer opacity-0 group-hover:opacity-100 shrink-0"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -318,8 +318,8 @@ export const StartGroupChat = ({
                   </div>
 
                   {/* Sharing */}
-                  <div className="border-t border-white/5 pt-3.5">
-                    <div className="text-xs font-medium uppercase tracking-wider text-white/30 mb-2.5">
+                  <div className="border-t border-ink/5 pt-3.5">
+                    <div className="text-xs font-medium uppercase tracking-wider text-ink/30 mb-2.5">
                       Sharing
                     </div>
 
@@ -327,14 +327,14 @@ export const StartGroupChat = ({
                       {/* Invite link toggle */}
                       <div className="flex items-center justify-between py-1.5">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                            <Link2 className="w-3.5 h-3.5 text-gray-400" />
+                          <div className="w-7 h-7 rounded-lg bg-ink/5 flex items-center justify-center shrink-0">
+                            <Link2 className="w-3.5 h-3.5 text-fg-400" />
                           </div>
                           <div className="min-w-0 text-left">
-                            <div className="text-sm text-white/80">
+                            <div className="text-sm text-ink/80">
                               Invite link
                             </div>
-                            <div className="text-[11px] text-white/25 leading-tight">
+                            <div className="text-[11px] text-ink/25 leading-tight">
                               Anyone with the link can request to join
                             </div>
                           </div>
@@ -347,7 +347,7 @@ export const StartGroupChat = ({
                             if (!next) setWantCommunityList(false);
                           }}
                           className={`relative w-10 h-[22px] rounded-full transition-colors cursor-pointer shrink-0 ml-3 ${
-                            wantInviteLink ? "bg-[#34F080]" : "bg-white/10"
+                            wantInviteLink ? "bg-[#34F080]" : "bg-ink/10"
                           }`}
                           aria-label="Toggle invite link"
                         >
@@ -370,14 +370,14 @@ export const StartGroupChat = ({
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                            <Globe className="w-3.5 h-3.5 text-gray-400" />
+                          <div className="w-7 h-7 rounded-lg bg-ink/5 flex items-center justify-center shrink-0">
+                            <Globe className="w-3.5 h-3.5 text-fg-400" />
                           </div>
                           <div className="min-w-0 text-left">
-                            <div className="text-sm text-white/80">
+                            <div className="text-sm text-ink/80">
                               List in Community
                             </div>
-                            <div className="text-[11px] text-white/25 leading-tight">
+                            <div className="text-[11px] text-ink/25 leading-tight">
                               Let others discover this group
                             </div>
                           </div>
@@ -392,7 +392,7 @@ export const StartGroupChat = ({
                           }}
                           disabled={!wantInviteLink}
                           className={`relative w-10 h-[22px] rounded-full transition-colors cursor-pointer shrink-0 disabled:cursor-not-allowed ml-3 ${
-                            wantCommunityList ? "bg-[#34F080]" : "bg-white/10"
+                            wantCommunityList ? "bg-[#34F080]" : "bg-ink/10"
                           }`}
                           aria-label="Toggle community listing"
                         >
@@ -419,9 +419,9 @@ export const StartGroupChat = ({
                           }
                           placeholder="Short description for the directory..."
                           rows={2}
-                          className="w-full rounded-xl px-3 py-2 text-sm text-white/80 placeholder:text-white/20 bg-white/5 border border-white/8 focus:border-white/15 outline-none resize-none"
+                          className="w-full rounded-xl px-3 py-2 text-sm text-ink/80 placeholder:text-ink/20 bg-ink/5 border border-ink/8 focus:border-ink/15 outline-none resize-none"
                         />
-                        <div className="text-right text-[11px] text-white/20 mt-0.5">
+                        <div className="text-right text-[11px] text-ink/20 mt-0.5">
                           {communityDescription.length}/200
                         </div>
                       </div>
@@ -430,17 +430,17 @@ export const StartGroupChat = ({
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-end px-4 py-3 gap-2.5 border-t border-white/8 shrink-0">
+                <div className="flex justify-end px-4 py-3 gap-2.5 border-t border-ink/8 shrink-0">
                   <button
                     onClick={handleOpen}
                     type="button"
-                    className="rounded-xl py-2 px-4 text-sm text-gray-400 hover:text-white hover:bg-white/5 cursor-pointer transition-colors"
+                    className="rounded-xl py-2 px-4 text-sm text-fg-400 hover:text-ink hover:bg-ink/5 cursor-pointer transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="glass-btn-primary text-[#34F080] font-semibold rounded-xl py-2 px-5 text-sm flex items-center cursor-pointer transition-colors disabled:opacity-50"
+                    className="glass-btn-primary text-brand font-semibold rounded-xl py-2 px-5 text-sm flex items-center cursor-pointer transition-colors disabled:opacity-50"
                     disabled={loading || imageUploading}
                   >
                     {(loading || imageUploading) && (

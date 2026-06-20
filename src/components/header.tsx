@@ -115,7 +115,7 @@ export const Header = () => {
   }, [menuOpen, closeMenu]);
 
   return (
-    <header className="flex justify-between items-center px-4 h-14 fixed top-0 z-[60] w-full bg-[#080d16]/95 backdrop-blur-xl border-b border-white/5">
+    <header className="flex justify-between items-center px-4 h-14 fixed top-0 z-[60] w-full bg-surface-deep/95 backdrop-blur-xl border-b border-ink/5">
       <a href="/" className="flex items-center gap-2.5">
         <img
           src="/ChatOn-Logo-Small.png"
@@ -124,14 +124,14 @@ export const Header = () => {
           alt="ChatOn logo"
           className="rounded-xl"
         />
-        <span className="text-white font-bold text-lg">ChatOn</span>
+        <span className="text-ink font-bold text-lg">ChatOn</span>
       </a>
 
       <div className="flex items-center">
         <div className="flex items-center ml-2">
           {appUser && (
             <div className="flex items-center pr-1 md:pr-2">
-              <span className="text-white text-sm font-semibold">
+              <span className="text-ink text-sm font-semibold">
                 {formatDisplayName(appUser)}
               </span>
             </div>
@@ -192,7 +192,7 @@ export const Header = () => {
                           target="_blank"
                           rel="noreferrer"
                           role="menuitem"
-                          className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-white/[0.06] transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
+                          className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-ink/[0.06] transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
                         >
                           <MessagingDisplayAvatar
                             publicKey={appUser.PublicKeyBase58Check}
@@ -208,11 +208,11 @@ export const Header = () => {
                             classNames="shrink-0"
                           />
                           <div className="flex-1 min-w-0">
-                            <div className="text-[14px] font-semibold text-white truncate">
+                            <div className="text-[14px] font-semibold text-ink truncate">
                               {formatDisplayName(appUser)}
                             </div>
                             {appUser.ProfileEntryResponse?.Username && (
-                              <div className="text-[12px] text-gray-500 truncate">
+                              <div className="text-[12px] text-fg-500 truncate">
                                 @{appUser.ProfileEntryResponse.Username}
                               </div>
                             )}
@@ -233,19 +233,19 @@ export const Header = () => {
                             diameter={36}
                             classNames="shrink-0"
                           />
-                          <div className="text-[14px] font-semibold text-white truncate">
+                          <div className="text-[14px] font-semibold text-ink truncate">
                             {formatDisplayName(appUser)}
                           </div>
                         </div>
                       ))}
 
-                    <div className="border-t border-white/[0.06] my-1.5" />
+                    <div className="border-t border-ink/[0.06] my-1.5" />
 
                     {/* Edit Profile */}
                     {appUser && (
                       <button
                         role="menuitem"
-                        className="flex items-center w-full py-3 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
+                        className="flex items-center w-full py-3 px-3 text-fg-400 hover:text-ink hover:bg-ink/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
                         onClick={() => {
                           closeMenu();
                           setShowEditProfile(true);
@@ -259,12 +259,12 @@ export const Header = () => {
                     {/* Notifications */}
                     <NotificationToggle menuItemRole />
 
-                    <div className="border-t border-white/[0.06] my-1.5" />
+                    <div className="border-t border-ink/[0.06] my-1.5" />
 
                     {/* Send Feedback */}
                     <button
                       role="menuitem"
-                      className="flex items-center w-full py-3 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
+                      className="flex items-center w-full py-3 px-3 text-fg-400 hover:text-ink hover:bg-ink/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
                       onClick={() => {
                         closeMenu();
                         useStore.getState().openFeedbackModal();
@@ -277,22 +277,22 @@ export const Header = () => {
                     {/* Donate */}
                     <button
                       role="menuitem"
-                      className="flex items-center w-full py-3 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
+                      className="flex items-center w-full py-3 px-3 text-fg-400 hover:text-ink hover:bg-ink/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
                       onClick={() => {
                         closeMenu();
                         setShowSupport(true);
                       }}
                     >
-                      <Heart className="mr-3 w-[18px] h-[18px] text-[#34F080]" />
+                      <Heart className="mr-3 w-[18px] h-[18px] text-brand" />
                       <span className="text-[14px]">Donate</span>
                     </button>
 
-                    <div className="border-t border-white/[0.06] my-1.5" />
+                    <div className="border-t border-ink/[0.06] my-1.5" />
 
                     {/* Settings */}
                     <button
                       role="menuitem"
-                      className="flex items-center w-full py-3 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
+                      className="flex items-center w-full py-3 px-3 text-fg-400 hover:text-ink hover:bg-ink/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
                       onClick={() => {
                         closeMenu();
                         setShowSettings(true);
@@ -302,7 +302,7 @@ export const Header = () => {
                       <span className="text-[14px]">Settings</span>
                     </button>
 
-                    <div className="border-t border-white/[0.06] my-1.5" />
+                    <div className="border-t border-ink/[0.06] my-1.5" />
 
                     {/* Switch Account — only if multiple accounts */}
                     {hasMultipleAccounts &&
@@ -312,7 +312,7 @@ export const Header = () => {
                             <UserAccountList onSwitch={() => closeMenu()} />
                             <button
                               role="menuitem"
-                              className="flex items-center w-full py-3 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
+                              className="flex items-center w-full py-3 px-3 text-fg-400 hover:text-ink hover:bg-ink/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
                               onClick={async () => {
                                 setLockRefresh(true);
                                 try {
@@ -325,7 +325,7 @@ export const Header = () => {
                                 closeMenu();
                               }}
                             >
-                              <span className="mr-3 w-[18px] h-[18px] flex items-center justify-center text-[#34F080] text-lg font-bold">
+                              <span className="mr-3 w-[18px] h-[18px] flex items-center justify-center text-brand text-lg font-bold">
                                 +
                               </span>
                               <span className="text-[14px]">Add Account</span>
@@ -335,7 +335,7 @@ export const Header = () => {
                       ) : (
                         <button
                           role="menuitem"
-                          className="flex items-center w-full py-3 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
+                          className="flex items-center w-full py-3 px-3 text-fg-400 hover:text-ink hover:bg-ink/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
                           onClick={() => setShowAccountSwitcher(true)}
                         >
                           <ArrowLeftRight className="mr-3 w-[18px] h-[18px]" />
@@ -346,7 +346,7 @@ export const Header = () => {
                     {/* Logout */}
                     <button
                       role="menuitem"
-                      className="flex items-center w-full py-3 px-3 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
+                      className="flex items-center w-full py-3 px-3 text-fg-400 hover:text-ink hover:bg-ink/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
                       onClick={async () => {
                         if (!appUser) return;
                         setLockRefresh(true);

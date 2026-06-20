@@ -23,14 +23,14 @@ export const ReplyPreview = ({
 
   return (
     <div
-      className="border-l-2 border-[#34F080] pl-3 pr-3 py-1.5 mb-1 rounded-r-md bg-white/5 text-xs text-gray-400 cursor-pointer hover:bg-white/8 hover:text-gray-200 transition-colors"
+      className="border-l-2 border-[#34F080] pl-3 pr-3 py-1.5 mb-1 rounded-r-md bg-ink/5 text-xs text-fg-400 cursor-pointer hover:bg-ink/8 hover:text-fg-200 transition-colors"
       onClick={onClick}
     >
       {replySender && (
-        <div className="text-[#34F080] font-semibold mb-0.5">{replySender}</div>
+        <div className="text-brand font-semibold mb-0.5">{replySender}</div>
       )}
       {isEncrypted ? (
-        <div className="flex items-center gap-1 text-gray-500 italic">
+        <div className="flex items-center gap-1 text-fg-500 italic">
           <Lock className="w-3 h-3 shrink-0" />
           Encrypted message
         </div>

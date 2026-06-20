@@ -90,7 +90,7 @@ export function UserActionMenu({
         ref={menuRef}
         role="menu"
         aria-label={`Actions for ${label}`}
-        className="fixed z-[71] min-w-[200px] rounded-xl bg-[#141c2b] border border-white/10 shadow-2xl overflow-hidden py-1"
+        className="fixed z-[71] min-w-[200px] rounded-xl bg-surface-raised border border-ink/10 shadow-2xl overflow-hidden py-1"
         style={{
           top: pos?.top ?? -9999,
           left: pos?.left ?? -9999,
@@ -98,25 +98,25 @@ export function UserActionMenu({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-3 pt-2 pb-1.5 text-[11px] uppercase tracking-wide text-white/40 font-semibold truncate">
+        <div className="px-3 pt-2 pb-1.5 text-[11px] uppercase tracking-wide text-ink/40 font-semibold truncate">
           {label}
         </div>
         {!isSelf && (
           <button
             role="menuitem"
             onClick={handleMessage}
-            className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-[14px] text-white hover:bg-white/5 transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-[14px] text-ink hover:bg-ink/5 transition-colors"
           >
-            <MessageSquare className="w-4 h-4 text-[#34F080]" />
+            <MessageSquare className="w-4 h-4 text-brand" />
             Message
           </button>
         )}
         <button
           role="menuitem"
           onClick={handleViewProfile}
-          className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-[14px] text-white hover:bg-white/5 transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-[14px] text-ink hover:bg-ink/5 transition-colors"
         >
-          <UserCircle2 className="w-4 h-4 text-white/60" />
+          <UserCircle2 className="w-4 h-4 text-ink/60" />
           View profile
         </button>
       </div>

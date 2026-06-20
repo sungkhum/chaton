@@ -28,7 +28,7 @@ function highlightMatch(text: string, query: string): ReactNode {
     <>
       {start > 0 && "..."}
       {before}
-      <mark className="bg-[#34F080]/20 text-[#34F080] rounded-sm px-0.5">
+      <mark className="bg-[#34F080]/20 text-brand rounded-sm px-0.5">
         {match}
       </mark>
       {after}
@@ -78,13 +78,13 @@ export const SearchMessageResults: FC<{
   return (
     <div className="overflow-y-auto max-h-full custom-scrollbar pb-24">
       {/* Section header */}
-      <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+      <div className="px-4 py-2 text-xs font-semibold text-fg-500 uppercase tracking-wider">
         Messages
       </div>
 
       {/* Loading state — initial cache search */}
       {isSearching && results.length === 0 && (
-        <div className="flex items-center justify-center py-8 text-gray-500">
+        <div className="flex items-center justify-center py-8 text-fg-500">
           <Loader2 className="animate-spin mr-2" size={16} />
           Searching...
         </div>
@@ -107,7 +107,7 @@ export const SearchMessageResults: FC<{
                   result.message.MessageInfo.TimestampNanosString
                 )
               }
-              className="px-4 py-3 hover:bg-white/5 cursor-pointer flex items-center gap-3"
+              className="px-4 py-3 hover:bg-ink/5 cursor-pointer flex items-center gap-3"
             >
               <MessagingDisplayAvatar
                 username={isDM ? result.conversationName : undefined}
@@ -119,35 +119,35 @@ export const SearchMessageResults: FC<{
               <div className="flex-1 min-w-0">
                 {/* Line 1: Conversation name + timestamp */}
                 <div className="flex items-center justify-between mb-0.5">
-                  <span className="truncate text-sm font-medium text-white">
+                  <span className="truncate text-sm font-medium text-ink">
                     {result.conversationName}
                   </span>
-                  <span className="text-xs text-gray-500 shrink-0 ml-2">
+                  <span className="text-xs text-fg-500 shrink-0 ml-2">
                     {formatRelativeTimestamp(result.timestamp)}
                   </span>
                 </div>
 
                 {/* Line 2: Message snippet with highlighted match */}
-                <p className="text-sm text-gray-400 overflow-hidden whitespace-nowrap text-ellipsis">
+                <p className="text-sm text-fg-400 overflow-hidden whitespace-nowrap text-ellipsis">
                   {highlightMatch(getDisplayText(result.message), query)}
                 </p>
               </div>
             </div>
-            <div className="ml-[76px] border-b border-white/5" />
+            <div className="ml-[76px] border-b border-ink/5" />
           </div>
         );
       })}
 
       {/* No results */}
       {!isSearching && !isDeepSearching && results.length === 0 && (
-        <div className="text-center py-8 text-gray-500 text-sm">
+        <div className="text-center py-8 text-fg-500 text-sm">
           No messages found
         </div>
       )}
 
       {/* Deep search progress */}
       {isDeepSearching && progress && (
-        <div className="flex items-center justify-center py-4 text-gray-500 text-xs gap-2">
+        <div className="flex items-center justify-center py-4 text-fg-500 text-xs gap-2">
           <Loader2 className="animate-spin" size={14} />
           Searching {progress.completedConversations} of{" "}
           {progress.totalConversations} conversations...
@@ -157,21 +157,21 @@ export const SearchMessageResults: FC<{
       {/* People section — DeSo user search results */}
       {userResults.length > 0 && (
         <>
-          <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-t border-white/5 mt-2">
+          <div className="px-4 py-2 text-xs font-semibold text-fg-500 uppercase tracking-wider border-t border-ink/5 mt-2">
             People
           </div>
           {userResults.map((item) => (
             <div
               key={item.id}
               onClick={() => onUserSelected?.(item)}
-              className="px-4 py-2.5 hover:bg-white/5 cursor-pointer flex items-center gap-3 transition-colors"
+              className="px-4 py-2.5 hover:bg-ink/5 cursor-pointer flex items-center gap-3 transition-colors"
             >
               <MessagingDisplayAvatar
                 username={item.profile?.Username}
                 publicKey={item.id}
                 diameter={40}
               />
-              <span className="text-sm text-white font-medium">
+              <span className="text-sm text-ink font-medium">
                 {item.text}
               </span>
             </div>

@@ -201,7 +201,7 @@ export const EditProfileDialog = ({
       onClick={onClose}
     >
       <div
-        className="bg-[#050e1d] text-blue-100 border border-blue-900/60 w-full sm:w-[92%] max-w-[460px] rounded-t-2xl sm:rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-hidden max-h-[90vh] flex flex-col"
+        className="bg-surface-sheet text-ink border border-ink/10 w-full sm:w-[92%] max-w-[460px] rounded-t-2xl sm:rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-hidden max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header gradient bar */}
@@ -210,12 +210,12 @@ export const EditProfileDialog = ({
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
           <div className="flex items-center gap-2.5">
-            <Pencil className="w-5 h-5 text-[#34F080]" />
-            <h3 className="text-lg font-bold text-white">Edit Profile</h3>
+            <Pencil className="w-5 h-5 text-brand" />
+            <h3 className="text-lg font-bold text-ink">Edit Profile</h3>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-white transition-colors p-1 cursor-pointer"
+            className="text-fg-500 hover:text-ink transition-colors p-1 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -229,7 +229,7 @@ export const EditProfileDialog = ({
               className="relative cursor-pointer group"
               onClick={() => !uploadingImage && fileInputRef.current?.click()}
             >
-              <div className="w-[88px] h-[88px] sm:w-24 sm:h-24 rounded-full bg-white/[0.04] border-2 border-white/10 group-hover:border-[#34F080]/40 flex items-center justify-center overflow-hidden transition-[border-color] duration-300">
+              <div className="w-[88px] h-[88px] sm:w-24 sm:h-24 rounded-full bg-ink/[0.04] border-2 border-ink/10 group-hover:border-[#34F080]/40 flex items-center justify-center overflow-hidden transition-[border-color] duration-300">
                 {displayPic ? (
                   <img
                     src={displayPic}
@@ -237,15 +237,15 @@ export const EditProfileDialog = ({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <Camera className="w-7 h-7 text-gray-600 group-hover:text-[#34F080]/70 transition-colors" />
+                  <Camera className="w-7 h-7 text-fg-600 group-hover:text-brand/70 transition-colors" />
                 )}
               </div>
               {/* Edit overlay */}
               <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-[background-color] duration-200">
                 {uploadingImage ? (
-                  <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  <Loader2 className="w-5 h-5 text-ink animate-spin" />
                 ) : (
-                  <Camera className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <Camera className="w-5 h-5 text-ink opacity-0 group-hover:opacity-100 transition-opacity" />
                 )}
               </div>
               <input
@@ -257,7 +257,7 @@ export const EditProfileDialog = ({
               />
             </div>
           </div>
-          <p className="text-[11px] text-gray-600 text-center mb-4">
+          <p className="text-[11px] text-fg-600 text-center mb-4">
             Tap to change photo
           </p>
 
@@ -265,12 +265,12 @@ export const EditProfileDialog = ({
           <div className="mb-4">
             <label
               htmlFor="edit-username"
-              className="block text-xs font-semibold text-gray-400 mb-2 tracking-wide uppercase"
+              className="block text-xs font-semibold text-fg-400 mb-2 tracking-wide uppercase"
             >
               Username
             </label>
             <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fg-500 text-sm">
                 @
               </span>
               <input
@@ -280,24 +280,24 @@ export const EditProfileDialog = ({
                 onChange={handleUsernameChange}
                 placeholder="yourname"
                 maxLength={26}
-                className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-[#34F080]/40 focus:bg-white/[0.06] rounded-xl pl-8 pr-10 py-3.5 text-white text-[15px] outline-none transition-[border-color,background-color]"
+                className="w-full bg-ink/[0.04] border border-ink/[0.08] focus:border-[#34F080]/40 focus:bg-ink/[0.06] rounded-xl pl-8 pr-10 py-3.5 text-ink text-[15px] outline-none transition-[border-color,background-color]"
                 autoComplete="off"
                 autoCapitalize="off"
               />
               <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
                 {usernameStatus === "checking" && (
-                  <Loader2 className="w-4 h-4 text-gray-500 animate-spin" />
+                  <Loader2 className="w-4 h-4 text-fg-500 animate-spin" />
                 )}
                 {(usernameStatus === "available" ||
                   usernameStatus === "unchanged") &&
                   username.trim().length >= 3 && (
-                    <Check className="w-4 h-4 text-[#34F080]" />
+                    <Check className="w-4 h-4 text-brand" />
                   )}
               </div>
             </div>
             <div className="mt-1.5 text-xs min-h-[1rem]" aria-live="polite">
               {usernameStatus === "available" && (
-                <span className="text-[#34F080]">Username is available</span>
+                <span className="text-brand">Username is available</span>
               )}
               {usernameStatus === "taken" && (
                 <span className="text-red-400">Username is already taken</span>
@@ -315,13 +315,13 @@ export const EditProfileDialog = ({
             <div className="flex items-center justify-between mb-2">
               <label
                 htmlFor="edit-bio"
-                className="block text-xs font-semibold text-gray-400 tracking-wide uppercase"
+                className="block text-xs font-semibold text-fg-400 tracking-wide uppercase"
               >
                 Bio
               </label>
               <span
                 className={`text-[11px] tabular-nums ${
-                  bio.length > MAX_BIO_LENGTH ? "text-red-400" : "text-gray-600"
+                  bio.length > MAX_BIO_LENGTH ? "text-red-400" : "text-fg-600"
                 }`}
               >
                 {bio.length}/{MAX_BIO_LENGTH}
@@ -333,7 +333,7 @@ export const EditProfileDialog = ({
               onChange={(e) => setBio(e.target.value.slice(0, MAX_BIO_LENGTH))}
               placeholder="Tell people about yourself..."
               rows={3}
-              className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-[#34F080]/40 focus:bg-white/[0.06] rounded-xl px-3.5 py-3 text-white text-[15px] outline-none transition-[border-color,background-color] resize-none leading-relaxed placeholder:text-gray-600"
+              className="w-full bg-ink/[0.04] border border-ink/[0.08] focus:border-[#34F080]/40 focus:bg-ink/[0.06] rounded-xl px-3.5 py-3 text-ink text-[15px] outline-none transition-[border-color,background-color] resize-none leading-relaxed placeholder:text-fg-600"
             />
           </div>
 
@@ -344,7 +344,7 @@ export const EditProfileDialog = ({
             className={`w-full py-3.5 rounded-xl text-sm font-bold transition-[background-color,box-shadow,transform,opacity] cursor-pointer min-h-[48px] ${
               canSave
                 ? "bg-gradient-to-r from-[#34F080] to-[#20E0AA] text-black hover:shadow-[0_0_30px_rgba(52,240,128,0.3)] active:scale-[0.96]"
-                : "bg-white/5 text-gray-500 cursor-not-allowed"
+                : "bg-ink/5 text-fg-500 cursor-not-allowed"
             }`}
           >
             {saving ? (
@@ -358,7 +358,7 @@ export const EditProfileDialog = ({
           </button>
 
           {!hasChanges && (
-            <p className="text-[11px] text-gray-600 text-center mt-3">
+            <p className="text-[11px] text-fg-600 text-center mt-3">
               Make changes to enable saving
             </p>
           )}

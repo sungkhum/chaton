@@ -69,7 +69,7 @@ export function DiscreteSlider({
             <span
               key={i}
               className={`text-[10px] leading-none select-none ${
-                i === index ? "text-[#34F080]" : "text-gray-500"
+                i === index ? "text-brand" : "text-fg-500"
               } ${show ? "" : "invisible"}`}
             >
               {formatLabel(stop)}

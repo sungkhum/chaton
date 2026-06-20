@@ -133,13 +133,13 @@ export function LanguageSelector() {
       {/* Language selector row */}
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center justify-between w-full py-3 px-3 rounded-lg transition-colors text-gray-400 hover:text-white hover:bg-white/[0.06] cursor-pointer"
+        className="flex items-center justify-between w-full py-3 px-3 rounded-lg transition-colors text-fg-400 hover:text-ink hover:bg-ink/[0.06] cursor-pointer"
       >
         <div className="flex items-center">
           <Globe className="mr-3 w-[18px] h-[18px]" />
           <span className="text-[14px]">Language</span>
         </div>
-        <div className="flex items-center gap-1 text-[12px] text-gray-400">
+        <div className="flex items-center gap-1 text-[12px] text-fg-400">
           <span>{getLanguageName(lang)}</span>
           <ChevronDown
             className={`w-3.5 h-3.5 transition-transform ${
@@ -151,15 +151,15 @@ export function LanguageSelector() {
 
       {/* Language dropdown */}
       {open && (
-        <div className="absolute right-0 mt-1 w-56 max-h-64 overflow-y-auto bg-[#0d1520] border border-white/10 rounded-xl shadow-xl z-50 py-1">
+        <div className="absolute right-0 mt-1 w-56 max-h-64 overflow-y-auto bg-surface border border-ink/10 rounded-xl shadow-xl z-50 py-1">
           {LANGUAGES.map((code) => (
             <button
               key={code}
               onClick={() => selectLanguage(code)}
               className={`w-full text-left px-3 py-1.5 text-[13px] transition-colors cursor-pointer ${
                 code === lang
-                  ? "text-[#34F080] bg-[#34F080]/10"
-                  : "text-gray-300 hover:bg-white/[0.06]"
+                  ? "text-brand bg-[#34F080]/10"
+                  : "text-fg-300 hover:bg-ink/[0.06]"
               }`}
             >
               {getLanguageName(code)}
@@ -171,7 +171,7 @@ export function LanguageSelector() {
       {/* Auto-translate toggle */}
       <button
         onClick={toggleAutoTranslate}
-        className="flex items-center justify-between w-full py-3 px-3 rounded-lg transition-colors text-gray-400 hover:text-white hover:bg-white/[0.06] cursor-pointer"
+        className="flex items-center justify-between w-full py-3 px-3 rounded-lg transition-colors text-fg-400 hover:text-ink hover:bg-ink/[0.06] cursor-pointer"
       >
         <div className="flex items-center">
           <Languages className="mr-3 w-[18px] h-[18px]" />
@@ -179,7 +179,7 @@ export function LanguageSelector() {
         </div>
         <div
           className={`relative w-9 h-5 rounded-full transition-colors ${
-            autoTranslate ? "bg-[#34F080]" : "bg-white/15"
+            autoTranslate ? "bg-[#34F080]" : "bg-ink/15"
           }`}
         >
           <div

@@ -252,14 +252,14 @@ export const MockBubble: FC<{
         <div className="flex flex-row items-start gap-3">
           <div className="flex flex-col w-[60px] top-2 relative justify-center items-center">
             <img src={avatar} className="w-[38px] rounded-full mb-2" />
-            <span className="whitespace-nowrap text-xs text-gray-500">
+            <span className="whitespace-nowrap text-xs text-fg-500">
               {timestamp}
             </span>
           </div>
           <div className="flex flex-col items-start">
-            <div className="mb-2 text-[#34F080] text-xs">{username}</div>
-            <div className="text-xs w-auto bg-[#141c2b] border border-white/6 rounded-2xl rounded-bl-sm pl-5 mt-auto mb-2 md:mb-5 py-2 px-2 md:px-4 text-white break-words flex text-left relative items-center">
-              <div className="text-white text-sm">{text}</div>
+            <div className="mb-2 text-brand text-xs">{username}</div>
+            <div className="text-xs w-auto bg-surface-raised border border-ink/6 rounded-2xl rounded-bl-sm pl-5 mt-auto mb-2 md:mb-5 py-2 px-2 md:px-4 text-ink break-words flex text-left relative items-center">
+              <div className="text-ink text-sm">{text}</div>
             </div>
           </div>
         </div>
@@ -268,14 +268,14 @@ export const MockBubble: FC<{
         <div className="flex flex-row-reverse items-start gap-3">
           <div className="flex flex-col w-[60px] justify-center items-center">
             <img src={avatar} className="w-[38px] rounded-full mb-2" />
-            <span className="whitespace-nowrap text-xs text-gray-500">
+            <span className="whitespace-nowrap text-xs text-fg-500">
               {timestamp}
             </span>
           </div>
           <div className="flex flex-col items-end">
-            <div className="mb-2 text-[#34F080] text-xs">{username}</div>
-            <div className="bg-[#0d2818] border border-[#34F080]/15 text-white rounded-2xl rounded-br-sm pl-5 mt-auto mb-2 md:mb-5 py-2 px-2 md:px-4 break-words inline-flex text-left relative items-center">
-              <div className="text-white text-sm">{text}</div>
+            <div className="mb-2 text-brand text-xs">{username}</div>
+            <div className="bg-[#34F080]/10 border border-[#34F080]/15 text-ink rounded-2xl rounded-br-sm pl-5 mt-auto mb-2 md:mb-5 py-2 px-2 md:px-4 break-words inline-flex text-left relative items-center">
+              <div className="text-ink text-sm">{text}</div>
             </div>
           </div>
         </div>
@@ -4676,7 +4676,7 @@ export const MessagingApp: FC = () => {
             <div>
               {isLoadingUser && (
                 <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-10">
-                  <Loader2 className="w-11 h-11 animate-spin text-[#34F080]" />
+                  <Loader2 className="w-11 h-11 animate-spin text-brand" />
                 </div>
               )}
               {!hasSetupMessaging(appUser) && !isLoadingUser && (
@@ -4685,10 +4685,10 @@ export const MessagingApp: FC = () => {
                     <div>
                       {appUser ? (
                         <div>
-                          <h2 className="text-2xl font-bold mb-3 text-white">
+                          <h2 className="text-2xl font-bold mb-3 text-ink">
                             Set up your account
                           </h2>
-                          <p className="text-lg mb-6 text-gray-400">
+                          <p className="text-lg mb-6 text-fg-400">
                             It seems like your account needs more configuration
                             to be able to send messages. Press the button below
                             to set it up automatically
@@ -4696,22 +4696,22 @@ export const MessagingApp: FC = () => {
                         </div>
                       ) : (
                         <div className="text-left w-full md:max-w-[100%]">
-                          <h2 className="text-3xl lg:text-3xl font-semibold mb-6 text-white">
+                          <h2 className="text-3xl lg:text-3xl font-semibold mb-6 text-ink">
                             Chat with anyone, on DeSo or Ethereum. Without the
                             risk of being censored.
                           </h2>
-                          <p className="text-sm mb-5 text-gray-400">
+                          <p className="text-sm mb-5 text-fg-400">
                             DeSo Chat Protocol is a censorship-resistant
                             messaging protocol built on top of the DeSo
                             blockchain. It enables fully decentralized
                             cross-chain messaging between DeSo and Ethereum
                             wallets (and soon, Solana).
                           </p>
-                          <p className="text-sm mb-5 text-gray-400">
+                          <p className="text-sm mb-5 text-fg-400">
                             This is possible due to DeSo's infinite-state
                             blockchain & derived keys cryptography.
                           </p>
-                          <p className="text-sm mb-5 text-gray-400">
+                          <p className="text-sm mb-5 text-fg-400">
                             Messages are stored directly on-chain, at an average
                             cost of ~$0.000002 (<em>basically free</em>), with
                             end-to-end encryption, and support for DMs & group
@@ -4721,7 +4721,7 @@ export const MessagingApp: FC = () => {
                         </div>
                       )}
                     </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 mb-6 text-[#34F080]">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 mb-6 text-brand">
                       <div className="flex items-center gap-2">
                         <CheckCircle className="w-5 h-5" /> E2EE messages &
                         group chats
@@ -4793,7 +4793,7 @@ export const MessagingApp: FC = () => {
                 exit="chat-list-exit"
                 default="none"
               >
-                <div className="w-full md:w-[340px] lg:w-[380px] xl:w-[420px] border-r border-white/5 bg-[#080d16] shrink-0">
+                <div className="w-full md:w-[340px] lg:w-[380px] xl:w-[420px] border-r border-ink/5 bg-surface-deep shrink-0">
                   <MessagingConversationAccount
                     rehydrateConversation={rehydrateConversation}
                     refreshConversations={() =>
@@ -5024,9 +5024,9 @@ export const MessagingApp: FC = () => {
               >
                 <div
                   {...(isMobile ? swipeHandlers : {})}
-                  className="w-full h-full shrink-0 md:flex-1 md:min-w-0 bg-[#0a1019] flex flex-col"
+                  className="w-full h-full shrink-0 md:flex-1 md:min-w-0 bg-surface flex flex-col"
                 >
-                  <header className="flex justify-between items-center border-b border-white/5 relative px-4 md:px-5 h-14 shrink-0">
+                  <header className="flex justify-between items-center border-b border-ink/5 relative px-4 md:px-5 h-14 shrink-0">
                     <div
                       className="cursor-pointer py-4 pl-0 pr-6 md:hidden"
                       onClick={handleMobileBack}
@@ -5051,7 +5051,7 @@ export const MessagingApp: FC = () => {
                             />
                           )}
                           <div className="min-w-0">
-                            <span className="text-white font-bold text-base truncate block">
+                            <span className="text-ink font-bold text-base truncate block">
                               {getCurrentChatName()}
                             </span>
                             {(() => {
@@ -5064,12 +5064,12 @@ export const MessagingApp: FC = () => {
                                 if (total === 0) return null;
                                 return (
                                   <div className="flex items-center gap-2 text-xs">
-                                    <span className="text-gray-500">
+                                    <span className="text-fg-500">
                                       {total}{" "}
                                       {total === 1 ? "member" : "members"}
                                     </span>
                                     {online > 0 && (
-                                      <span className="flex items-center gap-1 text-[#34F080]/80">
+                                      <span className="flex items-center gap-1 text-brand/80">
                                         <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse" />
                                         {online} online
                                       </span>
@@ -5083,14 +5083,14 @@ export const MessagingApp: FC = () => {
                               const presence = getPresence(otherKey);
                               if (presence.status === "online")
                                 return (
-                                  <span className="flex items-center gap-1 text-[#34F080] text-xs">
+                                  <span className="flex items-center gap-1 text-brand text-xs">
                                     <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse" />
                                     Online
                                   </span>
                                 );
                               if (presence.status === "last-seen")
                                 return (
-                                  <span className="text-gray-500 text-xs whitespace-nowrap">
+                                  <span className="text-fg-500 text-xs whitespace-nowrap">
                                     {formatLastSeen(presence.timestamp)}
                                   </span>
                                 );
@@ -5099,7 +5099,7 @@ export const MessagingApp: FC = () => {
                           </div>
                         </div>
                       )}
-                    <div className="text-gray-400 items-center hidden md:block">
+                    <div className="text-fg-400 items-center hidden md:block">
                       {isGroupChat
                         ? (() => {
                             const memberKeys = chatMembers
@@ -5109,14 +5109,14 @@ export const MessagingApp: FC = () => {
                             const total = memberKeys.length;
                             if (total === 0) return null;
                             return (
-                              <span className="text-gray-500 text-sm whitespace-nowrap inline-flex items-center gap-1">
+                              <span className="text-fg-500 text-sm whitespace-nowrap inline-flex items-center gap-1">
                                 {total} {total === 1 ? "member" : "members"}
                                 {online > 0 && (
                                   <>
                                     {" "}
                                     ·{" "}
                                     <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse inline-block" />
-                                    <span className="text-[#34F080]/80">
+                                    <span className="text-brand/80">
                                       {online} online
                                     </span>
                                   </>
@@ -5131,14 +5131,14 @@ export const MessagingApp: FC = () => {
                             const presence = getPresence(otherKey);
                             if (presence.status === "online")
                               return (
-                                <span className="flex items-center gap-1.5 text-[#34F080] text-sm">
+                                <span className="flex items-center gap-1.5 text-brand text-sm">
                                   <span className="w-1.5 h-1.5 rounded-full bg-[#34F080] animate-pulse" />
                                   Online
                                 </span>
                               );
                             if (presence.status === "last-seen")
                               return (
-                                <span className="text-gray-500 text-sm whitespace-nowrap">
+                                <span className="text-fg-500 text-sm whitespace-nowrap">
                                   {formatLastSeen(presence.timestamp)}
                                 </span>
                               );
@@ -5171,7 +5171,7 @@ export const MessagingApp: FC = () => {
                               }
                             );
                           }}
-                          className="p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                          className="p-2 rounded-full hover:bg-ink/10 transition-colors cursor-pointer"
                           title={
                             mutedConversations.has(
                               selectedConversationPublicKey
@@ -5183,9 +5183,9 @@ export const MessagingApp: FC = () => {
                           {mutedConversations.has(
                             selectedConversationPublicKey
                           ) ? (
-                            <BellOff className="w-5 h-5 text-gray-500" />
+                            <BellOff className="w-5 h-5 text-fg-500" />
                           ) : (
-                            <Bell className="w-5 h-5 text-gray-400" />
+                            <Bell className="w-5 h-5 text-fg-400" />
                           )}
                         </button>
                       )}
@@ -5230,19 +5230,19 @@ export const MessagingApp: FC = () => {
                                   name: getCurrentChatName(),
                                 });
                               }}
-                              className="p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                              className="p-2 rounded-full hover:bg-ink/10 transition-colors cursor-pointer"
                               title="Archive chat"
                             >
-                              <Archive className="w-5 h-5 text-gray-400" />
+                              <Archive className="w-5 h-5 text-fg-400" />
                             </button>
                             {/* Three-dot menu for DM actions (block, etc.) */}
                             <div className="relative">
                               <button
                                 onClick={() => setDmMenuOpen(!dmMenuOpen)}
-                                className="p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                                className="p-2 rounded-full hover:bg-ink/10 transition-colors cursor-pointer"
                                 title="More options"
                               >
-                                <EllipsisVertical className="w-5 h-5 text-gray-400" />
+                                <EllipsisVertical className="w-5 h-5 text-fg-400" />
                               </button>
                               {dmMenuOpen && (
                                 <>
@@ -5250,7 +5250,7 @@ export const MessagingApp: FC = () => {
                                     className="fixed inset-0 z-40"
                                     onClick={() => setDmMenuOpen(false)}
                                   />
-                                  <div className="absolute right-0 top-full mt-1 z-50 bg-[#141c2b] border border-white/10 rounded-lg shadow-xl py-1 min-w-[160px]">
+                                  <div className="absolute right-0 top-full mt-1 z-50 bg-surface-raised border border-ink/10 rounded-lg shadow-xl py-1 min-w-[160px]">
                                     <button
                                       onClick={() => {
                                         setDmMenuOpen(false);
@@ -5266,7 +5266,7 @@ export const MessagingApp: FC = () => {
                                             ] || "this user",
                                         });
                                       }}
-                                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-red-400 hover:bg-white/5 cursor-pointer transition-colors"
+                                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-red-400 hover:bg-ink/5 cursor-pointer transition-colors"
                                     >
                                       <ShieldBan className="w-4 h-4" />
                                       Block user
@@ -5300,7 +5300,7 @@ export const MessagingApp: FC = () => {
 
                   {/* Pinned message bar */}
                   {pinnedMessageTimestamp && isGroupChat && (
-                    <div className="shrink-0 border-b border-white/5 bg-[#0a1019] flex items-center group">
+                    <div className="shrink-0 border-b border-ink/5 bg-surface flex items-center group">
                       <div
                         role="button"
                         tabIndex={0}
@@ -5311,14 +5311,14 @@ export const MessagingApp: FC = () => {
                             handleScrollToPinnedMessage();
                           }
                         }}
-                        className="flex-1 min-w-0 flex items-center gap-3 px-4 md:px-5 py-2 text-left hover:bg-white/5 transition-colors cursor-pointer"
+                        className="flex-1 min-w-0 flex items-center gap-3 px-4 md:px-5 py-2 text-left hover:bg-ink/5 transition-colors cursor-pointer"
                       >
-                        <Pin className="w-4 h-4 text-[#34F080] shrink-0 rotate-45" />
+                        <Pin className="w-4 h-4 text-brand shrink-0 rotate-45" />
                         <div className="min-w-0 flex-1">
-                          <span className="text-[11px] font-semibold text-[#34F080] block leading-tight">
+                          <span className="text-[11px] font-semibold text-brand block leading-tight">
                             Pinned Message
                           </span>
-                          <span className="text-xs text-gray-400 truncate block leading-tight">
+                          <span className="text-xs text-fg-400 truncate block leading-tight">
                             {loadingPinnedMessage
                               ? "Loading…"
                               : pinnedMessage?.DecryptedMessage ||
@@ -5330,10 +5330,10 @@ export const MessagingApp: FC = () => {
                       {isGroupOwner && (
                         <button
                           onClick={() => handlePinMessage("")}
-                          className="p-2.5 mr-1 md:mr-2 rounded-full hover:bg-white/10 transition-colors md:opacity-0 md:group-hover:opacity-100 cursor-pointer"
+                          className="p-2.5 mr-1 md:mr-2 rounded-full hover:bg-ink/10 transition-colors md:opacity-0 md:group-hover:opacity-100 cursor-pointer"
                           aria-label="Unpin message"
                         >
-                          <X className="w-3.5 h-3.5 text-gray-500" />
+                          <X className="w-3.5 h-3.5 text-fg-500" />
                         </button>
                       )}
                     </div>
@@ -5346,8 +5346,8 @@ export const MessagingApp: FC = () => {
                       <div className="shrink-0 border-b border-amber-500/10 bg-amber-500/[0.03] px-4 md:px-5 py-2.5 flex items-start gap-3">
                         <CircleDollarSign className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                         <div className="min-w-0 flex-1">
-                          <span className="text-xs text-gray-300 block leading-relaxed">
-                            <span className="text-white font-medium">
+                          <span className="text-xs text-fg-300 block leading-relaxed">
+                            <span className="text-ink font-medium">
                               @
                               {activeChatUsersMap[
                                 selectedConversation.firstMessagePublicKey
@@ -5363,13 +5363,13 @@ export const MessagingApp: FC = () => {
                             </span>{" "}
                             per message
                           </span>
-                          <span className="text-[11px] text-gray-500 block mt-1">
+                          <span className="text-[11px] text-fg-500 block mt-1">
                             Payment goes to their wallet. Once they reply,
                             messaging is free.
                           </span>
                           <button
                             onClick={() => setRecipientDmPrice(null)}
-                            className="text-[11px] text-gray-600 hover:text-gray-400 mt-1 transition-colors"
+                            className="text-[11px] text-fg-600 hover:text-fg-400 mt-1 transition-colors"
                           >
                             Send to Requests instead (free) →
                           </button>
@@ -5382,11 +5382,11 @@ export const MessagingApp: FC = () => {
                       <div className="overflow-hidden flex-1 min-h-0">
                         {loadingConversation ? (
                           <div className="h-full flex items-center justify-center">
-                            <Loader2 className="w-11 h-11 animate-spin text-[#34F080]" />
+                            <Loader2 className="w-11 h-11 animate-spin text-brand" />
                           </div>
                         ) : !selectedConversation ? (
                           <div className="h-full flex items-center justify-center text-center px-6">
-                            <p className="text-sm text-white/40">
+                            <p className="text-sm text-ink/40">
                               Select a conversation to start chatting.
                             </p>
                           </div>
@@ -6591,18 +6591,18 @@ export const MessagingApp: FC = () => {
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
             onClick={() => setBlockConfirm(null)}
           />
-          <div className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#141c2b] border border-white/10 rounded-xl shadow-2xl p-6 w-[320px] max-w-[90vw]">
-            <h3 className="text-white font-bold text-base mb-2">
+          <div className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-surface-raised border border-ink/10 rounded-xl shadow-2xl p-6 w-[320px] max-w-[90vw]">
+            <h3 className="text-ink font-bold text-base mb-2">
               Block {blockConfirm.name}?
             </h3>
-            <p className="text-gray-400 text-sm mb-5">
+            <p className="text-fg-400 text-sm mb-5">
               They won't be able to message you. You can unblock them later from
               the Requests tab.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setBlockConfirm(null)}
-                className="flex-1 py-2.5 rounded-lg bg-white/5 text-gray-300 text-sm font-medium hover:bg-white/10 cursor-pointer transition-colors"
+                className="flex-1 py-2.5 rounded-lg bg-ink/5 text-fg-300 text-sm font-medium hover:bg-ink/10 cursor-pointer transition-colors"
               >
                 Cancel
               </button>

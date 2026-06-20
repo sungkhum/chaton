@@ -223,7 +223,7 @@ export function FeedbackModal() {
       className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60 sm:items-center"
       onClick={handleBackdropClick}
     >
-      <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-[#0a1628] shadow-2xl shadow-black/50 sm:max-h-[90vh] sm:rounded-2xl">
+      <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-surface-raised shadow-2xl shadow-black/50 sm:max-h-[90vh] sm:rounded-2xl">
         {/* Gradient accent bar */}
         <div className="h-[2px] bg-gradient-to-r from-[#34F080] via-[#20E0AA] to-[#40B8E0]" />
 
@@ -235,7 +235,7 @@ export function FeedbackModal() {
                 <button
                   onClick={goBack}
                   aria-label="Go back"
-                  className="-ml-2 mr-0.5 rounded-lg p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white/70"
+                  className="-ml-2 mr-0.5 rounded-lg p-2 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink/70"
                 >
                   <svg
                     width="18"
@@ -251,7 +251,7 @@ export function FeedbackModal() {
                   </svg>
                 </button>
               ) : null}
-              <h3 className="text-[15px] font-semibold text-white">
+              <h3 className="text-[15px] font-semibold text-ink">
                 {step === "done"
                   ? isBugPath
                     ? "Bug Reported"
@@ -270,7 +270,7 @@ export function FeedbackModal() {
                 handleClose();
               }}
               aria-label="Close"
-              className="rounded-lg p-2 text-white/30 transition-colors hover:bg-white/5 hover:text-white/60"
+              className="rounded-lg p-2 text-ink/30 transition-colors hover:bg-ink/5 hover:text-ink/60"
             >
               <X size={18} />
             </button>
@@ -289,7 +289,7 @@ export function FeedbackModal() {
                 <div
                   key={i}
                   className={`h-[3px] flex-1 rounded-full transition-colors ${
-                    i < bugStepNumber ? "bg-[#34F080]" : "bg-white/10"
+                    i < bugStepNumber ? "bg-[#34F080]" : "bg-ink/10"
                   }`}
                 />
               ))}
@@ -305,16 +305,16 @@ export function FeedbackModal() {
                   <button
                     key={cat.value}
                     onClick={() => handleCategorySelect(cat.value)}
-                    className="flex items-center gap-3.5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-left transition-[border-color,background-color,transform] hover:border-[#34F080]/30 hover:bg-[#34F080]/5 active:scale-[0.96]"
+                    className="flex items-center gap-3.5 rounded-xl border border-ink/[0.06] bg-ink/[0.02] px-4 py-3 text-left transition-[border-color,background-color,transform] hover:border-[#34F080]/30 hover:bg-[#34F080]/5 active:scale-[0.96]"
                   >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.06] text-white/50">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-ink/[0.06] text-ink/50">
                       <Icon size={18} />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-white/90">
+                      <p className="text-sm font-medium text-ink/90">
                         {cat.label}
                       </p>
-                      <p className="text-xs text-white/35">{cat.description}</p>
+                      <p className="text-xs text-ink/35">{cat.description}</p>
                     </div>
                   </button>
                 );
@@ -352,7 +352,7 @@ export function FeedbackModal() {
                 <div>
                   <label
                     htmlFor="bug-problem"
-                    className="mb-1.5 block text-sm font-medium text-white/80"
+                    className="mb-1.5 block text-sm font-medium text-ink/80"
                   >
                     What went wrong?
                   </label>
@@ -364,16 +364,16 @@ export function FeedbackModal() {
                     maxLength={500}
                     rows={3}
                     autoFocus
-                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] p-3.5 text-sm text-white placeholder-white/35 transition-colors focus:border-white/20 focus:bg-white/[0.04] focus:outline-none"
+                    className="w-full rounded-xl border border-ink/10 bg-ink/[0.03] p-3.5 text-sm text-ink placeholder-ink/35 transition-colors focus:border-ink/20 focus:bg-ink/[0.04] focus:outline-none"
                   />
                 </div>
                 <div>
                   <label
                     htmlFor="bug-context"
-                    className="mb-1.5 block text-sm font-medium text-white/80"
+                    className="mb-1.5 block text-sm font-medium text-ink/80"
                   >
                     What were you trying to do?{" "}
-                    <span className="font-normal text-white/30">
+                    <span className="font-normal text-ink/30">
                       (optional)
                     </span>
                   </label>
@@ -384,15 +384,15 @@ export function FeedbackModal() {
                     placeholder="e.g. I was trying to send a photo in a group chat..."
                     maxLength={500}
                     rows={2}
-                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] p-3.5 text-sm text-white placeholder-white/35 transition-colors focus:border-white/20 focus:bg-white/[0.04] focus:outline-none"
+                    className="w-full rounded-xl border border-ink/10 bg-ink/[0.03] p-3.5 text-sm text-ink placeholder-ink/35 transition-colors focus:border-ink/20 focus:bg-ink/[0.04] focus:outline-none"
                   />
                 </div>
 
                 {/* Screenshot attachment */}
                 <div>
-                  <p className="mb-1.5 text-sm font-medium text-white/80">
+                  <p className="mb-1.5 text-sm font-medium text-ink/80">
                     Screenshot{" "}
-                    <span className="font-normal text-white/30">
+                    <span className="font-normal text-ink/30">
                       (optional)
                     </span>
                   </p>
@@ -401,11 +401,11 @@ export function FeedbackModal() {
                       <img
                         src={screenshot.previewUrl}
                         alt="Screenshot preview"
-                        className="max-h-[120px] w-auto rounded-lg object-contain border border-white/[0.06]"
+                        className="max-h-[120px] w-auto rounded-lg object-contain border border-ink/[0.06]"
                       />
                       <button
                         onClick={clearScreenshot}
-                        className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-white/20 bg-black/70 text-gray-300 transition-colors hover:bg-black/90 hover:text-white"
+                        className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-ink/20 bg-black/70 text-fg-300 transition-colors hover:bg-black/90 hover:text-ink"
                         aria-label="Remove screenshot"
                       >
                         <X className="h-3 w-3" />
@@ -415,7 +415,7 @@ export function FeedbackModal() {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-3 text-left text-sm text-white/40 transition-colors hover:border-white/20 hover:bg-white/[0.04] hover:text-white/60"
+                      className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-ink/10 bg-ink/[0.02] px-4 py-3 text-left text-sm text-ink/40 transition-colors hover:border-ink/20 hover:bg-ink/[0.04] hover:text-ink/60"
                     >
                       <ImagePlus size={16} />
                       <span>Add a screenshot or paste one</span>
@@ -448,10 +448,10 @@ export function FeedbackModal() {
           {/* ── Bug path: Frequency ── */}
           {step === "bug-frequency" ? (
             <div>
-              <p className="mb-1 text-sm font-medium text-white/80">
+              <p className="mb-1 text-sm font-medium text-ink/80">
                 Has this happened before?
               </p>
-              <p className="mb-3 text-xs text-white/35">
+              <p className="mb-3 text-xs text-ink/35">
                 Helps us understand how urgent this is
               </p>
               <div
@@ -470,8 +470,8 @@ export function FeedbackModal() {
                     }}
                     className={`rounded-xl border px-4 py-3 text-left text-sm transition-[border-color,background-color,color,transform] active:scale-[0.96] ${
                       frequency === opt.value
-                        ? "border-[#34F080]/40 bg-[#34F080]/10 text-[#34F080]"
-                        : "border-white/[0.06] bg-white/[0.02] text-white/70 hover:border-white/15 hover:bg-white/[0.04]"
+                        ? "border-[#34F080]/40 bg-[#34F080]/10 text-brand"
+                        : "border-ink/[0.06] bg-ink/[0.02] text-ink/70 hover:border-ink/15 hover:bg-ink/[0.04]"
                     }`}
                   >
                     {opt.label}
@@ -484,34 +484,34 @@ export function FeedbackModal() {
           {/* ── Bug path: Confirm ── */}
           {step === "confirm" ? (
             <div>
-              <div className="space-y-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm">
+              <div className="space-y-2.5 rounded-xl border border-ink/[0.06] bg-ink/[0.02] p-4 text-sm">
                 <div>
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-white/40">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-ink/40">
                     What went wrong
                   </p>
-                  <p className="mt-0.5 break-words text-white/70">
+                  <p className="mt-0.5 break-words text-ink/70">
                     {whatWentWrong}
                   </p>
                 </div>
                 {whatWereDoing.trim() ? (
                   <>
-                    <div className="border-t border-white/[0.04]" />
+                    <div className="border-t border-ink/[0.04]" />
                     <div>
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-white/40">
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-ink/40">
                         What you were doing
                       </p>
-                      <p className="mt-0.5 break-words text-white/70">
+                      <p className="mt-0.5 break-words text-ink/70">
                         {whatWereDoing}
                       </p>
                     </div>
                   </>
                 ) : null}
-                <div className="border-t border-white/[0.04]" />
+                <div className="border-t border-ink/[0.04]" />
                 <div>
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-white/40">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-ink/40">
                     Frequency
                   </p>
-                  <p className="mt-0.5 text-white/70">
+                  <p className="mt-0.5 text-ink/70">
                     {
                       FREQUENCY_OPTIONS.find((o) => o.value === frequency)
                         ?.label
@@ -520,9 +520,9 @@ export function FeedbackModal() {
                 </div>
                 {screenshot ? (
                   <>
-                    <div className="border-t border-white/[0.04]" />
+                    <div className="border-t border-ink/[0.04]" />
                     <div>
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-white/40">
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-ink/40">
                         Screenshot
                       </p>
                       <img
@@ -543,7 +543,7 @@ export function FeedbackModal() {
                     }
                     handleClose();
                   }}
-                  className="flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/50 transition-colors hover:bg-white/[0.06]"
+                  className="flex-1 rounded-xl border border-ink/10 bg-ink/[0.03] px-4 py-2.5 text-sm text-ink/50 transition-colors hover:bg-ink/[0.06]"
                 >
                   Cancel
                 </button>
@@ -586,15 +586,15 @@ export function FeedbackModal() {
             >
               {selectedCategory ? (
                 <div className="mb-3 flex items-center gap-2">
-                  <selectedCategory.icon size={14} className="text-white/40" />
-                  <p className="text-xs text-white/40">
+                  <selectedCategory.icon size={14} className="text-ink/40" />
+                  <p className="text-xs text-ink/40">
                     {selectedCategory.label}
                   </p>
                 </div>
               ) : null}
               <label
                 htmlFor="feedback-description"
-                className="mb-3 block text-sm font-medium text-white/80"
+                className="mb-3 block text-sm font-medium text-ink/80"
               >
                 Tell us more
               </label>
@@ -614,28 +614,28 @@ export function FeedbackModal() {
                 maxLength={1000}
                 rows={5}
                 autoFocus
-                className="w-full rounded-xl border border-white/10 bg-white/[0.03] p-3.5 text-sm text-white placeholder-white/35 transition-colors focus:border-white/20 focus:bg-white/[0.04] focus:outline-none"
+                className="w-full rounded-xl border border-ink/10 bg-ink/[0.03] p-3.5 text-sm text-ink placeholder-ink/35 transition-colors focus:border-ink/20 focus:bg-ink/[0.04] focus:outline-none"
               />
-              <div className="mt-1.5 text-right text-[11px] text-white/30">
+              <div className="mt-1.5 text-right text-[11px] text-ink/30">
                 {description.length}/1000
               </div>
 
               {/* Screenshot attachment */}
               <div className="mt-3">
-                <p className="mb-1.5 text-sm font-medium text-white/80">
+                <p className="mb-1.5 text-sm font-medium text-ink/80">
                   Screenshot{" "}
-                  <span className="font-normal text-white/30">(optional)</span>
+                  <span className="font-normal text-ink/30">(optional)</span>
                 </p>
                 {screenshot ? (
                   <div className="relative inline-block">
                     <img
                       src={screenshot.previewUrl}
                       alt="Screenshot preview"
-                      className="max-h-[120px] w-auto rounded-lg object-contain border border-white/[0.06]"
+                      className="max-h-[120px] w-auto rounded-lg object-contain border border-ink/[0.06]"
                     />
                     <button
                       onClick={clearScreenshot}
-                      className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-white/20 bg-black/70 text-gray-300 transition-colors hover:bg-black/90 hover:text-white"
+                      className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-ink/20 bg-black/70 text-fg-300 transition-colors hover:bg-black/90 hover:text-ink"
                       aria-label="Remove screenshot"
                     >
                       <X className="h-3 w-3" />
@@ -645,7 +645,7 @@ export function FeedbackModal() {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-3 text-left text-sm text-white/40 transition-colors hover:border-white/20 hover:bg-white/[0.04] hover:text-white/60"
+                    className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-ink/10 bg-ink/[0.02] px-4 py-3 text-left text-sm text-ink/40 transition-colors hover:border-ink/20 hover:bg-ink/[0.04] hover:text-ink/60"
                   >
                     <ImagePlus size={16} />
                     <span>Add a screenshot or paste one</span>
@@ -666,7 +666,7 @@ export function FeedbackModal() {
               <div className="mt-3 flex gap-2">
                 <button
                   onClick={goBack}
-                  className="flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/50 transition-colors hover:bg-white/[0.06]"
+                  className="flex-1 rounded-xl border border-ink/10 bg-ink/[0.03] px-4 py-2.5 text-sm text-ink/50 transition-colors hover:bg-ink/[0.06]"
                 >
                   Back
                 </button>
@@ -698,19 +698,19 @@ export function FeedbackModal() {
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
-              <p className="text-sm font-medium text-white/80">
+              <p className="text-sm font-medium text-ink/80">
                 {isBugPath
                   ? "Thanks for reporting this!"
                   : "Thanks for your feedback!"}
               </p>
-              <p className="mt-1 text-xs text-white/35">
+              <p className="mt-1 text-xs text-ink/35">
                 {isBugPath
                   ? "We'll investigate and work on a fix. We read every report."
                   : "Your input helps us make ChatOn better. We read every one."}
               </p>
               <button
                 onClick={handleClose}
-                className="mt-5 rounded-xl border border-white/10 bg-white/[0.03] px-8 py-2 text-sm text-white/50 transition-colors hover:bg-white/[0.06]"
+                className="mt-5 rounded-xl border border-ink/10 bg-ink/[0.03] px-8 py-2 text-sm text-ink/50 transition-colors hover:bg-ink/[0.06]"
               >
                 Close
               </button>

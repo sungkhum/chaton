@@ -66,7 +66,7 @@ export const SaveToClipboard = ({
         </div>
       </div>
       {isCopied && (
-        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-50">
+        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-ink text-xs px-2 py-1 rounded whitespace-nowrap z-50">
           Copied
         </div>
       )}

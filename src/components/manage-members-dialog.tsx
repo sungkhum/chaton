@@ -1107,7 +1107,7 @@ export const ManageMembersDialog = ({
     <Fragment>
       <button
         onClick={handleOpen}
-        className="text-gray-400 hover:text-[#34F080] bg-transparent p-0 flex items-center cursor-pointer relative overflow-visible transition-colors"
+        className="text-fg-400 hover:text-brand bg-transparent p-0 flex items-center cursor-pointer relative overflow-visible transition-colors"
       >
         <span className="relative">
           <Users className="w-5 h-5" />
@@ -1136,10 +1136,10 @@ export const ManageMembersDialog = ({
               aria-modal="true"
               aria-labelledby="manage-members-title"
               tabIndex={-1}
-              className="bg-[#0c1220] text-white border border-white/8 w-full sm:w-[min(95vw,480px)] rounded-t-2xl sm:rounded-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col outline-none shadow-2xl shadow-black/40 modal-card-enter"
+              className="bg-surface-deep text-ink border border-ink/8 w-full sm:w-[min(95vw,480px)] rounded-t-2xl sm:rounded-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col outline-none shadow-2xl shadow-black/40 modal-card-enter"
             >
               {/* Sticky header */}
-              <div className="text-white p-3 sm:p-4 border-b border-white/8 flex-shrink-0">
+              <div className="text-ink p-3 sm:p-4 border-b border-ink/8 flex-shrink-0">
                 <div className="flex justify-between w-full items-center">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     {isGroupOwner ? (
@@ -1174,7 +1174,7 @@ export const ManageMembersDialog = ({
                             }
                           }}
                           onBlur={handleGroupNameSave}
-                          className="text-lg sm:text-xl font-semibold bg-white/5 border border-white/10 rounded-md px-2 py-0.5 outline-none text-white w-full"
+                          className="text-lg sm:text-xl font-semibold bg-ink/5 border border-ink/10 rounded-md px-2 py-0.5 outline-none text-ink w-full"
                           autoFocus
                         />
                       ) : (
@@ -1208,18 +1208,18 @@ export const ManageMembersDialog = ({
                                   0
                                 );
                               }}
-                              className="p-1 text-white/30 hover:text-white/60 cursor-pointer shrink-0"
+                              className="p-1 text-ink/30 hover:text-ink/60 cursor-pointer shrink-0"
                               aria-label="Rename group"
                             >
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
                           )}
                           {savingName && (
-                            <Loader2 className="w-4 h-4 animate-spin text-white/30 shrink-0" />
+                            <Loader2 className="w-4 h-4 animate-spin text-ink/30 shrink-0" />
                           )}
                         </div>
                       )}
-                      <div className="text-sm text-white/30">
+                      <div className="text-sm text-ink/30">
                         {loading ? (
                           <Loader2 className="w-4 h-4 inline animate-spin" />
                         ) : (
@@ -1241,16 +1241,16 @@ export const ManageMembersDialog = ({
 
               {/* Invite Link Section — owner always, members when sharing enabled */}
               {isGroupOwner && (
-                <div className="px-3 py-2 sm:px-4 sm:py-2.5 border-b border-white/8 flex-shrink-0">
+                <div className="px-3 py-2 sm:px-4 sm:py-2.5 border-b border-ink/8 flex-shrink-0">
                   {inviteCode ? (
                     <div className="flex items-center gap-1.5">
-                      <div className="glass-pill rounded-lg px-3 py-1.5 text-xs text-white/70 truncate font-mono min-w-0 flex-1">
+                      <div className="glass-pill rounded-lg px-3 py-1.5 text-xs text-ink/70 truncate font-mono min-w-0 flex-1">
                         {buildInviteUrl(inviteCode)}
                       </div>
                       <button
                         type="button"
                         onClick={handleCopyInviteLink}
-                        className="p-1.5 flex items-center justify-center rounded-lg glass-btn-secondary text-gray-300 cursor-pointer shrink-0"
+                        className="p-1.5 flex items-center justify-center rounded-lg glass-btn-secondary text-fg-300 cursor-pointer shrink-0"
                         title="Copy link"
                       >
                         {inviteCopied ? (
@@ -1263,7 +1263,7 @@ export const ManageMembersDialog = ({
                         <button
                           type="button"
                           onClick={handleShareInviteLink}
-                          className="p-1.5 flex items-center justify-center rounded-lg glass-btn-secondary text-gray-300 cursor-pointer shrink-0"
+                          className="p-1.5 flex items-center justify-center rounded-lg glass-btn-secondary text-fg-300 cursor-pointer shrink-0"
                           title="Share link"
                         >
                           <Share2 className="w-4 h-4" />
@@ -1288,7 +1288,7 @@ export const ManageMembersDialog = ({
                       type="button"
                       onClick={handleCreateInviteLink}
                       disabled={inviteLoading}
-                      className="w-full flex items-center justify-center gap-2 py-2 rounded-lg glass-btn-secondary text-gray-300 text-sm font-medium cursor-pointer disabled:opacity-50"
+                      className="w-full flex items-center justify-center gap-2 py-2 rounded-lg glass-btn-secondary text-fg-300 text-sm font-medium cursor-pointer disabled:opacity-50"
                     >
                       {inviteLoading ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -1303,15 +1303,15 @@ export const ManageMembersDialog = ({
 
               {/* Member invite link (read-only, when owner enabled sharing) */}
               {!isGroupOwner && currentMembersCanShare && inviteCode && (
-                <div className="px-3 py-2 sm:px-4 sm:py-2.5 border-b border-white/8 flex-shrink-0">
+                <div className="px-3 py-2 sm:px-4 sm:py-2.5 border-b border-ink/8 flex-shrink-0">
                   <div className="flex items-center gap-1.5">
-                    <div className="glass-pill rounded-lg px-3 py-1.5 text-xs text-white/70 truncate font-mono min-w-0 flex-1">
+                    <div className="glass-pill rounded-lg px-3 py-1.5 text-xs text-ink/70 truncate font-mono min-w-0 flex-1">
                       {buildInviteUrl(inviteCode)}
                     </div>
                     <button
                       type="button"
                       onClick={handleCopyInviteLink}
-                      className="p-1.5 flex items-center justify-center rounded-lg glass-btn-secondary text-gray-300 cursor-pointer shrink-0"
+                      className="p-1.5 flex items-center justify-center rounded-lg glass-btn-secondary text-fg-300 cursor-pointer shrink-0"
                       title="Copy link"
                     >
                       {inviteCopied ? (
@@ -1324,7 +1324,7 @@ export const ManageMembersDialog = ({
                       <button
                         type="button"
                         onClick={handleShareInviteLink}
-                        className="p-1.5 flex items-center justify-center rounded-lg glass-btn-secondary text-gray-300 cursor-pointer shrink-0"
+                        className="p-1.5 flex items-center justify-center rounded-lg glass-btn-secondary text-fg-300 cursor-pointer shrink-0"
                         title="Share link"
                       >
                         <Share2 className="w-4 h-4" />
@@ -1336,15 +1336,15 @@ export const ManageMembersDialog = ({
 
               {/* Owner toggles (when invite link exists) */}
               {isGroupOwner && inviteCode && (
-                <div className="px-3 py-2 sm:px-4 sm:py-2.5 border-b border-white/8 flex-shrink-0 space-y-2.5">
+                <div className="px-3 py-2 sm:px-4 sm:py-2.5 border-b border-ink/8 flex-shrink-0 space-y-2.5">
                   {/* Members Can Share Toggle */}
                   <div className="flex items-center justify-between">
                     <div className="min-w-0">
-                      <span className="text-sm text-white/80 font-medium flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                      <span className="text-sm text-ink/80 font-medium flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-fg-400 shrink-0" />
                         Members can share link
                       </span>
-                      <p className="text-[11px] text-white/25">
+                      <p className="text-[11px] text-ink/25">
                         Let members copy and share the invite link
                       </p>
                     </div>
@@ -1352,8 +1352,8 @@ export const ManageMembersDialog = ({
                       type="button"
                       onClick={handleMembersCanShareToggle}
                       disabled={membersCanShareToggling}
-                      className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-[#34F080]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050e1d] ${
-                        membersCanShare ? "bg-[#34F080]" : "bg-white/10"
+                      className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-[#34F080]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-sheet ${
+                        membersCanShare ? "bg-[#34F080]" : "bg-ink/10"
                       }`}
                       aria-label={
                         membersCanShare
@@ -1363,7 +1363,7 @@ export const ManageMembersDialog = ({
                     >
                       {membersCanShareToggling ? (
                         <Loader2
-                          className={`w-3.5 h-3.5 animate-spin absolute top-[5px] text-white ${
+                          className={`w-3.5 h-3.5 animate-spin absolute top-[5px] text-ink ${
                             membersCanShare ? "right-[5px]" : "left-[5px]"
                           }`}
                         />
@@ -1382,11 +1382,11 @@ export const ManageMembersDialog = ({
                   {/* Community Listing Toggle */}
                   <div className="flex items-center justify-between">
                     <div className="min-w-0">
-                      <span className="text-sm text-white/80 font-medium flex items-center gap-1.5">
-                        <Globe className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                      <span className="text-sm text-ink/80 font-medium flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-fg-400 shrink-0" />
                         List in Community
                       </span>
-                      <p className="text-[11px] text-white/25">
+                      <p className="text-[11px] text-ink/25">
                         Let others discover this group
                       </p>
                     </div>
@@ -1394,8 +1394,8 @@ export const ManageMembersDialog = ({
                       type="button"
                       onClick={handleCommunityToggle}
                       disabled={communityToggling}
-                      className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-[#34F080]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050e1d] ${
-                        isCommunityListed ? "bg-[#34F080]" : "bg-white/10"
+                      className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-[#34F080]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-sheet ${
+                        isCommunityListed ? "bg-[#34F080]" : "bg-ink/10"
                       }`}
                       aria-label={
                         isCommunityListed
@@ -1405,7 +1405,7 @@ export const ManageMembersDialog = ({
                     >
                       {communityToggling ? (
                         <Loader2
-                          className={`w-3.5 h-3.5 animate-spin absolute top-[5px] text-white ${
+                          className={`w-3.5 h-3.5 animate-spin absolute top-[5px] text-ink ${
                             isCommunityListed ? "right-[5px]" : "left-[5px]"
                           }`}
                         />
@@ -1431,10 +1431,10 @@ export const ManageMembersDialog = ({
                         }
                         placeholder="Add a short description..."
                         rows={2}
-                        className="w-full rounded-lg px-3 py-1.5 text-sm text-white/80 placeholder:text-white/20 bg-white/5 border border-white/8 focus:border-white/15 outline-none resize-none"
+                        className="w-full rounded-lg px-3 py-1.5 text-sm text-ink/80 placeholder:text-ink/20 bg-ink/5 border border-ink/8 focus:border-ink/15 outline-none resize-none"
                       />
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-white/25">
+                        <span className="text-[11px] text-ink/25">
                           {communityDescription.length}/200
                         </span>
                         {communityDescription !== savedDescription && (
@@ -1442,7 +1442,7 @@ export const ManageMembersDialog = ({
                             type="button"
                             onClick={handleSaveDescription}
                             disabled={communitySaving}
-                            className="flex items-center gap-1 px-3 py-1 rounded-lg glass-btn-primary text-[#34F080] text-xs font-medium cursor-pointer disabled:opacity-50"
+                            className="flex items-center gap-1 px-3 py-1 rounded-lg glass-btn-primary text-brand text-xs font-medium cursor-pointer disabled:opacity-50"
                           >
                             {communitySaving ? (
                               <Loader2 className="w-3 h-3 animate-spin" />
@@ -1470,7 +1470,7 @@ export const ManageMembersDialog = ({
                     {isGroupOwner && joinRequests.length > 0 && (
                       <div className="mb-3">
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-sm font-semibold text-white/70 flex items-center gap-1.5">
+                          <span className="text-sm font-semibold text-ink/70 flex items-center gap-1.5">
                             <UserPlus className="w-4 h-4" />
                             Join Requests ({joinRequests.length})
                           </span>
@@ -1480,7 +1480,7 @@ export const ManageMembersDialog = ({
                                 <button
                                   type="button"
                                   onClick={toggleSelectAll}
-                                  className="text-xs text-[#34F080]/70 hover:text-[#34F080] cursor-pointer"
+                                  className="text-xs text-brand/70 hover:text-brand cursor-pointer"
                                 >
                                   {selectedRequests.size === joinRequests.length
                                     ? "Deselect all"
@@ -1496,7 +1496,7 @@ export const ManageMembersDialog = ({
                                         )
                                       }
                                       disabled={approvingKeys.size > 0}
-                                      className="text-xs px-3 py-1 rounded-full glass-btn-primary text-[#34F080] cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                                      className="text-xs px-3 py-1 rounded-full glass-btn-primary text-brand cursor-pointer disabled:opacity-50 flex items-center gap-1"
                                     >
                                       {approvingKeys.size > 0 ? (
                                         <Loader2 className="w-3 h-3 animate-spin" />
@@ -1545,10 +1545,10 @@ export const ManageMembersDialog = ({
                             return (
                               <div
                                 key={req.requesterPublicKey}
-                                className={`flex items-center p-2 md:p-3 rounded-xl border cursor-pointer transition-[background-color,border-color,transform] hover:bg-white/[0.06] active:scale-[0.96] ${
+                                className={`flex items-center p-2 md:p-3 rounded-xl border cursor-pointer transition-[background-color,border-color,transform] hover:bg-ink/[0.06] active:scale-[0.96] ${
                                   isSelected
                                     ? "bg-[#34F080]/[0.06] border-[#34F080]/15"
-                                    : "bg-white/[0.03] border-white/5"
+                                    : "bg-ink/[0.03] border-ink/5"
                                 }`}
                                 onClick={() =>
                                   toggleRequestSelection(req.requesterPublicKey)
@@ -1559,7 +1559,7 @@ export const ManageMembersDialog = ({
                                     className={`w-5 h-5 rounded border mr-2 flex items-center justify-center flex-shrink-0 ${
                                       isSelected
                                         ? "bg-[#34F080]/20 border-[#34F080]/40"
-                                        : "border-white/15"
+                                        : "border-ink/15"
                                     }`}
                                   >
                                     {isSelected && (
@@ -1628,7 +1628,7 @@ export const ManageMembersDialog = ({
                     )}
 
                     {isGroupOwner && joinRequestsLoading && (
-                      <div className="flex items-center gap-2 text-sm text-white/30 mb-3">
+                      <div className="flex items-center gap-2 text-sm text-ink/30 mb-3">
                         <Loader2 className="w-4 h-4 animate-spin" />
                         Checking for join requests...
                       </div>
@@ -1637,7 +1637,7 @@ export const ManageMembersDialog = ({
                     {isGroupOwner &&
                       !joinRequestsLoading &&
                       joinRequests.length === 0 && (
-                        <div className="text-xs sm:text-sm text-white/25 mb-2 flex items-center gap-1.5">
+                        <div className="text-xs sm:text-sm text-ink/25 mb-2 flex items-center gap-1.5">
                           <UserPlus className="w-3.5 h-3.5" />
                           No pending join requests
                         </div>
@@ -1645,7 +1645,7 @@ export const ManageMembersDialog = ({
 
                     {isGroupOwner && (
                       <SearchUsers
-                        className="text-white placeholder:text-gray-500 bg-white/5 border-white/8"
+                        className="text-ink placeholder:text-fg-500 bg-ink/5 border-ink/8"
                         onSelected={(member) =>
                           addMember(member, () => {
                             setTimeout(() => {
@@ -1662,14 +1662,14 @@ export const ManageMembersDialog = ({
                     <div className="mt-2 pr-1" ref={membersAreaRef}>
                       {loading ? (
                         <div className="text-center">
-                          <Loader2 className="w-11 h-11 mt-4 animate-spin text-[#34F080] mx-auto" />
+                          <Loader2 className="w-11 h-11 mt-4 animate-spin text-brand mx-auto" />
                         </div>
                       ) : (
                         sortedMembers.map((member) => {
                           const memberPresence = getPresence(member.id);
                           return (
                             <div
-                              className="grid grid-cols-[auto_1fr_auto] gap-x-2 p-1.5 sm:p-2 items-center cursor-pointer text-white bg-white/[0.03] border border-white/5 rounded-xl my-1"
+                              className="grid grid-cols-[auto_1fr_auto] gap-x-2 p-1.5 sm:p-2 items-center cursor-pointer text-ink bg-ink/[0.03] border border-ink/5 rounded-xl my-1"
                               key={member.id}
                             >
                               <MessagingDisplayAvatar
@@ -1686,16 +1686,16 @@ export const ManageMembersDialog = ({
                                   {member.text}
                                 </div>
                                 {memberPresence.status === "online" ? (
-                                  <div className="text-xs text-[#34F080] mt-0.5">
+                                  <div className="text-xs text-brand mt-0.5">
                                     Online
                                   </div>
                                 ) : memberPresence.status === "last-seen" ? (
-                                  <div className="text-xs text-gray-500 mt-0.5">
+                                  <div className="text-xs text-fg-500 mt-0.5">
                                     {formatLastSeen(memberPresence.timestamp)}
                                   </div>
                                 ) : isGroupOwner &&
                                   currentMemberKeys.includes(member.id) ? (
-                                  <div className="text-xs md:text-sm text-white/40 mt-1">
+                                  <div className="text-xs md:text-sm text-ink/40 mt-1">
                                     Already in the chat
                                   </div>
                                 ) : null}
@@ -1720,7 +1720,7 @@ export const ManageMembersDialog = ({
                 </div>
 
                 {/* Sticky footer */}
-                <div className="flex justify-between p-3 sm:p-4 border-t border-white/8 gap-3 flex-shrink-0">
+                <div className="flex justify-between p-3 sm:p-4 border-t border-ink/8 gap-3 flex-shrink-0">
                   {!isGroupOwner && (
                     <button
                       onClick={() => {
@@ -1745,13 +1745,13 @@ export const ManageMembersDialog = ({
                         <button
                           onClick={handleOpen}
                           type="button"
-                          className="rounded-full py-2 glass-btn-secondary text-sm px-4 text-gray-300 cursor-pointer"
+                          className="rounded-full py-2 glass-btn-secondary text-sm px-4 text-fg-300 cursor-pointer"
                         >
                           Cancel
                         </button>
                         <button
                           type="submit"
-                          className="glass-btn-primary text-[#34F080] font-semibold rounded-full py-2 text-sm px-4 flex items-center cursor-pointer transition-colors"
+                          className="glass-btn-primary text-brand font-semibold rounded-full py-2 text-sm px-4 flex items-center cursor-pointer transition-colors"
                           disabled={updating}
                         >
                           {updating && (
