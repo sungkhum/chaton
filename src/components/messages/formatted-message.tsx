@@ -23,6 +23,10 @@ const JOIN_LINK_RE =
 // highlightMentions so emails (foo@bar) and URL paths (/@handle) are left alone.
 const MENTION_SCAN_RE = /(?<![\w/])@([A-Za-z0-9_]{1,30})(?!\w)/g;
 
+// Cap profile lookups per message so a spammy message packed with unique @handles
+// can't fan out into an unbounded burst of getSingleProfile requests.
+const MAX_MENTION_LOOKUPS = 12;
+
 // Resolve each @handle to a public key once per session: value = pk, or null
 // when no DeSo profile exists for that handle.
 const mentionPkCache = new Map<string, string | null>();
@@ -45,7 +49,9 @@ function resolveMentionPk(username: string): Promise<string | null> {
       return pk;
     })
     .catch(() => {
-      mentionPkCache.set(key, null);
+      // Don't cache transient network/server failures — a real user shouldn't be
+      // permanently treated as "no profile" for the rest of the session over one
+      // failed lookup. Returning null uncached lets a later render retry.
       return null;
     })
     .finally(() => {
@@ -242,6 +248,7 @@ export function FormattedMessage({
       if (known.has(key) || seen.has(key)) continue;
       seen.add(key);
       handles.push(un);
+      if (handles.length >= MAX_MENTION_LOOKUPS) break;
     }
     if (handles.length === 0) {
       setResolvedMentions((prev) => (prev.length ? [] : prev));
