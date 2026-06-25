@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
+import { getSingleProfile } from "deso-protocol";
 
 import { MentionEntry } from "../../utils/extra-data";
 import { useStore } from "../../store";
@@ -17,6 +18,48 @@ import {
 // Match internal join links: getchaton.com/join/<code> or localhost:*/join/<code>
 const JOIN_LINK_RE =
   /^https?:\/\/(?:(?:www\.)?getchaton\.com|localhost:\d+)\/join\/([A-Za-z0-9]+)$/;
+
+// Match @handles in raw message text. Mirrors the lookbehind/lookahead guards in
+// highlightMentions so emails (foo@bar) and URL paths (/@handle) are left alone.
+const MENTION_SCAN_RE = /(?<![\w/])@([A-Za-z0-9_]{1,30})(?!\w)/g;
+
+// Cap profile lookups per message so a spammy message packed with unique @handles
+// can't fan out into an unbounded burst of getSingleProfile requests.
+const MAX_MENTION_LOOKUPS = 12;
+
+// Resolve each @handle to a public key once per session: value = pk, or null
+// when no DeSo profile exists for that handle.
+const mentionPkCache = new Map<string, string | null>();
+const mentionPkPending = new Map<string, Promise<string | null>>();
+
+/** Look up the DeSo public key for an @handle, caching the result. */
+function resolveMentionPk(username: string): Promise<string | null> {
+  const key = username.toLowerCase();
+  const cached = mentionPkCache.get(key);
+  if (cached !== undefined) return Promise.resolve(cached);
+  const inflight = mentionPkPending.get(key);
+  if (inflight) return inflight;
+  const promise = getSingleProfile({
+    Username: username,
+    NoErrorOnMissing: true,
+  })
+    .then((res) => {
+      const pk = res?.Profile?.PublicKeyBase58Check ?? null;
+      mentionPkCache.set(key, pk);
+      return pk;
+    })
+    .catch(() => {
+      // Don't cache transient network/server failures — a real user shouldn't be
+      // permanently treated as "no profile" for the rest of the session over one
+      // failed lookup. Returning null uncached lets a later render retry.
+      return null;
+    })
+    .finally(() => {
+      mentionPkPending.delete(key);
+    });
+  mentionPkPending.set(key, promise);
+  return promise;
+}
 
 // ── Lazy-loaded markdown pipeline ──
 // marked (~30KB) and DOMPurify (~35KB) are loaded on first render
@@ -181,14 +224,67 @@ export function FormattedMessage({
   // eslint-disable-next-line -- intentionally using mentionsKey (derived) instead of mentions (unstable ref)
   const stableMentions = useMemo(() => mentions, [mentionsKey]);
 
+  // Highlighting is driven purely by send-time metadata, which only captures
+  // users picked from the mention dropdown (group members). Handles typed for
+  // anyone else — e.g. a DeSo user who isn't in this group — never make it into
+  // the metadata, so they render as plain text. Resolve those un-tagged @handles
+  // against DeSo here so any real user gets the same pill as picked members.
+  const [resolvedMentions, setResolvedMentions] = useState<MentionEntry[]>([]);
+
+  useEffect(() => {
+    if (!children.includes("@")) {
+      setResolvedMentions((prev) => (prev.length ? [] : prev));
+      return;
+    }
+    const known = new Set(
+      (stableMentions ?? []).map((m) => m.un.toLowerCase())
+    );
+    const handles: string[] = [];
+    const seen = new Set<string>();
+    for (const match of children.matchAll(MENTION_SCAN_RE)) {
+      const un = match[1];
+      if (!un) continue;
+      const key = un.toLowerCase();
+      if (known.has(key) || seen.has(key)) continue;
+      seen.add(key);
+      handles.push(un);
+      if (handles.length >= MAX_MENTION_LOOKUPS) break;
+    }
+    if (handles.length === 0) {
+      setResolvedMentions((prev) => (prev.length ? [] : prev));
+      return;
+    }
+    let cancelled = false;
+    Promise.all(
+      handles.map(async (un) => {
+        const pk = await resolveMentionPk(un);
+        return pk ? { pk, un } : null;
+      })
+    ).then((entries) => {
+      if (cancelled) return;
+      const found = entries.filter((e): e is MentionEntry => e !== null);
+      setResolvedMentions((prev) =>
+        found.length === 0 && prev.length === 0 ? prev : found
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [children, stableMentions]);
+
+  const mergedMentions = useMemo(() => {
+    if (resolvedMentions.length === 0) return stableMentions;
+    return [...(stableMentions ?? []), ...resolvedMentions];
+  }, [stableMentions, resolvedMentions]);
+
   const html = useMemo(() => {
     if (!renderMarkdown) return "";
     try {
-      return replaceEmojisInHtml(renderMarkdown(children, stableMentions));
+      return replaceEmojisInHtml(renderMarkdown(children, mergedMentions));
     } catch {
-      return renderMarkdown(children, stableMentions);
+      return renderMarkdown(children, mergedMentions);
     }
-  }, [children, stableMentions, ready]);
+  }, [children, mergedMentions, ready]);
 
   // Memoize the dangerouslySetInnerHTML prop object so React sees the same
   // reference on re-renders. Without this, `{{ __html: html }}` creates a
