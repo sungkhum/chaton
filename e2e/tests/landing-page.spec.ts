@@ -111,7 +111,7 @@ test.describe("Landing page", () => {
     ).toHaveAttribute("href", "https://github.com/sungkhum/chaton");
 
     await expect(
-      footer.getByRole("link", { name: /donate/i })
+      footer.getByRole("link", { name: /sponsor us/i })
     ).toHaveAttribute("href", "/donate");
 
     await expect(

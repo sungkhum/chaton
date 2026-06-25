@@ -23,9 +23,9 @@ const PRESET_AMOUNTS = [0.1, 0.5, 1, 5] as const;
 
 export const SupportPage = () => {
   usePageMeta({
-    title: "Support ChatOn — Keep Decentralized Messaging Alive",
+    title: "Sponsor Us — Keep Decentralized Messaging Alive",
     description:
-      "ChatOn is free, open-source, and costs $0/month to run. No ads. No data harvesting. Support the project with a $DESO tip.",
+      "ChatOn is free, open-source, and costs $0/month to run. No ads. No data harvesting. Sponsor us with a $DESO tip.",
     path: "/donate",
   });
 

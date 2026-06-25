@@ -9,7 +9,7 @@ const NAV_LINKS = [
   { href: "/compare", label: "Compare" },
   { href: "/about", label: "About" },
   { href: "/faq", label: "FAQ" },
-  { href: "/donate", label: "Donate" },
+  { href: "/donate", label: "Sponsor Us" },
 ];
 
 export const PublicNav = ({
@@ -219,7 +219,7 @@ export const PublicFooter = () => (
           href="/donate"
           className="inline-flex items-center min-h-10 px-1 hover:text-gray-400 transition-colors"
         >
-          Donate
+          Sponsor Us
         </a>
       </div>
     </div>
