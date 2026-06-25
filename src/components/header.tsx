@@ -274,7 +274,7 @@ export const Header = () => {
                       <span className="text-[14px]">Send Feedback</span>
                     </button>
 
-                    {/* Donate */}
+                    {/* Sponsor Us */}
                     <button
                       role="menuitem"
                       className="flex items-center w-full py-3 px-3 text-fg-400 hover:text-ink hover:bg-ink/[0.06] rounded-lg cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-[#34F080]/50"
@@ -284,7 +284,7 @@ export const Header = () => {
                       }}
                     >
                       <Heart className="mr-3 w-[18px] h-[18px] text-brand" />
-                      <span className="text-[14px]">Donate</span>
+                      <span className="text-[14px]">Sponsor Us</span>
                     </button>
 
                     <div className="border-t border-ink/[0.06] my-1.5" />
