@@ -171,6 +171,18 @@ test.describe("Tweet link preview", () => {
     // And its bottom edge must sit above the image — no overlap. (1px tolerance
     // for sub-pixel rounding.)
     expect(descBox!.y + descBox!.height).toBeLessThanOrEqual(mediaBox!.y + 1);
+
+    // Regression lock for the repeat report (#74's first attempt under-corrected).
+    // The sliced partial-line is WebKit-only: -webkit-line-clamp miscounts there
+    // and leaves a 5th line above the image, so the max-height backstop must land
+    // on the 4-line boundary — 4 × 17.875px (13px × leading-snug 1.375) + 6px
+    // bottom padding ≈ 78px. The prior 88px allowed ~4.9 lines, leaving room for
+    // the slice. Chromium clamps correctly, so the slice can't be reproduced in
+    // this suite — assert the cap value directly instead.
+    const maxHeight = await description.evaluate(
+      (el) => getComputedStyle(el).maxHeight
+    );
+    expect(maxHeight).toBe("78px");
   });
 
   test("renders a short single-line tweet with no image cleanly", async ({
