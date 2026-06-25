@@ -91,7 +91,7 @@ function TweetPreview({ og, url }: { og: OgData; url: string }) {
 
         {/* Tweet text */}
         {description && (
-          <div className="px-3 pb-1.5 text-[13px] text-fg-300 leading-snug line-clamp-4 max-h-[88px] overflow-hidden">
+          <div className="px-3 pb-1.5 text-[13px] text-fg-300 leading-snug line-clamp-4 max-h-[78px] overflow-hidden">
             {description}
           </div>
         )}
