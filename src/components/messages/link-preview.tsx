@@ -54,6 +54,11 @@ function formatCount(n?: number): string {
 
 function TweetPreview({ og, url }: { og: OgData; url: string }) {
   const [imageError, setImageError] = useState(false);
+  // Collapse the tweet's embedded newlines into spaces. -webkit-line-clamp
+  // miscounts line-boxes when explicit "\n" breaks are present (via
+  // whitespace-pre-line), which on WebKit leaves a sliced partial line that
+  // overflows onto the media image below.
+  const description = og.description?.replace(/\s+/g, " ").trim();
 
   return (
     <a
@@ -85,9 +90,9 @@ function TweetPreview({ og, url }: { og: OgData; url: string }) {
         </div>
 
         {/* Tweet text */}
-        {og.description && (
-          <div className="px-3 pb-1.5 text-[13px] text-fg-300 leading-snug line-clamp-4 whitespace-pre-line">
-            {og.description}
+        {description && (
+          <div className="px-3 pb-1.5 text-[13px] text-fg-300 leading-snug line-clamp-4 max-h-[88px] overflow-hidden">
+            {description}
           </div>
         )}
 
@@ -226,10 +231,7 @@ function YouTubePreview({ og, url }: { og: OgData; url: string }) {
             />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="w-14 h-14 rounded-full bg-black/60 flex items-center justify-center group-hover:bg-red-600/90 transition-colors">
-                <Play
-                  className="w-6 h-6 text-ink ml-0.5"
-                  fill="currentColor"
-                />
+                <Play className="w-6 h-6 text-ink ml-0.5" fill="currentColor" />
               </div>
             </div>
           </div>
