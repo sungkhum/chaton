@@ -492,4 +492,66 @@ test.describe("Composer Enter key", () => {
     // Textarea should retain text spanning two lines (Enter did not send)
     await expect(composer).toHaveValue("hello\nworld");
   });
+
+  test("on desktop Enter sends and Shift+Enter inserts a newline", async ({
+    page,
+    waitForAppReady,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name === "mobile",
+      "Desktop-only — touch devices insert a newline on Enter"
+    );
+
+    // Reproduce a touchscreen desktop / 2-in-1 (e.g. a Windows laptop): touch is
+    // available (navigator.maxTouchPoints > 0) but the primary pointer is still a
+    // mouse, so "(hover: none) and (pointer: coarse)" stays false. Playwright's
+    // hasTouch flips both at once, so we inject maxTouchPoints directly to keep
+    // the media query false. This is the exact device that regressed: the old
+    // maxTouchPoints check treated it as touch-only and disabled Enter-to-send.
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "maxTouchPoints", {
+        configurable: true,
+        get: () => 1,
+      });
+    });
+
+    await page.goto("/");
+    await waitForAppReady();
+    await injectUser(page);
+
+    const dm = makeDmConversation();
+    await injectConversation(page, dm);
+
+    const composer = page.getByPlaceholder("Type a message...");
+    await expect(composer).toBeVisible({ timeout: 10_000 });
+
+    // Sanity-check the emulated device actually has touch points but is not a
+    // touch-primary device — otherwise this test would pass trivially.
+    expect(
+      await page.evaluate(() => ({
+        maxTouchPoints: navigator.maxTouchPoints,
+        touchPrimary: window.matchMedia("(hover: none) and (pointer: coarse)")
+          .matches,
+      }))
+    ).toEqual({ maxTouchPoints: 1, touchPrimary: false });
+
+    // Shift+Enter inserts a newline without sending.
+    await composer.click();
+    await composer.fill("draft line one");
+    await composer.press("Shift+Enter");
+    await composer.pressSequentially("line two");
+    await expect(composer).toHaveValue("draft line one\nline two");
+
+    // Enter (no shift) sends the message. The optimistic bubble appears in the
+    // conversation and no newline is inserted into the composer. This is the
+    // regression case: touch-capable desktops used to insert a newline here.
+    await composer.fill("hello desktop send");
+    await composer.press("Enter");
+
+    const messages = page.locator("#scrollableArea");
+    await expect(messages.getByText("hello desktop send")).toBeVisible({
+      timeout: 5_000,
+    });
+    await expect(composer).not.toHaveValue(/\n/);
+  });
 });
