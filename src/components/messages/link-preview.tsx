@@ -89,10 +89,23 @@ function TweetPreview({ og, url }: { og: OgData; url: string }) {
           )}
         </div>
 
-        {/* Tweet text */}
+        {/* Tweet text — clamp to 4 lines without ever slicing a partial line.
+            Three things make this robust where #74/#80 kept regressing:
+            (1) an integer line-height (18px) so WebKit's line boxes round
+            deterministically instead of drifting around leading-snug's
+            17.875px; (2) the bottom padding lives on this wrapper, not on the
+            clamped element — so overflow:hidden clips exactly at the last line
+            instead of leaving a 6px padding band that a miscounted line can
+            bleed into and over the media image below; (3) the max-height
+            backstop is an exact 4x the line-height (72px), so even if
+            -webkit-line-clamp miscounts, the hard clip still lands on a
+            whole-line boundary. break-words keeps long links from overflowing
+            sideways. */}
         {description && (
-          <div className="px-3 pb-1.5 text-[13px] text-fg-300 leading-snug line-clamp-4 max-h-[78px] overflow-hidden">
-            {description}
+          <div className="px-3 pb-1.5">
+            <div className="text-[13px] text-fg-300 leading-[18px] line-clamp-4 max-h-[72px] break-words">
+              {description}
+            </div>
           </div>
         )}
 
@@ -161,15 +174,19 @@ function RedditPreview({ og, url }: { og: OgData; url: string }) {
 
         {/* Post title */}
         {og.title && (
-          <div className="px-3 pb-1.5 text-[13px] text-fg-200 leading-snug line-clamp-3 font-medium">
-            {og.title}
+          <div className="px-3 pb-1.5">
+            <div className="text-[13px] text-fg-200 leading-[18px] line-clamp-3 max-h-[54px] font-medium break-words">
+              {og.title}
+            </div>
           </div>
         )}
 
         {/* Self text preview */}
         {og.description && (
-          <div className="px-3 pb-1.5 text-[12px] text-fg-400 leading-snug line-clamp-2">
-            {og.description}
+          <div className="px-3 pb-1.5">
+            <div className="text-[12px] text-fg-400 leading-[16px] line-clamp-2 max-h-[32px] break-words">
+              {og.description}
+            </div>
           </div>
         )}
 
@@ -256,7 +273,7 @@ function YouTubePreview({ og, url }: { og: OgData; url: string }) {
             )}
             <div className="flex-1 min-w-0">
               {og.title && (
-                <div className="text-[13px] text-ink leading-snug mb-0.5 line-clamp-2 font-medium">
+                <div className="text-[13px] text-ink leading-[18px] mb-0.5 line-clamp-2 max-h-[36px] font-medium break-words">
                   {og.title}
                 </div>
               )}
@@ -369,12 +386,12 @@ function GenericLinkPreview({ url }: { url: string }) {
             )}
             <div className="flex-1 min-w-0">
               {og.title && (
-                <div className="text-[13px] text-ink leading-snug mb-0.5 line-clamp-2">
+                <div className="text-[13px] text-ink leading-[18px] mb-0.5 line-clamp-2 max-h-[36px] break-words">
                   {og.title}
                 </div>
               )}
               {og.description && (
-                <div className="text-[11px] text-fg-500 leading-snug mb-1 line-clamp-2">
+                <div className="text-[11px] text-fg-500 leading-[15px] mb-1 line-clamp-2 max-h-[30px] break-words">
                   {og.description}
                 </div>
               )}
