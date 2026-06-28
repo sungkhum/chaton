@@ -501,6 +501,20 @@ test.describe("Composer Enter key", () => {
       testInfo.project.name === "mobile",
       "Desktop-only — touch devices insert a newline on Enter"
     );
+
+    // Reproduce a touchscreen desktop / 2-in-1 (e.g. a Windows laptop): touch is
+    // available (navigator.maxTouchPoints > 0) but the primary pointer is still a
+    // mouse, so "(hover: none) and (pointer: coarse)" stays false. Playwright's
+    // hasTouch flips both at once, so we inject maxTouchPoints directly to keep
+    // the media query false. This is the exact device that regressed: the old
+    // maxTouchPoints check treated it as touch-only and disabled Enter-to-send.
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "maxTouchPoints", {
+        configurable: true,
+        get: () => 1,
+      });
+    });
+
     await page.goto("/");
     await waitForAppReady();
     await injectUser(page);
@@ -510,6 +524,16 @@ test.describe("Composer Enter key", () => {
 
     const composer = page.getByPlaceholder("Type a message...");
     await expect(composer).toBeVisible({ timeout: 10_000 });
+
+    // Sanity-check the emulated device actually has touch points but is not a
+    // touch-primary device — otherwise this test would pass trivially.
+    expect(
+      await page.evaluate(() => ({
+        maxTouchPoints: navigator.maxTouchPoints,
+        touchPrimary: window.matchMedia("(hover: none) and (pointer: coarse)")
+          .matches,
+      }))
+    ).toEqual({ maxTouchPoints: 1, touchPrimary: false });
 
     // Shift+Enter inserts a newline without sending.
     await composer.click();
