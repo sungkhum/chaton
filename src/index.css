@@ -72,7 +72,7 @@ html.light {
   --fg-500: #64748b;
   --fg-600: #94a3b8;
   --surface-deep: #f6f8fc;
-  --surface: #e9eef5;
+  --surface: #f1f4fa;
   --surface-raised: #ffffff;
   --surface-sheet: #ffffff;
   --brand: #0c9b66;
@@ -1011,6 +1011,16 @@ html.light .glass-sent {
 }
 html.light .glass-conversation-active {
   background: rgba(52, 240, 128, 0.1);
+}
+
+/* Link / OG preview cards (link-preview.tsx) hardcode dark gradient
+   backgrounds for the dark theme. On a light background those render as a
+   muddy dark box with low-contrast text, so flatten them to a clean, raised
+   light card. The themed text/badges keep each service's identity. */
+html.light .link-preview-card {
+  background-image: none;
+  background-color: var(--surface-raised);
+  border-color: rgb(var(--glass-tint) / 0.12);
 }
 
 /* Formatted (markdown) message surfaces */
