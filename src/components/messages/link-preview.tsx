@@ -67,7 +67,7 @@ function TweetPreview({ og, url }: { og: OgData; url: string }) {
       rel="noopener noreferrer"
       className="block rounded-lg overflow-hidden hover:brightness-110 transition group mt-1.5"
     >
-      <div className="bg-gradient-to-br from-gray-800/60 to-slate-900/40 border border-gray-600/30 rounded-lg overflow-hidden">
+      <div className="link-preview-card bg-gradient-to-br from-gray-800/60 to-slate-900/40 border border-gray-600/30 rounded-lg overflow-hidden">
         {/* Author row */}
         <div className="flex items-center gap-2 px-3 pt-2.5 pb-1">
           {og.authorAvatar ? (
@@ -144,7 +144,7 @@ function RedditPreview({ og, url }: { og: OgData; url: string }) {
       rel="noopener noreferrer"
       className="block rounded-lg overflow-hidden hover:brightness-110 transition group mt-1.5"
     >
-      <div className="bg-gradient-to-br from-orange-900/30 to-red-900/20 border border-orange-700/30 rounded-lg overflow-hidden">
+      <div className="link-preview-card bg-gradient-to-br from-orange-900/30 to-red-900/20 border border-orange-700/30 rounded-lg overflow-hidden">
         {/* Subreddit row */}
         <div className="flex items-center gap-2 px-3 pt-2.5 pb-1">
           {og.subreddit && (
@@ -220,7 +220,7 @@ function YouTubePreview({ og, url }: { og: OgData; url: string }) {
       rel="noopener noreferrer"
       className="block rounded-lg overflow-hidden hover:brightness-110 transition group mt-1.5"
     >
-      <div className="bg-gradient-to-br from-red-900/35 to-rose-900/20 border border-red-700/30 rounded-lg overflow-hidden">
+      <div className="link-preview-card bg-gradient-to-br from-red-900/35 to-rose-900/20 border border-red-700/30 rounded-lg overflow-hidden">
         {og.image && !imageError && (
           <div className="relative">
             <img
@@ -335,7 +335,7 @@ function GenericLinkPreview({ url }: { url: string }) {
       className="block rounded-lg overflow-hidden hover:brightness-110 transition group mt-1.5"
     >
       <div
-        className={`bg-gradient-to-br ${cardGradient} border ${cardBorder} rounded-lg overflow-hidden`}
+        className={`link-preview-card bg-gradient-to-br ${cardGradient} border ${cardBorder} rounded-lg overflow-hidden`}
       >
         {og.image && !imageError && (
           <img
