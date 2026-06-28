@@ -492,4 +492,42 @@ test.describe("Composer Enter key", () => {
     // Textarea should retain text spanning two lines (Enter did not send)
     await expect(composer).toHaveValue("hello\nworld");
   });
+
+  test("on desktop Enter sends and Shift+Enter inserts a newline", async ({
+    page,
+    waitForAppReady,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name === "mobile",
+      "Desktop-only — touch devices insert a newline on Enter"
+    );
+    await page.goto("/");
+    await waitForAppReady();
+    await injectUser(page);
+
+    const dm = makeDmConversation();
+    await injectConversation(page, dm);
+
+    const composer = page.getByPlaceholder("Type a message...");
+    await expect(composer).toBeVisible({ timeout: 10_000 });
+
+    // Shift+Enter inserts a newline without sending.
+    await composer.click();
+    await composer.fill("draft line one");
+    await composer.press("Shift+Enter");
+    await composer.pressSequentially("line two");
+    await expect(composer).toHaveValue("draft line one\nline two");
+
+    // Enter (no shift) sends the message. The optimistic bubble appears in the
+    // conversation and no newline is inserted into the composer. This is the
+    // regression case: touch-capable desktops used to insert a newline here.
+    await composer.fill("hello desktop send");
+    await composer.press("Enter");
+
+    const messages = page.locator("#scrollableArea");
+    await expect(messages.getByText("hello desktop send")).toBeVisible({
+      timeout: 5_000,
+    });
+    await expect(composer).not.toHaveValue(/\n/);
+  });
 });

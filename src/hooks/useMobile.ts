@@ -17,6 +17,13 @@ export function useMobile() {
 
   return {
     isMobile: width <= MOBILE_WIDTH_BREAKPOINT,
-    isTouchDevice: navigator.maxTouchPoints > 0,
+    // "Primary input is touch" — true for phones/tablets, false for
+    // touchscreen desktops and 2-in-1s (which still report hover + a fine
+    // pointer). navigator.maxTouchPoints > 0 is also true on touch-capable
+    // desktops, which wrongly disabled Enter-to-send for them.
+    isTouchDevice:
+      typeof window.matchMedia === "function"
+        ? window.matchMedia("(hover: none) and (pointer: coarse)").matches
+        : navigator.maxTouchPoints > 0,
   };
 }
