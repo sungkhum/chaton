@@ -100,11 +100,28 @@ const FETCH_HEADERS = {
   "Accept-Language": "en-US,en;q=0.9",
 };
 
+// Fallback headers for sites that gate the real article behind a browser-looking
+// request (e.g. Cloudflare's "Just a moment" challenge, some consent walls). We
+// only reach for this after the social-crawler UA above returns an interstitial,
+// so well-behaved publishers still get the crawler treatment first. The
+// SSRF/host guards in safeFetch are independent of these headers.
+const BROWSER_FETCH_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  Accept:
+    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+};
+
 /**
  * Fetch a URL following redirects manually so we can check each hop
  * against private IP ranges (prevents SSRF via redirect chains).
  */
-async function safeFetch(url: string, signal: AbortSignal): Promise<Response | null> {
+async function safeFetch(
+  url: string,
+  signal: AbortSignal,
+  headers: Record<string, string> = FETCH_HEADERS
+): Promise<Response | null> {
   let current = url;
   for (let i = 0; i < MAX_REDIRECTS; i++) {
     const parsed = new URL(current);
@@ -112,7 +129,7 @@ async function safeFetch(url: string, signal: AbortSignal): Promise<Response | n
 
     const res = await fetch(current, {
       signal,
-      headers: FETCH_HEADERS,
+      headers,
       redirect: "manual",
     });
 
@@ -151,6 +168,51 @@ async function readHead(res: Response): Promise<string> {
   }
   reader.cancel();
   return html;
+}
+
+// A site that serves one of these as its <title> handed us a GDPR/cookie
+// consent wall or an anti-bot interstitial instead of the real article.
+// Matched as substrings because publishers phrase these differently.
+const CONSENT_TITLE_SUBSTRINGS = [
+  "your privacy choices",
+  "before you continue",
+  "we value your privacy",
+  "just a moment", // Cloudflare challenge page
+];
+
+function isInterstitialTitle(title?: string): boolean {
+  if (!title) return false;
+  const lower = title.toLowerCase().trim();
+  return CONSENT_TITLE_SUBSTRINGS.some((s) => lower.includes(s));
+}
+
+/**
+ * Fetch a URL with the given request headers and parse its OG tags. Returns
+ * null on any network/abort/non-HTML failure. Used for the browser-UA retry
+ * when the default crawler UA only gets an interstitial back. Reuses safeFetch,
+ * so the per-hop SSRF/private-host guards still apply.
+ */
+async function fetchOgWithHeaders(
+  url: string,
+  headers: Record<string, string>
+): Promise<OgResult | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await safeFetch(url, controller.signal, headers);
+    if (
+      !res ||
+      !res.ok ||
+      !res.headers.get("content-type")?.includes("text/html")
+    ) {
+      return null;
+    }
+    return parseOgTags(await readHead(res));
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 /** Detect Reddit post URLs and return the JSON API URL */
@@ -468,19 +530,21 @@ export async function handleOgFetch(request: Request): Promise<Response> {
     }
   }
 
-  // If a site still serves a GDPR/cookie consent or anti-bot interstitial
-  // (despite the crawler User-Agent), the whole page is junk — not the article.
-  // Drop the entire preview so no degraded card (e.g. "Your privacy choices")
-  // is shown. Matched as substrings because publishers phrase these differently.
-  const CONSENT_TITLE_SUBSTRINGS = [
-    "your privacy choices",
-    "before you continue",
-    "we value your privacy",
-    "just a moment", // Cloudflare challenge page
-  ];
-  if (result.title) {
-    const lowerTitle = result.title.toLowerCase().trim();
-    if (CONSENT_TITLE_SUBSTRINGS.some((s) => lowerTitle.includes(s))) {
+  // If a site served a GDPR/cookie consent or anti-bot interstitial to the
+  // crawler User-Agent, retry once as a real desktop browser before giving up.
+  // Some publishers (and every Cloudflare "Just a moment" challenge) only
+  // reveal the article to a browser-looking request. If the retry returns real
+  // OG data we use it; if it's still an interstitial (or empty), the page is
+  // genuinely junk and we drop the preview rather than show a degraded card.
+  if (isInterstitialTitle(result.title)) {
+    const retry = await fetchOgWithHeaders(targetUrl, BROWSER_FETCH_HEADERS);
+    if (
+      retry &&
+      !isInterstitialTitle(retry.title) &&
+      (retry.title || retry.description || retry.image)
+    ) {
+      result = retry;
+    } else {
       return cacheAndReturn(cache, cacheKey, {});
     }
   }
