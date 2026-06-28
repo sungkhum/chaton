@@ -4,6 +4,7 @@ import {
   Bell,
   BellOff,
   Archive,
+  ChevronLeft,
   EllipsisVertical,
   ShieldBan,
   Pin,
@@ -5065,16 +5066,14 @@ export const MessagingApp: FC = () => {
                   className="w-full h-full shrink-0 md:flex-1 md:min-w-0 bg-surface flex flex-col"
                 >
                   <header className="flex justify-between items-center border-b border-ink/5 relative px-4 md:px-5 h-14 shrink-0">
-                    <div
-                      className="cursor-pointer py-4 pl-0 pr-6 md:hidden"
+                    <button
+                      type="button"
                       onClick={handleMobileBack}
+                      aria-label="Back to conversations"
+                      className="md:hidden shrink-0 -ml-2 mr-1 p-2 rounded-full text-fg-400 hover:text-ink hover:bg-ink/10 active:bg-ink/15 transition-colors cursor-pointer"
                     >
-                      <img
-                        src="/assets/left-chevron.png"
-                        width={20}
-                        alt="back"
-                      />
-                    </div>
+                      <ChevronLeft className="w-6 h-6" strokeWidth={2.25} />
+                    </button>
                     {selectedConversation &&
                       (selectedConversation.messages[0] ||
                         (!isGroupChat &&
