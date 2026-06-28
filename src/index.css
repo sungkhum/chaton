@@ -1016,11 +1016,68 @@ html.light .glass-conversation-active {
 /* Link / OG preview cards (link-preview.tsx) hardcode dark gradient
    backgrounds for the dark theme. On a light background those render as a
    muddy dark box with low-contrast text, so flatten them to a clean, raised
-   light card. The themed text/badges keep each service's identity. */
+   light card. A soft shadow keeps the white card distinct from the light
+   message bubble it sits on. */
 html.light .link-preview-card {
   background-image: none;
   background-color: var(--surface-raised);
   border-color: rgb(var(--glass-tint) / 0.12);
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.08),
+    0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+/* The service badge glyphs and identity labels inside the cards use light
+   300/400-level Tailwind tints tuned for the dark gradient. On the flattened
+   white card the light-gray ones vanish and the colored ones lose contrast, so
+   darken each to its readable ~600 equivalent — keeping each service's hue. */
+html.light .link-preview-card .text-gray-100,
+html.light .link-preview-card .text-gray-200,
+html.light .link-preview-card .text-gray-300 {
+  color: #334155;
+}
+html.light .link-preview-card .text-blue-300,
+html.light .link-preview-card .text-blue-400,
+html.light .link-preview-card .text-blue-400\/60 {
+  color: #2563eb;
+}
+html.light .link-preview-card .text-sky-400 {
+  color: #0284c7;
+}
+html.light .link-preview-card .text-cyan-400 {
+  color: #0891b2;
+}
+html.light .link-preview-card .text-teal-300,
+html.light .link-preview-card .text-teal-400 {
+  color: #0d9488;
+}
+html.light .link-preview-card .text-green-400 {
+  color: #16a34a;
+}
+html.light .link-preview-card .text-emerald-400 {
+  color: #059669;
+}
+html.light .link-preview-card .text-yellow-400 {
+  color: #b45309;
+}
+html.light .link-preview-card .text-orange-400 {
+  color: #ea580c;
+}
+html.light .link-preview-card .text-red-400,
+html.light .link-preview-card .text-red-400\/70 {
+  color: #dc2626;
+}
+html.light .link-preview-card .text-rose-400 {
+  color: #e11d48;
+}
+html.light .link-preview-card .text-purple-400 {
+  color: #9333ea;
+}
+html.light .link-preview-card .text-violet-400 {
+  color: #7c3aed;
+}
+html.light .link-preview-card .text-indigo-400 {
+  color: #4f46e5;
 }
 
 /* Formatted (markdown) message surfaces */
