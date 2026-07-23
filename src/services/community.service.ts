@@ -33,6 +33,20 @@ export interface EnrichedCommunityListing extends CommunityListing {
 
 const MEMBER_PAGE_SIZE = 50;
 
+// Community listings are public on-chain, but ChatOn can honor moderation and
+// privacy requests by excluding exact owner/group pairs from discovery surfaces.
+const HIDDEN_COMMUNITY_LISTING_KEYS = new Set([
+  "BC1YLhG1F1stBZKyQTcHRuQ6MwuXgLJVQutUHeLzyvdE7Cgz9zdTogG|S7evin",
+]);
+
+function isHiddenCommunityListing(
+  listing: Pick<CommunityListing, "ownerKey" | "groupKeyName">
+): boolean {
+  return HIDDEN_COMMUNITY_LISTING_KEYS.has(
+    listing.ownerKey + "|" + listing.groupKeyName
+  );
+}
+
 interface MemberCountResult {
   count: number;
   capped: boolean;
@@ -205,7 +219,7 @@ export async function fetchCommunityListings(): Promise<CommunityListing[]> {
     lastId = associations[associations.length - 1]!.AssociationID;
   }
 
-  return results;
+  return results.filter((listing) => !isHiddenCommunityListing(listing));
 }
 
 /**

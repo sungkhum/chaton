@@ -11,7 +11,7 @@ import { containsProfanity } from "../utils/profanity-filter";
 import { buildInviteUrl } from "../utils/invite-link";
 import { MessagingDisplayAvatar } from "./messaging-display-avatar";
 
-const CACHE_KEY = "chaton:community-cache";
+const CACHE_KEY = "chaton:community-cache:v2";
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 function getCachedListings(): EnrichedCommunityListing[] | null {
