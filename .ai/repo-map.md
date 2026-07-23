@@ -198,6 +198,8 @@ src/utils/error-capture.ts  fn getAppVersion, getPlatform, captureError
 src/utils/error-codes.ts  ERROR_CODES
 src/utils/exchange-rate.ts  fn fetchExchangeRate, usdToNanos, nanosToUsd, formatUsd
 src/utils/extra-data.ts  fn getEncryptedExtraDataKeys, fn parseMessageType, fn getGroupImageUrl, fn getGroupDisplayName, fn getGroupPinnedMessage, fn getGroupMembersCanShare, ... (54 exports)
+src/utils/fee-policy-core.ts  fn isFeeRateRejection | class FeePolicy
+src/utils/fee-policy.ts  fn withFeePolicy
 src/utils/helpers.ts  fn copyTextToClipboard, fn getProfileURL, fn desoNanosToDeso, fn formatDesoAmount, fn scrollContainerToElement, fn getChatNameFromConversation, ... (13 exports)
 src/utils/invite-link.ts  fn buildInviteUrl, extractInviteCode, resolveInviteCode, registerInviteCode, fetchInviteCode, revokeInviteCode
 src/utils/lazy-with-reload.ts  fn lazyWithReload

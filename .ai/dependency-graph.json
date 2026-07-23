@@ -378,6 +378,7 @@
     "imports": [
       "src/store/index.ts",
       "src/utils/with-auth.ts",
+      "src/utils/fee-policy.ts",
       "src/utils/batch-members.ts",
       "src/hooks/useKeyDown.ts",
       "src/hooks/useMembers.ts",
@@ -1183,6 +1184,7 @@
   "src/services/conversations.service.tsx": {
     "imports": [
       "src/utils/with-auth.ts",
+      "src/utils/fee-policy.ts",
       "src/utils/constants.ts",
       "src/utils/extra-data.ts",
       "src/utils/types.ts",
@@ -1540,6 +1542,21 @@
       "GROUP_MEMBERS_CAN_SHARE"
     ]
   },
+  "src/utils/fee-policy-core.ts": {
+    "imports": [],
+    "exports": [
+      "isFeeRateRejection",
+      "FeePolicy"
+    ]
+  },
+  "src/utils/fee-policy.ts": {
+    "imports": [
+      "src/utils/fee-policy-core.ts"
+    ],
+    "exports": [
+      "withFeePolicy"
+    ]
+  },
   "src/utils/helpers.ts": {
     "imports": [
       "src/utils/search-helpers.ts",
@@ -1680,7 +1697,8 @@
   "src/utils/with-auth.ts": {
     "imports": [
       "src/utils/constants.ts",
-      "src/store/index.ts"
+      "src/store/index.ts",
+      "src/utils/fee-policy.ts"
     ],
     "exports": [
       "withAuth",

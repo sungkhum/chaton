@@ -79,7 +79,6 @@ export const MessagingSetupButton = () => {
               AccessGroupPublicKeyBase58Check:
                 appUser.messagingPublicKeyBase58Check,
               AccessGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
-              MinFeeRateNanosPerKB: 1000,
             })
           );
 

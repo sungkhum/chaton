@@ -120,7 +120,6 @@ export const StartGroupChat = ({
           AccessGroupOwnerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
           AccessGroupPublicKeyBase58Check:
             accessGroupKeys.AccessGroupPublicKeyBase58Check,
-          MinFeeRateNanosPerKB: 1000,
           ...(Object.keys(extraData).length > 0 && { ExtraData: extraData }),
         })
       );

@@ -2,6 +2,7 @@ import { identity } from "deso-protocol";
 import { toast } from "sonner";
 import { getTransactionSpendingLimits } from "./constants";
 import { useStore } from "../store";
+import { withFeePolicy } from "./fee-policy";
 
 /**
  * Wraps any async function that makes a DeSo transaction.
@@ -12,7 +13,7 @@ const REAUTH_POPUP_TIMEOUT_MS = 4000;
 
 export async function withAuth<T>(fn: () => Promise<T>): Promise<T> {
   try {
-    return await fn();
+    return await withFeePolicy(fn);
   } catch (error: any) {
     const errorStr = error?.message || error?.toString?.() || "";
 
@@ -79,7 +80,7 @@ export async function withAuth<T>(fn: () => Promise<T>): Promise<T> {
         useStore.getState().setIsLoadingUser(false);
 
         // Retry the original operation
-        return await fn();
+        return await withFeePolicy(fn);
       } catch (reAuthError: any) {
         // Reset loading in case AUTHORIZE_DERIVED_KEY_START fired but
         // the popup was cancelled (no END event fires on cancel).
@@ -111,12 +112,14 @@ function isDerivedKeyError(errorStr: string): boolean {
   const patterns = [
     "RuleErrorDerivedKeyNotAuthorized",
     "Derived key mapping for owner not found",
-    "derived key",
     "DerivedKeyNotAuthorized",
-    "not validated due to error",
-    "Problem verifying txn signature",
+    "derived key is not authorized",
+    "derived key has expired",
   ];
-  return patterns.some((p) => errorStr.includes(p));
+  const normalizedError = errorStr.toLowerCase();
+  return patterns.some((pattern) =>
+    normalizedError.includes(pattern.toLowerCase())
+  );
 }
 
 /**

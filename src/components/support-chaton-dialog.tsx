@@ -60,7 +60,6 @@ export const SupportChatOnDialog = ({
           SenderPublicKeyBase58Check: appUser.PublicKeyBase58Check,
           RecipientPublicKeyOrUsername: CHATON_DONATION_PUBLIC_KEY,
           AmountNanos: amountNanos,
-          MinFeeRateNanosPerKB: 1000,
         })
       );
 
@@ -183,9 +182,7 @@ export const SupportChatOnDialog = ({
                   }}
                   className="flex-1 bg-transparent text-ink text-sm placeholder-fg-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
-                <span className="text-fg-500 text-xs font-semibold">
-                  DESO
-                </span>
+                <span className="text-fg-500 text-xs font-semibold">DESO</span>
               </div>
 
               {/* Balance */}

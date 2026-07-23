@@ -24,6 +24,7 @@ import {
 } from "deso-protocol";
 import { toast } from "sonner";
 import { withAuth } from "../utils/with-auth";
+import { withFeePolicy } from "../utils/fee-policy";
 import {
   ASSOCIATION_TYPE_APPROVED,
   ASSOCIATION_TYPE_BLOCKED,
@@ -1139,7 +1140,6 @@ export const prepareEncryptedDMMessage = async (
     RecipientAccessGroupKeyName: response.RecipientAccessGroupKeyName,
     ExtraData,
     EncryptedMessageText: message,
-    MinFeeRateNanosPerKB: 1000,
   };
 
   const isDM =
@@ -1304,7 +1304,6 @@ export const encryptAndUpdateMessage = async (
     ExtraData,
     EncryptedMessageText: message,
     TimestampNanosString: originalTimestampNanosString,
-    MinFeeRateNanosPerKB: 1000,
   };
 
   const isDM =
@@ -2339,12 +2338,14 @@ export async function cleanupOwnJoinRequests(
   if (toDelete.length > 0) {
     await Promise.allSettled(
       toDelete.map((id) =>
-        deleteUserAssociation(
-          {
-            TransactorPublicKeyBase58Check: myPublicKey,
-            AssociationID: id,
-          },
-          { checkPermissions: false }
+        withFeePolicy(() =>
+          deleteUserAssociation(
+            {
+              TransactorPublicKeyBase58Check: myPublicKey,
+              AssociationID: id,
+            },
+            { checkPermissions: false }
+          )
         )
       )
     );

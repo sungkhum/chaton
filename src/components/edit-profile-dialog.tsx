@@ -159,7 +159,6 @@ export const EditProfileDialog = ({
           NewCreatorBasisPoints:
             profile?.CoinEntry?.CreatorBasisPoints ?? 10000,
           NewStakeMultipleBasisPoints: 12500,
-          MinFeeRateNanosPerKB: 1500,
         })
       );
 

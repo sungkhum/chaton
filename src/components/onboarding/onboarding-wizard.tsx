@@ -100,7 +100,6 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
                 FollowerPublicKeyBase58Check: appUser.PublicKeyBase58Check,
                 FollowedPublicKeyBase58Check: pubKey,
                 IsUnfollow: false,
-                MinFeeRateNanosPerKB: 1000,
               })
             );
           } catch (err: any) {
@@ -216,7 +215,6 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
           NewProfilePic: profileImageUrl || "",
           NewCreatorBasisPoints: 10000,
           NewStakeMultipleBasisPoints: 12500,
-          MinFeeRateNanosPerKB: 1500,
         })
       );
 
@@ -426,9 +424,7 @@ export const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
                 </div>
                 <div className="mt-1.5 text-xs min-h-[1rem]" aria-live="polite">
                   {usernameStatus === "available" && (
-                    <span className="text-brand">
-                      Username is available
-                    </span>
+                    <span className="text-brand">Username is available</span>
                   )}
                   {usernameStatus === "taken" && (
                     <span className="text-red-400">

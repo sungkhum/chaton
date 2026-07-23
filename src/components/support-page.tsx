@@ -196,7 +196,6 @@ const InlineDonationForm = ({ appUser }: { appUser: AppUser }) => {
           SenderPublicKeyBase58Check: appUser.PublicKeyBase58Check,
           RecipientPublicKeyOrUsername: CHATON_DONATION_PUBLIC_KEY,
           AmountNanos: amountNanos,
-          MinFeeRateNanosPerKB: 1000,
         })
       );
 

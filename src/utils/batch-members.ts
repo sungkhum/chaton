@@ -136,7 +136,6 @@ export async function batchedAddMembers(params: {
           AccessGroupOwnerPublicKeyBase58Check: ownerPublicKey,
           AccessGroupKeyName: groupKeyName,
           AccessGroupMemberList: memberList,
-          MinFeeRateNanosPerKB: 1000,
         })
       );
 
@@ -206,7 +205,6 @@ export async function batchedRemoveMembers(params: {
             AccessGroupMemberKeyName: entry.AccessGroupKeyName,
             EncryptedKey: "",
           })),
-          MinFeeRateNanosPerKB: 1000,
         })
       );
 

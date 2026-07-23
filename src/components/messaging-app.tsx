@@ -4578,7 +4578,6 @@ export const MessagingApp: FC = () => {
             AccessGroupKeyName: groupKeyName,
             AccessGroupPublicKeyBase58Check:
               group.AccessGroupPublicKeyBase58Check,
-            MinFeeRateNanosPerKB: 1000,
             ExtraData: mergedExtraData,
           })
         );
@@ -5912,7 +5911,6 @@ export const MessagingApp: FC = () => {
                                         senderPk,
                                       DAOCoinToTransferNanos:
                                         toHexUint256(usdcAmount),
-                                      MinFeeRateNanosPerKB: 1000,
                                     })
                                   );
                                   txHash =
@@ -5961,7 +5959,6 @@ export const MessagingApp: FC = () => {
                                         appUser.PublicKeyBase58Check,
                                       RecipientPublicKeyOrUsername: senderPk,
                                       AmountNanos: tipAmountNanos,
-                                      MinFeeRateNanosPerKB: 1000,
                                     })
                                   );
                                   txHash =

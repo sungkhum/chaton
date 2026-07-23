@@ -186,7 +186,6 @@ function App() {
                 AccessGroupOwnerPublicKeyBase58Check: publicKey,
                 AccessGroupPublicKeyBase58Check: messagingPublicKeyBase58Check,
                 AccessGroupKeyName: DEFAULT_KEY_MESSAGING_GROUP_NAME,
-                MinFeeRateNanosPerKB: 1000,
               })
             ).then(() =>
               getAllAccessGroups({ PublicKeyBase58Check: publicKey }).then(

@@ -163,8 +163,7 @@ export const TipConfirmDialog = ({
 
   // Color theme based on currency: DESO = blue, USDC = green
   const accentColor = currency === "DESO" ? "#2775ca" : "#34F080";
-  const accentTextClass =
-    currency === "DESO" ? "text-[#2775ca]" : "text-brand";
+  const accentTextClass = currency === "DESO" ? "text-[#2775ca]" : "text-brand";
   const gradientClasses =
     currency === "DESO"
       ? "bg-gradient-to-r from-[#2775ca] to-[#4a9aea] text-ink"
@@ -287,7 +286,6 @@ export const TipConfirmDialog = ({
               SenderPublicKeyBase58Check: appUser.PublicKeyBase58Check,
               RecipientPublicKeyOrUsername: recipientPublicKey,
               AmountNanos: amountNanos,
-              MinFeeRateNanosPerKB: 1000,
             })
           );
           txHash =
@@ -340,7 +338,6 @@ export const TipConfirmDialog = ({
               ProfilePublicKeyBase58CheckOrUsername: USDC_CREATOR_PUBLIC_KEY,
               ReceiverPublicKeyBase58CheckOrUsername: recipientPublicKey,
               DAOCoinToTransferNanos: toHexUint256(usdcBaseUnits),
-              MinFeeRateNanosPerKB: 1000,
             })
           );
           txHash =
@@ -501,9 +498,7 @@ export const TipConfirmDialog = ({
           className="bg-surface-sheet text-ink border border-ink/10 w-[92%] max-w-[420px] rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] p-8 flex flex-col items-center justify-center gap-3"
         >
           <Loader2 className="w-6 h-6 animate-spin text-brand" />
-          <span className="text-fg-500 text-xs">
-            Loading exchange rate...
-          </span>
+          <span className="text-fg-500 text-xs">Loading exchange rate...</span>
         </div>
       </div>,
       document.body

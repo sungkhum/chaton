@@ -10,6 +10,7 @@ import {
   updateAccessGroup,
 } from "deso-protocol";
 import { withAuth } from "../utils/with-auth";
+import { withFeePolicy } from "../utils/fee-policy";
 import {
   batchedGetBulkAccessGroups,
   batchedAddMembers,
@@ -447,7 +448,6 @@ export const ManageMembersDialog = ({
           AccessGroupKeyName: groupName,
           AccessGroupPublicKeyBase58Check:
             group.AccessGroupPublicKeyBase58Check,
-          MinFeeRateNanosPerKB: 1000,
           ExtraData: mergedExtraData,
         })
       );
@@ -532,7 +532,6 @@ export const ManageMembersDialog = ({
           AccessGroupKeyName: groupName,
           AccessGroupPublicKeyBase58Check:
             group.AccessGroupPublicKeyBase58Check,
-          MinFeeRateNanosPerKB: 1000,
           ExtraData: mergedExtraData,
         })
       );
@@ -905,7 +904,6 @@ export const ManageMembersDialog = ({
           AccessGroupKeyName: groupName,
           AccessGroupPublicKeyBase58Check:
             group.AccessGroupPublicKeyBase58Check,
-          MinFeeRateNanosPerKB: 1000,
           ExtraData: mergedExtraData,
         })
       );
@@ -1003,12 +1001,14 @@ export const ManageMembersDialog = ({
         );
         Promise.allSettled(
           succeededRequests.map((r) =>
-            deleteUserAssociation(
-              {
-                TransactorPublicKeyBase58Check: ownerKey,
-                AssociationID: r.associationId,
-              },
-              { checkPermissions: false }
+            withFeePolicy(() =>
+              deleteUserAssociation(
+                {
+                  TransactorPublicKeyBase58Check: ownerKey,
+                  AssociationID: r.associationId,
+                },
+                { checkPermissions: false }
+              )
             )
           )
         ).catch(() => {});
